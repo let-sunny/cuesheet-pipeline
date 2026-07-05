@@ -1,0 +1,50 @@
+{
+  "project": {
+    "name": "먹방 하이라이트 1화",
+    "fps": 30,
+    "width": 1920,
+    "height": 1080
+  },
+  "clipDir": "<home>/videos/ep01/clips",
+  "intro": "<home>/videos/ep01/intro.mp4",
+  "outro": null,
+  "segments": [
+    {
+      "clip": "cut_01.mp4",
+      "in": 2.5,
+      "out": 8.0,
+      "speed": 1.0,
+      "subtitle": "오늘은 국밥집에 왔습니다"
+    },
+    {
+      "clip": "cut_02.mp4",
+      "in": 0.0,
+      "out": 4.2,
+      "speed": 1.5,
+      "subtitle": "국물부터 한 입"
+    },
+    {
+      "clip": "cut_03.mp4",
+      "in": 10.0,
+      "out": 15.5,
+      "speed": 0.5,
+      "subtitle": ""
+    }
+  ],
+  "bgm": [
+    {
+      "file": "<home>/videos/bgm/lofi.mp3",
+      "start": 0.0,
+      "end": 20.0,
+      "volume": 0.3
+    }
+  ],
+  "subtitleStyle": {
+    "font": "Pretendard",
+    "size": 48,
+    "color": "#ffffff",
+    "outlineColor": "#000000",
+    "outlineWidth": 3,
+    "position": "bottom"
+  }
+}

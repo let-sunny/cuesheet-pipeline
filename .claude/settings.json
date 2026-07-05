@@ -1,0 +1,36 @@
+{
+  "enableAllProjectMcpServers": true,
+  "permissions": {
+    "allow": [
+      "mcp__cuesheet-bridge__get_cuesheet",
+      "mcp__cuesheet-bridge__update_cuesheet",
+      "Edit",
+      "Write",
+      "Bash(pnpm install)",
+      "Bash(pnpm -r build)",
+      "Bash(pnpm -r typecheck)",
+      "Bash(pnpm -r test)",
+      "Bash(pnpm --filter *)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(npm run build*)",
+      "Bash(pnpm test:run*)",
+      "Bash(npm run typecheck*)",
+      "Bash(git -C * diff*)",
+      "Bash(ffmpeg *)",
+      "Bash(ffprobe *)",
+      "Bash(fc-list*)",
+      "Bash(mkdir -p *)",
+      "Bash(chmod +x media/clips/*)",
+      "Bash(bash media/clips/*.sh)",
+      "Bash(node packages/render/dist/*)",
+      "Bash(corepack pnpm *)",
+      "Bash(brew install *)",
+      "Bash(brew list *)",
+      "Bash(brew info *)",
+      "Bash(brew search *)",
+      "Bash(brew tap *)",
+      "Bash(env)"
+    ]
+  }
+}

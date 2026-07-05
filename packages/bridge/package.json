@@ -1,0 +1,25 @@
+{
+  "name": "@cuesheet/bridge",
+  "version": "0.0.0",
+  "description": "Claude Code가 붙어 큐시트를 편집하는 MCP 브리지 (자연어 명령 → 검증된 큐시트 변경)",
+  "type": "module",
+  "bin": {
+    "cuesheet-bridge": "./dist/index.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@cuesheet/schema": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

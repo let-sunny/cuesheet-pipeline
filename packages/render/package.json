@@ -1,0 +1,25 @@
+{
+  "name": "@cuesheet/render",
+  "version": "0.0.0",
+  "description": "큐시트를 받아 ffmpeg 명령으로 본편 영상을 렌더한다",
+  "type": "module",
+  "main": "./dist/plan.js",
+  "types": "./dist/plan.d.ts",
+  "bin": {
+    "cuesheet-render": "./dist/index.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@cuesheet/schema": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
