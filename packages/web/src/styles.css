@@ -264,6 +264,11 @@ textarea {
   width: 140px;
 }
 
+.settings-field input[type="checkbox"],
+.settings-field input[type="range"] {
+  width: auto;
+}
+
 .segment-layout {
   display: flex;
   gap: 16px;
@@ -808,6 +813,11 @@ textarea {
 .subtitle-write-index {
   font-weight: 600;
   color: #cfd3e0;
+}
+
+.subtitle-write-narration {
+  margin-left: auto;
+  font-style: italic;
 }
 
 .subtitle-write-row textarea {

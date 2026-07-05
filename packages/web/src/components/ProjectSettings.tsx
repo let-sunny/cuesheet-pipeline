@@ -1,17 +1,21 @@
-import type { Project, SubtitleStyle } from "@cuesheet/schema";
+import type { NarrationConfig, Project, SubtitleStyle } from "@cuesheet/schema";
 
 interface Props {
   project: Project;
   subtitleStyle: SubtitleStyle;
+  narration: NarrationConfig | undefined;
   onProjectChange: (patch: Partial<Project>) => void;
   onSubtitleStyleChange: (patch: Partial<SubtitleStyle>) => void;
+  onNarrationChange: (patch: Partial<NarrationConfig>) => void;
 }
 
 export function ProjectSettings({
   project,
   subtitleStyle,
+  narration,
   onProjectChange,
   onSubtitleStyleChange,
+  onNarrationChange,
 }: Props) {
   return (
     <div className="settings">
@@ -135,6 +139,42 @@ export function ProjectSettings({
             <option value="center">center</option>
           </select>
         </label>
+      </div>
+
+      <div className="settings-group">
+        <h3>내레이션</h3>
+        <label className="settings-field">
+          <span>사용</span>
+          <input
+            type="checkbox"
+            checked={narration?.enabled ?? false}
+            onChange={(e) => onNarrationChange({ enabled: e.target.checked })}
+          />
+        </label>
+        {narration?.enabled ? (
+          <>
+            <label className="settings-field">
+              <span>폴더</span>
+              <input
+                type="text"
+                value={narration.dir}
+                placeholder="media/narration"
+                onChange={(e) => onNarrationChange({ dir: e.target.value })}
+              />
+            </label>
+            <label className="settings-field">
+              <span>볼륨 ({Math.round(narration.volume * 100)}%)</span>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={narration.volume}
+                onChange={(e) => onNarrationChange({ volume: e.target.valueAsNumber })}
+              />
+            </label>
+          </>
+        ) : null}
       </div>
     </div>
   );

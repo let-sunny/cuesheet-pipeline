@@ -33,6 +33,7 @@ interface Props {
   onAdd: () => void;
   onRemove: (i: number) => void;
   onMove: (i: number, direction: -1 | 1) => void;
+  narrationEnabled: boolean;
 }
 
 export function SegmentEditor({
@@ -43,6 +44,7 @@ export function SegmentEditor({
   onAdd,
   onRemove,
   onMove,
+  narrationEnabled,
 }: Props) {
   const maxPlayback = Math.max(...segments.map(playbackSeconds), 1);
 
@@ -131,6 +133,19 @@ export function SegmentEditor({
                 onChange={(e) => onChange(i, { subtitle: e.target.value })}
               />
             </label>
+            {narrationEnabled ? (
+              <label className="segment-field wide">
+                <span>narration</span>
+                <input
+                  type="text"
+                  value={seg.narration ?? ""}
+                  placeholder="파일명 (없으면 비움)"
+                  onChange={(e) =>
+                    onChange(i, { narration: e.target.value === "" ? null : e.target.value })
+                  }
+                />
+              </label>
+            ) : null}
             <div className="segment-row-actions">
               <button
                 type="button"

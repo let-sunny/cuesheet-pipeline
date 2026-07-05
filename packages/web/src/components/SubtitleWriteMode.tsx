@@ -7,6 +7,7 @@ interface Props {
   selectedIndex: number;
   onSelect: (i: number) => void;
   onChangeSubtitle: (i: number, subtitle: string) => void;
+  narrationEnabled: boolean;
 }
 
 /**
@@ -14,7 +15,13 @@ interface Props {
  * 입력창에 포커스하면 그 컷이 선택되어 VideoPreview가 구간 반복 재생을 따라간다.
  * Tab/Shift+Tab으로 다음/이전 컷 입력창으로 이동(기본 Tab 동작은 막고 직접 focus 이동).
  */
-export function SubtitleWriteMode({ segments, selectedIndex, onSelect, onChangeSubtitle }: Props) {
+export function SubtitleWriteMode({
+  segments,
+  selectedIndex,
+  onSelect,
+  onChangeSubtitle,
+  narrationEnabled,
+}: Props) {
   const rowRefs = useRef<Array<HTMLTextAreaElement | null>>([]);
 
   useEffect(() => {
@@ -45,6 +52,11 @@ export function SubtitleWriteMode({ segments, selectedIndex, onSelect, onChangeS
             <span className="subtitle-write-range">
               {seg.in.toFixed(1)}s ~ {seg.out.toFixed(1)}s
             </span>
+            {narrationEnabled ? (
+              <span className="subtitle-write-narration">
+                내레이션: {seg.narration ?? "(없음)"}
+              </span>
+            ) : null}
           </div>
           <textarea
             ref={(el) => {

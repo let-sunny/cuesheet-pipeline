@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { BgmCue, CueSheet, Project, Segment, SubtitleStyle } from "@cuesheet/schema";
+import type {
+  BgmCue,
+  CueSheet,
+  NarrationConfig,
+  Project,
+  Segment,
+  SubtitleStyle,
+} from "@cuesheet/schema";
 import { validateCueSheet } from "@cuesheet/schema";
 import { fetchCueSheet, renderCueSheet, saveCueSheet } from "./api.js";
 import { SegmentEditor } from "./components/SegmentEditor.js";
@@ -222,6 +229,20 @@ export function App() {
     setDraft((prev) => (prev ? { ...prev, project: { ...prev.project, ...patch } } : prev));
   }, []);
 
+  const updateNarration = useCallback((patch: Partial<NarrationConfig>) => {
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const base: NarrationConfig = prev.narration ?? {
+        enabled: false,
+        dir: "media/narration",
+        volume: 1,
+      };
+      return { ...prev, narration: { ...base, ...patch } };
+    });
+  }, []);
+
   const updateSubtitleStyle = useCallback((patch: Partial<SubtitleStyle>) => {
     setDraft((prev) =>
       prev ? { ...prev, subtitleStyle: { ...prev.subtitleStyle, ...patch } } : prev,
@@ -411,8 +432,10 @@ export function App() {
       <ProjectSettings
         project={draft.project}
         subtitleStyle={draft.subtitleStyle}
+        narration={draft.narration}
         onProjectChange={updateProject}
         onSubtitleStyleChange={updateSubtitleStyle}
+        onNarrationChange={updateNarration}
       />
 
       <div className="section-header">
@@ -432,6 +455,7 @@ export function App() {
             selectedIndex={selectedIndex}
             onSelect={setSelectedIndex}
             onChangeSubtitle={(i, subtitle) => updateSegment(i, { subtitle })}
+            narrationEnabled={draft.narration?.enabled ?? false}
           />
         ) : (
           <SegmentEditor
@@ -442,6 +466,7 @@ export function App() {
             onAdd={addSegment}
             onRemove={removeSegment}
             onMove={moveSegment}
+            narrationEnabled={draft.narration?.enabled ?? false}
           />
         )}
         <VideoPreview
