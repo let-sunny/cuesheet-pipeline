@@ -36,6 +36,8 @@ export const segmentSchema = z
       .max(1, "volume은 1.0 이하여야 합니다")
       .default(1.0), // 이 세그먼트 오디오 볼륨. 1.0=원본, 0.3="30% 수준", 0=무음
     subtitle: z.string(), // 빈 문자열 허용
+    // 이 컷에 얹을 내레이션 오디오 파일명(narration.dir 기준). null/생략이면 내레이션 없음.
+    narration: z.string().min(1, "narration 파일명은 비어 있을 수 없습니다").nullable().optional(),
   })
   .refine((s) => s.in < s.out, {
     error: "in은 out보다 작아야 합니다 (in < out)",
@@ -66,6 +68,21 @@ export const subtitleStyleSchema = z.object({
   position: z.enum(["bottom", "top", "center"]),
 });
 
+/**
+ * 목소리 클로닝 내레이션 배관(피처 플래그). enabled가 false거나 이 필드 자체가
+ * 없으면 렌더는 기존 동작과 100% 동일해야 한다. dir은 clipDir와 같은 철학으로
+ * 내레이션 오디오 파일들이 있는 디렉토리(파일명은 segment.narration에 저장).
+ */
+export const narrationConfigSchema = z.object({
+  enabled: z.boolean(),
+  dir: z.string().min(1, "narration.dir은 비어 있을 수 없습니다"),
+  volume: z
+    .number()
+    .min(0, "volume은 0.0 이상이어야 합니다")
+    .max(1, "volume은 1.0 이하여야 합니다")
+    .default(1.0),
+});
+
 export const cueSheetSchema = z.object({
   project: projectSchema,
   clipDir: z.string().min(1, "clipDir은 비어 있을 수 없습니다"),
@@ -74,4 +91,5 @@ export const cueSheetSchema = z.object({
   segments: z.array(segmentSchema).min(1, "segments는 최소 1개 이상이어야 합니다"),
   bgm: z.array(bgmCueSchema),
   subtitleStyle: subtitleStyleSchema,
+  narration: narrationConfigSchema.optional(),
 });

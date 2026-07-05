@@ -1,6 +1,7 @@
 export {
   bgmCueSchema,
   cueSheetSchema,
+  narrationConfigSchema,
   projectSchema,
   segmentSchema,
   subtitleStyleSchema,
@@ -10,6 +11,7 @@ export type {
   BgmCue,
   CueSheet,
   CueSheetInput,
+  NarrationConfig,
   Project,
   Segment,
   SubtitleStyle,

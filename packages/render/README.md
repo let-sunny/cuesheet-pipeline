@@ -29,6 +29,19 @@ cuesheet-render project.cuesheet.json out.mp4
 처리한 뒤 `concat`으로 이어 붙인다. intro/outro는 앞뒤로. bgm은 시작 시각(`adelay`)·볼륨 적용 후
 `amix`로 섞는다. 출력은 project의 fps·해상도, H.264/AAC mp4.
 
+### 목소리 클로닝 내레이션 (피처 플래그)
+
+`narration.enabled === true`이고 세그먼트에 `narration`(파일명)이 있을 때만 동작한다.
+`narration` 필드 자체가 없거나 `enabled: false`면 ffmpeg 명령이 기존과 **100% 동일**하다.
+
+- 파일 경로는 `narration.dir` + 세그먼트별 `narration`(파일명만, `clipDir`/`segment.clip`와 같은 철학).
+- 각 내레이션 오디오는 **그 세그먼트의 출력 타임라인 시작 시각**(intro 이후 세그먼트 누적,
+  배속 반영: `(out-in)/speed`를 앞 세그먼트들에 대해 누적한 값)에 `adelay`로 배치되고
+  `narration.volume` 적용 후 기존 오디오(원본 소리+bgm)와 `amix`로 섞인다(bgm과 같은 패턴).
+- **v1 제약**: 내레이션 파일 길이가 그 컷 길이보다 길면 잘리지 않고 다음 컷 위로 겹쳐
+  재생된다(자동 트림 없음). 또한 이 시작 시각 계산은 intro 길이를 포함하지 않는다(파일
+  프로빙 없이 intro 길이를 알 수 없음 — intro를 쓰면서 내레이션도 쓰는 경우 오프셋이 밀릴 수 있음).
+
 ## 주의
 
 - **ffmpeg가 설치돼 있어야 실제 인코딩이 된다.** 없으면 CLI가 명확한 에러를 낸다.

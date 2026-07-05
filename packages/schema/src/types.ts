@@ -2,6 +2,7 @@ import type { z } from "zod";
 import type {
   bgmCueSchema,
   cueSheetSchema,
+  narrationConfigSchema,
   projectSchema,
   segmentSchema,
   subtitleStyleSchema,
@@ -15,6 +16,7 @@ export type Project = z.infer<typeof projectSchema>;
 export type Segment = z.infer<typeof segmentSchema>;
 export type BgmCue = z.infer<typeof bgmCueSchema>;
 export type SubtitleStyle = z.infer<typeof subtitleStyleSchema>;
+export type NarrationConfig = z.infer<typeof narrationConfigSchema>;
 export type CueSheet = z.infer<typeof cueSheetSchema>;
 
 /** 검증 전 입력 타입(default 미적용). 웹앱에서 부분 입력을 다룰 때 유용. */

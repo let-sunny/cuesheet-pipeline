@@ -31,6 +31,43 @@ describe("validateCueSheet - 통과 케이스", () => {
       expect(result.data.segments[0]?.speed).toBe(1.0);
     }
   });
+
+  it("narration 필드가 없는 기존 큐시트도 그대로 유효하다", () => {
+    const result = validateCueSheet(sample);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.narration).toBeUndefined();
+      expect(result.data.segments[0]?.narration).toBeUndefined();
+    }
+  });
+
+  it("narration enabled+파일명이 있으면 유효하다", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      narration: { enabled: true, dir: "/narration", volume: 0.8 },
+      segments: [
+        { clip: "a.mp4", in: 0, out: 1, subtitle: "", narration: "line01.mp3" },
+      ],
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.narration).toEqual({ enabled: true, dir: "/narration", volume: 0.8 });
+      expect(result.data.segments[0]?.narration).toBe("line01.mp3");
+    }
+  });
+
+  it("narration.volume 미지정 시 기본값 1.0이 적용된다", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      narration: { enabled: true, dir: "/narration" },
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.narration?.volume).toBe(1.0);
+    }
+  });
 });
 
 describe("validateCueSheet - 실패 케이스", () => {
@@ -77,6 +114,30 @@ describe("validateCueSheet - 실패 케이스", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.errors.some((e) => e.includes("project.fps"))).toBe(true);
+    }
+  });
+
+  it("narration.volume이 범위를 벗어나면 실패한다", () => {
+    const bad = {
+      ...(sample as Record<string, unknown>),
+      narration: { enabled: true, dir: "/narration", volume: 1.5 },
+    };
+    const result = validateCueSheet(bad);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.includes("narration.volume"))).toBe(true);
+    }
+  });
+
+  it("segment.narration이 빈 문자열이면 실패한다", () => {
+    const bad = {
+      ...(sample as Record<string, unknown>),
+      segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", narration: "" }],
+    };
+    const result = validateCueSheet(bad);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.includes("segments[0].narration"))).toBe(true);
     }
   });
 

@@ -99,6 +99,10 @@ export function buildRenderPlan(cue: CueSheet, outputPath: string): RenderPlan {
   }
 
   if (cue.intro) addClip(cue.intro, {});
+  // 세그먼트별 출력 타임라인 시작 시각(누적, 배속 반영) — 내레이션 오디오를 그 시각에 배치하기 위함.
+  // v1 제약: intro 길이는 파일 프로빙 없이 알 수 없어 이 오프셋에 포함하지 않는다.
+  let segmentOffset = 0;
+  const narrationCues: { path: string; start: number }[] = [];
   for (const s of cue.segments) {
     addClip(join(cue.clipDir, s.clip), {
       ss: s.in,
@@ -107,15 +111,18 @@ export function buildRenderPlan(cue: CueSheet, outputPath: string): RenderPlan {
       volume: s.volume,
       subtitle: s.subtitle,
     });
+    if (cue.narration?.enabled && s.narration) {
+      narrationCues.push({ path: join(cue.narration.dir, s.narration), start: segmentOffset });
+    }
+    segmentOffset += (s.out - s.in) / s.speed;
   }
   if (cue.outro) addClip(cue.outro, {});
 
   const n = clipCount;
   filters.push(`${concatLabels.join("")}concat=n=${n}:v=1:a=1[vout][amain]`);
 
-  let finalAudio = "[amain]";
+  const mixLabels: string[] = [];
   if (cue.bgm.length > 0) {
-    const bgmLabels: string[] = [];
     for (const b of cue.bgm) {
       inputs.push("-i", b.file);
       const i = idx++;
@@ -124,10 +131,24 @@ export function buildRenderPlan(cue: CueSheet, outputPath: string): RenderPlan {
       filters.push(
         `[${i}:a]atrim=0:${dur},adelay=${delay}|${delay},volume=${b.volume}[bgm${i}]`,
       );
-      bgmLabels.push(`[bgm${i}]`);
+      mixLabels.push(`[bgm${i}]`);
     }
+  }
+  if (narrationCues.length > 0 && cue.narration) {
+    const narrationVolume = cue.narration.volume;
+    for (const nCue of narrationCues) {
+      inputs.push("-i", nCue.path);
+      const i = idx++;
+      const delay = Math.round(nCue.start * 1000);
+      filters.push(`[${i}:a]adelay=${delay}|${delay},volume=${narrationVolume}[nar${i}]`);
+      mixLabels.push(`[nar${i}]`);
+    }
+  }
+
+  let finalAudio = "[amain]";
+  if (mixLabels.length > 0) {
     filters.push(
-      `[amain]${bgmLabels.join("")}amix=inputs=${1 + bgmLabels.length}:duration=first[aout]`,
+      `[amain]${mixLabels.join("")}amix=inputs=${1 + mixLabels.length}:duration=first[aout]`,
     );
     finalAudio = "[aout]";
   }
