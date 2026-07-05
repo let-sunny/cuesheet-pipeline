@@ -186,12 +186,11 @@ pnpm --filter @cuesheet/schema test
   빠져 있어 자막 있는 큐시트는 `brew install ffmpeg-full` 바이너리가 `PATH`에 잡혀야 한다
   (render README 참고, 이 머신은 `~/.zshrc`에 이미 반영됨).
 - 시작 큐시트 `project.cuesheet.json` 시드됨, `clipDir`은 레포 로컬 `media/clips`.
-- **환경 참고**: `pnpm install`이 이 머신에서 `baseline-browser-mapping` supply-chain
-  minimumReleaseAge 정책에 막혀 실행 자체가 안 될 수 있음(패키지 코드 문제 아님, 시간 지나면
-  풀림) — 막히면 각 패키지 폴더에서 `tsc`/`vitest`를 직접 돌려서 검증한다. `@cuesheet/render`를
-  `@cuesheet/web`의 워크스페이스 의존성으로 추가할 때도 이 정책에 막혀 `pnpm-lock.yaml`을
-  수동으로(schema 엔트리와 동일 패턴) 반영했음 — 정책이 풀리면 `pnpm install` 한 번 정식으로
-  돌려 일치 여부 확인 권장.
+- **환경 참고**: supply-chain minimumReleaseAge 정책으로 `pnpm install`이 일시적으로 막힐 수
+  있음(시간 지나면 풀림) — 막히면 각 패키지 폴더에서 `tsc`/`vitest`를 직접 돌려 검증한다.
+  2026-07-06 정책 해제 후 정식 `pnpm install`로 재검증 완료: 정책 기간 중 수동 배선했던
+  `pnpm-lock.yaml`/심링크가 정식 해석과 완전 일치(diff 0), 전 패키지 typecheck 5/5·테스트
+  26/26 통과.
 - **실제 원본 2개 에피소드로 실측·교차 검증 완료(2026-07-05, `docs/ideas/claude-real-video.md`
   참고) — 씬 감지 기반 하이라이트 추출은 이 소재에서 완전 배제 확정.** 뜨개 롱테이크
   (로우키 17분 / 닷믹스 28분, 둘 다 4K)에서 ffmpeg scene 점수 최댓값 0.090/0.091 —
