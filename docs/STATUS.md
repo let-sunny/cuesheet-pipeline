@@ -18,7 +18,7 @@
 | `packages/bridge` | Claude Code 연결 MCP 서버 (자연어 편집) | 안정. 테스트 4개 |
 | `packages/render` | 큐시트 → ffmpeg 렌더 (CLI + buildRenderPlan) | 안정. 테스트 8개, 실렌더 검증 |
 | `packages/web` | 터치업 에디터: 세그먼트 편집, 타임라인 트리밍(스크럽/핸들/분할), 전체 타임라인+BGM 드래그, 프록시 재생, 렌더 버튼 | 활발히 진화 중 |
-| `packages/draft` (예정) | **코어**: 원본 폴더 → 초벌 큐시트 자동 생성 (프레임 추출/프록시/조립; 비전 판단은 Claude가 담당) | 승격 작업 중 — 지금까지는 세션 워크플로우 스크립트로만 존재 |
+| `packages/draft` | **코어**: 원본 폴더 → 초벌 큐시트 자동 생성 (CLI `cuesheet-draft`: scan으로 인벤토리+프레임 추출 → assemble로 조립; 비전 판단은 Claude가 담당) | 정식 패키지 승격 완료. 테스트 7개, 실 원본 폴더로 scan/assemble E2E 검증 |
 | `media/proxies/` | 웹 미리보기용 720p H.264 프록시 (자동 생성, git 제외) | 자동 |
 | `media/dotmix_src` | 사용자 원본 폴더로의 심링크 (git 제외) | — |
 | `proto_dotmix.cuesheet.json` | v1 자동 초벌본 샘플 (닷믹스 로컬 12클립 기반) | 검증 완료 |
@@ -36,7 +36,6 @@
 ## 진행 중 / 대기
 
 - **v2 초벌 파이프라인** (#9): 롱테이크 1~2초 정밀화 + 메모-프레임 자기검증 + 배속 리듬. 스크립트 준비 완료, **닷믹스 원본 iCloud 다운로드 완료 대기** (완료 감지 시 자동 실행)
-- **`@cuesheet/draft` 승격**: 워크플로우 스크립트 → 정식 패키지 (진행 중)
 - pnpm supply-chain 정책 (#7): 2026-07-05 밤 해제 예정 → `pnpm install` 정식 재실행으로 수동 lockfile 검증
 
 ## 다음 후보 (착수 전)

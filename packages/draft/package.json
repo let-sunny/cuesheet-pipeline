@@ -1,0 +1,26 @@
+{
+  "name": "@cuesheet/draft",
+  "version": "0.0.0",
+  "description": "원본 폴더에서 초벌 편집 큐시트를 자동 생성한다 (스캔+프레임 추출 / 조립)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "cuesheet-draft": "./dist/cli.js"
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@cuesheet/schema": "workspace:*",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

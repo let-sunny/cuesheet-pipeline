@@ -52,8 +52,9 @@
 ```
 packages/
   schema/   큐시트 타입 정의 + 런타임 검증 (single source of truth)  [구현됨]
-  web/      큐시트를 편집/미리보기하는 웹앱 (큐시트 생산)             [예정]
-  render/   큐시트를 받아 실제 영상 렌더링, ffmpeg 등 (큐시트 소비)   [예정]
+  draft/    원본 폴더 -> 초벌 큐시트 자동 생성 (스캔+프레임 추출/조립, 비전 판단은 Claude) [구현됨]
+  web/      큐시트를 편집/미리보기하는 웹앱 (큐시트 생산)             [구현됨]
+  render/   큐시트를 받아 실제 영상 렌더링, ffmpeg 등 (큐시트 소비)   [구현됨]
 ```
 
 ### 데이터 흐름 (누가 만들고 누가 쓰나)
@@ -154,6 +155,19 @@ pnpm --filter @cuesheet/schema test
 ## 현재 상태
 
 - `@cuesheet/schema`: 타입 + `validateCueSheet` + 예제. segment에 오디오 `volume` 추가. 테스트 7개 통과.
+- `@cuesheet/draft`: 지금까지 세션 워크플로우 스크립트로만 존재하던 초벌 편집 파이프라인을
+  정식 패키지로 승격. CLI(`cuesheet-draft`) 2단계 — `scan <원본폴더> --out <작업폴더>`(iCloud
+  미다운로드는 `blocks===0` 확인 후 건너뛰고, 로컬 실물만 ffprobe로 길이 수집 후 길이별 간격
+  (15초 미만 2s/60초 미만 5s/300초 미만 15s/그 이상 60s)으로 시크 기반 640px 프레임 추출 →
+  `manifest.json`), `assemble --manifest --moments --clip-dir --project-name --out`(Claude가
+  프레임을 보고 작성한 `moments.json`을 zod로 검증 후 조립 규칙 적용 — quality>=3 채택,
+  같은 클립 내 monotonousRange 있으면 30~60초 슬라이스를 speed 14 배속 커넥터로 삽입(에피소드당
+  8개 상한), 클립 파일명순→in 오름차순 정렬 → `validateCueSheet`로 검증 후 저장, 실패 시
+  `필드경로: 이유` 출력하고 exit 1). 라이브러리 export `scanFolder`/`assembleDraft`(순수 로직).
+  테스트 7개 통과(quality 필터링/정렬/배속 커넥터 출력길이 계산/8개 상한/검증 실패 케이스 등).
+  실제 닷믹스 원본 폴더로 scan 실행 검증 완료(로컬 18개/미다운로드 33개, 프레임 172장 추출,
+  920초 롱테이크도 시크 기반이라 수 초 내 완료), assemble도 손으로 만든 moments.json으로
+  E2E 검증(정상 조립·검증 실패 두 경로 모두 확인).
 - `@cuesheet/bridge`: MCP 서버(get/update). 스모크 테스트로 Claude Code 연결·큐시트 읽기 확인. 테스트 4개 통과.
 - `@cuesheet/web`: 손편집 에디터(뷰어에서 승격 완료). 프로젝트 설정·자막 스타일·세그먼트
   편집(in/out/speed/volume/subtitle, 추가/삭제/순서 이동)·BGM 편집. Vite 미들웨어로
