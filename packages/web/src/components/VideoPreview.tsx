@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { Segment } from "@cuesheet/schema";
 
@@ -18,6 +18,17 @@ interface Props {
   selectedIndex: number;
   onChange: (patch: Partial<Segment>) => void;
   onSplit: (at: number) => void;
+  /** 켜지면 선택 세그먼트가 바뀔 때(자막 쓰기 모드 등) 자동으로 재생을 시작한다. */
+  autoPlay?: boolean;
+}
+
+/** 외부(App.tsx의 전역 단축키 등)에서 미리보기를 제어하기 위한 핸들. */
+export interface VideoPreviewHandle {
+  togglePlay: () => void;
+  seekBy: (deltaSeconds: number) => void;
+  setInFromCurrent: () => void;
+  setOutFromCurrent: () => void;
+  splitAtCurrent: () => void;
 }
 
 /**
@@ -25,7 +36,10 @@ interface Props {
  * in~out 구간을 표시하고, 핸들 드래그·버튼으로 in/out을 조정하며,
  * 현재 위치에서 세그먼트를 분할할 수 있다.
  */
-export function VideoPreview({ segment, selectedIndex, onChange, onSplit }: Props) {
+export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function VideoPreview(
+  { segment, selectedIndex, onChange, onSplit, autoPlay = false },
+  ref,
+) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const [missing, setMissing] = useState(false);
@@ -35,6 +49,11 @@ export function VideoPreview({ segment, selectedIndex, onChange, onSplit }: Prop
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevClipRef = useRef<string | undefined>(segment?.clip);
+  const autoPlayRef = useRef(autoPlay);
+
+  useEffect(() => {
+    autoPlayRef.current = autoPlay;
+  }, [autoPlay]);
 
   useEffect(() => {
     setMissing(false);
@@ -55,6 +74,11 @@ export function VideoPreview({ segment, selectedIndex, onChange, onSplit }: Prop
     }
     video.currentTime = segment.in;
     setCurrentTime(segment.in);
+    if (autoPlayRef.current) {
+      video.playbackRate = segment.speed;
+      video.volume = segment.volume;
+      void video.play();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIndex]);
 
@@ -77,6 +101,9 @@ export function VideoPreview({ segment, selectedIndex, onChange, onSplit }: Prop
       video.playbackRate = segment.speed;
       video.volume = segment.volume;
       setCurrentTime(segment.in);
+      if (autoPlayRef.current) {
+        void video.play();
+      }
     };
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime);
@@ -93,10 +120,6 @@ export function VideoPreview({ segment, selectedIndex, onChange, onSplit }: Prop
       video.removeEventListener("timeupdate", handleTimeUpdate);
     };
   }, [segment, playMode]);
-
-  if (!segment) {
-    return <div className="video-preview empty">세그먼트를 선택하세요</div>;
-  }
 
   const showNotice = (msg: string) => {
     setNotice(msg);
@@ -115,6 +138,84 @@ export function VideoPreview({ segment, selectedIndex, onChange, onSplit }: Prop
     video.currentTime = clamped;
     setCurrentTime(clamped);
   };
+
+  const handlePlay = () => {
+    const video = videoRef.current;
+    if (!video || !segment) {
+      return;
+    }
+    if (
+      playMode === "loop" &&
+      (video.currentTime < segment.in || video.currentTime >= segment.out)
+    ) {
+      video.currentTime = segment.in;
+      setCurrentTime(segment.in);
+    }
+    video.playbackRate = segment.speed;
+    video.volume = segment.volume;
+    void video.play();
+  };
+
+  const handleSetIn = () => {
+    if (!segment) {
+      return;
+    }
+    if (currentTime >= segment.out - MIN_GAP) {
+      showNotice("IN은 OUT보다 앞서야 합니다");
+      return;
+    }
+    onChange({ in: currentTime });
+  };
+
+  const handleSetOut = () => {
+    if (!segment) {
+      return;
+    }
+    if (currentTime <= segment.in + MIN_GAP) {
+      showNotice("OUT은 IN보다 뒤여야 합니다");
+      return;
+    }
+    onChange({ out: currentTime });
+  };
+
+  const handleSplit = () => {
+    if (!segment) {
+      return;
+    }
+    if (currentTime - segment.in < SPLIT_MARGIN || segment.out - currentTime < SPLIT_MARGIN) {
+      showNotice("경계와 너무 가까워 분할할 수 없습니다");
+      return;
+    }
+    onSplit(currentTime);
+  };
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      togglePlay: () => {
+        const video = videoRef.current;
+        if (!video) {
+          return;
+        }
+        if (video.paused) {
+          handlePlay();
+        } else {
+          video.pause();
+        }
+      },
+      seekBy: (deltaSeconds: number) => {
+        seekTo(currentTime + deltaSeconds);
+      },
+      setInFromCurrent: handleSetIn,
+      setOutFromCurrent: handleSetOut,
+      splitAtCurrent: handleSplit,
+    }),
+    [currentTime, duration, playMode, segment],
+  );
+
+  if (!segment) {
+    return <div className="video-preview empty">세그먼트를 선택하세요</div>;
+  }
 
   const timeAtClientX = (clientX: number): number => {
     const el = timelineRef.current;
@@ -157,47 +258,6 @@ export function VideoPreview({ segment, selectedIndex, onChange, onSplit }: Prop
     } else {
       onChange({ out: clamp(t, segment.in + MIN_GAP, duration) });
     }
-  };
-
-  const handlePlay = () => {
-    const video = videoRef.current;
-    if (!video) {
-      return;
-    }
-    if (
-      playMode === "loop" &&
-      (video.currentTime < segment.in || video.currentTime >= segment.out)
-    ) {
-      video.currentTime = segment.in;
-      setCurrentTime(segment.in);
-    }
-    video.playbackRate = segment.speed;
-    video.volume = segment.volume;
-    void video.play();
-  };
-
-  const handleSetIn = () => {
-    if (currentTime >= segment.out - MIN_GAP) {
-      showNotice("IN은 OUT보다 앞서야 합니다");
-      return;
-    }
-    onChange({ in: currentTime });
-  };
-
-  const handleSetOut = () => {
-    if (currentTime <= segment.in + MIN_GAP) {
-      showNotice("OUT은 IN보다 뒤여야 합니다");
-      return;
-    }
-    onChange({ out: currentTime });
-  };
-
-  const handleSplit = () => {
-    if (currentTime - segment.in < SPLIT_MARGIN || segment.out - currentTime < SPLIT_MARGIN) {
-      showNotice("경계와 너무 가까워 분할할 수 없습니다");
-      return;
-    }
-    onSplit(currentTime);
   };
 
   const pct = (t: number): number => (duration > 0 ? clamp((t / duration) * 100, 0, 100) : 0);
@@ -283,4 +343,4 @@ export function VideoPreview({ segment, selectedIndex, onChange, onSplit }: Prop
       </button>
     </div>
   );
-}
+});

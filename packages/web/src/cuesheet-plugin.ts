@@ -1,7 +1,7 @@
 import { readFile, writeFile, stat, mkdir, rename, readdir } from "node:fs/promises";
 import { createReadStream, existsSync, watch, type FSWatcher } from "node:fs";
 import { spawn } from "node:child_process";
-import { basename, dirname, extname, resolve } from "node:path";
+import { basename, dirname, extname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
@@ -14,9 +14,21 @@ const repoRoot = resolve(here, "../../..");
 const renderOutputPath = resolve(repoRoot, "out.mp4");
 // 4K HEVC 등 브라우저가 재생 못 하는 원본을 위한 720p H.264 미리보기 프록시 저장 위치.
 const proxyDir = resolve(repoRoot, "media/proxies");
+// 순간 팔레트: 초벌 분류 데이터와 썸네일용 프레임이 저장된 위치.
+const draftsRoot = resolve(repoRoot, "media/drafts");
+const framesRoot = resolve(draftsRoot, "frames");
 
 function cuesheetPath(): string {
   return process.env.CUESHEET_PATH ?? resolve(repoRoot, "project.cuesheet.json");
+}
+
+function momentsPath(): string {
+  return process.env.MOMENTS_PATH ?? resolve(draftsRoot, "dotmix.moments.json");
+}
+
+/** target이 root 안(root 자신 포함)에 있는지 확인 — 경로 탈출 방지. */
+function isWithin(root: string, target: string): boolean {
+  return target === root || target.startsWith(root + sep);
 }
 
 // 렌더가 진행 중일 때 동시 요청을 막기 위한 최소한의 플래그(큐잉 없음).
@@ -353,6 +365,82 @@ export function cuesheetPlugin(): Plugin {
         } finally {
           renderInProgress = false;
         }
+      });
+
+      server.middlewares.use("/api/moments", async (req, res) => {
+        if (req.method !== "GET") {
+          res.statusCode = 405;
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.end("허용되지 않는 메서드입니다");
+          return;
+        }
+        const p = momentsPath();
+        try {
+          const json = await readFile(p, "utf8");
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
+          res.end(json);
+        } catch {
+          res.statusCode = 404;
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.end(`순간 데이터 파일을 찾을 수 없습니다: ${p}`);
+        }
+      });
+
+      // 클립별 썸네일 프레임 정적 서빙. /draft-frames/<클립폴더>/<파일명>.jpg
+      server.middlewares.use("/draft-frames", async (req, res) => {
+        if (req.method !== "GET") {
+          res.statusCode = 405;
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.end("허용되지 않는 메서드입니다");
+          return;
+        }
+        const rawPath = decodeURIComponent(
+          (req.url ?? "").split("?")[0]?.replace(/^\/+/, "") ?? "",
+        );
+        const target = resolve(framesRoot, rawPath);
+        if (!rawPath || !isWithin(framesRoot, target) || extname(target).toLowerCase() !== ".jpg") {
+          res.statusCode = 400;
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.end("잘못된 경로입니다");
+          return;
+        }
+        if (!existsSync(target)) {
+          res.statusCode = 404;
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.end("프레임을 찾을 수 없습니다");
+          return;
+        }
+        res.setHeader("Content-Type", "image/jpeg");
+        createReadStream(target).pipe(res);
+      });
+
+      // 클립 폴더 안 프레임 파일 목록 — inS에 가장 가까운 프레임을 클라이언트가 고를 수 있게 한다.
+      server.middlewares.use("/api/draft-frames", async (req, res) => {
+        if (req.method !== "GET") {
+          res.statusCode = 405;
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.end("허용되지 않는 메서드입니다");
+          return;
+        }
+        const folder = decodeURIComponent(
+          (req.url ?? "").split("?")[0]?.replace(/^\/+/, "") ?? "",
+        );
+        const target = resolve(framesRoot, folder);
+        if (!folder || folder.includes("/") || !isWithin(framesRoot, target)) {
+          res.statusCode = 400;
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.end("잘못된 클립 폴더입니다");
+          return;
+        }
+        let entries: string[];
+        try {
+          entries = await readdir(target);
+        } catch {
+          sendJson(res, 404, []);
+          return;
+        }
+        const files = entries.filter((f) => extname(f).toLowerCase() === ".jpg");
+        sendJson(res, 200, files);
       });
 
       server.middlewares.use("/out.mp4", (req, res) => {

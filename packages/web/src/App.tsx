@@ -1,12 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BgmCue, CueSheet, Project, Segment, SubtitleStyle } from "@cuesheet/schema";
 import { validateCueSheet } from "@cuesheet/schema";
 import { fetchCueSheet, renderCueSheet, saveCueSheet } from "./api.js";
 import { SegmentEditor } from "./components/SegmentEditor.js";
 import { VideoPreview } from "./components/VideoPreview.js";
+import type { VideoPreviewHandle } from "./components/VideoPreview.js";
 import { ProjectSettings } from "./components/ProjectSettings.js";
 import { BgmEditor } from "./components/BgmEditor.js";
 import { TimelineView } from "./components/TimelineView.js";
+import { MomentPalette } from "./components/MomentPalette.js";
+import { SubtitleWriteMode } from "./components/SubtitleWriteMode.js";
+import { KeyboardHelp } from "./components/KeyboardHelp.js";
+
+/** ← / → 1회 이동량(1프레임, 30fps 기준). Shift+← / →는 1초. */
+const FRAME_SECONDS = 1 / 30;
 
 type SaveState =
   | { status: "idle" }
@@ -44,6 +51,9 @@ export function App() {
   const [renderState, setRenderState] = useState<RenderState>({ status: "idle" });
   const [externalChangePending, setExternalChangePending] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [mode, setMode] = useState<"edit" | "subtitle">("edit");
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const videoPreviewRef = useRef<VideoPreviewHandle>(null);
 
   const dirty = useMemo(() => {
     if (!draft || !serverCuesheet) {
@@ -88,6 +98,77 @@ export function App() {
       setSelectedIndex(Math.max(0, draft.segments.length - 1));
     }
   }, [draft, selectedIndex]);
+
+  const selectRelative = useCallback((delta: number) => {
+    setSelectedIndex((prev) => {
+      const len = draft?.segments.length ?? 0;
+      if (len === 0) {
+        return prev;
+      }
+      return Math.min(Math.max(prev + delta, 0), len - 1);
+    });
+  }, [draft]);
+
+  // 공통 단축키: 입력 필드(input/textarea)에 포커스된 동안은 무시한다(Tab을 이용한
+  // 자막 쓰기 모드 내 이동은 SubtitleWriteMode가 각 textarea에서 자체 처리).
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isTyping = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA";
+      if (isTyping) {
+        return;
+      }
+      if (e.key === "?") {
+        e.preventDefault();
+        setShowShortcuts((v) => !v);
+        return;
+      }
+      if (e.key === " ") {
+        e.preventDefault();
+        videoPreviewRef.current?.togglePlay();
+        return;
+      }
+      if (e.key === "i" || e.key === "I") {
+        e.preventDefault();
+        videoPreviewRef.current?.setInFromCurrent();
+        return;
+      }
+      if (e.key === "o" || e.key === "O") {
+        e.preventDefault();
+        videoPreviewRef.current?.setOutFromCurrent();
+        return;
+      }
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        e.preventDefault();
+        const sign = e.key === "ArrowLeft" ? -1 : 1;
+        const step = e.shiftKey ? 1 : FRAME_SECONDS;
+        videoPreviewRef.current?.seekBy(sign * step);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        selectRelative(-1);
+        return;
+      }
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        selectRelative(1);
+        return;
+      }
+      if (e.key === "Tab" && mode !== "subtitle") {
+        e.preventDefault();
+        selectRelative(e.shiftKey ? -1 : 1);
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && (e.key === "b" || e.key === "B")) {
+        e.preventDefault();
+        videoPreviewRef.current?.splitAtCurrent();
+        return;
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [mode, selectRelative]);
 
   const handleSave = useCallback(async () => {
     if (!draft) {
@@ -220,6 +301,23 @@ export function App() {
     });
   }, []);
 
+  const addMomentSegment = useCallback((seg: Segment) => {
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      // 어디서 담든 (clip 파일명, in) 기준 시간순 위치에 삽입 — 순서가 절대 안 흐트러지게.
+      const idx = prev.segments.findIndex(
+        (s) => s.clip > seg.clip || (s.clip === seg.clip && s.in > seg.in),
+      );
+      const insertAt = idx === -1 ? prev.segments.length : idx;
+      const segments = [...prev.segments];
+      segments.splice(insertAt, 0, seg);
+      setSelectedIndex(insertAt);
+      return { ...prev, segments };
+    });
+  }, []);
+
   const updateBgm = useCallback((i: number, patch: Partial<BgmCue>) => {
     setDraft((prev) => {
       if (!prev) {
@@ -317,22 +415,42 @@ export function App() {
         onSubtitleStyleChange={updateSubtitleStyle}
       />
 
-      <h2>세그먼트</h2>
+      <div className="section-header">
+        <h2>세그먼트</h2>
+        <button
+          type="button"
+          className={mode === "subtitle" ? "active" : ""}
+          onClick={() => setMode((m) => (m === "subtitle" ? "edit" : "subtitle"))}
+        >
+          {mode === "subtitle" ? "자막 쓰기 모드 끄기" : "자막 쓰기 모드"}
+        </button>
+      </div>
       <div className="segment-layout">
-        <SegmentEditor
-          segments={draft.segments}
-          selectedIndex={selectedIndex}
-          onSelect={setSelectedIndex}
-          onChange={updateSegment}
-          onAdd={addSegment}
-          onRemove={removeSegment}
-          onMove={moveSegment}
-        />
+        {mode === "subtitle" ? (
+          <SubtitleWriteMode
+            segments={draft.segments}
+            selectedIndex={selectedIndex}
+            onSelect={setSelectedIndex}
+            onChangeSubtitle={(i, subtitle) => updateSegment(i, { subtitle })}
+          />
+        ) : (
+          <SegmentEditor
+            segments={draft.segments}
+            selectedIndex={selectedIndex}
+            onSelect={setSelectedIndex}
+            onChange={updateSegment}
+            onAdd={addSegment}
+            onRemove={removeSegment}
+            onMove={moveSegment}
+          />
+        )}
         <VideoPreview
+          ref={videoPreviewRef}
           segment={selectedSegment}
           selectedIndex={selectedIndex}
           onChange={(patch) => updateSegment(selectedIndex, patch)}
           onSplit={(at) => splitSegment(selectedIndex, at)}
+          autoPlay={mode === "subtitle"}
         />
       </div>
 
@@ -345,8 +463,13 @@ export function App() {
         onChangeBgm={updateBgm}
       />
 
+      <h2>순간 팔레트</h2>
+      <MomentPalette segments={draft.segments} onAddSegment={addMomentSegment} />
+
       <h2>BGM</h2>
       <BgmEditor bgm={draft.bgm} onChange={updateBgm} onAdd={addBgm} onRemove={removeBgm} />
+
+      <KeyboardHelp visible={showShortcuts} onToggle={() => setShowShortcuts((v) => !v)} />
     </div>
   );
 }

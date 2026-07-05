@@ -27,3 +27,43 @@ export async function renderCueSheet(): Promise<RenderResult> {
   const res = await fetch("/api/render", { method: "POST" });
   return (await res.json()) as RenderResult;
 }
+
+export type ShotType = "hand-closeup" | "object" | "cat" | "change" | "reveal" | "wearing" | "other";
+
+export interface Moment {
+  inS: number;
+  outS: number;
+  shotType: ShotType;
+  memo: string;
+  quality: number;
+}
+
+export interface MonotonousRange {
+  startS: number;
+  endS: number;
+  desc: string;
+}
+
+export interface ClipMoments {
+  clip: string;
+  clipSummary: string;
+  moments: Moment[];
+  monotonousRanges: MonotonousRange[];
+}
+
+export async function fetchMoments(): Promise<ClipMoments[]> {
+  const res = await fetch("/api/moments");
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+  return (await res.json()) as ClipMoments[];
+}
+
+/** 클립 폴더 안 프레임 파일명 목록. 없으면 빈 배열. */
+export async function fetchDraftFrames(clipFolder: string): Promise<string[]> {
+  const res = await fetch(`/api/draft-frames/${encodeURIComponent(clipFolder)}`);
+  if (!res.ok) {
+    return [];
+  }
+  return (await res.json()) as string[];
+}
