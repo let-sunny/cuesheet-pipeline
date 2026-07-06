@@ -96,7 +96,9 @@ export function buildRenderPlan(cue: CueSheet, outputPath: string): RenderPlan {
     }
     // crop은 종횡비를 바꿀 수 있지만, 뒤이은 scale=W:H가 원본 종횡비 보존 없이 항상
     // W:H로 늘려 채운다(crop 없는 세그먼트도 동일하게 동작) — 별도 letterbox/pad 불필요.
-    vParts.push(`scale=${W}:${H}`, `fps=${fps}`);
+    // setsar=1: crop 후 스케일은 SAR이 1:1이 아니게 되는데(예: 4:3), concat은 전
+    // 세그먼트의 SAR 일치를 요구하므로 강제 통일한다 (크롭+일반 컷 혼합 실렌더에서 실측).
+    vParts.push(`scale=${W}:${H}`, `setsar=1`, `fps=${fps}`);
     if (o.subtitle && o.subtitle.length > 0) {
       vParts.push(drawtextFilter(o.subtitle, cue.subtitleStyle));
     }
