@@ -23,9 +23,14 @@ export async function saveCueSheet(cuesheet: CueSheet): Promise<SaveResult> {
 
 export type RenderStartResult = { ok: true; jobId: string } | { ok: false; error: string };
 
-/** 렌더를 시작만 시키고 즉시 반환한다. 실제 진행은 fetchRenderStatus로 폴링한다. */
-export async function startRender(): Promise<RenderStartResult> {
-  const res = await fetch("/api/render", { method: "POST" });
+/** 렌더를 시작만 시키고 즉시 반환한다. 실제 진행은 fetchRenderStatus로 폴링한다.
+ * burnSubtitles: false면 drawtext 없이 CC/SRT 트랙과 조합할 클린 영상을 만든다(기본 true). */
+export async function startRender(burnSubtitles = true): Promise<RenderStartResult> {
+  const res = await fetch("/api/render", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ burnSubtitles }),
+  });
   return (await res.json()) as RenderStartResult;
 }
 

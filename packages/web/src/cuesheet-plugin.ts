@@ -683,6 +683,20 @@ export function cuesheetPlugin(): Plugin {
           return;
         }
 
+        // 자막 굽기 옵션(기본 true) — {"burnSubtitles": false}면 CC/SRT용 클린 영상을 만든다.
+        let burnSubtitles = true;
+        try {
+          const body = await readRequestBody(req);
+          if (body.trim().length > 0) {
+            const requestBody = JSON.parse(body) as { burnSubtitles?: unknown };
+            if (typeof requestBody.burnSubtitles === "boolean") {
+              burnSubtitles = requestBody.burnSubtitles;
+            }
+          }
+        } catch {
+          // 본문이 없거나 파싱 불가하면 기본값(true)을 쓴다.
+        }
+
         let parsed: unknown;
         try {
           const raw = await readFile(filePath, "utf8");
@@ -709,7 +723,7 @@ export function cuesheetPlugin(): Plugin {
         const totalSeconds = estimateOutputSeconds(result.data);
         renderJob = { state: "running", progress: 0 };
 
-        const plan = buildRenderPlan(result.data, renderOutputPath);
+        const plan = buildRenderPlan(result.data, renderOutputPath, { burnSubtitles });
         const proc = spawn("ffmpeg", plan.args, { stdio: ["ignore", "pipe", "pipe"] });
         let stderr = "";
         proc.stdout?.on("data", () => {});

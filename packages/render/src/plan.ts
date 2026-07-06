@@ -9,6 +9,12 @@ export interface RenderPlan {
   outputPath: string;
 }
 
+export interface RenderPlanOptions {
+  /** 자막을 drawtext로 영상에 굽는다. 기본값 true(기존 동작).
+   * false면 CC/SRT 트랙과 조합해 쓸 클린 영상을 만든다 — drawtext를 생략한다. */
+  burnSubtitles?: boolean;
+}
+
 /** ffmpeg drawtext text 이스케이프 (백슬래시·콜론·작은따옴표·퍼센트) */
 function escapeDrawtext(text: string): string {
   return text
@@ -61,7 +67,12 @@ function drawtextFilter(text: string, style: CueSheet["subtitleStyle"]): string 
  *
  * 단위는 초. clip 경로는 clipDir + 파일명으로 조립(폴더 이동에 안 깨지게).
  */
-export function buildRenderPlan(cue: CueSheet, outputPath: string): RenderPlan {
+export function buildRenderPlan(
+  cue: CueSheet,
+  outputPath: string,
+  opts?: RenderPlanOptions,
+): RenderPlan {
+  const burnSubtitles = opts?.burnSubtitles ?? true;
   const { width: W, height: H, fps } = cue.project;
   const inputs: string[] = [];
   const filters: string[] = [];
@@ -99,7 +110,7 @@ export function buildRenderPlan(cue: CueSheet, outputPath: string): RenderPlan {
     // setsar=1: crop 후 스케일은 SAR이 1:1이 아니게 되는데(예: 4:3), concat은 전
     // 세그먼트의 SAR 일치를 요구하므로 강제 통일한다 (크롭+일반 컷 혼합 실렌더에서 실측).
     vParts.push(`scale=${W}:${H}`, `setsar=1`, `fps=${fps}`);
-    if (o.subtitle && o.subtitle.length > 0) {
+    if (burnSubtitles && o.subtitle && o.subtitle.length > 0) {
       vParts.push(drawtextFilter(o.subtitle, cue.subtitleStyle));
     }
     filters.push(`[${i}:v]${vParts.join(",")}[v${i}]`);

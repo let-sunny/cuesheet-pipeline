@@ -187,6 +187,30 @@ describe("buildRenderPlan", () => {
     );
   });
 
+  it("burnSubtitles: false면 drawtext를 생략하고 나머지 필터는 동일하다(CC/SRT용 클린 영상)", () => {
+    const withSubs = buildRenderPlan(make(), "out.mp4");
+    const clean = buildRenderPlan(make(), "out.mp4", { burnSubtitles: false });
+    expect(clean.filterComplex).not.toContain("drawtext");
+    expect(clean.filterComplex).toContain("scale=1920:1080");
+    expect(clean.filterComplex).toContain("atempo=1.5");
+    expect(clean.filterComplex).toContain("volume=0.3");
+    // drawtext 필터 하나만 빠지고 나머지 필터 그래프는 동일해야 한다.
+    expect(clean.filterComplex).toEqual(
+      withSubs.filterComplex.replace(",drawtext=text='안녕':fontsize=48:fontcolor=#ffffff:borderw=3:bordercolor=#000000:font='Pretendard':x=(w-text_w)/2:y=h-text_h-40", ""),
+    );
+    // -i 입력 인자(트림/파일 경로)는 자막 유무와 무관하게 동일하다.
+    expect(clean.args.join(" ")).toContain("-ss 0 -t 5 -i /clips/a.mp4");
+    expect(clean.args.join(" ")).toContain("-ss 2 -t 4 -i /clips/b.mp4");
+  });
+
+  it("burnSubtitles 옵션을 생략하면 기존과 완전히 동일한 렌더 명령이 나온다(회귀)", () => {
+    const withoutOpts = buildRenderPlan(make(), "out.mp4");
+    const withDefaultOpts = buildRenderPlan(make(), "out.mp4", {});
+    const withExplicitTrue = buildRenderPlan(make(), "out.mp4", { burnSubtitles: true });
+    expect(withDefaultOpts).toEqual(withoutOpts);
+    expect(withExplicitTrue).toEqual(withoutOpts);
+  });
+
   it("출력 인자에 코덱과 fps가 들어간다", () => {
     const p = buildRenderPlan(make(), "final.mp4");
     const s = p.args.join(" ");

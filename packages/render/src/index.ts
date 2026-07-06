@@ -6,11 +6,14 @@ import { buildRenderPlan } from "./plan.js";
 
 /**
  * CLI: 큐시트 파일을 읽어 검증하고, ffmpeg로 본편을 렌더한다.
- * 사용법: cuesheet-render [큐시트.json] [출력.mp4]
- * 기본값: project.cuesheet.json → out.mp4
+ * 사용법: cuesheet-render [큐시트.json] [출력.mp4] [--no-subtitles]
+ * 기본값: project.cuesheet.json → out.mp4, 자막 굽기 켜짐
+ * --no-subtitles: drawtext를 생략한 클린 영상을 만든다(CC/SRT 트랙과 조합용).
  */
-const cuePath = process.argv[2] ?? process.env.CUESHEET_PATH ?? "project.cuesheet.json";
-const outPath = process.argv[3] ?? "out.mp4";
+const positional = process.argv.slice(2).filter((a) => !a.startsWith("--"));
+const burnSubtitles = !process.argv.includes("--no-subtitles");
+const cuePath = positional[0] ?? process.env.CUESHEET_PATH ?? "project.cuesheet.json";
+const outPath = positional[1] ?? "out.mp4";
 
 let raw: unknown;
 try {
@@ -26,7 +29,7 @@ if (!result.ok) {
   process.exit(1);
 }
 
-const plan = buildRenderPlan(result.data, outPath);
+const plan = buildRenderPlan(result.data, outPath, { burnSubtitles });
 console.error(`ffmpeg ${plan.args.join(" ")}`);
 
 const proc = spawn("ffmpeg", plan.args, { stdio: "inherit" });

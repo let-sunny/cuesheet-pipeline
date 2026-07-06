@@ -77,6 +77,17 @@ interface HistoryEntry {
   selectedIndex: number;
 }
 
+/** "자막 굽지 않기(CC용 클린 영상)" 체크박스 상태를 기억하는 localStorage 키. */
+const NO_BURN_SUBTITLES_KEY = "cuesheet-render-no-burn-subtitles";
+
+function loadNoBurnSubtitles(): boolean {
+  try {
+    return localStorage.getItem(NO_BURN_SUBTITLES_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 /** 미저장 편집 임시 스냅샷을 localStorage에 두는 키. 큐시트(프로젝트명)별로 분리한다. */
 const DRAFT_SNAPSHOT_PREFIX = "cuesheet-draft-snapshot:";
 
@@ -124,6 +135,7 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [sequenceMode, setSequenceMode] = useState(false);
+  const [noBurnSubtitles, setNoBurnSubtitles] = useState(loadNoBurnSubtitles);
   // 클립별 길이 근사치(초) — 인트로/아웃트로 지정 버튼(팔레트/인스펙터)의 15초 상한
   // 판정에 쓴다. 실패해도 편집 자체는 막지 않고 빈 맵(전부 "알 수 없음" 취급)으로 둔다.
   const [clipDurations, setClipDurations] = useState<Record<string, number>>({});
@@ -541,9 +553,18 @@ export function App() {
     void tick();
   }, [toast]);
 
+  const handleToggleNoBurnSubtitles = useCallback((checked: boolean) => {
+    setNoBurnSubtitles(checked);
+    try {
+      localStorage.setItem(NO_BURN_SUBTITLES_KEY, checked ? "1" : "0");
+    } catch {
+      // localStorage 접근 불가 시 조용히 무시한다(best-effort 기능).
+    }
+  }, []);
+
   const handleRender = useCallback(async () => {
     try {
-      const result = await startRender();
+      const result = await startRender(!noBurnSubtitles);
       if (result.ok) {
         setRenderState({ status: "rendering", progress: 0 });
         pollRenderStatus();
@@ -556,7 +577,7 @@ export function App() {
       setRenderState({ status: "error", error: message });
       toast({ type: "error", body: `렌더 실패: ${message}` });
     }
-  }, [toast, pollRenderStatus]);
+  }, [toast, pollRenderStatus, noBurnSubtitles]);
 
   const updateProject = useCallback((patch: Partial<Project>) => {
     if (!draft) {
@@ -1073,6 +1094,15 @@ export function App() {
               <span className="render-note">
                 렌더는 시작 시점에 저장돼 있던 큐시트 기준으로 진행됩니다 — 렌더 중 편집·저장은 이번 렌더에 반영되지 않습니다.
               </span>
+
+              <label className="no-burn-subtitles-toggle">
+                <input
+                  type="checkbox"
+                  checked={noBurnSubtitles}
+                  onChange={(e) => handleToggleNoBurnSubtitles(e.target.checked)}
+                />
+                자막 굽지 않기 (CC용 클린 영상)
+              </label>
 
               <Button
                 label="자막 다운로드 (.srt)"

@@ -1366,6 +1366,16 @@ textarea {
   color: #f0a34a;
 }
 
+.no-burn-subtitles-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #cdd2e0;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 .proxy-preparing {
   margin: 8px 0;
 }
