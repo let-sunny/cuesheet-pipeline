@@ -64,6 +64,22 @@ describe("updateCuesheet", () => {
     expect(r.ok).toBe(false);
     expect(existsSync(TMP)).toBe(false);
   });
+
+  it("스키마가 모르는 필드가 섞여 있으면(zod strip으로 유실) 저장을 거부한다", () => {
+    const withUnknown = {
+      ...sample(),
+      segments: [
+        { clip: "a.mp4", in: 0, out: 5, speed: 1, volume: 1, subtitle: "", totallyUnknownField: "x" },
+      ],
+    };
+    const r = updateCuesheet(TMP, withUnknown);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.errors.some((e) => e.includes("segments[0].totallyUnknownField"))).toBe(true);
+      expect(r.errors.some((e) => e.includes("유실"))).toBe(true);
+    }
+    expect(existsSync(TMP)).toBe(false);
+  });
 });
 
 describe("getCuesheet", () => {

@@ -23,3 +23,5 @@ export type {
 
 export { validateCueSheet } from "./validate.js";
 export type { ValidationResult } from "./validate.js";
+
+export { findLostFieldPaths } from "./lostKeys.js";

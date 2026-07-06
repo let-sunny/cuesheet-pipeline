@@ -5,7 +5,7 @@ import { basename, dirname, extname, isAbsolute, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
-import { validateCueSheet, type CueSheet } from "@cuesheet/schema";
+import { findLostFieldPaths, validateCueSheet, type CueSheet } from "@cuesheet/schema";
 import { buildRenderPlan } from "@cuesheet/render";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -467,6 +467,23 @@ export function cuesheetPlugin(): Plugin {
           const result = validateCueSheet(parsed);
           if (!result.ok) {
             sendJson(res, 400, { ok: false, errors: result.errors });
+            return;
+          }
+
+          // zod object는 정의되지 않은 키를 기본적으로 조용히 제거(strip)한다. 서버가
+          // 아직 구버전 스키마를 로드한 상태에서 새 필드(예: crop)가 담긴 요청을 그대로
+          // 저장하면, result.data에서는 이미 그 필드가 사라진 채로 디스크에 박제된다
+          // (조용한 데이터 유실). 저장 전 원본 body와 직렬화 결과의 키 집합을 비교해
+          // 사라진 경로가 있으면 저장을 거부한다 — 유실 = 구스키마 신호이므로 서버
+          // 재시작(스키마 갱신)을 요구하는 게 맞다.
+          const lostPaths = findLostFieldPaths(parsed, result.data);
+          if (lostPaths.length > 0) {
+            sendJson(res, 400, {
+              ok: false,
+              errors: [
+                `저장 시 필드 유실 감지: ${lostPaths.join(", ")} - 서버 재시작(스키마 갱신) 필요`,
+              ],
+            });
             return;
           }
 

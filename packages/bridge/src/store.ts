@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { validateCueSheet } from "@cuesheet/schema";
+import { findLostFieldPaths, validateCueSheet } from "@cuesheet/schema";
 import type { ValidationResult } from "@cuesheet/schema";
 
 /** 큐시트 파일을 원본 그대로 읽는다(검증 전). 없으면 null. */
@@ -33,8 +33,22 @@ export function getCuesheet(path: string): ValidationResult {
  */
 export function updateCuesheet(path: string, next: unknown): ValidationResult {
   const result = validateCueSheet(next);
-  if (result.ok) {
-    writeFileSync(path, `${JSON.stringify(result.data, null, 2)}\n`, "utf-8");
+  if (!result.ok) {
+    return result;
   }
+
+  // web의 /api/cuesheet와 동일한 리스크: zod object는 정의되지 않은 키를 조용히
+  // 제거(strip)한다. 서버가 구버전 스키마를 로드한 상태면 새 필드(예: crop)가
+  // 조용히 유실된 채로 저장될 수 있다 — 저장 전 원본(next)과 직렬화 결과(result.data)의
+  // 키 집합을 비교해 사라진 경로가 있으면 저장을 거부한다.
+  const lostPaths = findLostFieldPaths(next, result.data);
+  if (lostPaths.length > 0) {
+    return {
+      ok: false,
+      errors: [`저장 시 필드 유실 감지: ${lostPaths.join(", ")} - 서버 재시작(스키마 갱신) 필요`],
+    };
+  }
+
+  writeFileSync(path, `${JSON.stringify(result.data, null, 2)}\n`, "utf-8");
   return result;
 }
