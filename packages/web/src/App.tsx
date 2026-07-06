@@ -23,6 +23,8 @@ import { HeaderBar } from "./components/HeaderBar.js";
 import { StepNav } from "./components/StepNav.js";
 import type { Step } from "./components/StepNav.js";
 import { MiniTimelineStrip } from "./components/MiniTimelineStrip.js";
+import { SequencePlayer } from "./components/SequencePlayer.js";
+import type { SequencePlayerHandle } from "./components/SequencePlayer.js";
 import { CompactSegmentList } from "./components/CompactSegmentList.js";
 import { SegmentQuickFields } from "./components/SegmentQuickFields.js";
 import { IntroOutroEditor } from "./components/IntroOutroEditor.js";
@@ -109,7 +111,9 @@ export function App() {
   const [editMode, setEditMode] = useState<"inspect" | "batch">("inspect");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [sequenceMode, setSequenceMode] = useState(false);
   const videoPreviewRef = useRef<VideoPreviewHandle>(null);
+  const sequencePlayerRef = useRef<SequencePlayerHandle>(null);
   const renderPollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toast = useToast();
 
@@ -246,6 +250,13 @@ export function App() {
         setShowShortcuts((v) => !v);
         return;
       }
+      if (sequenceMode) {
+        if (e.key === " ") {
+          e.preventDefault();
+          sequencePlayerRef.current?.togglePlay();
+        }
+        return;
+      }
       if (!isVideoStep) {
         if (e.key === "ArrowUp") {
           e.preventDefault();
@@ -304,7 +315,7 @@ export function App() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [step, editMode, selectRelative]);
+  }, [step, editMode, selectRelative, sequenceMode]);
 
   const handleSave = useCallback(async () => {
     if (!draft) {
@@ -545,6 +556,7 @@ export function App() {
 
   // 미니 타임라인 블록 더블클릭 — 편집 단계(다듬기 뷰)로 전환하고 그 컷을 선택한다.
   const goToEdit = useCallback((i: number) => {
+    setSequenceMode(false);
     setStep("edit");
     setEditMode("inspect");
     setSelectedIndex(i);
@@ -617,21 +629,43 @@ export function App() {
 
       <StepNav
         step={step}
-        onChange={setStep}
+        onChange={(s) => {
+          setSequenceMode(false);
+          setStep(s);
+        }}
         segmentCount={draft.segments.length}
         subtitleFilled={subtitleFilled}
         subtitleTotal={draft.segments.length}
       />
 
-      <MiniTimelineStrip
-        segments={draft.segments}
-        selectedIndex={selectedIndex}
-        onSelect={setSelectedIndex}
-        onGoToEdit={goToEdit}
-      />
+      <div className="mini-strip-row">
+        <MiniTimelineStrip
+          segments={draft.segments}
+          selectedIndex={selectedIndex}
+          onSelect={setSelectedIndex}
+          onGoToEdit={goToEdit}
+        />
+        <Button
+          label="본편 재생"
+          variant="secondary"
+          isDisabled={draft.segments.length === 0}
+          onClick={() => setSequenceMode(true)}
+        />
+      </div>
 
       <div className="step-body">
-        {step === "compose" ? (
+        {sequenceMode ? (
+          <SequencePlayer
+            ref={sequencePlayerRef}
+            segments={draft.segments}
+            currentIndex={selectedIndex}
+            subtitleStyle={draft.subtitleStyle}
+            onIndexChange={setSelectedIndex}
+            onExit={() => setSequenceMode(false)}
+          />
+        ) : null}
+
+        {!sequenceMode && step === "compose" ? (
           <MomentPalette
             segments={draft.segments}
             onAddSegment={addMomentSegment}
@@ -639,7 +673,7 @@ export function App() {
           />
         ) : null}
 
-        {step === "edit" ? (
+        {!sequenceMode && step === "edit" ? (
           <div className="edit-layout">
             <div className="edit-mode-toggle">
               <button
@@ -706,7 +740,7 @@ export function App() {
           </div>
         ) : null}
 
-        {step === "finish" ? (
+        {!sequenceMode && step === "finish" ? (
           <div className="finish-layout">
             <IntroOutroEditor intro={draft.intro} outro={draft.outro} onChange={updateIntroOutro} />
 
