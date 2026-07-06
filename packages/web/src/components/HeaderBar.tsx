@@ -5,6 +5,7 @@ interface Props {
   dirty: boolean;
   saving: boolean;
   rendering: boolean;
+  renderProgress: number | null;
   renderDisabled: boolean;
   onSave: () => void;
   onRender: () => void;
@@ -17,6 +18,7 @@ export function HeaderBar({
   dirty,
   saving,
   rendering,
+  renderProgress,
   renderDisabled,
   onSave,
   onRender,
@@ -37,7 +39,7 @@ export function HeaderBar({
           onClick={onSave}
         />
         <Button
-          label={rendering ? "렌더 중…" : "렌더"}
+          label={rendering ? `렌더 중… ${renderProgress ?? 0}%` : "렌더"}
           variant="primary"
           isDisabled={renderDisabled}
           onClick={onRender}

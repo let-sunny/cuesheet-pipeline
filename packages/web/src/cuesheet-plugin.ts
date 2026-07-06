@@ -5,7 +5,7 @@ import { basename, dirname, extname, isAbsolute, resolve, sep } from "node:path"
 import { fileURLToPath } from "node:url";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
-import { validateCueSheet } from "@cuesheet/schema";
+import { validateCueSheet, type CueSheet } from "@cuesheet/schema";
 import { buildRenderPlan } from "@cuesheet/render";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -33,6 +33,36 @@ function isWithin(root: string, target: string): boolean {
 
 // 렌더가 진행 중일 때 동시 요청을 막기 위한 최소한의 플래그(큐잉 없음).
 let renderInProgress = false;
+
+interface RenderJobState {
+  state: "idle" | "running" | "done" | "error";
+  progress: number;
+  error?: string;
+}
+
+// 마지막(또는 진행 중) 렌더 잡의 상태. 잡은 한 번에 하나만 존재하므로 별도 저장소 없이
+// 모듈 스코프 변수 하나로 충분하다(이력 관리는 범위 밖).
+let renderJob: RenderJobState = { state: "idle", progress: 0 };
+let renderJobCounter = 0;
+
+// ffmpeg stderr 한 줄에서 "time=HH:MM:SS.ms"를 초 단위로 파싱한다.
+function parseFfmpegTimeSeconds(text: string): number | null {
+  const m = text.match(/time=(\d+):(\d+):(\d+(?:\.\d+)?)/);
+  if (!m) {
+    return null;
+  }
+  const [, hh, mm, ss] = m as unknown as [string, string, string, string];
+  return Number(hh) * 3600 + Number(mm) * 60 + Number(ss);
+}
+
+/**
+ * 진행률 계산용 총 출력 길이(초) 근사치.
+ * 세그먼트 (out-in)/speed 합만 쓰고 intro/outro는 파일 프로빙 없이 알 수 없어 무시한다
+ * (진행률 표시용 근사치이므로 실제 렌더 결과 길이와는 약간 다를 수 있다).
+ */
+function estimateOutputSeconds(cue: CueSheet): number {
+  return cue.segments.reduce((sum, s) => sum + (s.out - s.in) / s.speed, 0);
+}
 
 function runFfmpeg(args: string[]): Promise<{ code: number | null; stderr: string }> {
   return new Promise((res) => {
@@ -81,6 +111,17 @@ function proxyFileName(originalName: string): string {
   return `${basename(originalName, extname(originalName))}.mp4`;
 }
 
+interface ProxyQueueState {
+  /** 아직 처리 시작 전인 원본 클립 파일명(대기 순서대로). */
+  pending: string[];
+  /** 지금 프록시 생성 중인 원본 클립 파일명, 없으면 null. */
+  generating: string | null;
+}
+
+// 프록시 생성 큐 상태 — GET /api/proxy-status로 노출해 편집 화면에서
+// "프록시 준비 중" 안내를 띄우는 데 쓴다.
+let proxyQueueState: ProxyQueueState = { pending: [], generating: null };
+
 /**
  * clipDir 안의 로컬 실물 영상 파일들에 대해 720p H.264 미리보기 프록시가
  * 없거나 원본보다 오래됐으면 순차적으로(한 번에 하나씩) 생성한다.
@@ -127,10 +168,14 @@ async function generateProxies(clipDir: string, log: (msg: string) => void): Pro
     }
   }
 
+  proxyQueueState = { pending: targets.map((t) => basename(t.src)), generating: null };
+
   const total = targets.length;
   for (let i = 0; i < targets.length; i += 1) {
     const target = targets[i]!;
-    log(`프록시 생성 중 (${i + 1}/${total}): ${basename(target.src)}`);
+    const name = basename(target.src);
+    proxyQueueState = { pending: targets.slice(i + 1).map((t) => basename(t.src)), generating: name };
+    log(`프록시 생성 중 (${i + 1}/${total}): ${name}`);
     const { code, stderr } = await runFfmpeg([
       "-y",
       "-i",
@@ -167,6 +212,7 @@ async function generateProxies(clipDir: string, log: (msg: string) => void): Pro
       console.error(`프록시 생성 실패, 원본으로 계속 서빙합니다: ${basename(target.src)}\n${stderr.slice(-500)}`);
     }
   }
+  proxyQueueState = { pending: [], generating: null };
 }
 
 /**
@@ -380,6 +426,23 @@ export function cuesheetPlugin(): Plugin {
         createReadStream(targetPath, { start, end: safeEnd }).pipe(res);
       });
 
+      // 라우팅 순서 주의: "/api/render/status"가 "/api/render"의 접두사 매칭에 앞서
+      // 먼저 처리되도록 반드시 "/api/render"보다 먼저 등록한다.
+      server.middlewares.use("/api/render/status", (req, res) => {
+        if (req.method !== "GET") {
+          res.statusCode = 405;
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.end("허용되지 않는 메서드입니다");
+          return;
+        }
+        sendJson(res, 200, {
+          state: renderJob.state,
+          progress: renderJob.progress,
+          error: renderJob.error,
+          outputReady: renderJob.state === "done" && existsSync(renderOutputPath),
+        });
+      });
+
       server.middlewares.use("/api/render", async (req, res) => {
         if (req.method !== "POST") {
           res.statusCode = 405;
@@ -393,37 +456,73 @@ export function cuesheetPlugin(): Plugin {
           return;
         }
 
-        renderInProgress = true;
+        let parsed: unknown;
         try {
-          let parsed: unknown;
-          try {
-            const raw = await readFile(filePath, "utf8");
-            parsed = JSON.parse(raw);
-          } catch {
-            sendJson(res, 400, {
-              ok: false,
-              error: "(root): 큐시트 파일을 읽거나 파싱할 수 없습니다",
-            });
-            return;
-          }
-
-          const result = validateCueSheet(parsed);
-          if (!result.ok) {
-            sendJson(res, 400, { ok: false, error: result.errors.join("\n") });
-            return;
-          }
-
-          const plan = buildRenderPlan(result.data, renderOutputPath);
-          const { code, stderr } = await runFfmpeg(plan.args);
-          if (code === 0) {
-            sendJson(res, 200, { ok: true, path: "out.mp4" });
-          } else {
-            const summary = stderr.slice(-2000);
-            sendJson(res, 500, { ok: false, error: summary });
-          }
-        } finally {
-          renderInProgress = false;
+          const raw = await readFile(filePath, "utf8");
+          parsed = JSON.parse(raw);
+        } catch {
+          sendJson(res, 400, {
+            ok: false,
+            error: "(root): 큐시트 파일을 읽거나 파싱할 수 없습니다",
+          });
+          return;
         }
+
+        const result = validateCueSheet(parsed);
+        if (!result.ok) {
+          sendJson(res, 400, { ok: false, error: result.errors.join("\n") });
+          return;
+        }
+
+        // 검증 통과 즉시 jobId를 응답하고, ffmpeg는 백그라운드로 돌리며 진행률만
+        // renderJob에 갱신한다(응답을 기다리게 하지 않음 — 렌더 수 분 동안 블로킹 방지).
+        renderInProgress = true;
+        renderJobCounter += 1;
+        const jobId = String(renderJobCounter);
+        const totalSeconds = estimateOutputSeconds(result.data);
+        renderJob = { state: "running", progress: 0 };
+
+        const plan = buildRenderPlan(result.data, renderOutputPath);
+        const proc = spawn("ffmpeg", plan.args, { stdio: ["ignore", "pipe", "pipe"] });
+        let stderr = "";
+        proc.stdout?.on("data", () => {});
+        proc.stderr?.on("data", (chunk: Buffer) => {
+          const text = chunk.toString("utf8");
+          stderr += text;
+          const seconds = parseFfmpegTimeSeconds(text);
+          if (seconds != null && totalSeconds > 0) {
+            const pct = Math.min(99, Math.round((seconds / totalSeconds) * 100));
+            renderJob = { state: "running", progress: pct };
+          }
+        });
+        proc.on("error", (e) => {
+          renderInProgress = false;
+          renderJob = {
+            state: "error",
+            progress: renderJob.progress,
+            error: `ffmpeg 실행 실패(설치되어 있나요?): ${e.message}`,
+          };
+        });
+        proc.on("exit", (code) => {
+          renderInProgress = false;
+          if (code === 0) {
+            renderJob = { state: "done", progress: 100 };
+          } else {
+            renderJob = { state: "error", progress: renderJob.progress, error: stderr.slice(-2000) };
+          }
+        });
+
+        sendJson(res, 200, { ok: true, jobId });
+      });
+
+      server.middlewares.use("/api/proxy-status", (req, res) => {
+        if (req.method !== "GET") {
+          res.statusCode = 405;
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.end("허용되지 않는 메서드입니다");
+          return;
+        }
+        sendJson(res, 200, proxyQueueState);
       });
 
       server.middlewares.use("/api/moments", async (req, res) => {

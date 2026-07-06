@@ -1,6 +1,10 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { Segment } from "@cuesheet/schema";
+import { fetchProxyStatus, type ProxyStatus } from "../api.js";
+
+/** 프록시 준비 상태 폴링 주기(ms). */
+const PROXY_STATUS_POLL_INTERVAL_MS = 10000;
 
 /** 핸들 드래그 시 in/out 사이 최소 간격(초). */
 const MIN_GAP = 0.05;
@@ -50,6 +54,10 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevClipRef = useRef<string | undefined>(segment?.clip);
   const autoPlayRef = useRef(autoPlay);
+  const [proxyStatus, setProxyStatus] = useState<ProxyStatus | null>(null);
+  // 프록시가 새로 준비됐을 때 <video>를 강제로 다시 마운트해 새로 서빙되는
+  // 프록시 파일을 다시 요청하게 만드는 값(원본 로드 실패로 남은 missing 상태도 함께 지운다).
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     autoPlayRef.current = autoPlay;
@@ -59,6 +67,46 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     setMissing(false);
     setDuration(0);
     setCurrentTime(0);
+  }, [segment?.clip]);
+
+  // 선택된 클립이 프록시 생성 대기/진행 중이면 10초마다 상태를 확인해
+  // 안내를 갱신하고, 준비가 끝나면 <video>를 다시 마운트해 프록시로 전환한다.
+  useEffect(() => {
+    const clip = segment?.clip;
+    if (!clip) {
+      return;
+    }
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const check = async () => {
+      try {
+        const status = await fetchProxyStatus();
+        if (stopped) {
+          return;
+        }
+        setProxyStatus(status);
+        const stillPreparing = status.generating === clip || status.pending.includes(clip);
+        if (stillPreparing) {
+          timer = setTimeout(() => void check(), PROXY_STATUS_POLL_INTERVAL_MS);
+        } else {
+          setMissing(false);
+          setReloadToken((v) => v + 1);
+        }
+      } catch {
+        if (!stopped) {
+          timer = setTimeout(() => void check(), PROXY_STATUS_POLL_INTERVAL_MS);
+        }
+      }
+    };
+    void check();
+
+    return () => {
+      stopped = true;
+      if (timer) {
+        clearTimeout(timer);
+      }
+    };
   }, [segment?.clip]);
 
   // 선택된 세그먼트가 바뀔 때(같은 clip이라 <video>가 리마운트되지 않는 경우 포함)
@@ -264,18 +312,27 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
 
   const subtitleSummary = segment.subtitle.trim() !== "" ? segment.subtitle.trim() : "(자막 없음)";
 
+  const pendingIndex = proxyStatus ? proxyStatus.pending.indexOf(segment.clip) : -1;
+  const isGeneratingProxy = proxyStatus?.generating === segment.clip;
+  const isPreparingProxy = segment.clip !== "" && (isGeneratingProxy || pendingIndex !== -1);
+
   return (
     <div className="video-preview">
       <div className="video-context-line" title={subtitleSummary}>
         <span className="video-context-index">#{selectedIndex + 1}</span>
         {subtitleSummary} · {segment.in.toFixed(1)}s~{segment.out.toFixed(1)}s
       </div>
-      {missing || segment.clip === "" ? (
+      {isPreparingProxy ? (
+        <div className="notice proxy-preparing">
+          프록시 준비 중입니다 ({isGeneratingProxy ? "생성 중" : `${pendingIndex + 1}번째 대기`})
+        </div>
+      ) : null}
+      {!isPreparingProxy && (missing || segment.clip === "") ? (
         <div className="empty">클립 없음: {segment.clip || "(파일명 없음)"}</div>
-      ) : (
+      ) : isPreparingProxy ? null : (
         <>
           <video
-            key={segment.clip}
+            key={`${segment.clip}:${reloadToken}`}
             ref={videoRef}
             src={`/clips/${encodeURIComponent(segment.clip)}`}
             onError={() => setMissing(true)}
@@ -343,7 +400,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
           {notice ? <div className="notice">{notice}</div> : null}
         </>
       )}
-      <button type="button" onClick={handlePlay} disabled={missing}>
+      <button type="button" onClick={handlePlay} disabled={missing || isPreparingProxy}>
         재생 ({segment.in.toFixed(1)}s → {segment.out.toFixed(1)}s)
       </button>
     </div>

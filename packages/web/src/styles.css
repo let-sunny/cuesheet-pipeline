@@ -1218,3 +1218,16 @@ textarea {
   align-items: center;
   gap: 16px;
 }
+
+.render-note {
+  font-size: 13px;
+  color: #9098ac;
+}
+
+.render-note-error {
+  color: #f0a34a;
+}
+
+.proxy-preparing {
+  margin: 8px 0;
+}

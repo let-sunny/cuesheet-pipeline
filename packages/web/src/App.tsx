@@ -11,7 +11,7 @@ import { validateCueSheet } from "@cuesheet/schema";
 import { useToast } from "@astryxdesign/core/Toast";
 import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { Button } from "@astryxdesign/core/Button";
-import { fetchCueSheet, renderCueSheet, saveCueSheet } from "./api.js";
+import { fetchCueSheet, fetchRenderStatus, saveCueSheet, startRender } from "./api.js";
 import { VideoPreview } from "./components/VideoPreview.js";
 import type { VideoPreviewHandle } from "./components/VideoPreview.js";
 import { BgmEditor } from "./components/BgmEditor.js";
@@ -40,9 +40,12 @@ type SaveState =
 
 type RenderState =
   | { status: "idle" }
-  | { status: "rendering" }
+  | { status: "rendering"; progress: number }
   | { status: "success"; path: string }
   | { status: "error"; error: string };
+
+/** 렌더 진행률 폴링 주기(ms). */
+const RENDER_POLL_INTERVAL_MS = 1500;
 
 const newSegment = (): Segment => ({
   clip: "",
@@ -107,7 +110,16 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const videoPreviewRef = useRef<VideoPreviewHandle>(null);
+  const renderPollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toast = useToast();
+
+  useEffect(() => {
+    return () => {
+      if (renderPollTimer.current) {
+        clearTimeout(renderPollTimer.current);
+      }
+    };
+  }, []);
 
   const dirty = useMemo(() => {
     if (!draft || !serverCuesheet) {
@@ -353,13 +365,38 @@ export function App() {
     void load();
   }, [load]);
 
+  // 렌더 시작 후 완료/실패까지 폴링한다. 렌더가 도는 동안에도 편집은 계속 가능하다 —
+  // 렌더는 시작 시점에 디스크에 저장돼 있던 큐시트 기준으로 진행되므로 폴링 중 편집·저장은
+  // 이번 렌더 결과에 영향을 주지 않는다.
+  const pollRenderStatus = useCallback(() => {
+    const tick = async () => {
+      try {
+        const status = await fetchRenderStatus();
+        if (status.state === "running") {
+          setRenderState({ status: "rendering", progress: status.progress });
+          renderPollTimer.current = setTimeout(() => void tick(), RENDER_POLL_INTERVAL_MS);
+        } else if (status.state === "done") {
+          setRenderState({ status: "success", path: "out.mp4" });
+          toast({ type: "info", body: "렌더가 완료되었습니다." });
+        } else if (status.state === "error") {
+          const message = status.error ?? "알 수 없는 오류";
+          setRenderState({ status: "error", error: message });
+          toast({ type: "error", body: `렌더 실패: ${message}` });
+        }
+      } catch {
+        // 네트워크 일시 오류는 폴링을 이어간다.
+        renderPollTimer.current = setTimeout(() => void tick(), RENDER_POLL_INTERVAL_MS);
+      }
+    };
+    void tick();
+  }, [toast]);
+
   const handleRender = useCallback(async () => {
-    setRenderState({ status: "rendering" });
     try {
-      const result = await renderCueSheet();
+      const result = await startRender();
       if (result.ok) {
-        setRenderState({ status: "success", path: result.path });
-        toast({ type: "info", body: "렌더가 완료되었습니다." });
+        setRenderState({ status: "rendering", progress: 0 });
+        pollRenderStatus();
       } else {
         setRenderState({ status: "error", error: result.error });
         toast({ type: "error", body: `렌더 실패: ${result.error}` });
@@ -369,7 +406,7 @@ export function App() {
       setRenderState({ status: "error", error: message });
       toast({ type: "error", body: `렌더 실패: ${message}` });
     }
-  }, [toast]);
+  }, [toast, pollRenderStatus]);
 
   const updateProject = useCallback((patch: Partial<Project>) => {
     setDraft((prev) => (prev ? { ...prev, project: { ...prev.project, ...patch } } : prev));
@@ -550,6 +587,7 @@ export function App() {
         dirty={dirty}
         saving={saveState.status === "saving"}
         rendering={renderState.status === "rendering"}
+        renderProgress={renderState.status === "rendering" ? renderState.progress : null}
         renderDisabled={dirty || renderState.status === "rendering"}
         onSave={() => void handleSave()}
         onRender={() => void handleRender()}
@@ -695,7 +733,11 @@ export function App() {
 
             <div className="render-cta">
               <Button
-                label={renderState.status === "rendering" ? "렌더 중…" : "렌더"}
+                label={
+                  renderState.status === "rendering"
+                    ? `렌더 중… ${renderState.progress}%`
+                    : "렌더"
+                }
                 variant="primary"
                 size="lg"
                 isDisabled={dirty || renderState.status === "rendering"}
@@ -706,6 +748,12 @@ export function App() {
                   {renderState.path} 다운로드
                 </a>
               ) : null}
+              {renderState.status === "error" ? (
+                <span className="render-note render-note-error">렌더 실패: {renderState.error}</span>
+              ) : null}
+              <span className="render-note">
+                렌더는 시작 시점에 저장돼 있던 큐시트 기준으로 진행됩니다 — 렌더 중 편집·저장은 이번 렌더에 반영되지 않습니다.
+              </span>
             </div>
           </div>
         ) : null}

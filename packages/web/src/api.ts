@@ -21,11 +21,36 @@ export async function saveCueSheet(cuesheet: CueSheet): Promise<SaveResult> {
   return (await res.json()) as SaveResult;
 }
 
-export type RenderResult = { ok: true; path: string } | { ok: false; error: string };
+export type RenderStartResult = { ok: true; jobId: string } | { ok: false; error: string };
 
-export async function renderCueSheet(): Promise<RenderResult> {
+/** 렌더를 시작만 시키고 즉시 반환한다. 실제 진행은 fetchRenderStatus로 폴링한다. */
+export async function startRender(): Promise<RenderStartResult> {
   const res = await fetch("/api/render", { method: "POST" });
-  return (await res.json()) as RenderResult;
+  return (await res.json()) as RenderStartResult;
+}
+
+export interface RenderStatus {
+  state: "idle" | "running" | "done" | "error";
+  progress: number;
+  error?: string;
+  outputReady: boolean;
+}
+
+export async function fetchRenderStatus(): Promise<RenderStatus> {
+  const res = await fetch("/api/render/status");
+  return (await res.json()) as RenderStatus;
+}
+
+export interface ProxyStatus {
+  /** 아직 처리 시작 전인 원본 클립 파일명(대기 순서대로). */
+  pending: string[];
+  /** 지금 프록시 생성 중인 원본 클립 파일명, 없으면 null. */
+  generating: string | null;
+}
+
+export async function fetchProxyStatus(): Promise<ProxyStatus> {
+  const res = await fetch("/api/proxy-status");
+  return (await res.json()) as ProxyStatus;
 }
 
 export type ShotType = "hand-closeup" | "object" | "cat" | "change" | "reveal" | "wearing" | "other";
