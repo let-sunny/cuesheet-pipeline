@@ -1,10 +1,16 @@
 import { Slider } from "@astryxdesign/core/Slider";
 import type { Segment } from "@cuesheet/schema";
+import { INTRO_OUTRO_MAX_DURATION_S } from "../clipPaths.js";
 
 interface Props {
   segment: Segment | undefined;
   narrationEnabled: boolean;
   onChange: (patch: Partial<Segment>) => void;
+  /** 이 컷 원본 클립 파일의 길이 근사치(초). 초벌 하이라이트 데이터에 없는 클립이면 undefined. */
+  clipDurationS: number | undefined;
+  /** 이 컷의 원본 클립 파일 전체(in/out 무시)를 인트로/아웃트로로 지정한다. */
+  onSetIntro: () => void;
+  onSetOutro: () => void;
 }
 
 /**
@@ -12,10 +18,26 @@ interface Props {
  * 바로 고침), 배속/볼륨 입력이 그다음, clip 파일명·내레이션·in/out 숫자 입력은
  * 보조로 축소되어 있다(핸들 드래그가 주된 트림 방법).
  */
-export function SegmentQuickFields({ segment, narrationEnabled, onChange }: Props) {
+export function SegmentQuickFields({
+  segment,
+  narrationEnabled,
+  onChange,
+  clipDurationS,
+  onSetIntro,
+  onSetOutro,
+}: Props) {
   if (!segment) {
     return null;
   }
+
+  const tooLongForIntroOutro =
+    clipDurationS === undefined || clipDurationS > INTRO_OUTRO_MAX_DURATION_S;
+  const introOutroDisabledTitle =
+    clipDurationS === undefined
+      ? "이 클립의 길이를 확인할 수 없어 비활성화되었습니다(초벌 하이라이트 데이터에 없는 클립)"
+      : tooLongForIntroOutro
+        ? `15초를 넘는 클립(추정 ${clipDurationS.toFixed(1)}s)은 인트로/아웃트로로 쓸 수 없습니다`
+        : null;
 
   return (
     <div className="quick-fields">
@@ -119,6 +141,37 @@ export function SegmentQuickFields({ segment, narrationEnabled, onChange }: Prop
             />
           </label>
         ) : null}
+      </div>
+
+      <div className="quick-fields-io">
+        <span className="quick-fields-io-label">이 컷의 원본 클립 전체를</span>
+        <button
+          type="button"
+          className="moment-io-button"
+          disabled={tooLongForIntroOutro}
+          title={
+            introOutroDisabledTitle ??
+            "구간(in/out)은 무시되고 클립 전체가 인트로로 삽입됩니다"
+          }
+          onClick={onSetIntro}
+        >
+          인트로로 지정
+        </button>
+        <button
+          type="button"
+          className="moment-io-button"
+          disabled={tooLongForIntroOutro}
+          title={
+            introOutroDisabledTitle ??
+            "구간(in/out)은 무시되고 클립 전체가 아웃트로로 삽입됩니다"
+          }
+          onClick={onSetOutro}
+        >
+          아웃트로로 지정
+        </button>
+        <span className="quick-fields-io-note">
+          (현재 컷의 in/out 구간은 무시되고 클립 전체가 통째로 들어갑니다)
+        </span>
       </div>
     </div>
   );

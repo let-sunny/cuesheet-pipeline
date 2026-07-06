@@ -11,7 +11,8 @@ import { validateCueSheet } from "@cuesheet/schema";
 import { useToast } from "@astryxdesign/core/Toast";
 import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { Button } from "@astryxdesign/core/Button";
-import { fetchCueSheet, fetchRenderStatus, saveCueSheet, startRender } from "./api.js";
+import { fetchCueSheet, fetchMoments, fetchRenderStatus, saveCueSheet, startRender } from "./api.js";
+import { buildClipPath, computeClipDurations } from "./clipPaths.js";
 import { VideoPreview } from "./components/VideoPreview.js";
 import type { VideoPreviewHandle } from "./components/VideoPreview.js";
 import { BgmEditor } from "./components/BgmEditor.js";
@@ -123,6 +124,9 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [sequenceMode, setSequenceMode] = useState(false);
+  // 클립별 길이 근사치(초) — 인트로/아웃트로 지정 버튼(팔레트/인스펙터)의 15초 상한
+  // 판정에 쓴다. 실패해도 편집 자체는 막지 않고 빈 맵(전부 "알 수 없음" 취급)으로 둔다.
+  const [clipDurations, setClipDurations] = useState<Record<string, number>>({});
   const videoPreviewRef = useRef<VideoPreviewHandle>(null);
   const sequencePlayerRef = useRef<SequencePlayerHandle>(null);
   const renderPollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -268,6 +272,18 @@ export function App() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const moments = await fetchMoments();
+        setClipDurations(computeClipDurations(moments));
+      } catch {
+        // 순간 데이터가 없어도 편집 자체는 계속되고, 인트로/아웃트로 지정 버튼만
+        // "길이를 알 수 없음"으로 비활성 처리된다.
+      }
+    })();
+  }, []);
 
   // dirty일 때 새로고침/탭 닫기 시 브라우저 기본 확인 대화상자를 띄운다.
   useEffect(() => {
@@ -581,6 +597,36 @@ export function App() {
     setDraft((prev) => (prev ? { ...prev, ...patch } : prev));
   }, [draft, recordContinuousChange]);
 
+  // 팔레트 카드/편집 인스펙터의 "인트로로"/"아웃트로로" 버튼 — 클릭 한 번의 개별 편집이므로
+  // (직접 입력 타이핑과 달리) recordDiscreteChange로 즉시 1개 언두 항목을 남긴다.
+  // intro/outro는 in/out 구간 지정이 안 되는 통짜 클립이라 클립 파일 전체가 지정된다.
+  const setIntroOutroFromClip = useCallback((role: "intro" | "outro", clipFileName: string) => {
+    if (!draft) {
+      return;
+    }
+    const path = buildClipPath(draft.clipDir, clipFileName);
+    recordDiscreteChange();
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      return role === "intro" ? { ...prev, intro: path } : { ...prev, outro: path };
+    });
+  }, [draft, recordDiscreteChange]);
+
+  const clearIntroOutro = useCallback((role: "intro" | "outro") => {
+    if (!draft) {
+      return;
+    }
+    recordDiscreteChange();
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      return role === "intro" ? { ...prev, intro: null } : { ...prev, outro: null };
+    });
+  }, [draft, recordDiscreteChange]);
+
   const updateSegment = useCallback((i: number, patch: Partial<Segment>) => {
     if (!draft) {
       return;
@@ -859,8 +905,13 @@ export function App() {
         {!sequenceMode && step === "compose" ? (
           <MomentPalette
             segments={draft.segments}
+            clipDir={draft.clipDir}
+            introPath={draft.intro}
+            outroPath={draft.outro}
             onAddSegment={addMomentSegment}
             onRemoveSegment={removeMatchingSegments}
+            onSetIntro={(clip) => setIntroOutroFromClip("intro", clip)}
+            onSetOutro={(clip) => setIntroOutroFromClip("outro", clip)}
           />
         ) : null}
 
@@ -906,6 +957,13 @@ export function App() {
                     segment={selectedSegment}
                     narrationEnabled={draft.narration?.enabled ?? false}
                     onChange={(patch) => updateSegment(selectedIndex, patch)}
+                    clipDurationS={selectedSegment ? clipDurations[selectedSegment.clip] : undefined}
+                    onSetIntro={() =>
+                      selectedSegment && setIntroOutroFromClip("intro", selectedSegment.clip)
+                    }
+                    onSetOutro={() =>
+                      selectedSegment && setIntroOutroFromClip("outro", selectedSegment.clip)
+                    }
                   />
                 </div>
               </div>
@@ -933,7 +991,13 @@ export function App() {
 
         {!sequenceMode && step === "finish" ? (
           <div className="finish-layout">
-            <IntroOutroEditor intro={draft.intro} outro={draft.outro} onChange={updateIntroOutro} />
+            <IntroOutroEditor
+              intro={draft.intro}
+              outro={draft.outro}
+              clipDir={draft.clipDir}
+              onChangeText={updateIntroOutro}
+              onClear={clearIntroOutro}
+            />
 
             <div>
               <h3>타임라인 · BGM</h3>
