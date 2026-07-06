@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import type { MouseEvent } from "react";
 import type { Segment, SubtitleStyle } from "@cuesheet/schema";
 import { Button } from "@astryxdesign/core/Button";
 
@@ -14,7 +15,7 @@ interface Props {
   subtitleStyle: SubtitleStyle;
   /** 자동 전환·미니 타임라인 클릭 모두 이 콜백 하나로 App의 selectedIndex를 갱신한다. */
   onIndexChange: (i: number) => void;
-  /** 정지 버튼 — 이어재생 모드 종료(부모가 오버레이를 걷어낸다). */
+  /** 닫기 버튼 — 이어재생 모드 종료(부모가 스티키 플레이어 영역을 걷어낸다). */
   onExit: () => void;
 }
 
@@ -68,6 +69,21 @@ function outlineShadow(color: string, width: number): string | undefined {
   ].join(", ");
 }
 
+/** 세그먼트의 출력 타임라인상 재생 길이(초). speed가 빠를수록 짧아진다. */
+function playbackSeconds(seg: Segment): number {
+  return (seg.out - seg.in) / seg.speed;
+}
+
+function formatClock(totalSeconds: number): string {
+  const safe = Number.isFinite(totalSeconds) && totalSeconds > 0 ? totalSeconds : 0;
+  const m = Math.floor(safe / 60);
+  const s = Math.floor(safe % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+/** 사용자 미리보기 배속 선택지. 세그먼트 자체 speed와 곱해 적용한다. */
+const RATE_OPTIONS = [1, 1.5, 2] as const;
+
 /**
  * 본편 전체 이어재생. 세그먼트를 순서대로 in~out만 재생하고 컷이 끝나면
  * 다음 컷으로 자동 전환한다(같은 클립이면 시킹만, 다른 클립이면 두 개의
@@ -87,6 +103,14 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
   const advancingRef = useRef(false);
   const segmentsRef = useRef(segments);
   const onIndexChangeRef = useRef(onIndexChange);
+  // 사용자 미리보기 배속(1x/1.5x/2x) — 세그먼트 자체 speed와 곱해 video.playbackRate에 반영한다.
+  const [userRate, setUserRate] = useState<number>(1);
+  const userRateRef = useRef(userRate);
+  // 진행 바 표시용 — 활성 슬롯의 현재 source 시각(초). timeupdate에서 갱신한다.
+  const [videoNow, setVideoNow] = useState(0);
+  // 진행 바 클릭 시킹 중 다른 세그먼트로 넘어가야 할 때, 다음 currentIndex 이펙트가
+  // seg.in 대신 사용할 source 시각을 1회성으로 전달하는 통로.
+  const pendingSeekRef = useRef<{ index: number; time: number } | null>(null);
 
   useEffect(() => {
     segmentsRef.current = segments;
@@ -100,6 +124,16 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
   useEffect(() => {
     frontRef.current = front;
   }, [front]);
+  useEffect(() => {
+    userRateRef.current = userRate;
+    // 재생 중 배속 토글 — 컷 전환을 기다리지 않고 지금 보고 있는 비디오에 바로 반영한다.
+    const video = videoRefs[frontRef.current].current;
+    const seg = segmentsRef.current[currentIndex];
+    if (video && seg) {
+      video.playbackRate = seg.speed * userRate;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userRate]);
 
   function loadClipInto(slot: 0 | 1, clip: string): Promise<boolean> {
     const video = videoRefs[slot].current;
@@ -167,9 +201,13 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
 
       const video = videoRefs[activeSlot].current;
       if (video) {
-        video.currentTime = seg.in;
-        video.playbackRate = seg.speed;
+        // 진행 바 클릭 시킹으로 이 컷에 도착한 경우 seg.in이 아니라 그 지정 지점부터 시작한다.
+        const pending = pendingSeekRef.current;
+        pendingSeekRef.current = null;
+        video.currentTime = pending && pending.index === currentIndex ? pending.time : seg.in;
+        video.playbackRate = seg.speed * userRateRef.current;
         video.volume = seg.volume;
+        setVideoNow(video.currentTime);
         if (playingRef.current) {
           void video.play();
         }
@@ -217,7 +255,11 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
         return;
       }
       const handleTimeUpdate = () => {
-        if (frontRef.current !== slot || advancingRef.current) {
+        if (frontRef.current !== slot) {
+          return;
+        }
+        setVideoNow(video.currentTime);
+        if (advancingRef.current) {
           return;
         }
         const seg = segmentsRef.current[currentIndex];
@@ -251,6 +293,70 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
   const currentSegment = segments[currentIndex];
   const subtitle = currentSegment?.subtitle.trim() ?? "";
 
+  // 출력 타임라인 기준 누적 오프셋(초) — 진행 바/시간 표시/클릭 시킹 모두 이 기준을 쓴다.
+  const cumulativeStart: number[] = [];
+  let totalOutputSeconds = 0;
+  for (const seg of segments) {
+    cumulativeStart.push(totalOutputSeconds);
+    totalOutputSeconds += playbackSeconds(seg);
+  }
+  const currentOutputPosition = currentSegment
+    ? (cumulativeStart[currentIndex] ?? 0) + Math.max(0, videoNow - currentSegment.in) / currentSegment.speed
+    : totalOutputSeconds;
+  const progressRatio = totalOutputSeconds > 0 ? Math.min(1, currentOutputPosition / totalOutputSeconds) : 0;
+
+  function goToPrevCut() {
+    if (currentIndex > 0) {
+      onIndexChange(currentIndex - 1);
+    }
+  }
+
+  function goToNextCut() {
+    if (currentIndex < segments.length - 1) {
+      onIndexChange(currentIndex + 1);
+    }
+  }
+
+  // 진행 바 클릭 시킹 — 클릭 위치(출력 타임라인 비율) -> 해당 컷 index + 컷 내 source 오프셋.
+  function handleProgressClick(e: MouseEvent<HTMLDivElement>) {
+    if (totalOutputSeconds <= 0 || segments.length === 0) {
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    const targetOutput = ratio * totalOutputSeconds;
+
+    let targetIndex = segments.length - 1;
+    for (let i = 0; i < segments.length; i += 1) {
+      const seg = segments[i];
+      if (!seg) {
+        continue;
+      }
+      const start = cumulativeStart[i] ?? 0;
+      if (targetOutput < start + playbackSeconds(seg)) {
+        targetIndex = i;
+        break;
+      }
+    }
+    const targetSeg = segments[targetIndex];
+    if (!targetSeg) {
+      return;
+    }
+    const offsetOutput = Math.max(0, targetOutput - (cumulativeStart[targetIndex] ?? 0));
+    const sourceTime = Math.min(targetSeg.out, targetSeg.in + offsetOutput * targetSeg.speed);
+
+    if (targetIndex === currentIndex) {
+      const video = videoRefs[frontRef.current].current;
+      if (video) {
+        video.currentTime = sourceTime;
+        setVideoNow(sourceTime);
+      }
+      return;
+    }
+    pendingSeekRef.current = { index: targetIndex, time: sourceTime };
+    onIndexChange(targetIndex);
+  }
+
   return (
     <div className="sequence-player">
       <div className="sequence-player-stage">
@@ -279,17 +385,54 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
         {!currentSegment ? <div className="sequence-player-ended">끝</div> : null}
       </div>
 
+      <div
+        className="sequence-player-progress"
+        onClick={handleProgressClick}
+        role="slider"
+        aria-label="본편 진행"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(progressRatio * 100)}
+      >
+        <div className="sequence-player-progress-fill" style={{ width: `${progressRatio * 100}%` }} />
+      </div>
+
       <div className="sequence-player-controls">
+        <div className="sequence-player-transport">
+          <Button label="이전 컷" variant="ghost" isDisabled={currentIndex <= 0} onClick={goToPrevCut} />
+          <Button
+            label={playing ? "일시정지" : "재생"}
+            variant="secondary"
+            isDisabled={!currentSegment}
+            onClick={() => setPlaying((p) => !p)}
+          />
+          <Button
+            label="다음 컷"
+            variant="ghost"
+            isDisabled={currentIndex >= segments.length - 1}
+            onClick={goToNextCut}
+          />
+        </div>
+
+        <div className="sequence-player-speed-toggle">
+          {RATE_OPTIONS.map((rate) => (
+            <button
+              key={rate}
+              type="button"
+              className={userRate === rate ? "active" : ""}
+              onClick={() => setUserRate(rate)}
+            >
+              {rate}x
+            </button>
+          ))}
+        </div>
+
         <span className="sequence-player-counter">
-          {segments.length > 0 ? `${currentIndex + 1} / ${segments.length}` : "0 / 0"}
+          컷 {segments.length > 0 ? `${currentIndex + 1}/${segments.length}` : "0/0"} ·{" "}
+          {formatClock(currentOutputPosition)} / {formatClock(totalOutputSeconds)}
         </span>
-        <Button
-          label={playing ? "일시정지" : "재생"}
-          variant="secondary"
-          isDisabled={!currentSegment}
-          onClick={() => setPlaying((p) => !p)}
-        />
-        <Button label="정지" variant="ghost" onClick={onExit} />
+
+        <Button label="닫기" variant="ghost" onClick={onExit} />
       </div>
     </div>
   );

@@ -871,10 +871,10 @@ export function App() {
 
       <StepNav
         step={step}
-        onChange={(s) => {
-          setSequenceMode(false);
-          setStep(s);
-        }}
+        // 이어재생 중에도 단계를 오가며 팔레트/컷 리스트/인스펙터를 만질 수 있어야 하므로
+        // (개편 1 — 재생과 편집 공존) 여기서 sequenceMode를 끄지 않는다. 재생 종료는
+        // SequencePlayer의 "닫기" 버튼으로만 한다.
+        onChange={setStep}
         segmentCount={draft.segments.length}
         subtitleFilled={subtitleFilled}
         subtitleTotal={draft.segments.length}
@@ -895,8 +895,8 @@ export function App() {
         />
       </div>
 
-      <div className="step-body">
-        {sequenceMode ? (
+      {sequenceMode ? (
+        <div className="sequence-player-sticky">
           <SequencePlayer
             ref={sequencePlayerRef}
             segments={draft.segments}
@@ -905,9 +905,11 @@ export function App() {
             onIndexChange={setSelectedIndex}
             onExit={() => setSequenceMode(false)}
           />
-        ) : null}
+        </div>
+      ) : null}
 
-        {!sequenceMode && step === "compose" ? (
+      <div className="step-body">
+        {step === "compose" ? (
           <MomentPalette
             segments={draft.segments}
             clipDir={draft.clipDir}
@@ -920,7 +922,7 @@ export function App() {
           />
         ) : null}
 
-        {!sequenceMode && step === "edit" ? (
+        {step === "edit" ? (
           <div className="edit-layout">
             <div className="edit-mode-toggle">
               <button
@@ -994,7 +996,7 @@ export function App() {
           </div>
         ) : null}
 
-        {!sequenceMode && step === "finish" ? (
+        {step === "finish" ? (
           <div className="finish-layout">
             <IntroOutroEditor
               intro={draft.intro}

@@ -416,6 +416,9 @@ export function cuesheetPlugin(): Plugin {
       });
 
       server.middlewares.use("/clips", async (req, res) => {
+        // 프록시가 밤사이 손상본 -> 재생성본으로 바뀌는 경우가 있어, 브라우저가 캐시된
+        // 손상 영상을 계속 쓰지 않도록 매 요청 재검증을 강제한다(200/206/에러 응답 전부).
+        res.setHeader("Cache-Control", "no-cache");
         const [rawPath = "", rawQuery = ""] = (req.url ?? "").split("?");
         const decoded = decodeURIComponent(rawPath.replace(/^\/+/, ""));
         if (!decoded || decoded !== basename(decoded)) {
@@ -731,6 +734,9 @@ export function cuesheetPlugin(): Plugin {
       // placeholder를 그린다). 캐시 키는 t를 0.5초 단위로 반올림해 드래그 중 미세하게
       // 다른 t로 인한 캐시 미스/중복 생성을 줄인다.
       server.middlewares.use("/api/thumb", async (req, res) => {
+        // /clips와 동일한 이유로 재검증을 강제한다 — 썸네일도 프록시에서 시크 추출한
+        // 결과라 프록시가 재생성되면 예전 프레임을 계속 보여줄 수 있다.
+        res.setHeader("Cache-Control", "no-cache");
         if (req.method !== "GET") {
           res.statusCode = 405;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");

@@ -1356,6 +1356,7 @@ textarea {
   position: relative;
   width: 100%;
   max-width: 960px;
+  max-height: 40vh;
   aspect-ratio: 16 / 9;
   background: black;
   border-radius: 8px;
@@ -1411,13 +1412,71 @@ textarea {
   font-size: 15px;
 }
 
+.sequence-player-progress {
+  width: 100%;
+  max-width: 960px;
+  height: 8px;
+  background: #232838;
+  border: 1px solid #33394d;
+  border-radius: 4px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.sequence-player-progress-fill {
+  height: 100%;
+  background: #5b7cfa;
+}
+
 .sequence-player-controls {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
+  width: 100%;
+  max-width: 960px;
+}
+
+.sequence-player-transport {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sequence-player-speed-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.sequence-player-speed-toggle button {
+  padding: 4px 10px;
+  font-size: 13px;
+  background: #1b1e28;
+  color: #9aa0b4;
+  border: 1px solid #33394d;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.sequence-player-speed-toggle button.active {
+  border-color: #5b7cfa;
+  background: #262e46;
+  color: #e6e8ee;
 }
 
 .sequence-player-counter {
   font-size: 13px;
   color: #9aa0b4;
+  margin-left: auto;
+}
+
+/* 이어재생 스티키 영역: 미니 타임라인 아래 고정, 그 아래 편집 콘텐츠는 그대로 보인다. */
+.sequence-player-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: #12141a;
+  padding: 12px 0;
+  margin-top: 12px;
+  border-bottom: 1px solid #232838;
 }
