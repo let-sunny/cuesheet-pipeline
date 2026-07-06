@@ -117,6 +117,47 @@ describe("assembleDraft", () => {
     }
   });
 
+  it("3.5초를 넘는 moment는 in 기준 3.5초로 클램프한다", () => {
+    const moments: ClipMoments[] = [
+      {
+        clip: "a.mp4",
+        clipSummary: "",
+        moments: [{ inS: 0, outS: 6, shotType: "object", memo: "긴 컷", quality: 5 }],
+        monotonousRanges: [],
+      },
+    ];
+    const cue = assembleDraft(moments, opts());
+    const seg = cue.segments?.[0];
+    expect(seg?.in).toBe(0);
+    expect((seg?.out ?? 0) - (seg?.in ?? 0)).toBeLessThanOrEqual(3.5);
+  });
+
+  it("긴 moments 입력 -> 정속 컷 전체 평균 길이가 2.8~3.0초로 수렴한다", () => {
+    const moments: ClipMoments[] = [
+      {
+        clip: "a.mp4",
+        clipSummary: "",
+        moments: [
+          { inS: 0, outS: 6, shotType: "object", memo: "컷1", quality: 5 },
+          { inS: 10, outS: 16, shotType: "object", memo: "컷2", quality: 5 },
+          { inS: 20, outS: 26, shotType: "object", memo: "컷3", quality: 5 },
+          { inS: 30, outS: 36, shotType: "object", memo: "컷4", quality: 5 },
+        ],
+        monotonousRanges: [],
+      },
+    ];
+    const cue = assembleDraft(moments, opts());
+    expect(cue.segments).toHaveLength(4);
+    const durations = (cue.segments ?? []).map((s) => s.out - s.in);
+    const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
+    expect(avg).toBeGreaterThanOrEqual(2.8);
+    expect(avg).toBeLessThanOrEqual(3.0);
+    for (const d of durations) {
+      expect(d).toBeGreaterThanOrEqual(2);
+      expect(d).toBeLessThanOrEqual(3.5);
+    }
+  });
+
   it("정속 세그먼트는 speed 1, volume 1로 채운다", () => {
     const moments: ClipMoments[] = [
       {

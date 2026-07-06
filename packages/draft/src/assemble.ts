@@ -13,6 +13,15 @@ const DEFAULT_HEIGHT = 720;
 /** 정속 하이라이트로 채택하는 최소 quality. */
 const MIN_QUALITY = 3;
 
+/** 정속 컷 개별 길이 범위(초) — 사용자 실측 리듬(평균 2.95s) 기준. */
+const MIN_CUT_S = 2;
+const MAX_CUT_S = 3.5;
+/** 전체 평균이 이 값을 넘으면 수렴 패스를 돌린다. */
+const AVG_TRIGGER_S = 3.1;
+/** 수렴 목표 상한(하한은 2.8 — 트림 단위가 작아 보통 이 범위 안에 떨어진다). */
+const AVG_HIGH_S = 3.0;
+const TRIM_STEP_S = 0.25;
+
 /** 배속 커넥터 배속(12~16 범위의 중간값 — 30~60초 슬라이스를 2.1~4.3초 출력으로 압축). */
 const SPEEDUP_SPEED = 14;
 const SPEEDUP_MIN_SLICE_S = 30;
@@ -36,6 +45,32 @@ interface Candidate {
   subtitle: string;
 }
 
+type DraftSegment = { clip: string; in: number; out: number; speed: number; volume: number; subtitle: string };
+
+/**
+ * 정속 컷(speed===1)의 전체 평균 길이가 AVG_TRIGGER_S(3.1초)를 넘으면, 가장 긴 컷부터
+ * 0.25초씩 다듬어 평균을 2.8~3.0초 범위로 수렴시키는 단순 그리디 패스.
+ * 배속 커넥터(speed!==1)는 건드리지 않는다. 세그먼트 객체를 직접 변형한다.
+ */
+function convergeSteadyCutAverage(segments: DraftSegment[]): void {
+  const steady = segments.filter((s) => s.speed === 1);
+  if (steady.length === 0) return;
+
+  const average = () => steady.reduce((sum, s) => sum + (s.out - s.in), 0) / steady.length;
+
+  if (average() <= AVG_TRIGGER_S) return;
+
+  let guard = steady.length * 100; // 무한루프 방지 — 이 이상 다듬을 일은 없다.
+  while (average() > AVG_HIGH_S && guard-- > 0) {
+    let longest = steady[0] as DraftSegment;
+    for (const s of steady) {
+      if (s.out - s.in > longest.out - longest.in) longest = s;
+    }
+    if (longest.out - longest.in <= MIN_CUT_S) break; // 더 다듬을 여지가 없다.
+    longest.out = Math.max(longest.in + MIN_CUT_S, longest.out - TRIM_STEP_S);
+  }
+}
+
 /**
  * moments.json을 조립 규칙(quality 필터, 배속 커넥터 삽입, 시간순 정렬)에 따라
  * 큐시트 입력으로 변환한다. 반환값은 아직 검증 전(CueSheetInput) — 호출부가
@@ -44,7 +79,7 @@ interface Candidate {
 export function assembleDraft(clipsMoments: ClipMoments[], options: AssembleOptions): CueSheetInput {
   const sortedClips = [...clipsMoments].sort((a, b) => a.clip.localeCompare(b.clip));
 
-  const segments: { clip: string; in: number; out: number; speed: number; volume: number; subtitle: string }[] = [];
+  const segments: DraftSegment[] = [];
   let speedupCount = 0;
 
   for (const cm of sortedClips) {
@@ -52,7 +87,8 @@ export function assembleDraft(clipsMoments: ClipMoments[], options: AssembleOpti
 
     for (const m of cm.moments) {
       if (m.quality >= MIN_QUALITY) {
-        candidates.push({ inS: m.inS, outS: m.outS, speed: 1, volume: 1, subtitle: m.memo });
+        const outS = m.outS - m.inS > MAX_CUT_S ? m.inS + MAX_CUT_S : m.outS;
+        candidates.push({ inS: m.inS, outS, speed: 1, volume: 1, subtitle: m.memo });
       }
     }
 
@@ -76,6 +112,8 @@ export function assembleDraft(clipsMoments: ClipMoments[], options: AssembleOpti
       segments.push({ clip: cm.clip, in: c.inS, out: c.outS, speed: c.speed, volume: c.volume, subtitle: c.subtitle });
     }
   }
+
+  convergeSteadyCutAverage(segments);
 
   return {
     project: {
