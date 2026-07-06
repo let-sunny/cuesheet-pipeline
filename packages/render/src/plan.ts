@@ -42,9 +42,13 @@ function atempoChain(speed: number): string[] {
 
 function drawtextFilter(text: string, style: CueSheet["subtitleStyle"]): string {
   const t = escapeDrawtext(text);
-  const base =
+  let base =
     `drawtext=text='${t}':fontsize=${style.size}:fontcolor=${style.color}` +
     `:borderw=${style.outlineWidth}:bordercolor=${style.outlineColor}:font='${style.font}'`;
+  if (style.background) {
+    const { color, opacity, padding } = style.background;
+    base += `:box=1:boxcolor=${color}@${opacity}:boxborderw=${padding}`;
+  }
   const x = "(w-text_w)/2";
   let y: string;
   switch (style.position) {

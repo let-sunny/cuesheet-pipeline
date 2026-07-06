@@ -6,6 +6,7 @@ import type {
   narrationConfigSchema,
   projectSchema,
   segmentSchema,
+  subtitleBackgroundSchema,
   subtitleStyleSchema,
 } from "./schema.js";
 
@@ -17,6 +18,7 @@ export type Project = z.infer<typeof projectSchema>;
 export type Crop = z.infer<typeof cropSchema>;
 export type Segment = z.infer<typeof segmentSchema>;
 export type BgmCue = z.infer<typeof bgmCueSchema>;
+export type SubtitleBackground = z.infer<typeof subtitleBackgroundSchema>;
 export type SubtitleStyle = z.infer<typeof subtitleStyleSchema>;
 export type NarrationConfig = z.infer<typeof narrationConfigSchema>;
 export type CueSheet = z.infer<typeof cueSheetSchema>;

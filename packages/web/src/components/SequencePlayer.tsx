@@ -70,6 +70,16 @@ function outlineShadow(color: string, width: number): string | undefined {
   ].join(", ");
 }
 
+/** #rgb 또는 #rrggbb + 0~1 투명도 -> css rgba() 문자열(자막 배경 박스 미리보기용). */
+function hexToRgba(hex: string, opacity: number): string {
+  const m3 = /^#([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])$/.exec(hex);
+  const full = m3 ? `${m3[1]}${m3[1]}${m3[2]}${m3[2]}${m3[3]}${m3[3]}` : hex.slice(1);
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
+
 /** 세그먼트의 출력 타임라인상 재생 길이(초). speed가 빠를수록 짧아진다. */
 function playbackSeconds(seg: Segment): number {
   return (seg.out - seg.in) / seg.speed;
@@ -382,7 +392,22 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
               textShadow: outlineShadow(subtitleStyle.outlineColor, subtitleStyle.outlineWidth),
             }}
           >
-            {subtitle}
+            <span
+              className="sequence-subtitle-text"
+              style={
+                subtitleStyle.background
+                  ? {
+                      background: hexToRgba(
+                        subtitleStyle.background.color,
+                        subtitleStyle.background.opacity,
+                      ),
+                      padding: `${subtitleStyle.background.padding}px`,
+                    }
+                  : undefined
+              }
+            >
+              {subtitle}
+            </span>
           </div>
         ) : null}
         {!currentSegment ? <div className="sequence-player-ended">끝</div> : null}

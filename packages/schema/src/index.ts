@@ -5,6 +5,7 @@ export {
   narrationConfigSchema,
   projectSchema,
   segmentSchema,
+  subtitleBackgroundSchema,
   subtitleStyleSchema,
 } from "./schema.js";
 
@@ -16,6 +17,7 @@ export type {
   NarrationConfig,
   Project,
   Segment,
+  SubtitleBackground,
   SubtitleStyle,
 } from "./types.js";
 

@@ -1067,6 +1067,7 @@ export function App() {
             <FinishingSettings
               subtitleStyle={draft.subtitleStyle}
               narration={draft.narration}
+              projectHeight={draft.project.height}
               onSubtitleStyleChange={updateSubtitleStyle}
               onNarrationChange={updateNarration}
             />

@@ -211,6 +211,29 @@ describe("buildRenderPlan", () => {
     expect(withExplicitTrue).toEqual(withoutOpts);
   });
 
+  it("subtitleStyle.background가 없으면 기존과 완전히 동일하다(회귀, box 필터 없음)", () => {
+    const p = buildRenderPlan(make(), "out.mp4");
+    expect(p.filterComplex).not.toContain("box=1");
+  });
+
+  it("subtitleStyle.background가 있으면 drawtext에 box/boxcolor/boxborderw를 추가한다", () => {
+    const p = buildRenderPlan(
+      make({
+        subtitleStyle: {
+          font: "Pretendard",
+          size: 48,
+          color: "#ffffff",
+          outlineColor: "#000000",
+          outlineWidth: 3,
+          position: "bottom",
+          background: { color: "#000000", opacity: 0.75, padding: 10 },
+        },
+      }),
+      "out.mp4",
+    );
+    expect(p.filterComplex).toContain("box=1:boxcolor=#000000@0.75:boxborderw=10");
+  });
+
   it("출력 인자에 코덱과 fps가 들어간다", () => {
     const p = buildRenderPlan(make(), "final.mp4");
     const s = p.args.join(" ");

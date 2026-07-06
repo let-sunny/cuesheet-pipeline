@@ -82,6 +82,22 @@ export const bgmCueSchema = z
     path: ["start"],
   });
 
+/**
+ * 자막 뒤 반투명 배경 박스(유튜브 기본 자막 스타일). 생략/null이면 배경 없음(기존 동작).
+ */
+export const subtitleBackgroundSchema = z.object({
+  color: hexColor,
+  opacity: z
+    .number()
+    .min(0, "background.opacity는 0 이상이어야 합니다")
+    .max(1, "background.opacity는 1 이하여야 합니다"),
+  padding: z
+    .number()
+    .min(0, "background.padding은 0 이상이어야 합니다")
+    .max(40, "background.padding은 40 이하여야 합니다")
+    .default(8),
+});
+
 export const subtitleStyleSchema = z.object({
   font: z.string().min(1, "font는 비어 있을 수 없습니다"),
   size: z.number().positive("size는 양수여야 합니다"),
@@ -89,6 +105,8 @@ export const subtitleStyleSchema = z.object({
   outlineColor: hexColor,
   outlineWidth: z.number().nonnegative("outlineWidth는 0 이상이어야 합니다"),
   position: z.enum(["bottom", "top", "center"]),
+  // 자막 뒤 반투명 배경 박스. 생략/null = 배경 없음(기존 동작 100% 유지).
+  background: subtitleBackgroundSchema.nullable().optional(),
 });
 
 /**
