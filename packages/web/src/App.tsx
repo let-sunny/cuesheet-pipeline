@@ -810,6 +810,28 @@ export function App() {
     setDraft((prev) => (prev ? { ...prev, bgm: [...prev.bgm, newBgmCue()] } : prev));
   }, [draft, recordDiscreteChange]);
 
+  const clearSegmentCrop = useCallback((i: number) => {
+    if (!draft) {
+      return;
+    }
+    recordDiscreteChange();
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const segments = prev.segments.map((s, idx) => (idx === i ? { ...s, crop: null } : s));
+      return { ...prev, segments };
+    });
+  }, [draft, recordDiscreteChange]);
+
+  const handleDownloadSrt = useCallback(() => {
+    if (dirty) {
+      toast({ type: "info", body: "먼저 저장한 뒤 다운로드할 수 있습니다." });
+      return;
+    }
+    window.location.href = "/api/subtitles.srt";
+  }, [dirty, toast]);
+
   const removeBgm = useCallback((i: number) => {
     if (!draft) {
       return;
@@ -971,6 +993,7 @@ export function App() {
                     onSetOutro={() =>
                       selectedSegment && setIntroOutroFromClip("outro", selectedSegment.clip)
                     }
+                    onClearCrop={() => clearSegmentCrop(selectedIndex)}
                   />
                 </div>
               </div>
@@ -1050,6 +1073,18 @@ export function App() {
               <span className="render-note">
                 렌더는 시작 시점에 저장돼 있던 큐시트 기준으로 진행됩니다 — 렌더 중 편집·저장은 이번 렌더에 반영되지 않습니다.
               </span>
+
+              <Button
+                label="자막 다운로드 (.srt)"
+                variant="secondary"
+                isDisabled={dirty}
+                onClick={handleDownloadSrt}
+              />
+              {dirty ? (
+                <span className="render-note">
+                  자막은 디스크에 저장된 큐시트 기준입니다 — 먼저 저장한 뒤 다운로드하세요.
+                </span>
+              ) : null}
             </div>
           </div>
         ) : null}

@@ -11,6 +11,8 @@ interface Props {
   /** 이 컷의 원본 클립 파일 전체(in/out 무시)를 인트로/아웃트로로 지정한다. */
   onSetIntro: () => void;
   onSetOutro: () => void;
+  /** crop이 적용된 컷의 crop을 해제한다(수치 편집 UI는 범위 밖). */
+  onClearCrop: () => void;
 }
 
 /**
@@ -25,6 +27,7 @@ export function SegmentQuickFields({
   clipDurationS,
   onSetIntro,
   onSetOutro,
+  onClearCrop,
 }: Props) {
   if (!segment) {
     return null;
@@ -173,6 +176,15 @@ export function SegmentQuickFields({
           (현재 컷의 in/out 구간은 무시되고 클립 전체가 통째로 들어갑니다)
         </span>
       </div>
+
+      {segment.crop ? (
+        <div className="quick-fields-crop">
+          <span>크롭 적용됨</span>
+          <button type="button" onClick={onClearCrop}>
+            해제
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

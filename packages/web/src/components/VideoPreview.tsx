@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "re
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { Segment } from "@cuesheet/schema";
 import { fetchProxyStatus, type ProxyStatus } from "../api.js";
+import { cropPreviewStyle } from "../cropPreview.js";
 
 /** 프록시 준비 상태 폴링 주기(ms). */
 const PROXY_STATUS_POLL_INTERVAL_MS = 10000;
@@ -331,12 +332,15 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
         <div className="empty">클립 없음: {segment.clip || "(파일명 없음)"}</div>
       ) : isPreparingProxy ? null : (
         <>
-          <video
-            key={`${segment.clip}:${reloadToken}`}
-            ref={videoRef}
-            src={`/clips/${encodeURIComponent(segment.clip)}`}
-            onError={() => setMissing(true)}
-          />
+          <div className="video-crop-frame">
+            <video
+              key={`${segment.clip}:${reloadToken}`}
+              ref={videoRef}
+              src={`/clips/${encodeURIComponent(segment.clip)}`}
+              onError={() => setMissing(true)}
+              style={cropPreviewStyle(segment.crop)}
+            />
+          </div>
 
           <div
             className="scrub-timeline"

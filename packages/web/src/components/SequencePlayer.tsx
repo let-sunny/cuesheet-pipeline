@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "re
 import type { MouseEvent } from "react";
 import type { Segment, SubtitleStyle } from "@cuesheet/schema";
 import { Button } from "@astryxdesign/core/Button";
+import { cropPreviewStyle } from "../cropPreview.js";
 
 /** 외부(App.tsx의 Space 단축키 등)에서 이어재생을 제어하기 위한 핸들. */
 export interface SequencePlayerHandle {
@@ -363,11 +364,13 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
         <video
           ref={videoRefs[0]}
           className={front === 0 ? "sequence-video visible" : "sequence-video hidden"}
+          style={front === 0 ? cropPreviewStyle(currentSegment?.crop) : undefined}
           playsInline
         />
         <video
           ref={videoRefs[1]}
           className={front === 1 ? "sequence-video visible" : "sequence-video hidden"}
+          style={front === 1 ? cropPreviewStyle(currentSegment?.crop) : undefined}
           playsInline
         />
         {subtitle !== "" ? (

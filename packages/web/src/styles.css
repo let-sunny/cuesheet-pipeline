@@ -405,6 +405,17 @@ textarea {
   background: black;
 }
 
+/* crop이 있는 컷의 미리보기 — video는 그대로 100% 크기를 유지한 채 CSS transform으로
+   확대/이동되고, 이 래퍼가 overflow:hidden으로 잘라내 crop 영역만 보이게 한다. */
+.video-crop-frame {
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.video-crop-frame video {
+  display: block;
+}
+
 .video-preview.empty {
   color: #8a90a2;
   font-size: 13px;
@@ -1244,6 +1255,21 @@ textarea {
 .quick-fields-io-note {
   font-size: 12px;
   color: #6a7086;
+}
+
+.quick-fields-crop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #3a4056;
+  font-size: 13px;
+  color: #9aa0b4;
+}
+
+.quick-fields-crop button {
+  font-size: 12px;
+  padding: 3px 10px;
 }
 
 /* ② 편집 단계 - 몰아쓰기 모드 */
