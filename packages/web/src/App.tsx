@@ -65,6 +65,17 @@ const newBgmCue = (): BgmCue => ({
   volume: 1,
 });
 
+/** 언두 히스토리에 보관하는 과거 스냅샷 최대 개수. */
+const HISTORY_LIMIT = 50;
+
+/** 연속 편집(자막 타이핑, 트림 핸들 드래그 등)을 한 묶음으로 합치는 디바운스 간격(ms). */
+const BURST_DEBOUNCE_MS = 500;
+
+interface HistoryEntry {
+  cuesheet: CueSheet;
+  selectedIndex: number;
+}
+
 /** 미저장 편집 임시 스냅샷을 localStorage에 두는 키. 큐시트(프로젝트명)별로 분리한다. */
 const DRAFT_SNAPSHOT_PREFIX = "cuesheet-draft-snapshot:";
 
@@ -117,13 +128,111 @@ export function App() {
   const renderPollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toast = useToast();
 
+  // 언두/리두 히스토리: 과거/미래 스냅샷 스택(세션 메모리만, 새로고침 시 사라짐 —
+  // localStorage 이탈 가드 스냅샷과는 별개다).
+  const [past, setPast] = useState<HistoryEntry[]>([]);
+  const [future, setFuture] = useState<HistoryEntry[]>([]);
+  const burstActiveRef = useRef(false);
+  const burstTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     return () => {
       if (renderPollTimer.current) {
         clearTimeout(renderPollTimer.current);
       }
+      if (burstTimerRef.current) {
+        clearTimeout(burstTimerRef.current);
+      }
     };
   }, []);
+
+  const pushHistorySnapshot = useCallback(() => {
+    if (!draft) {
+      return;
+    }
+    const snapshot: HistoryEntry = {
+      cuesheet: JSON.parse(JSON.stringify(draft)) as CueSheet,
+      selectedIndex,
+    };
+    setPast((prev) => {
+      const next = [...prev, snapshot];
+      return next.length > HISTORY_LIMIT ? next.slice(next.length - HISTORY_LIMIT) : next;
+    });
+    setFuture([]);
+  }, [draft, selectedIndex]);
+
+  // 구조적 변경(컷 추가/삭제/이동/분할, BGM 추가/삭제 등): 매번 즉시 1개 히스토리로
+  // 기록하고, 진행 중이던 연속 편집 묶음(burst)은 끊어서 다음 편집이 새 묶음으로
+  // 시작하게 한다.
+  const recordDiscreteChange = useCallback(() => {
+    if (burstTimerRef.current) {
+      clearTimeout(burstTimerRef.current);
+      burstTimerRef.current = null;
+    }
+    burstActiveRef.current = false;
+    pushHistorySnapshot();
+  }, [pushHistorySnapshot]);
+
+  // 연속 편집(자막 타이핑, 트림 핸들 드래그, 슬라이더 등): 묶음이 비어 있을 때만
+  // 편집 시작 시점 상태를 1회 기록하고, 이어지는 변경은 디바운스 타이머만 리셋한다.
+  // 타이머가 만료되면(입력이 멈추면) 묶음이 닫히고 다음 변경이 새 묶음을 연다.
+  const recordContinuousChange = useCallback(() => {
+    if (!burstActiveRef.current) {
+      pushHistorySnapshot();
+      burstActiveRef.current = true;
+    }
+    if (burstTimerRef.current) {
+      clearTimeout(burstTimerRef.current);
+    }
+    burstTimerRef.current = setTimeout(() => {
+      burstActiveRef.current = false;
+      burstTimerRef.current = null;
+    }, BURST_DEBOUNCE_MS);
+  }, [pushHistorySnapshot]);
+
+  const canUndo = past.length > 0;
+  const canRedo = future.length > 0;
+
+  const handleUndo = useCallback(() => {
+    if (!draft || past.length === 0) {
+      return;
+    }
+    const last = past[past.length - 1];
+    if (!last) {
+      return;
+    }
+    const currentSnapshot: HistoryEntry = { cuesheet: draft, selectedIndex };
+    if (burstTimerRef.current) {
+      clearTimeout(burstTimerRef.current);
+      burstTimerRef.current = null;
+    }
+    burstActiveRef.current = false;
+    setFuture((f) => [currentSnapshot, ...f].slice(0, HISTORY_LIMIT));
+    setPast((p) => p.slice(0, -1));
+    setDraft(last.cuesheet);
+    setSelectedIndex(last.selectedIndex);
+    toast({ type: "info", body: "실행 취소됨" });
+  }, [draft, past, selectedIndex, toast]);
+
+  const handleRedo = useCallback(() => {
+    if (!draft || future.length === 0) {
+      return;
+    }
+    const next = future[0];
+    if (!next) {
+      return;
+    }
+    const currentSnapshot: HistoryEntry = { cuesheet: draft, selectedIndex };
+    if (burstTimerRef.current) {
+      clearTimeout(burstTimerRef.current);
+      burstTimerRef.current = null;
+    }
+    burstActiveRef.current = false;
+    setPast((p) => [...p, currentSnapshot].slice(-HISTORY_LIMIT));
+    setFuture((f) => f.slice(1));
+    setDraft(next.cuesheet);
+    setSelectedIndex(next.selectedIndex);
+  }, [draft, future, selectedIndex]);
 
   const dirty = useMemo(() => {
     if (!draft || !serverCuesheet) {
@@ -245,6 +354,15 @@ export function App() {
       if (isTyping) {
         return;
       }
+      if ((e.metaKey || e.ctrlKey) && (e.key === "z" || e.key === "Z")) {
+        e.preventDefault();
+        if (e.shiftKey) {
+          handleRedo();
+        } else {
+          handleUndo();
+        }
+        return;
+      }
       if (e.key === "?") {
         e.preventDefault();
         setShowShortcuts((v) => !v);
@@ -315,7 +433,7 @@ export function App() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [step, editMode, selectRelative, sequenceMode]);
+  }, [step, editMode, selectRelative, sequenceMode, handleUndo, handleRedo]);
 
   const handleSave = useCallback(async () => {
     if (!draft) {
@@ -420,10 +538,18 @@ export function App() {
   }, [toast, pollRenderStatus]);
 
   const updateProject = useCallback((patch: Partial<Project>) => {
+    if (!draft) {
+      return;
+    }
+    recordContinuousChange();
     setDraft((prev) => (prev ? { ...prev, project: { ...prev.project, ...patch } } : prev));
-  }, []);
+  }, [draft, recordContinuousChange]);
 
   const updateNarration = useCallback((patch: Partial<NarrationConfig>) => {
+    if (!draft) {
+      return;
+    }
+    recordContinuousChange();
     setDraft((prev) => {
       if (!prev) {
         return prev;
@@ -435,19 +561,31 @@ export function App() {
       };
       return { ...prev, narration: { ...base, ...patch } };
     });
-  }, []);
+  }, [draft, recordContinuousChange]);
 
   const updateSubtitleStyle = useCallback((patch: Partial<SubtitleStyle>) => {
+    if (!draft) {
+      return;
+    }
+    recordContinuousChange();
     setDraft((prev) =>
       prev ? { ...prev, subtitleStyle: { ...prev.subtitleStyle, ...patch } } : prev,
     );
-  }, []);
+  }, [draft, recordContinuousChange]);
 
   const updateIntroOutro = useCallback((patch: { intro?: string | null; outro?: string | null }) => {
+    if (!draft) {
+      return;
+    }
+    recordContinuousChange();
     setDraft((prev) => (prev ? { ...prev, ...patch } : prev));
-  }, []);
+  }, [draft, recordContinuousChange]);
 
   const updateSegment = useCallback((i: number, patch: Partial<Segment>) => {
+    if (!draft) {
+      return;
+    }
+    recordContinuousChange();
     setDraft((prev) => {
       if (!prev) {
         return prev;
@@ -455,9 +593,13 @@ export function App() {
       const segments = prev.segments.map((s, idx) => (idx === i ? { ...s, ...patch } : s));
       return { ...prev, segments };
     });
-  }, []);
+  }, [draft, recordContinuousChange]);
 
   const addSegment = useCallback(() => {
+    if (!draft) {
+      return;
+    }
+    recordDiscreteChange();
     setDraft((prev) => {
       if (!prev) {
         return prev;
@@ -466,9 +608,13 @@ export function App() {
       setSelectedIndex(segments.length - 1);
       return { ...prev, segments };
     });
-  }, []);
+  }, [draft, recordDiscreteChange]);
 
   const removeSegment = useCallback((i: number) => {
+    if (!draft || draft.segments.length <= 1) {
+      return;
+    }
+    recordDiscreteChange();
     setDraft((prev) => {
       if (!prev || prev.segments.length <= 1) {
         return prev;
@@ -476,15 +622,19 @@ export function App() {
       const segments = prev.segments.filter((_, idx) => idx !== i);
       return { ...prev, segments };
     });
-  }, []);
+  }, [draft, recordDiscreteChange]);
 
   const moveSegment = useCallback((i: number, direction: -1 | 1) => {
+    if (!draft) {
+      return;
+    }
+    const target = i + direction;
+    if (target < 0 || target >= draft.segments.length) {
+      return;
+    }
+    recordDiscreteChange();
     setDraft((prev) => {
       if (!prev) {
-        return prev;
-      }
-      const target = i + direction;
-      if (target < 0 || target >= prev.segments.length) {
         return prev;
       }
       const segments = [...prev.segments];
@@ -498,29 +648,44 @@ export function App() {
       setSelectedIndex(target);
       return { ...prev, segments };
     });
-  }, []);
+  }, [draft, recordDiscreteChange]);
 
   const splitSegment = useCallback((i: number, at: number) => {
+    if (!draft) {
+      return;
+    }
+    const seg = draft.segments[i];
+    if (!seg) {
+      return;
+    }
+    if (at - seg.in < 0.2 || seg.out - at < 0.2) {
+      return;
+    }
+    recordDiscreteChange();
     setDraft((prev) => {
       if (!prev) {
         return prev;
       }
-      const seg = prev.segments[i];
-      if (!seg) {
+      const s = prev.segments[i];
+      if (!s) {
         return prev;
       }
-      if (at - seg.in < 0.2 || seg.out - at < 0.2) {
+      if (at - s.in < 0.2 || s.out - at < 0.2) {
         return prev;
       }
-      const first: Segment = { ...seg, out: at };
-      const second: Segment = { ...seg, in: at, subtitle: "" };
+      const first: Segment = { ...s, out: at };
+      const second: Segment = { ...s, in: at, subtitle: "" };
       const segments = [...prev.segments];
       segments.splice(i, 1, first, second);
       return { ...prev, segments };
     });
-  }, []);
+  }, [draft, recordDiscreteChange]);
 
   const addMomentSegment = useCallback((seg: Segment) => {
+    if (!draft) {
+      return;
+    }
+    recordDiscreteChange();
     setDraft((prev) => {
       if (!prev) {
         return prev;
@@ -535,11 +700,21 @@ export function App() {
       setSelectedIndex(insertAt);
       return { ...prev, segments };
     });
-  }, []);
+  }, [draft, recordDiscreteChange]);
 
   // 팔레트 카드의 "빼기" — 같은 clip에서 카드 구간과 겹치는 세그먼트를 담긴 목록에서 제거한다
   // (MomentPalette의 "사용 중" 판정과 동일한 겹침 기준을 쓴다).
   const removeMatchingSegments = useCallback((clip: string, inS: number, outS: number) => {
+    if (!draft) {
+      return;
+    }
+    const willRemain = draft.segments.filter(
+      (s) => !(s.clip === clip && s.in < outS && s.out > inS),
+    );
+    if (willRemain.length === draft.segments.length || willRemain.length === 0) {
+      return;
+    }
+    recordDiscreteChange();
     setDraft((prev) => {
       if (!prev) {
         return prev;
@@ -552,7 +727,7 @@ export function App() {
       }
       return { ...prev, segments };
     });
-  }, []);
+  }, [draft, recordDiscreteChange]);
 
   // 미니 타임라인 블록 더블클릭 — 편집 단계(다듬기 뷰)로 전환하고 그 컷을 선택한다.
   const goToEdit = useCallback((i: number) => {
@@ -563,6 +738,10 @@ export function App() {
   }, []);
 
   const updateBgm = useCallback((i: number, patch: Partial<BgmCue>) => {
+    if (!draft) {
+      return;
+    }
+    recordContinuousChange();
     setDraft((prev) => {
       if (!prev) {
         return prev;
@@ -570,17 +749,25 @@ export function App() {
       const bgm = prev.bgm.map((c, idx) => (idx === i ? { ...c, ...patch } : c));
       return { ...prev, bgm };
     });
-  }, []);
+  }, [draft, recordContinuousChange]);
 
   const addBgm = useCallback(() => {
+    if (!draft) {
+      return;
+    }
+    recordDiscreteChange();
     setDraft((prev) => (prev ? { ...prev, bgm: [...prev.bgm, newBgmCue()] } : prev));
-  }, []);
+  }, [draft, recordDiscreteChange]);
 
   const removeBgm = useCallback((i: number) => {
+    if (!draft) {
+      return;
+    }
+    recordDiscreteChange();
     setDraft((prev) =>
       prev ? { ...prev, bgm: prev.bgm.filter((_, idx) => idx !== i) } : prev,
     );
-  }, []);
+  }, [draft, recordDiscreteChange]);
 
   if (loadError) {
     return <div className="status">불러오기 실패: {loadError}</div>;
@@ -601,6 +788,10 @@ export function App() {
         rendering={renderState.status === "rendering"}
         renderProgress={renderState.status === "rendering" ? renderState.progress : null}
         renderDisabled={dirty || renderState.status === "rendering"}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
         onSave={() => void handleSave()}
         onRender={() => void handleRender()}
         onOpenSettings={() => setSettingsOpen(true)}
