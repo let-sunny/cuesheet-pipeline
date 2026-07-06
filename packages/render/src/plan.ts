@@ -53,13 +53,13 @@ function drawtextFilter(text: string, style: CueSheet["subtitleStyle"]): string 
   let y: string;
   switch (style.position) {
     case "top":
-      y = "40";
+      y = String(style.margin);
       break;
     case "center":
       y = "(h-text_h)/2";
       break;
     default:
-      y = "h-text_h-40"; // bottom
+      y = `h-text_h-${style.margin}`; // bottom
   }
   return `${base}:x=${x}:y=${y}`;
 }

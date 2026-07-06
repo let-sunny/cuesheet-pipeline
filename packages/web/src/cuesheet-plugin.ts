@@ -353,7 +353,12 @@ function releaseThumbSlot(): void {
 }
 
 /** 프록시에서 t초 지점 프레임 하나를 시크 추출해 cachePath에 저장한다. */
-async function generateThumbnail(proxyPath: string, t: number, cachePath: string): Promise<boolean> {
+async function generateThumbnail(
+  proxyPath: string,
+  t: number,
+  width: number,
+  cachePath: string,
+): Promise<boolean> {
   await acquireThumbSlot();
   try {
     const tmpPath = `${cachePath}.tmp`;
@@ -365,7 +370,7 @@ async function generateThumbnail(proxyPath: string, t: number, cachePath: string
       "-frames:v",
       "1",
       "-vf",
-      "scale=160:-2",
+      `scale=${width}:-2`,
       // tmpPath는 원자적 쓰기를 위해 ".tmp"가 붙어 확장자로 포맷을 못 알아채므로 명시한다.
       "-f",
       "mjpeg",
@@ -384,16 +389,17 @@ async function generateThumbnail(proxyPath: string, t: number, cachePath: string
   }
 }
 
-/** key(클립스템_반올림시각)로 dedup하며 캐시에 없으면 생성한다. */
+/** key(클립스템_반올림시각_폭)로 dedup하며 캐시에 없으면 생성한다. */
 async function getOrGenerateThumb(
   key: string,
   proxyPath: string,
   t: number,
+  width: number,
   cachePath: string,
 ): Promise<boolean> {
   let promise = thumbInFlight.get(key);
   if (!promise) {
-    promise = generateThumbnail(proxyPath, t, cachePath).finally(() => {
+    promise = generateThumbnail(proxyPath, t, width, cachePath).finally(() => {
       thumbInFlight.delete(key);
     });
     thumbInFlight.set(key, promise);
@@ -842,10 +848,11 @@ export function cuesheetPlugin(): Plugin {
         sendJson(res, 200, files);
       });
 
-      // 세그먼트 썸네일: /api/thumb?clip=<원본 파일명>&t=<초> — 프록시에서 해당 시각
-      // 프레임을 시크 추출해 jpg로 반환한다. 프록시가 없으면 404(클라이언트가 자리비움
-      // placeholder를 그린다). 캐시 키는 t를 0.5초 단위로 반올림해 드래그 중 미세하게
-      // 다른 t로 인한 캐시 미스/중복 생성을 줄인다.
+      // 세그먼트 썸네일: /api/thumb?clip=<원본 파일명>&t=<초>&w=<폭px, 기본 160> — 프록시에서
+      // 해당 시각 프레임을 시크 추출해 jpg로 반환한다. 프록시가 없으면 404(클라이언트가
+      // 자리비움 placeholder를 그린다). 캐시 키는 t를 0.5초 단위로 반올림해 드래그 중 미세하게
+      // 다른 t로 인한 캐시 미스/중복 생성을 줄인다. 폭도 캐시 키에 포함해(w별로 별도 파일)
+      // 같은 (클립,시각)이라도 요청 폭이 다르면 재생성한다(자막 스타일 미리보기 등 큰 썸네일용).
       server.middlewares.use("/api/thumb", async (req, res) => {
         // /clips와 동일한 이유로 재검증을 강제한다 — 썸네일도 프록시에서 시크 추출한
         // 결과라 프록시가 재생성되면 예전 프레임을 계속 보여줄 수 있다.
@@ -861,7 +868,17 @@ export function cuesheetPlugin(): Plugin {
         const clipParam = params.get("clip") ?? "";
         const tParam = params.get("t");
         const t = tParam !== null ? Number(tParam) : NaN;
-        if (!clipParam || clipParam !== basename(clipParam) || !Number.isFinite(t) || t < 0) {
+        const wParam = params.get("w");
+        const width = wParam !== null ? Number(wParam) : 160;
+        if (
+          !clipParam ||
+          clipParam !== basename(clipParam) ||
+          !Number.isFinite(t) ||
+          t < 0 ||
+          !Number.isInteger(width) ||
+          width < 16 ||
+          width > 1920
+        ) {
           res.statusCode = 400;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
           res.end("잘못된 요청입니다");
@@ -870,7 +887,7 @@ export function cuesheetPlugin(): Plugin {
 
         const roundedT = Math.round(t * 2) / 2;
         const clipStem = basename(clipParam, extname(clipParam));
-        const cacheFileName = `${clipStem}_${roundedT}.jpg`;
+        const cacheFileName = `${clipStem}_${roundedT}_${width}.jpg`;
         const cachePath = resolve(thumbsDir, cacheFileName);
 
         if (existsSync(cachePath)) {
@@ -888,7 +905,7 @@ export function cuesheetPlugin(): Plugin {
         }
 
         await mkdir(thumbsDir, { recursive: true });
-        const ok = await getOrGenerateThumb(cacheFileName, proxyPath, roundedT, cachePath);
+        const ok = await getOrGenerateThumb(cacheFileName, proxyPath, roundedT, width, cachePath);
         if (!ok || !existsSync(cachePath)) {
           res.statusCode = 500;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");

@@ -945,6 +945,7 @@ export function App() {
             segments={draft.segments}
             currentIndex={selectedIndex}
             subtitleStyle={draft.subtitleStyle}
+            projectHeight={draft.project.height}
             onIndexChange={setSelectedIndex}
             onExit={() => setSequenceMode(false)}
           />
@@ -1068,6 +1069,11 @@ export function App() {
               subtitleStyle={draft.subtitleStyle}
               narration={draft.narration}
               projectHeight={draft.project.height}
+              previewClip={
+                draft.segments[0]
+                  ? { clip: draft.segments[0].clip, t: draft.segments[0].in + 0.3 }
+                  : undefined
+              }
               onSubtitleStyleChange={updateSubtitleStyle}
               onNarrationChange={updateNarration}
             />

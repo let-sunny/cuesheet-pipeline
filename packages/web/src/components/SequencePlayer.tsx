@@ -14,6 +14,8 @@ interface Props {
   /** 현재 재생/선택 중인 컷 인덱스(App의 selectedIndex와 공유). */
   currentIndex: number;
   subtitleStyle: SubtitleStyle;
+  /** subtitleStyle.margin(px, 원본 해상도 기준)을 스테이지 비율(%)로 환산하는 데 쓴다. */
+  projectHeight: number;
   /** 자동 전환·미니 타임라인 클릭 모두 이 콜백 하나로 App의 selectedIndex를 갱신한다. */
   onIndexChange: (i: number) => void;
   /** 닫기 버튼 — 이어재생 모드 종료(부모가 스티키 플레이어 영역을 걷어낸다). */
@@ -102,7 +104,7 @@ const RATE_OPTIONS = [1, 1.5, 2] as const;
  * 타이밍 차이는 허용되는 검토용 미리보기다.
  */
 export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function SequencePlayer(
-  { segments, currentIndex, subtitleStyle, onIndexChange, onExit },
+  { segments, currentIndex, subtitleStyle, projectHeight, onIndexChange, onExit },
   ref,
 ) {
   const videoRefs = [useRef<HTMLVideoElement | null>(null), useRef<HTMLVideoElement | null>(null)] as const;
@@ -390,6 +392,17 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
               color: subtitleStyle.color,
               fontFamily: subtitleStyle.font,
               textShadow: outlineShadow(subtitleStyle.outlineColor, subtitleStyle.outlineWidth),
+              // subtitleStyle.margin(원본 px)을 스테이지 높이 대비 %로 환산한 근사치 —
+              // 스테이지는 고정 16:9(styles.css)라 project 실제 화면비와 다를 수 있지만,
+              // top/bottom 오프셋을 CSS 고정값(24px) 대신 반영하는 데는 이 정도 근사로 충분하다.
+              // margin이 없는(검증 없이 서빙된 구 큐시트) 경우 schema 기본값(40)으로 대체한다.
+              ...(subtitleStyle.position === "top"
+                ? { top: `${((subtitleStyle.margin ?? 40) / Math.max(1, projectHeight)) * 100}%` }
+                : subtitleStyle.position === "bottom"
+                  ? {
+                      bottom: `${((subtitleStyle.margin ?? 40) / Math.max(1, projectHeight)) * 100}%`,
+                    }
+                  : {}),
             }}
           >
             <span

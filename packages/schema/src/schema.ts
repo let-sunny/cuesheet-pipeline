@@ -107,6 +107,13 @@ export const subtitleStyleSchema = z.object({
   position: z.enum(["bottom", "top", "center"]),
   // 자막 뒤 반투명 배경 박스. 생략/null = 배경 없음(기존 동작 100% 유지).
   background: subtitleBackgroundSchema.nullable().optional(),
+  // top/bottom일 때 가장자리로부터의 여백(px). center는 이 값을 무시한다.
+  // 생략 시 40(기존 하드코딩 값과 동일) — 기존 큐시트 렌더 결과가 그대로 유지된다.
+  margin: z
+    .number()
+    .min(8, "margin은 8 이상이어야 합니다")
+    .max(200, "margin은 200 이하여야 합니다")
+    .default(40),
 });
 
 /**

@@ -313,19 +313,31 @@ textarea {
 }
 
 .subtitle-style-preview-stage {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  position: relative;
   width: 100%;
-  height: 100%;
   background: #0c0e14 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Crect width='16' height='16' fill='%23161925'/%3E%3C/svg%3E");
   border-radius: 6px;
-  padding: 12px;
   box-sizing: border-box;
   overflow: hidden;
 }
 
+.subtitle-style-preview-bg {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: auto;
+  max-width: none;
+}
+
+.subtitle-style-preview-dim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
 .subtitle-style-preview-text {
+  position: absolute;
+  max-width: calc(100% - 24px);
   text-align: center;
   font-weight: 700;
   white-space: pre-wrap;
@@ -1476,6 +1488,8 @@ textarea {
 }
 
 .sequence-subtitle-bottom {
+  /* 실제 offset은 SequencePlayer.tsx가 subtitleStyle.margin 기반으로 인라인 지정한다.
+     이 24px는 margin 계산이 실패할 극히 드문 경우를 위한 폴백일 뿐이다. */
   bottom: 24px;
 }
 
