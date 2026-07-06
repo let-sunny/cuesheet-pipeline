@@ -39,6 +39,7 @@ export function SegmentQuickFields({ segment, narrationEnabled, onChange }: Prop
           max={100}
           step={5}
           valueDisplay="text"
+          width={220}
           onChange={(v: number) => onChange({ volume: v / 100 })}
         />
       </div>

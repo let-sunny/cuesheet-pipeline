@@ -262,8 +262,14 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
 
   const pct = (t: number): number => (duration > 0 ? clamp((t / duration) * 100, 0, 100) : 0);
 
+  const subtitleSummary = segment.subtitle.trim() !== "" ? segment.subtitle.trim() : "(자막 없음)";
+
   return (
     <div className="video-preview">
+      <div className="video-context-line">
+        <span className="video-context-index">#{selectedIndex + 1}</span>
+        {subtitleSummary.slice(0, 30)} · {segment.in.toFixed(1)}s~{segment.out.toFixed(1)}s
+      </div>
       {missing ? (
         <div className="empty">클립 없음: {segment.clip || "(파일명 없음)"}</div>
       ) : (
@@ -272,7 +278,6 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
             key={segment.clip}
             ref={videoRef}
             src={`/clips/${encodeURIComponent(segment.clip)}`}
-            controls
             onError={() => setMissing(true)}
           />
 

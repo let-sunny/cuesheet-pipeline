@@ -24,8 +24,11 @@ export function CompactSegmentList({ segments, selectedIndex, onSelect, onAdd, o
           onClick={() => onSelect(i)}
         >
           <span className="compact-list-index">{i + 1}</span>
-          <span className="compact-list-clip" title={seg.clip}>
-            {seg.clip || "(파일명 없음)"}
+          <span className="compact-list-clip" title={seg.clip || "(파일명 없음)"}>
+            {(seg.subtitle.trim() !== "" ? seg.subtitle.trim() : seg.clip || "(파일명 없음)").slice(
+              0,
+              20,
+            )}
           </span>
           <span className="compact-list-time">
             {seg.in.toFixed(1)}~{seg.out.toFixed(1)}s

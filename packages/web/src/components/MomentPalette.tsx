@@ -152,6 +152,8 @@ function buildCards(entries: ClipMoments[]): NumberedCard[] {
 interface Props {
   segments: Segment[];
   onAddSegment: (seg: Segment) => void;
+  /** 이미 담긴("사용 중") 카드의 "빼기" — 겹치는 세그먼트를 draft에서 제거한다. */
+  onRemoveSegment: (clip: string, inS: number, outS: number) => void;
 }
 
 /**
@@ -159,7 +161,7 @@ interface Props {
  * 담게 하는 팔레트. 담긴 세그먼트는 놓는 위치와 상관없이 (clip, in) 기준
  * 시간순으로 자동 삽입된다(호출자인 App.tsx가 그 순서를 보장).
  */
-export function MomentPalette({ segments, onAddSegment }: Props) {
+export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props) {
   const [moments, setMoments] = useState<ClipMoments[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [frameMap, setFrameMap] = useState<Record<string, string[]>>({});
@@ -298,6 +300,15 @@ export function MomentPalette({ segments, onAddSegment }: Props) {
                   <button type="button" className="moment-add-button" onClick={() => handleAdd(card)}>
                     담기
                   </button>
+                  {inUse ? (
+                    <button
+                      type="button"
+                      className="moment-remove-button"
+                      onClick={() => onRemoveSegment(card.clipFileName, card.inS, card.outS)}
+                    >
+                      빼기
+                    </button>
+                  ) : null}
                 </div>
               );
             })}

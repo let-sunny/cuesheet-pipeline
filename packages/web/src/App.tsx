@@ -397,6 +397,29 @@ export function App() {
     });
   }, []);
 
+  // 팔레트 카드의 "빼기" — 같은 clip에서 카드 구간과 겹치는 세그먼트를 담긴 목록에서 제거한다
+  // (MomentPalette의 "사용 중" 판정과 동일한 겹침 기준을 쓴다).
+  const removeMatchingSegments = useCallback((clip: string, inS: number, outS: number) => {
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const segments = prev.segments.filter(
+        (s) => !(s.clip === clip && s.in < outS && s.out > inS),
+      );
+      if (segments.length === prev.segments.length || segments.length === 0) {
+        return prev;
+      }
+      return { ...prev, segments };
+    });
+  }, []);
+
+  // 미니 타임라인 블록 더블클릭 — 다듬기 단계로 전환하고 그 컷을 선택한다.
+  const goToTrim = useCallback((i: number) => {
+    setStep("trim");
+    setSelectedIndex(i);
+  }, []);
+
   const updateBgm = useCallback((i: number, patch: Partial<BgmCue>) => {
     setDraft((prev) => {
       if (!prev) {
@@ -461,11 +484,16 @@ export function App() {
         segments={draft.segments}
         selectedIndex={selectedIndex}
         onSelect={setSelectedIndex}
+        onGoToTrim={goToTrim}
       />
 
       <div className="step-body">
         {step === "compose" ? (
-          <MomentPalette segments={draft.segments} onAddSegment={addMomentSegment} />
+          <MomentPalette
+            segments={draft.segments}
+            onAddSegment={addMomentSegment}
+            onRemoveSegment={removeMatchingSegments}
+          />
         ) : null}
 
         {step === "trim" ? (

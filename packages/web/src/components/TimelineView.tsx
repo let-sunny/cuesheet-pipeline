@@ -130,23 +130,25 @@ export function TimelineView({
         ))}
       </div>
 
-      <div className="segment-track">
-        {segments.map((seg, i) => {
-          const play = playbackSeconds(seg);
-          const label = seg.subtitle ? seg.subtitle.slice(0, 12) : seg.clip || "(파일명 없음)";
-          return (
-            <button
-              type="button"
-              key={i}
-              className={`timeline-block${i === selectedIndex ? " selected" : ""}`}
-              style={{ flexGrow: play, flexBasis: 0, minWidth: `${MIN_BLOCK_PX}px` }}
-              onClick={() => onSelectSegment(i)}
-              title={`${seg.clip || "(파일명 없음)"} · ${seg.in.toFixed(1)}s~${seg.out.toFixed(1)}s · ${seg.speed}배속`}
-            >
-              {i + 1}. {label}
-            </button>
-          );
-        })}
+      <div className="segment-track-scroll">
+        <div className="segment-track">
+          {segments.map((seg, i) => {
+            const play = playbackSeconds(seg);
+            const label = seg.subtitle ? seg.subtitle.slice(0, 12) : seg.clip || "(파일명 없음)";
+            return (
+              <button
+                type="button"
+                key={i}
+                className={`timeline-block${i === selectedIndex ? " selected" : ""}`}
+                style={{ flexGrow: play, flexBasis: 0, minWidth: `${MIN_BLOCK_PX}px` }}
+                onClick={() => onSelectSegment(i)}
+                title={`${seg.clip || "(파일명 없음)"} · ${seg.in.toFixed(1)}s~${seg.out.toFixed(1)}s · ${seg.speed}배속`}
+              >
+                {i + 1}. {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="bgm-track" ref={trackRef}>
