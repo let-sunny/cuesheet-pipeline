@@ -322,6 +322,10 @@ export function FinishingSettings({
         </label>
         {narration?.enabled ? (
           <>
+            <p className="narration-guide">
+              폴더에 음성 파일(mp3/m4a/wav)을 넣고, 각 컷에서 파일을 선택하면 그 컷 시작에
+              맞춰 믹싱됩니다.
+            </p>
             <label className="settings-field">
               <span>폴더</span>
               <input

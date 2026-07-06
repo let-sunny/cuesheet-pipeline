@@ -11,7 +11,15 @@ import { validateCueSheet } from "@cuesheet/schema";
 import { useToast } from "@astryxdesign/core/Toast";
 import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { Button } from "@astryxdesign/core/Button";
-import { fetchCueSheet, fetchMoments, fetchRenderStatus, saveCueSheet, startRender } from "./api.js";
+import {
+  fetchCueSheet,
+  fetchMoments,
+  fetchNarrationFiles,
+  fetchRenderStatus,
+  saveCueSheet,
+  startRender,
+  type NarrationFile,
+} from "./api.js";
 import { buildClipPath, computeClipDurations } from "./clipPaths.js";
 import { VideoPreview } from "./components/VideoPreview.js";
 import type { VideoPreviewHandle } from "./components/VideoPreview.js";
@@ -139,6 +147,10 @@ export function App() {
   // 클립별 길이 근사치(초) — 인트로/아웃트로 지정 버튼(팔레트/인스펙터)의 15초 상한
   // 판정에 쓴다. 실패해도 편집 자체는 막지 않고 빈 맵(전부 "알 수 없음" 취급)으로 둔다.
   const [clipDurations, setClipDurations] = useState<Record<string, number>>({});
+  // narration.dir 안의 오디오 파일 목록(내레이션 사용 중일 때만 갱신). note는
+  // 폴더 미설정/미존재 등 안내 메시지.
+  const [narrationFiles, setNarrationFiles] = useState<NarrationFile[]>([]);
+  const [narrationNote, setNarrationNote] = useState<string | undefined>(undefined);
   const videoPreviewRef = useRef<VideoPreviewHandle>(null);
   const sequencePlayerRef = useRef<SequencePlayerHandle>(null);
   const renderPollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -296,6 +308,34 @@ export function App() {
       }
     })();
   }, []);
+
+  // 내레이션 사용 중일 때만 폴더 안 파일 목록을 갱신한다(dir이 바뀌어도 재조회).
+  useEffect(() => {
+    if (!draft?.narration?.enabled) {
+      setNarrationFiles([]);
+      setNarrationNote(undefined);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const result = await fetchNarrationFiles(draft.narration?.dir);
+        if (cancelled) {
+          return;
+        }
+        setNarrationFiles(result.files);
+        setNarrationNote(result.note);
+      } catch {
+        if (!cancelled) {
+          setNarrationFiles([]);
+          setNarrationNote("내레이션 파일 목록을 불러오지 못했습니다");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [draft?.narration?.enabled, draft?.narration?.dir]);
 
   // dirty일 때 새로고침/탭 닫기 시 브라우저 기본 확인 대화상자를 띄운다.
   useEffect(() => {
@@ -1007,6 +1047,9 @@ export function App() {
                   <SegmentQuickFields
                     segment={selectedSegment}
                     narrationEnabled={draft.narration?.enabled ?? false}
+                    narrationFiles={narrationFiles}
+                    narrationNote={narrationNote}
+                    narrationDir={draft.narration?.dir}
                     onChange={(patch) => updateSegment(selectedIndex, patch)}
                     clipDurationS={selectedSegment ? clipDurations[selectedSegment.clip] : undefined}
                     onSetIntro={() =>

@@ -1334,6 +1334,35 @@ textarea {
   color: #9aa0b4;
 }
 
+.narration-guide {
+  margin: 0 0 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #9aa0b4;
+}
+
+.narration-empty-note {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #8a90a2;
+}
+
+.narration-warning {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #e0a95c;
+}
+
+.quick-fields-narration-preview {
+  padding-top: 8px;
+  border-top: 1px dashed #3a4056;
+}
+
+.quick-fields-narration-preview audio {
+  width: 100%;
+  height: 32px;
+}
+
 .quick-fields-crop button {
   font-size: 12px;
   padding: 3px 10px;

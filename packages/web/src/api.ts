@@ -97,3 +97,32 @@ export async function fetchDraftFrames(clipFolder: string): Promise<string[]> {
   }
   return (await res.json()) as string[];
 }
+
+export interface NarrationFile {
+  name: string;
+  /** ffprobe로 읽은 길이(초). 프로빙 실패 시 null. */
+  durationS: number | null;
+}
+
+export interface NarrationFilesResult {
+  files: NarrationFile[];
+  /** 폴더 미설정/미존재 등 안내 메시지. 정상 목록이면 없음. */
+  note?: string;
+}
+
+/**
+ * dir 안의 오디오 파일 목록(길이 포함)을 가져온다. dir을 넘기면 그 값을 그대로
+ * 쓴다(저장 전 편집 중인 폴더 경로도 즉시 반영하기 위함) — 생략하면 서버가
+ * 디스크에 저장된 큐시트의 narration.dir로 대체한다.
+ */
+export async function fetchNarrationFiles(dir?: string): Promise<NarrationFilesResult> {
+  const query = dir ? `?dir=${encodeURIComponent(dir)}` : "";
+  const res = await fetch(`/api/narration-files${query}`);
+  return (await res.json()) as NarrationFilesResult;
+}
+
+/** 내레이션 파일 미리듣기 스트리밍 URL. dir은 fetchNarrationFiles와 동일한 의미. */
+export function narrationFileUrl(name: string, dir?: string): string {
+  const query = dir ? `?dir=${encodeURIComponent(dir)}` : "";
+  return `/api/narration-files/${encodeURIComponent(name)}${query}`;
+}

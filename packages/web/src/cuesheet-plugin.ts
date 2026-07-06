@@ -189,6 +189,27 @@ const clipMimeTypes: Record<string, string> = {
   ".m4v": "video/x-m4v",
 };
 
+const narrationAudioMimeTypes: Record<string, string> = {
+  ".mp3": "audio/mpeg",
+  ".m4a": "audio/mp4",
+  ".wav": "audio/wav",
+};
+
+/** 큐시트 파일에서 narration.dir을 읽어 절대 경로로 해석한다(상대 경로는 저장소 루트 기준). */
+async function readNarrationDir(cuesheetFilePath: string): Promise<string | null> {
+  try {
+    const raw = await readFile(cuesheetFilePath, "utf8");
+    const cuesheet = JSON.parse(raw) as { narration?: { dir?: unknown } };
+    const dir = cuesheet.narration?.dir;
+    if (typeof dir !== "string" || dir.length === 0) {
+      return null;
+    }
+    return isAbsolute(dir) ? dir : resolve(repoRoot, dir);
+  } catch {
+    return null;
+  }
+}
+
 function readRequestBody(req: IncomingMessage): Promise<string> {
   return new Promise((res, rej) => {
     let body = "";
@@ -577,6 +598,83 @@ export function cuesheetPlugin(): Plugin {
         res.setHeader("Content-Range", `bytes ${start}-${safeEnd}/${total}`);
         res.setHeader("Content-Length", String(safeEnd - start + 1));
         createReadStream(clipPath, { start, end: safeEnd }).pipe(res);
+      });
+
+      // 내레이션 오디오 파일 목록(/api/narration-files) + 미리듣기 스트리밍
+      // (/api/narration-files/<파일명>)을 같은 마운트 경로에서 처리한다. connect가
+      // 마운트 접두사를 벗겨주므로 하위 경로 유무로 두 동작을 구분한다.
+      server.middlewares.use("/api/narration-files", async (req, res) => {
+        if (req.method !== "GET") {
+          res.statusCode = 405;
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.end("허용되지 않는 메서드입니다");
+          return;
+        }
+
+        // dir 쿼리가 있으면 그 값을 우선한다 — 사용자가 아직 저장하지 않고 편집
+        // 중인 폴더 경로도 목록/미리듣기에 즉시 반영되어야 하므로, 디스크에 저장된
+        // 큐시트의 narration.dir(저장 후에만 갱신됨)에만 의존하지 않는다.
+        const [rawUrlPath = "", rawQuery = ""] = (req.url ?? "").split("?");
+        const dirParam = new URLSearchParams(rawQuery).get("dir");
+        const narrationDir =
+          dirParam && dirParam.length > 0
+            ? isAbsolute(dirParam)
+              ? dirParam
+              : resolve(repoRoot, dirParam)
+            : await readNarrationDir(filePath);
+        const rawSub = decodeURIComponent(rawUrlPath.replace(/^\/+/, ""));
+
+        if (rawSub) {
+          // 미리듣기 스트리밍: /api/narration-files/<파일명>
+          if (!narrationDir || rawSub !== basename(rawSub)) {
+            res.statusCode = 404;
+            res.setHeader("Content-Type", "text/plain; charset=utf-8");
+            res.end("파일을 찾을 수 없습니다");
+            return;
+          }
+          const mime = narrationAudioMimeTypes[extname(rawSub).toLowerCase()];
+          const targetPath = resolve(narrationDir, rawSub);
+          if (!mime || !isWithin(narrationDir, targetPath) || !existsSync(targetPath)) {
+            res.statusCode = 404;
+            res.setHeader("Content-Type", "text/plain; charset=utf-8");
+            res.end("파일을 찾을 수 없습니다");
+            return;
+          }
+          const stats = await stat(targetPath);
+          res.setHeader("Content-Type", mime);
+          res.setHeader("Content-Length", String(stats.size));
+          createReadStream(targetPath).pipe(res);
+          return;
+        }
+
+        // 파일 목록: /api/narration-files
+        if (!narrationDir) {
+          sendJson(res, 200, {
+            files: [],
+            note: "내레이션 폴더가 설정되지 않았습니다(내레이션 사용을 켜고 폴더를 지정하세요)",
+          });
+          return;
+        }
+        let entries: string[];
+        try {
+          entries = await readdir(narrationDir);
+        } catch {
+          sendJson(res, 200, {
+            files: [],
+            note: `폴더를 찾을 수 없습니다: ${narrationDir} (폴더를 만들고 오디오 파일을 넣어주세요)`,
+          });
+          return;
+        }
+        const audioNames = entries.filter(
+          (name) => narrationAudioMimeTypes[extname(name).toLowerCase()] !== undefined,
+        );
+        const files = await Promise.all(
+          audioNames.map(async (name) => ({
+            name,
+            durationS: await probeDurationSeconds(resolve(narrationDir, name)),
+          })),
+        );
+        sendJson(res, 200, { files });
       });
 
       // intro/outro는 clipDir와 무관한 독립 파일 경로라 /clips가 아닌 별도 경로로 서빙한다.

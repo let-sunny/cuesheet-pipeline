@@ -1,10 +1,17 @@
 import { Slider } from "@astryxdesign/core/Slider";
 import type { Segment } from "@cuesheet/schema";
 import { INTRO_OUTRO_MAX_DURATION_S } from "../clipPaths.js";
+import { narrationFileUrl, type NarrationFile } from "../api.js";
 
 interface Props {
   segment: Segment | undefined;
   narrationEnabled: boolean;
+  /** narration.dir 안의 오디오 파일 목록(길이 포함). */
+  narrationFiles: NarrationFile[];
+  /** 폴더 미설정/미존재 등 안내 메시지(파일 목록이 비어 있을 때 표시). */
+  narrationNote: string | undefined;
+  /** 미리듣기 스트리밍 URL 구성에 쓰는 현재(저장 전 포함) 내레이션 폴더 경로. */
+  narrationDir: string | undefined;
   onChange: (patch: Partial<Segment>) => void;
   /** 이 컷 원본 클립 파일의 길이 근사치(초). 초벌 하이라이트 데이터에 없는 클립이면 undefined. */
   clipDurationS: number | undefined;
@@ -23,6 +30,9 @@ interface Props {
 export function SegmentQuickFields({
   segment,
   narrationEnabled,
+  narrationFiles,
+  narrationNote,
+  narrationDir,
   onChange,
   clipDurationS,
   onSetIntro,
@@ -32,6 +42,16 @@ export function SegmentQuickFields({
   if (!segment) {
     return null;
   }
+
+  // 이 컷의 실제 출력 길이(배속 적용 후). 선택한 내레이션 파일이 이보다 길면 다음 컷과 겹친다.
+  const outputDurationS = (segment.out - segment.in) / segment.speed;
+  const selectedNarrationFile = segment.narration
+    ? narrationFiles.find((f) => f.name === segment.narration)
+    : undefined;
+  const narrationDurationWarning =
+    selectedNarrationFile?.durationS != null && selectedNarrationFile.durationS > outputDurationS
+      ? `컷보다 ${(selectedNarrationFile.durationS - outputDurationS).toFixed(1)}초 김 - 다음 컷과 겹칩니다`
+      : null;
 
   const tooLongForIntroOutro =
     clipDurationS === undefined || clipDurationS > INTRO_OUTRO_MAX_DURATION_S;
@@ -133,18 +153,37 @@ export function SegmentQuickFields({
         </label>
         {narrationEnabled ? (
           <label className="segment-field wide">
-            <span>narration</span>
-            <input
-              type="text"
+            <span>내레이션</span>
+            <select
               value={segment.narration ?? ""}
-              placeholder="파일명 (없으면 비움)"
               onChange={(e) =>
                 onChange({ narration: e.target.value === "" ? null : e.target.value })
               }
-            />
+            >
+              <option value="">(없음)</option>
+              {narrationFiles.map((f) => (
+                <option key={f.name} value={f.name}>
+                  {f.name}
+                  {f.durationS != null ? ` (${f.durationS.toFixed(1)}s)` : ""}
+                </option>
+              ))}
+            </select>
           </label>
         ) : null}
       </div>
+
+      {narrationEnabled && narrationFiles.length === 0 && narrationNote ? (
+        <p className="narration-empty-note">{narrationNote}</p>
+      ) : null}
+
+      {narrationEnabled && selectedNarrationFile ? (
+        <div className="quick-fields-narration-preview">
+          <audio controls src={narrationFileUrl(selectedNarrationFile.name, narrationDir)} />
+          {narrationDurationWarning ? (
+            <p className="narration-warning">{narrationDurationWarning}</p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="quick-fields-io">
         <span className="quick-fields-io-label">이 컷의 원본 클립 전체를</span>
