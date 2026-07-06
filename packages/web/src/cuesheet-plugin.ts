@@ -1,4 +1,4 @@
-import { readFile, writeFile, stat, mkdir, rename, readdir } from "node:fs/promises";
+import { readFile, writeFile, stat, mkdir, rename, readdir, rm } from "node:fs/promises";
 import { createReadStream, existsSync, watch, type FSWatcher } from "node:fs";
 import { spawn } from "node:child_process";
 import { basename, dirname, extname, isAbsolute, resolve, sep } from "node:path";
@@ -83,6 +83,43 @@ function runFfmpeg(args: string[]): Promise<{ code: number | null; stderr: strin
   });
 }
 
+/** ffprobe로 duration을 읽는다. 실패(파싱 불가/0 이하/프로세스 에러)하면 null. */
+function probeDurationSeconds(path: string): Promise<number | null> {
+  return new Promise((res) => {
+    const proc = spawn(
+      "ffprobe",
+      ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", path],
+      { stdio: ["ignore", "pipe", "pipe"] },
+    );
+    let stdout = "";
+    proc.stdout?.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString("utf8");
+    });
+    proc.on("error", () => res(null));
+    proc.on("exit", (code) => {
+      if (code !== 0) {
+        res(null);
+        return;
+      }
+      const duration = Number(stdout.trim());
+      res(Number.isFinite(duration) && duration > 0 ? duration : null);
+    });
+  });
+}
+
+/** 트랙 데이터 없이 moov만 있는 등 손상된 비디오 파일을 걸러낸다(크기 0 또는 ffprobe duration 무효). */
+async function isValidVideoFile(path: string): Promise<boolean> {
+  try {
+    const s = await stat(path);
+    if (s.size === 0) {
+      return false;
+    }
+  } catch {
+    return false;
+  }
+  return (await probeDurationSeconds(path)) !== null;
+}
+
 const clipMimeTypes: Record<string, string> = {
   ".mp4": "video/mp4",
   ".webm": "video/webm",
@@ -160,7 +197,9 @@ async function generateProxies(clipDir: string, log: (msg: string) => void): Pro
     try {
       const proxyStat = await stat(proxyPath);
       if (proxyStat.mtimeMs >= srcStat.mtimeMs) {
-        needsGenerate = false;
+        // 기존 프록시도 가볍게 무결성 검사 — 이전 실행이 중간에 죽어 moov는 있는데
+        // 트랙 데이터가 없는 등 손상된 파일이면 재생성 큐에 다시 넣는다.
+        needsGenerate = !(await isValidVideoFile(proxyPath));
       }
     } catch {
       // 프록시가 아직 없음 -> 생성 필요
@@ -178,40 +217,55 @@ async function generateProxies(clipDir: string, log: (msg: string) => void): Pro
     const name = basename(target.src);
     proxyQueueState = { pending: targets.slice(i + 1).map((t) => basename(t.src)), generating: name };
     log(`프록시 생성 중 (${i + 1}/${total}): ${name}`);
-    const { code, stderr } = await runFfmpeg([
-      "-y",
-      "-i",
-      target.src,
-      "-vf",
-      "scale=1280:-2",
-      "-c:v",
-      "libx264",
-      "-preset",
-      "veryfast",
-      "-crf",
-      "26",
-      "-g",
-      "30",
-      "-pix_fmt",
-      "yuv420p",
-      "-c:a",
-      "aac",
-      "-b:a",
-      "96k",
-      "-movflags",
-      "+faststart",
-      "-f",
-      "mp4",
-      target.tmpPath,
-    ]);
-    if (code === 0) {
+
+    // 최대 2회 시도: 생성 후(rename 전) ffprobe로 duration을 검증해 손상 파일이면
+    // 지우고 재시도, 두 번째도 손상이면 로그만 남기고 건너뛴다(원본으로 폴백 서빙).
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      const { code, stderr } = await runFfmpeg([
+        "-y",
+        "-i",
+        target.src,
+        "-vf",
+        "scale=1280:-2",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        "26",
+        "-g",
+        "30",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "96k",
+        "-movflags",
+        "+faststart",
+        "-f",
+        "mp4",
+        target.tmpPath,
+      ]);
+      if (code !== 0) {
+        console.error(`프록시 생성 실패, 원본으로 계속 서빙합니다: ${name}\n${stderr.slice(-500)}`);
+        break;
+      }
+      if (!(await isValidVideoFile(target.tmpPath))) {
+        await rm(target.tmpPath, { force: true }).catch(() => {});
+        if (attempt < 2) {
+          console.error(`프록시 생성 결과가 손상됨, 재시도합니다 (${attempt}/2): ${name}`);
+          continue;
+        }
+        console.error(`프록시 생성 결과가 재시도 후에도 손상됨, 건너뜁니다: ${name}`);
+        break;
+      }
       try {
         await rename(target.tmpPath, target.proxyPath);
       } catch (e) {
-        console.error(`프록시 파일 이동 실패: ${basename(target.src)}`, e);
+        console.error(`프록시 파일 이동 실패: ${name}`, e);
       }
-    } else {
-      console.error(`프록시 생성 실패, 원본으로 계속 서빙합니다: ${basename(target.src)}\n${stderr.slice(-500)}`);
+      break;
     }
   }
   proxyQueueState = { pending: [], generating: null };
