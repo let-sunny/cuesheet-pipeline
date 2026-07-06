@@ -1,5 +1,10 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { Theme } from "@astryxdesign/core/theme";
+import { ToastViewport } from "@astryxdesign/core/Toast";
+import { stoneTheme } from "@astryxdesign/theme-stone/built";
+import "@astryxdesign/core/reset.css";
+import "@astryxdesign/theme-stone/theme.css";
 import { App } from "./App.js";
 import "./styles.css";
 
@@ -10,6 +15,10 @@ if (!container) {
 
 createRoot(container).render(
   <StrictMode>
-    <App />
+    <Theme theme={stoneTheme} mode="dark">
+      <ToastViewport position="bottomEnd" maxVisible={3}>
+        <App />
+      </ToastViewport>
+    </Theme>
   </StrictMode>,
 );

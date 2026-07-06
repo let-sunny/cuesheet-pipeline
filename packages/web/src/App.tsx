@@ -8,16 +8,26 @@ import type {
   SubtitleStyle,
 } from "@cuesheet/schema";
 import { validateCueSheet } from "@cuesheet/schema";
+import { useToast } from "@astryxdesign/core/Toast";
+import { Collapsible } from "@astryxdesign/core/Collapsible";
+import { Button } from "@astryxdesign/core/Button";
 import { fetchCueSheet, renderCueSheet, saveCueSheet } from "./api.js";
-import { SegmentEditor } from "./components/SegmentEditor.js";
 import { VideoPreview } from "./components/VideoPreview.js";
 import type { VideoPreviewHandle } from "./components/VideoPreview.js";
-import { ProjectSettings } from "./components/ProjectSettings.js";
 import { BgmEditor } from "./components/BgmEditor.js";
 import { TimelineView } from "./components/TimelineView.js";
 import { MomentPalette } from "./components/MomentPalette.js";
 import { SubtitleWriteMode } from "./components/SubtitleWriteMode.js";
 import { KeyboardHelp } from "./components/KeyboardHelp.js";
+import { HeaderBar } from "./components/HeaderBar.js";
+import { StepNav } from "./components/StepNav.js";
+import type { Step } from "./components/StepNav.js";
+import { MiniTimelineStrip } from "./components/MiniTimelineStrip.js";
+import { CompactSegmentList } from "./components/CompactSegmentList.js";
+import { SegmentQuickFields } from "./components/SegmentQuickFields.js";
+import { IntroOutroEditor } from "./components/IntroOutroEditor.js";
+import { FinishingSettings } from "./components/FinishingSettings.js";
+import { SettingsDialog } from "./components/SettingsDialog.js";
 
 /** ← / → 1회 이동량(1프레임, 30fps 기준). Shift+← / →는 1초. */
 const FRAME_SECONDS = 1 / 30;
@@ -58,9 +68,11 @@ export function App() {
   const [renderState, setRenderState] = useState<RenderState>({ status: "idle" });
   const [externalChangePending, setExternalChangePending] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [mode, setMode] = useState<"edit" | "subtitle">("edit");
+  const [step, setStep] = useState<Step>("compose");
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const videoPreviewRef = useRef<VideoPreviewHandle>(null);
+  const toast = useToast();
 
   const dirty = useMemo(() => {
     if (!draft || !serverCuesheet) {
@@ -118,7 +130,9 @@ export function App() {
 
   // 공통 단축키: 입력 필드(input/textarea)에 포커스된 동안은 무시한다(Tab을 이용한
   // 자막 쓰기 모드 내 이동은 SubtitleWriteMode가 각 textarea에서 자체 처리).
+  // I/O·재생·분할은 VideoPreview가 실제로 떠 있는 ②다듬기/③자막 단계에서만 의미가 있다.
   useEffect(() => {
+    const isVideoStep = step === "trim" || step === "subtitle";
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const isTyping = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA";
@@ -128,6 +142,19 @@ export function App() {
       if (e.key === "?") {
         e.preventDefault();
         setShowShortcuts((v) => !v);
+        return;
+      }
+      if (!isVideoStep) {
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          selectRelative(-1);
+          return;
+        }
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          selectRelative(1);
+          return;
+        }
         return;
       }
       if (e.key === " ") {
@@ -148,8 +175,8 @@ export function App() {
       if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
         e.preventDefault();
         const sign = e.key === "ArrowLeft" ? -1 : 1;
-        const step = e.shiftKey ? 1 : FRAME_SECONDS;
-        videoPreviewRef.current?.seekBy(sign * step);
+        const seekStep = e.shiftKey ? 1 : FRAME_SECONDS;
+        videoPreviewRef.current?.seekBy(sign * seekStep);
         return;
       }
       if (e.key === "ArrowUp") {
@@ -162,7 +189,7 @@ export function App() {
         selectRelative(1);
         return;
       }
-      if (e.key === "Tab" && mode !== "subtitle") {
+      if (e.key === "Tab" && step !== "subtitle") {
         e.preventDefault();
         selectRelative(e.shiftKey ? -1 : 1);
         return;
@@ -175,7 +202,7 @@ export function App() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [mode, selectRelative]);
+  }, [step, selectRelative]);
 
   const handleSave = useCallback(async () => {
     if (!draft) {
@@ -184,6 +211,19 @@ export function App() {
     const localCheck = validateCueSheet(draft);
     if (!localCheck.ok) {
       setSaveState({ status: "error", errors: localCheck.errors });
+      toast({
+        type: "error",
+        body: (
+          <div>
+            저장 실패:
+            <ul>
+              {localCheck.errors.map((err, i) => (
+                <li key={i}>{err}</li>
+              ))}
+            </ul>
+          </div>
+        ),
+      });
       return;
     }
     setSaveState({ status: "saving" });
@@ -193,16 +233,29 @@ export function App() {
         setServerCuesheet(result.data);
         setDraft(result.data);
         setSaveState({ status: "success" });
+        toast({ type: "info", body: "저장되었습니다." });
       } else {
         setSaveState({ status: "error", errors: result.errors });
+        toast({
+          type: "error",
+          body: (
+            <div>
+              저장 실패:
+              <ul>
+                {result.errors.map((err, i) => (
+                  <li key={i}>{err}</li>
+                ))}
+              </ul>
+            </div>
+          ),
+        });
       }
     } catch (e) {
-      setSaveState({
-        status: "error",
-        errors: [e instanceof Error ? e.message : String(e)],
-      });
+      const message = e instanceof Error ? e.message : String(e);
+      setSaveState({ status: "error", errors: [message] });
+      toast({ type: "error", body: `저장 실패: ${message}` });
     }
-  }, [draft]);
+  }, [draft, toast]);
 
   const handleReload = useCallback(() => {
     void load();
@@ -214,16 +267,17 @@ export function App() {
       const result = await renderCueSheet();
       if (result.ok) {
         setRenderState({ status: "success", path: result.path });
+        toast({ type: "info", body: "렌더가 완료되었습니다." });
       } else {
         setRenderState({ status: "error", error: result.error });
+        toast({ type: "error", body: `렌더 실패: ${result.error}` });
       }
     } catch (e) {
-      setRenderState({
-        status: "error",
-        error: e instanceof Error ? e.message : String(e),
-      });
+      const message = e instanceof Error ? e.message : String(e);
+      setRenderState({ status: "error", error: message });
+      toast({ type: "error", body: `렌더 실패: ${message}` });
     }
-  }, []);
+  }, [toast]);
 
   const updateProject = useCallback((patch: Partial<Project>) => {
     setDraft((prev) => (prev ? { ...prev, project: { ...prev.project, ...patch } } : prev));
@@ -247,6 +301,10 @@ export function App() {
     setDraft((prev) =>
       prev ? { ...prev, subtitleStyle: { ...prev.subtitleStyle, ...patch } } : prev,
     );
+  }, []);
+
+  const updateIntroOutro = useCallback((patch: { intro?: string | null; outro?: string | null }) => {
+    setDraft((prev) => (prev ? { ...prev, ...patch } : prev));
   }, []);
 
   const updateSegment = useCallback((i: number, patch: Partial<Segment>) => {
@@ -367,44 +425,20 @@ export function App() {
   }
 
   const selectedSegment = draft.segments[selectedIndex];
+  const subtitleFilled = draft.segments.filter((s) => s.subtitle.trim() !== "").length;
 
   return (
     <div className="app">
-      <div className="header-row">
-        <h1>큐시트 에디터</h1>
-        <div className="save-row">
-          {dirty ? <span className="dirty-badge">저장 안 됨</span> : null}
-          <button type="button" onClick={() => void handleSave()} disabled={saveState.status === "saving"}>
-            {saveState.status === "saving" ? "저장 중…" : "저장"}
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleRender()}
-            disabled={dirty || renderState.status === "rendering"}
-          >
-            {renderState.status === "rendering" ? "렌더 중…" : "렌더"}
-          </button>
-        </div>
-      </div>
-
-      {dirty ? (
-        <div className="banner">저장 후 렌더할 수 있습니다.</div>
-      ) : null}
-
-      {renderState.status === "success" ? (
-        <div className="banner success">
-          렌더 완료.{" "}
-          <a href={`/${renderState.path}`} download>
-            {renderState.path} 다운로드
-          </a>
-        </div>
-      ) : null}
-      {renderState.status === "error" ? (
-        <div className="banner error">
-          렌더 실패:
-          <pre>{renderState.error}</pre>
-        </div>
-      ) : null}
+      <HeaderBar
+        projectName={draft.project.name}
+        dirty={dirty}
+        saving={saveState.status === "saving"}
+        rendering={renderState.status === "rendering"}
+        renderDisabled={dirty || renderState.status === "rendering"}
+        onSave={() => void handleSave()}
+        onRender={() => void handleRender()}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
 
       {externalChangePending ? (
         <div className="banner">
@@ -415,84 +449,122 @@ export function App() {
         </div>
       ) : null}
 
-      {saveState.status === "success" ? (
-        <div className="banner success">저장되었습니다.</div>
-      ) : null}
-      {saveState.status === "error" ? (
-        <div className="banner error">
-          저장 실패:
-          <ul>
-            {saveState.errors.map((err, i) => (
-              <li key={i}>{err}</li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      <ProjectSettings
-        project={draft.project}
-        subtitleStyle={draft.subtitleStyle}
-        narration={draft.narration}
-        onProjectChange={updateProject}
-        onSubtitleStyleChange={updateSubtitleStyle}
-        onNarrationChange={updateNarration}
+      <StepNav
+        step={step}
+        onChange={setStep}
+        segmentCount={draft.segments.length}
+        subtitleFilled={subtitleFilled}
+        subtitleTotal={draft.segments.length}
       />
 
-      <div className="section-header">
-        <h2>세그먼트</h2>
-        <button
-          type="button"
-          className={mode === "subtitle" ? "active" : ""}
-          onClick={() => setMode((m) => (m === "subtitle" ? "edit" : "subtitle"))}
-        >
-          {mode === "subtitle" ? "자막 쓰기 모드 끄기" : "자막 쓰기 모드"}
-        </button>
-      </div>
-      <div className="segment-layout">
-        {mode === "subtitle" ? (
-          <SubtitleWriteMode
-            segments={draft.segments}
-            selectedIndex={selectedIndex}
-            onSelect={setSelectedIndex}
-            onChangeSubtitle={(i, subtitle) => updateSegment(i, { subtitle })}
-            narrationEnabled={draft.narration?.enabled ?? false}
-          />
-        ) : (
-          <SegmentEditor
-            segments={draft.segments}
-            selectedIndex={selectedIndex}
-            onSelect={setSelectedIndex}
-            onChange={updateSegment}
-            onAdd={addSegment}
-            onRemove={removeSegment}
-            onMove={moveSegment}
-            narrationEnabled={draft.narration?.enabled ?? false}
-          />
-        )}
-        <VideoPreview
-          ref={videoPreviewRef}
-          segment={selectedSegment}
-          selectedIndex={selectedIndex}
-          onChange={(patch) => updateSegment(selectedIndex, patch)}
-          onSplit={(at) => splitSegment(selectedIndex, at)}
-          autoPlay={mode === "subtitle"}
-        />
-      </div>
-
-      <h2>타임라인</h2>
-      <TimelineView
+      <MiniTimelineStrip
         segments={draft.segments}
-        bgm={draft.bgm}
         selectedIndex={selectedIndex}
-        onSelectSegment={setSelectedIndex}
-        onChangeBgm={updateBgm}
+        onSelect={setSelectedIndex}
       />
 
-      <h2>순간 팔레트</h2>
-      <MomentPalette segments={draft.segments} onAddSegment={addMomentSegment} />
+      <div className="step-body">
+        {step === "compose" ? (
+          <MomentPalette segments={draft.segments} onAddSegment={addMomentSegment} />
+        ) : null}
 
-      <h2>BGM</h2>
-      <BgmEditor bgm={draft.bgm} onChange={updateBgm} onAdd={addBgm} onRemove={removeBgm} />
+        {step === "trim" ? (
+          <div className="trim-layout">
+            <CompactSegmentList
+              segments={draft.segments}
+              selectedIndex={selectedIndex}
+              onSelect={setSelectedIndex}
+              onAdd={addSegment}
+              onRemove={removeSegment}
+              onMove={moveSegment}
+            />
+            <div className="trim-main">
+              <VideoPreview
+                ref={videoPreviewRef}
+                segment={selectedSegment}
+                selectedIndex={selectedIndex}
+                onChange={(patch) => updateSegment(selectedIndex, patch)}
+                onSplit={(at) => splitSegment(selectedIndex, at)}
+                autoPlay={false}
+              />
+              <SegmentQuickFields
+                segment={selectedSegment}
+                narrationEnabled={draft.narration?.enabled ?? false}
+                onChange={(patch) => updateSegment(selectedIndex, patch)}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {step === "subtitle" ? (
+          <div className="subtitle-layout">
+            <SubtitleWriteMode
+              segments={draft.segments}
+              selectedIndex={selectedIndex}
+              onSelect={setSelectedIndex}
+              onChangeSubtitle={(i, subtitle) => updateSegment(i, { subtitle })}
+              narrationEnabled={draft.narration?.enabled ?? false}
+            />
+            <VideoPreview
+              ref={videoPreviewRef}
+              segment={selectedSegment}
+              selectedIndex={selectedIndex}
+              onChange={(patch) => updateSegment(selectedIndex, patch)}
+              onSplit={(at) => splitSegment(selectedIndex, at)}
+              autoPlay
+            />
+          </div>
+        ) : null}
+
+        {step === "finish" ? (
+          <div className="finish-layout">
+            <IntroOutroEditor intro={draft.intro} outro={draft.outro} onChange={updateIntroOutro} />
+
+            <div>
+              <h3>타임라인 · BGM</h3>
+              <TimelineView
+                segments={draft.segments}
+                bgm={draft.bgm}
+                selectedIndex={selectedIndex}
+                onSelectSegment={setSelectedIndex}
+                onChangeBgm={updateBgm}
+              />
+              <Collapsible trigger="BGM 큐 편집" defaultIsOpen={false}>
+                <BgmEditor bgm={draft.bgm} onChange={updateBgm} onAdd={addBgm} onRemove={removeBgm} />
+              </Collapsible>
+            </div>
+
+            <FinishingSettings
+              subtitleStyle={draft.subtitleStyle}
+              narration={draft.narration}
+              onSubtitleStyleChange={updateSubtitleStyle}
+              onNarrationChange={updateNarration}
+            />
+
+            <div className="render-cta">
+              <Button
+                label={renderState.status === "rendering" ? "렌더 중…" : "렌더"}
+                variant="primary"
+                size="lg"
+                isDisabled={dirty || renderState.status === "rendering"}
+                onClick={() => void handleRender()}
+              />
+              {renderState.status === "success" ? (
+                <a href={`/${renderState.path}`} download>
+                  {renderState.path} 다운로드
+                </a>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      <SettingsDialog
+        isOpen={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        project={draft.project}
+        onProjectChange={updateProject}
+      />
 
       <KeyboardHelp visible={showShortcuts} onToggle={() => setShowShortcuts((v) => !v)} />
     </div>

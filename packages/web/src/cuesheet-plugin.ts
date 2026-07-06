@@ -1,7 +1,7 @@
 import { readFile, writeFile, stat, mkdir, rename, readdir } from "node:fs/promises";
 import { createReadStream, existsSync, watch, type FSWatcher } from "node:fs";
 import { spawn } from "node:child_process";
-import { basename, dirname, extname, resolve, sep } from "node:path";
+import { basename, dirname, extname, isAbsolute, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
@@ -319,6 +319,65 @@ export function cuesheetPlugin(): Plugin {
         res.setHeader("Content-Range", `bytes ${start}-${safeEnd}/${total}`);
         res.setHeader("Content-Length", String(safeEnd - start + 1));
         createReadStream(clipPath, { start, end: safeEnd }).pipe(res);
+      });
+
+      // intro/outro는 clipDir와 무관한 독립 파일 경로라 /clips가 아닌 별도 경로로 서빙한다.
+      // 상대 경로면 저장소 루트 기준으로 해석한다. 읽기 전용 GET만 허용.
+      server.middlewares.use("/api/local-video", async (req, res) => {
+        if (req.method !== "GET") {
+          res.statusCode = 405;
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.end("허용되지 않는 메서드입니다");
+          return;
+        }
+        const rawQuery = (req.url ?? "").split("?")[1] ?? "";
+        const requestedPath = new URLSearchParams(rawQuery).get("path");
+        if (!requestedPath) {
+          res.statusCode = 400;
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.end("path 쿼리가 필요합니다");
+          return;
+        }
+        const mime = clipMimeTypes[extname(requestedPath).toLowerCase()];
+        const targetPath = isAbsolute(requestedPath) ? requestedPath : resolve(repoRoot, requestedPath);
+        if (!mime || !existsSync(targetPath)) {
+          res.statusCode = 404;
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.end("파일을 찾을 수 없습니다");
+          return;
+        }
+
+        res.setHeader("Content-Type", mime);
+        res.setHeader("Accept-Ranges", "bytes");
+
+        const stats = await stat(targetPath);
+        const total = stats.size;
+
+        const rangeHeader = req.headers.range;
+        if (!rangeHeader) {
+          res.statusCode = 200;
+          res.setHeader("Content-Length", String(total));
+          createReadStream(targetPath).pipe(res);
+          return;
+        }
+
+        const firstRange = rangeHeader.replace(/^bytes=/, "").split(",")[0] ?? "";
+        const [startStr, endStr] = firstRange.split("-");
+        const start = startStr ? parseInt(startStr, 10) : 0;
+        const end = endStr ? parseInt(endStr, 10) : total - 1;
+
+        if (Number.isNaN(start) || Number.isNaN(end) || start > end || start >= total) {
+          res.statusCode = 416;
+          res.setHeader("Content-Range", `bytes */${total}`);
+          res.end();
+          return;
+        }
+
+        const safeEnd = Math.min(end, total - 1);
+        res.statusCode = 206;
+        res.setHeader("Content-Range", `bytes ${start}-${safeEnd}/${total}`);
+        res.setHeader("Content-Length", String(safeEnd - start + 1));
+        createReadStream(targetPath, { start, end: safeEnd }).pipe(res);
       });
 
       server.middlewares.use("/api/render", async (req, res) => {

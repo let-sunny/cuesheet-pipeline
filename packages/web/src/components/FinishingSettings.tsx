@@ -1,74 +1,21 @@
-import type { NarrationConfig, Project, SubtitleStyle } from "@cuesheet/schema";
+import type { NarrationConfig, SubtitleStyle } from "@cuesheet/schema";
 
 interface Props {
-  project: Project;
   subtitleStyle: SubtitleStyle;
   narration: NarrationConfig | undefined;
-  onProjectChange: (patch: Partial<Project>) => void;
   onSubtitleStyleChange: (patch: Partial<SubtitleStyle>) => void;
   onNarrationChange: (patch: Partial<NarrationConfig>) => void;
 }
 
-export function ProjectSettings({
-  project,
+/** 마무리 단계(④)의 자막 스타일 + 내레이션 폼. 프로젝트 메타(이름/fps/해상도)는 헤더 설정 다이얼로그로 분리됨. */
+export function FinishingSettings({
   subtitleStyle,
   narration,
-  onProjectChange,
   onSubtitleStyleChange,
   onNarrationChange,
 }: Props) {
   return (
     <div className="settings">
-      <div className="settings-group">
-        <h3>프로젝트</h3>
-        <label className="settings-field">
-          <span>이름</span>
-          <input
-            type="text"
-            value={project.name}
-            onChange={(e) => onProjectChange({ name: e.target.value })}
-          />
-        </label>
-        <label className="settings-field">
-          <span>FPS</span>
-          <input
-            type="number"
-            value={project.fps}
-            min={1}
-            onChange={(e) => {
-              const v = e.target.valueAsNumber;
-              onProjectChange({ fps: Number.isNaN(v) ? 0 : v });
-            }}
-          />
-        </label>
-        <label className="settings-field">
-          <span>너비</span>
-          <input
-            type="number"
-            value={project.width}
-            min={1}
-            step={1}
-            onChange={(e) => {
-              const v = e.target.valueAsNumber;
-              onProjectChange({ width: Number.isNaN(v) ? 0 : v });
-            }}
-          />
-        </label>
-        <label className="settings-field">
-          <span>높이</span>
-          <input
-            type="number"
-            value={project.height}
-            min={1}
-            step={1}
-            onChange={(e) => {
-              const v = e.target.valueAsNumber;
-              onProjectChange({ height: Number.isNaN(v) ? 0 : v });
-            }}
-          />
-        </label>
-      </div>
-
       <div className="settings-group">
         <h3>자막 스타일</h3>
         <label className="settings-field">

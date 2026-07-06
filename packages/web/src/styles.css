@@ -7,6 +7,7 @@ body {
   margin: 0;
   background: #12141a;
   color: #e6e8ee;
+  font-size: 15px;
 }
 
 .app {
@@ -37,7 +38,7 @@ body {
 }
 
 .project .field .label {
-  font-size: 11px;
+  font-size: 13px;
   color: #8a90a2;
 }
 
@@ -81,14 +82,14 @@ body {
 }
 
 .segment .meta {
-  font-size: 11px;
+  font-size: 13px;
   color: #9aa0b4;
   margin-top: 4px;
 }
 
 .segment .subtitle {
   margin-top: 8px;
-  font-size: 12px;
+  font-size: 13px;
   color: #cfd3e0;
   border-top: 1px dashed #3a4056;
   padding-top: 6px;
@@ -181,7 +182,7 @@ textarea {
 }
 
 .dirty-badge {
-  font-size: 12px;
+  font-size: 13px;
   color: #f0a34a;
   border: 1px solid #f0a34a55;
   border-radius: 4px;
@@ -224,7 +225,7 @@ textarea {
   word-break: break-word;
   max-height: 240px;
   overflow-y: auto;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .settings {
@@ -304,7 +305,7 @@ textarea {
 }
 
 .segment-row-index {
-  font-size: 12px;
+  font-size: 13px;
   color: #8a90a2;
   width: 18px;
 }
@@ -313,7 +314,7 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 11px;
+  font-size: 13px;
   color: #8a90a2;
 }
 
@@ -426,7 +427,7 @@ textarea {
 }
 
 .time-readout {
-  font-size: 12px;
+  font-size: 13px;
   color: #9aa0b4;
 }
 
@@ -447,7 +448,7 @@ textarea {
 }
 
 .notice {
-  font-size: 12px;
+  font-size: 13px;
   color: #f0a34a;
 }
 
@@ -468,7 +469,7 @@ textarea {
   position: absolute;
   top: 0;
   transform: translateX(-50%);
-  font-size: 10px;
+  font-size: 13px;
   color: #6d7286;
   white-space: nowrap;
 }
@@ -487,7 +488,7 @@ textarea {
   border: 1px solid #33394d;
   border-radius: 4px;
   font: inherit;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.3;
   color: inherit;
   text-align: left;
@@ -545,7 +546,7 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: 13px;
   padding: 0 6px;
   pointer-events: none;
 }
@@ -613,7 +614,7 @@ textarea {
 }
 
 .moment-filters button {
-  font-size: 12px;
+  font-size: 13px;
   padding: 4px 10px;
 }
 
@@ -667,7 +668,7 @@ textarea {
   position: absolute;
   top: 4px;
   left: 4px;
-  font-size: 11px;
+  font-size: 13px;
   padding: 1px 5px;
   background: #00000099;
   border-radius: 3px;
@@ -677,7 +678,7 @@ textarea {
   position: absolute;
   top: 4px;
   right: 4px;
-  font-size: 10px;
+  font-size: 13px;
   padding: 1px 5px;
   background: #d95757cc;
   border-radius: 3px;
@@ -688,13 +689,13 @@ textarea {
   align-items: center;
   justify-content: space-between;
   padding: 6px 8px 0;
-  font-size: 11px;
+  font-size: 13px;
   color: #9aa0b4;
 }
 
 .moment-memo {
   padding: 4px 8px 8px;
-  font-size: 11px;
+  font-size: 13px;
   color: #cfd3e0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -711,7 +712,7 @@ textarea {
 .category-tag {
   padding: 1px 6px;
   border-radius: 3px;
-  font-size: 10px;
+  font-size: 13px;
   white-space: nowrap;
 }
 
@@ -806,7 +807,7 @@ textarea {
   align-items: center;
   gap: 10px;
   margin-bottom: 6px;
-  font-size: 12px;
+  font-size: 13px;
   color: #8a90a2;
 }
 
@@ -838,7 +839,7 @@ textarea {
 }
 
 .keyboard-help-toggle {
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .keyboard-help-list {
@@ -848,7 +849,7 @@ textarea {
   background: #1b1e28;
   border: 1px solid #33394d;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 13px;
   max-width: 280px;
 }
 
@@ -867,4 +868,217 @@ textarea {
   border-radius: 3px;
   padding: 1px 5px;
   white-space: nowrap;
+}
+
+/* ---- 편집 여정 4단계 셸 ---- */
+
+.header-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.step-body {
+  margin-top: 16px;
+}
+
+/* 항상 표시되는 얇은 타임라인 스트립 */
+.mini-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: #1b1e28;
+  border-radius: 8px;
+}
+
+.mini-strip-track {
+  flex: 1 1 auto;
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mini-strip-block {
+  height: 20px;
+  padding: 0;
+  background: #232838;
+  border: 1px solid #33394d;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.mini-strip-block.selected {
+  border-color: #5b7cfa;
+  background: #262e46;
+}
+
+.mini-strip-total {
+  flex: 0 0 auto;
+  font-size: 13px;
+  color: #9aa0b4;
+}
+
+/* ② 다듬기 단계 */
+
+.trim-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.compact-list {
+  flex: 0 0 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.compact-list-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: #1b1e28;
+  border: 1px solid #292f40;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.compact-list-row.selected {
+  border-color: #5b7cfa;
+  background: #1e2436;
+}
+
+.compact-list-index {
+  flex: 0 0 auto;
+  width: 20px;
+  font-size: 13px;
+  color: #8a90a2;
+}
+
+.compact-list-clip {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.compact-list-time {
+  flex: 0 0 auto;
+  font-size: 13px;
+  color: #9aa0b4;
+  white-space: nowrap;
+}
+
+.compact-list-subtitle-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid #5b7cfa;
+  background: transparent;
+}
+
+.compact-list-subtitle-dot.filled {
+  background: #5b7cfa;
+}
+
+.compact-list-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 4px;
+}
+
+.compact-list-actions button {
+  padding: 2px 8px;
+}
+
+.trim-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quick-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #1b1e28;
+  border-radius: 8px;
+}
+
+.quick-fields-primary {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.quick-fields-secondary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed #3a4056;
+}
+
+/* ③ 자막 단계 */
+
+.subtitle-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+/* ④ 마무리 단계 */
+
+.finish-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.finish-layout h3 {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8a90a2;
+  margin: 0 0 12px;
+}
+
+.intro-outro-editor {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.intro-outro-preview {
+  width: 100%;
+  max-width: 360px;
+  margin-top: 10px;
+  border-radius: 4px;
+  background: black;
+  display: block;
+}
+
+.settings-field.wide-input {
+  flex: 1 1 320px;
+}
+
+.settings-field.wide-input input {
+  width: 100%;
+}
+
+.render-cta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
