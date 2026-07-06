@@ -128,12 +128,16 @@ pnpm --filter @cuesheet/schema test
 목표를 던지면 끝까지 완주하는 `/goal` 커스텀 커맨드를 둔다. 모델 역할 분리:
 
 ```
-  두뇌 (Fable)  ──지시──▶  실행자
-  /goal 커맨드              builder(Sonnet): 구현
-  계획·분해·통합·검증        scout(Haiku): 탐색·기계적 작업
+  두뇌 (Opus 기본)  ──지시──▶  실행자
+  /goal 커맨드                builder(Sonnet): 구현
+  계획·분해·통합·검증          scout(Haiku): 탐색·기계적 작업
+  (설계 결정은 Fable 에스컬레이션)
 ```
 
-- `.claude/commands/goal.md` — 두뇌. `model: claude-fable-5`로 고정. 계획·분해·위임·검증·보고만.
+- `.claude/commands/goal.md` — 두뇌. 기본 `model: claude-opus-4-8`. 계획·분해·위임·검증·보고만.
+  **티어링 규약(2026-07-06)**: 일상 오케스트레이션은 Opus, 방향이 갈리는 설계 결정·상충
+  리서치 조합·전제 오류 감지는 Fable로 에스컬레이션. 토큰 대부분은 서브에이전트가 쓰므로
+  두뇌 모델은 판단 품질 기준으로만 선택.
 - `.claude/agents/builder.md` — 구현 실행자(Sonnet).
 - `.claude/agents/scout.md` — 탐색 실행자(Haiku).
 - 스펙은 `docs/goals/<슬러그>.md`에 "한 판 정리"로 남긴다.
