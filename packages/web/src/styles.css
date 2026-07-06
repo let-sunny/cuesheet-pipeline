@@ -253,6 +253,11 @@ textarea {
   border-radius: 8px;
 }
 
+/* 자막 스타일 패널은 큰 프레임 미리보기를 담으므로 더 넓게 자란다. */
+.settings-group-wide {
+  flex: 2 1 480px;
+}
+
 .settings-group h3 {
   margin: 0 0 12px;
   font-size: 13px;
@@ -312,9 +317,15 @@ textarea {
   margin-top: 12px;
 }
 
+/*
+ * 프레임 전체를 project 화면비 그대로 보여주는 미리보기 박스. container-type:
+ * inline-size로 컨테이너 쿼리 컨텍스트를 열어, 안쪽 텍스트가 cqw 단위로
+ * "박스의 실제 렌더 폭 대비 %"를 쓸 수 있게 한다 — 박스가 반응형으로
+ * 축소되어도 project 대비 비율이 항상 정확히 유지된다.
+ */
 .subtitle-style-preview-stage {
   position: relative;
-  width: 100%;
+  container-type: inline-size;
   background: #0c0e14 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Crect width='16' height='16' fill='%23161925'/%3E%3C/svg%3E");
   border-radius: 6px;
   box-sizing: border-box;
@@ -323,16 +334,10 @@ textarea {
 
 .subtitle-style-preview-bg {
   position: absolute;
-  left: 0;
-  width: 100%;
-  height: auto;
-  max-width: none;
-}
-
-.subtitle-style-preview-dim {
-  position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .subtitle-style-preview-text {

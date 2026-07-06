@@ -5,7 +5,9 @@ import type { NarrationConfig, SubtitleBackground, SubtitleStyle } from "@cueshe
 interface Props {
   subtitleStyle: SubtitleStyle;
   narration: NarrationConfig | undefined;
-  /** 미리보기 크기를 실제 렌더 해상도 대비 비율로 근사하기 위한 project.height. */
+  /** 미리보기 화면비 + 비례 스케일 계산 기준이 되는 project.width. */
+  projectWidth: number;
+  /** 미리보기 화면비 계산 기준이 되는 project.height. */
   projectHeight: number;
   /** 미리보기 배경으로 쓸 실제 영상 프레임(첫 세그먼트 클립/시각). 없으면 그라데이션 폴백. */
   previewClip: { clip: string; t: number } | undefined;
@@ -13,16 +15,21 @@ interface Props {
   onNarrationChange: (patch: Partial<NarrationConfig>) => void;
 }
 
+/** 미리보기 박스의 목표 폭(px) — CSS에서 `min(이 값, 100%)`로 좁은 화면에서도 반응형 축소. */
+const PREVIEW_TARGET_WIDTH_PX = 680;
+/** 미리보기 배경 썸네일 요청 폭(px) — 목표 폭보다 여유 있게 커서 확대해도 선명하도록. */
+const PREVIEW_THUMB_WIDTH = 960;
+
 /**
- * "project.height가 이 px로 렌더된다"고 가정했을 때의 가상 전체 프레임 높이.
- * 실제 프레임 전체를 보여주는 대신 이 스케일로 계산한 자막 영역만 잘라 보여줘서
- * (PREVIEW_SLICE_RATIO) 자막 텍스트가 에디터에서 실제 읽히는 크기로 보이게 한다.
+ * project 픽셀 단위 값(폰트 크기·여백·외곽선 두께 등)을 미리보기 박스 폭 기준
+ * cqw(container query width) 단위 문자열로 바꾼다. 미리보기 박스에 `container-type:
+ * inline-size`가 걸려 있어 1cqw = 박스의 실제 렌더 폭의 1% — 즉 박스가 어떤 크기로
+ * 렌더되든(반응형 축소 포함) "project.width 대비 몇 %인가"라는 진짜 비율이 항상
+ * 그대로 유지된다. 슬라이스 확대 없이 프레임 전체 + 정확한 사이즈감을 동시에 만족.
  */
-const FULL_FRAME_HEIGHT_PX = 640;
-/** 잘라 보여줄 세로 슬라이스 비율(자막이 놓이는 상/중/하 영역). */
-const PREVIEW_SLICE_RATIO = 0.35;
-/** 미리보기 배경 썸네일 요청 폭(px) — 기본 160px 세그먼트 썸네일보다 훨씬 크게. */
-const PREVIEW_THUMB_WIDTH = 640;
+function toCqw(px: number, projectWidth: number): string {
+  return `${(px / Math.max(1, projectWidth)) * 100}cqw`;
+}
 
 const DEFAULT_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75, padding: 8 };
 
@@ -52,17 +59,17 @@ function hexToRgba(hex: string, opacity: number): string {
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
-/** drawtext 재현이 아니라 대략적인 외곽선 미리보기용 텍스트 그림자. */
-function outlineShadow(color: string, width: number): string | undefined {
+/** drawtext 재현이 아니라 대략적인 외곽선 미리보기용 텍스트 그림자. width는 CSS 길이 문자열(cqw 등). */
+function outlineShadow(color: string, width: number, widthCss: string): string | undefined {
   if (width <= 0) {
     return undefined;
   }
-  const w = width;
+  const w = widthCss;
   return [
-    `-${w}px -${w}px 0 ${color}`,
-    `${w}px -${w}px 0 ${color}`,
-    `-${w}px ${w}px 0 ${color}`,
-    `${w}px ${w}px 0 ${color}`,
+    `-${w} -${w} 0 ${color}`,
+    `${w} -${w} 0 ${color}`,
+    `-${w} ${w} 0 ${color}`,
+    `${w} ${w} 0 ${color}`,
   ].join(", ");
 }
 
@@ -70,6 +77,7 @@ function outlineShadow(color: string, width: number): string | undefined {
 export function FinishingSettings({
   subtitleStyle,
   narration,
+  projectWidth,
   projectHeight,
   previewClip,
   onSubtitleStyleChange,
@@ -83,24 +91,13 @@ export function FinishingSettings({
     setThumbFailed(false);
   }, [previewClip?.clip, previewClip?.t]);
 
-  // FULL_FRAME_HEIGHT_PX을 "전체 프레임이 이 높이로 보인다"고 가정한 스케일 —
-  // 기존(220px 전체 프레임 축소판)보다 훨씬 크게 잡아, 잘라낸 자막 영역 안에서
-  // 텍스트가 실제로 읽히는 크기가 되게 한다.
-  const scale = FULL_FRAME_HEIGHT_PX / Math.max(1, projectHeight);
-  const previewBoxHeightPx = Math.round(FULL_FRAME_HEIGHT_PX * PREVIEW_SLICE_RATIO);
-  const previewFontSize = Math.max(8, subtitleStyle.size * scale);
-  const previewOutlineWidth = subtitleStyle.outlineWidth * scale;
-  const previewMargin = margin * scale;
-
-  // 배경 이미지(프록시 시크 추출 프레임)는 전체 프레임 폭 기준으로 요청하고,
-  // object-position으로 top/center/bottom 슬라이스만 드러낸다 — 이미지 자체는
-  // 원본 화면비를 유지하므로 폭만 맞추면(100% width, height auto) 세로 크롭이 된다.
-  const previewBgStyle: CSSProperties =
-    subtitleStyle.position === "top"
-      ? { top: 0 }
-      : subtitleStyle.position === "bottom"
-        ? { bottom: 0 }
-        : { top: "50%", transform: "translateY(-50%)" };
+  // 프레임 전체를 project 화면비 그대로 보여주고, 폰트/외곽선/여백은 전부
+  // cqw(미리보기 박스 실제 렌더 폭 대비 %)로 환산 — 박스 크기가 바뀌어도
+  // "project.width 대비 몇 %인가"라는 진짜 비율이 항상 유지된다.
+  const previewFontSize = toCqw(subtitleStyle.size, projectWidth);
+  const previewOutlineWidth = toCqw(subtitleStyle.outlineWidth, projectWidth);
+  const previewOutlineWidthPx = subtitleStyle.outlineWidth;
+  const previewMargin = toCqw(margin, projectWidth);
 
   const previewTextStyle: CSSProperties =
     subtitleStyle.position === "top"
@@ -124,7 +121,7 @@ export function FinishingSettings({
 
   return (
     <div className="settings">
-      <div className="settings-group">
+      <div className="settings-group settings-group-wide">
         <h3>자막 스타일</h3>
         <label className="settings-field">
           <span>폰트</span>
@@ -276,35 +273,39 @@ export function FinishingSettings({
         ) : null}
 
         <div className="subtitle-style-preview">
-          <div className="subtitle-style-preview-stage" style={{ height: previewBoxHeightPx }}>
+          <div
+            className="subtitle-style-preview-stage"
+            style={{
+              width: `min(${PREVIEW_TARGET_WIDTH_PX}px, 100%)`,
+              aspectRatio: `${projectWidth} / ${projectHeight}`,
+            }}
+          >
             {thumbUrl && !thumbFailed ? (
               <img
                 key={thumbUrl}
                 src={thumbUrl}
                 alt=""
                 className="subtitle-style-preview-bg"
-                style={previewBgStyle}
                 onError={() => setThumbFailed(true)}
               />
             ) : null}
-            <div className="subtitle-style-preview-dim" />
             <span
               className="subtitle-style-preview-text"
               style={{
                 ...previewTextStyle,
                 fontFamily: subtitleStyle.font,
-                fontSize: `${previewFontSize}px`,
+                fontSize: previewFontSize,
                 color: subtitleStyle.color,
-                textShadow: outlineShadow(subtitleStyle.outlineColor, previewOutlineWidth),
+                textShadow: outlineShadow(subtitleStyle.outlineColor, previewOutlineWidthPx, previewOutlineWidth),
                 background: background ? hexToRgba(background.color, background.opacity) : undefined,
-                padding: background ? `${background.padding * scale}px` : undefined,
+                padding: background ? toCqw(background.padding, projectWidth) : undefined,
               }}
             >
               자막 미리보기 문구는 이렇게 보여요
             </span>
           </div>
           <p className="subtitle-style-preview-note">
-            자막이 놓이는 영역만 확대해 보여줍니다 — 픽셀 단위까지 정확하지는 않습니다.
+            실제 출력 {projectWidth}x{projectHeight} 기준 비례 표시
           </p>
         </div>
       </div>
