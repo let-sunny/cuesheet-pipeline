@@ -8,8 +8,9 @@ interface Props {
 }
 
 /**
- * 다듬기 단계(②) 우측: 배속/볼륨 입력이 주고, clip 파일명·내레이션·in/out
- * 숫자 입력은 보조로 축소되어 있다(핸들 드래그가 주된 트림 방법).
+ * 편집 단계(②) 우측 인스펙터: 자막 textarea가 주고(트리밍하면서 그 컷 자막을
+ * 바로 고침), 배속/볼륨 입력이 그다음, clip 파일명·내레이션·in/out 숫자 입력은
+ * 보조로 축소되어 있다(핸들 드래그가 주된 트림 방법).
  */
 export function SegmentQuickFields({ segment, narrationEnabled, onChange }: Props) {
   if (!segment) {
@@ -18,6 +19,16 @@ export function SegmentQuickFields({ segment, narrationEnabled, onChange }: Prop
 
   return (
     <div className="quick-fields">
+      <label className="quick-fields-subtitle">
+        <span>자막</span>
+        <textarea
+          value={segment.subtitle}
+          rows={2}
+          placeholder="자막을 입력하세요"
+          onChange={(e) => onChange({ subtitle: e.target.value })}
+        />
+      </label>
+
       <div className="quick-fields-primary">
         <label className="settings-field">
           <span>배속</span>

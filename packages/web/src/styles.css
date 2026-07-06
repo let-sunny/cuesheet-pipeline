@@ -712,7 +712,11 @@ textarea {
   position: absolute;
   top: 4px;
   left: 4px;
-  font-size: 13px;
+  max-width: calc(100% - 8px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
   padding: 1px 5px;
   background: #00000099;
   border-radius: 3px;
@@ -993,7 +997,23 @@ textarea {
   color: #9aa0b4;
 }
 
-/* ② 다듬기 단계 */
+/* ② 편집 단계 */
+
+.edit-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.edit-mode-toggle {
+  display: flex;
+  gap: 6px;
+}
+
+.edit-mode-toggle button.active {
+  border-color: #5b7cfa;
+  background: #262e46;
+}
 
 .trim-layout {
   display: flex;
@@ -1093,6 +1113,20 @@ textarea {
   border-radius: 8px;
 }
 
+.quick-fields-subtitle {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #8a90a2;
+}
+
+.quick-fields-subtitle textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
 .quick-fields-primary {
   display: flex;
   align-items: center;
@@ -1124,7 +1158,7 @@ textarea {
   border-top: 1px dashed #3a4056;
 }
 
-/* ③ 자막 단계 */
+/* ② 편집 단계 - 몰아쓰기 모드 */
 
 .subtitle-layout {
   display: flex;
@@ -1132,7 +1166,7 @@ textarea {
   align-items: flex-start;
 }
 
-/* ④ 마무리 단계 */
+/* ③ 마무리 단계 */
 
 .finish-layout {
   display: flex;
@@ -1169,10 +1203,14 @@ textarea {
 
 .settings-field.wide-input {
   flex: 1 1 320px;
+  min-width: 0;
 }
 
 .settings-field.wide-input input {
+  flex: 1 1 auto;
+  min-width: 0;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .render-cta {

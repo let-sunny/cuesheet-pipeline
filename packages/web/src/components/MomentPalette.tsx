@@ -25,10 +25,6 @@ interface MomentCard {
   memo: string;
 }
 
-interface NumberedCard extends MomentCard {
-  number: number;
-}
-
 const SHOT_TYPE_CATEGORY: Record<ShotType, Category> = {
   "hand-closeup": "뜨개",
   object: "재료·소품",
@@ -109,7 +105,7 @@ function nearestFrame(frames: string[], inS: number): string | null {
   return best;
 }
 
-function buildCards(entries: ClipMoments[]): NumberedCard[] {
+function buildCards(entries: ClipMoments[]): MomentCard[] {
   const list: MomentCard[] = [];
   for (const entry of entries) {
     const clipFileName = baseName(entry.clip);
@@ -146,7 +142,7 @@ function buildCards(entries: ClipMoments[]): NumberedCard[] {
     }
     return a.inS - b.inS;
   });
-  return list.map((c, i) => ({ ...c, number: i + 1 }));
+  return list;
 }
 
 interface Props {
@@ -204,23 +200,25 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
     return m;
   }, [cards]);
 
-  const inUseKeys = useMemo(() => {
-    const set = new Set<string>();
+  // 카드가 "사용 중"인지 + 그렇다면 몇 번 컷(타임라인 세그먼트 순번, 1부터)에
+  // 담겼는지. 구성↔편집 단계 간 같은 컷을 같은 번호로 추적할 수 있게 한다.
+  const inUseCutNumber = useMemo(() => {
+    const map = new Map<string, number>();
     for (const c of cards) {
-      const inUse = segments.some(
+      const idx = segments.findIndex(
         (s) => s.clip === c.clipFileName && s.in < c.outS && s.out > c.inS,
       );
-      if (inUse) {
-        set.add(c.key);
+      if (idx !== -1) {
+        map.set(c.key, idx + 1);
       }
     }
-    return set;
+    return map;
   }, [cards, segments]);
 
   const filtered =
     selectedCategory === "전체" ? cards : cards.filter((c) => c.category === selectedCategory);
 
-  const handleAdd = (card: NumberedCard) => {
+  const handleAdd = (card: MomentCard) => {
     const seg: Segment = {
       clip: card.clipFileName,
       in: card.inS,
@@ -275,9 +273,17 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
               const meta = CATEGORY_META[card.category];
               const frames = frameMap[card.clipFolder] ?? [];
               const frame = nearestFrame(frames, card.inS);
-              const inUse = inUseKeys.has(card.key);
+              const cutNumber = inUseCutNumber.get(card.key);
+              const inUse = cutNumber !== undefined;
+              // 카드 자체엔 축약된 클립명·시각만 보이고, 판단에 필요한 전체 정보
+              // (원본 파일명·구간·카테고리·메모)는 title 툴팁으로 전달한다.
+              const fullInfo = `${card.clipFileName} · ${card.inS.toFixed(1)}s~${card.outS.toFixed(1)}s · ${meta.label} · ${card.memo}`;
               return (
-                <div className={`moment-card${inUse ? " in-use" : ""}`} key={card.key}>
+                <div
+                  className={`moment-card${inUse ? " in-use" : ""}`}
+                  key={card.key}
+                  title={fullInfo}
+                >
                   <div className="moment-thumb">
                     {frame ? (
                       <img
@@ -287,8 +293,10 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
                     ) : (
                       <div className="moment-thumb-empty" />
                     )}
-                    <span className="moment-number">#{card.number}</span>
-                    {inUse ? <span className="moment-badge-in-use">사용 중</span> : null}
+                    <span className="moment-number">
+                      {card.clipFolder} · {card.inS.toFixed(1)}s
+                    </span>
+                    {inUse ? <span className="moment-badge-in-use">컷 {cutNumber}</span> : null}
                   </div>
                   <div className="moment-info">
                     <span className={`category-tag cat-${meta.className}`}>{meta.label}</span>

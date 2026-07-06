@@ -103,6 +103,7 @@ export function App() {
   const [restoreSnapshot, setRestoreSnapshot] = useState<CueSheet | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [step, setStep] = useState<Step>("compose");
+  const [editMode, setEditMode] = useState<"inspect" | "batch">("inspect");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const videoPreviewRef = useRef<VideoPreviewHandle>(null);
@@ -218,10 +219,10 @@ export function App() {
   }, [draft]);
 
   // 공통 단축키: 입력 필드(input/textarea)에 포커스된 동안은 무시한다(Tab을 이용한
-  // 자막 쓰기 모드 내 이동은 SubtitleWriteMode가 각 textarea에서 자체 처리).
-  // I/O·재생·분할은 VideoPreview가 실제로 떠 있는 ②다듬기/③자막 단계에서만 의미가 있다.
+  // 몰아쓰기 모드 내 이동은 SubtitleWriteMode가 각 textarea에서 자체 처리).
+  // I/O·재생·분할은 VideoPreview가 실제로 떠 있는 ②편집 단계에서만 의미가 있다.
   useEffect(() => {
-    const isVideoStep = step === "trim" || step === "subtitle";
+    const isVideoStep = step === "edit";
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const isTyping = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA";
@@ -278,7 +279,7 @@ export function App() {
         selectRelative(1);
         return;
       }
-      if (e.key === "Tab" && step !== "subtitle") {
+      if (e.key === "Tab" && editMode !== "batch") {
         e.preventDefault();
         selectRelative(e.shiftKey ? -1 : 1);
         return;
@@ -291,7 +292,7 @@ export function App() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [step, selectRelative]);
+  }, [step, editMode, selectRelative]);
 
   const handleSave = useCallback(async () => {
     if (!draft) {
@@ -505,9 +506,10 @@ export function App() {
     });
   }, []);
 
-  // 미니 타임라인 블록 더블클릭 — 다듬기 단계로 전환하고 그 컷을 선택한다.
-  const goToTrim = useCallback((i: number) => {
-    setStep("trim");
+  // 미니 타임라인 블록 더블클릭 — 편집 단계(다듬기 뷰)로 전환하고 그 컷을 선택한다.
+  const goToEdit = useCallback((i: number) => {
+    setStep("edit");
+    setEditMode("inspect");
     setSelectedIndex(i);
   }, []);
 
@@ -587,7 +589,7 @@ export function App() {
         segments={draft.segments}
         selectedIndex={selectedIndex}
         onSelect={setSelectedIndex}
-        onGoToTrim={goToTrim}
+        onGoToEdit={goToEdit}
       />
 
       <div className="step-body">
@@ -599,51 +601,70 @@ export function App() {
           />
         ) : null}
 
-        {step === "trim" ? (
-          <div className="trim-layout">
-            <CompactSegmentList
-              segments={draft.segments}
-              selectedIndex={selectedIndex}
-              onSelect={setSelectedIndex}
-              onAdd={addSegment}
-              onRemove={removeSegment}
-              onMove={moveSegment}
-            />
-            <div className="trim-main">
-              <VideoPreview
-                ref={videoPreviewRef}
-                segment={selectedSegment}
-                selectedIndex={selectedIndex}
-                onChange={(patch) => updateSegment(selectedIndex, patch)}
-                onSplit={(at) => splitSegment(selectedIndex, at)}
-                autoPlay={false}
-              />
-              <SegmentQuickFields
-                segment={selectedSegment}
-                narrationEnabled={draft.narration?.enabled ?? false}
-                onChange={(patch) => updateSegment(selectedIndex, patch)}
-              />
+        {step === "edit" ? (
+          <div className="edit-layout">
+            <div className="edit-mode-toggle">
+              <button
+                type="button"
+                className={editMode === "inspect" ? "active" : ""}
+                onClick={() => setEditMode("inspect")}
+              >
+                다듬기
+              </button>
+              <button
+                type="button"
+                className={editMode === "batch" ? "active" : ""}
+                onClick={() => setEditMode("batch")}
+              >
+                몰아쓰기 모드
+              </button>
             </div>
-          </div>
-        ) : null}
 
-        {step === "subtitle" ? (
-          <div className="subtitle-layout">
-            <SubtitleWriteMode
-              segments={draft.segments}
-              selectedIndex={selectedIndex}
-              onSelect={setSelectedIndex}
-              onChangeSubtitle={(i, subtitle) => updateSegment(i, { subtitle })}
-              narrationEnabled={draft.narration?.enabled ?? false}
-            />
-            <VideoPreview
-              ref={videoPreviewRef}
-              segment={selectedSegment}
-              selectedIndex={selectedIndex}
-              onChange={(patch) => updateSegment(selectedIndex, patch)}
-              onSplit={(at) => splitSegment(selectedIndex, at)}
-              autoPlay
-            />
+            {editMode === "inspect" ? (
+              <div className="trim-layout">
+                <CompactSegmentList
+                  segments={draft.segments}
+                  selectedIndex={selectedIndex}
+                  onSelect={setSelectedIndex}
+                  onAdd={addSegment}
+                  onRemove={removeSegment}
+                  onMove={moveSegment}
+                />
+                <div className="trim-main">
+                  <VideoPreview
+                    ref={videoPreviewRef}
+                    segment={selectedSegment}
+                    selectedIndex={selectedIndex}
+                    onChange={(patch) => updateSegment(selectedIndex, patch)}
+                    onSplit={(at) => splitSegment(selectedIndex, at)}
+                    autoPlay={false}
+                  />
+                  <SegmentQuickFields
+                    segment={selectedSegment}
+                    narrationEnabled={draft.narration?.enabled ?? false}
+                    onChange={(patch) => updateSegment(selectedIndex, patch)}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="subtitle-layout">
+                <SubtitleWriteMode
+                  segments={draft.segments}
+                  selectedIndex={selectedIndex}
+                  onSelect={setSelectedIndex}
+                  onChangeSubtitle={(i, subtitle) => updateSegment(i, { subtitle })}
+                  narrationEnabled={draft.narration?.enabled ?? false}
+                />
+                <VideoPreview
+                  ref={videoPreviewRef}
+                  segment={selectedSegment}
+                  selectedIndex={selectedIndex}
+                  onChange={(patch) => updateSegment(selectedIndex, patch)}
+                  onSplit={(at) => splitSegment(selectedIndex, at)}
+                  autoPlay
+                />
+              </div>
+            )}
           </div>
         ) : null}
 
