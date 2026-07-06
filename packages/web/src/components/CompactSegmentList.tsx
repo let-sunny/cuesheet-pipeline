@@ -1,4 +1,5 @@
 import type { Segment } from "@cuesheet/schema";
+import { SegmentThumb } from "./SegmentThumb.js";
 
 interface Props {
   segments: Segment[];
@@ -31,6 +32,7 @@ export function CompactSegmentList({ segments, selectedIndex, onSelect, onAdd, o
             onClick={() => onSelect(i)}
           >
             <span className="compact-list-index">{i + 1}</span>
+            <SegmentThumb clip={seg.clip} t={seg.in + 0.3} className="compact-list-thumb" />
             <span className="compact-list-clip" title={tooltip}>
               {label}
             </span>

@@ -17,6 +17,8 @@ const proxyDir = resolve(repoRoot, "media/proxies");
 // 순간 팔레트: 초벌 분류 데이터와 썸네일용 프레임이 저장된 위치.
 const draftsRoot = resolve(repoRoot, "media/drafts");
 const framesRoot = resolve(draftsRoot, "frames");
+// 세그먼트 썸네일(편집 스텝 컷 리스트/미니 타임라인용) 시크 추출 결과 디스크 캐시.
+const thumbsDir = resolve(repoRoot, "media/.thumbs");
 
 function cuesheetPath(): string {
   return process.env.CUESHEET_PATH ?? resolve(repoRoot, "project.cuesheet.json");
@@ -213,6 +215,75 @@ async function generateProxies(clipDir: string, log: (msg: string) => void): Pro
     }
   }
   proxyQueueState = { pending: [], generating: null };
+}
+
+// 같은 (클립, 시각) 썸네일 요청이 겹칠 때 ffmpeg를 중복 실행하지 않도록 하는 dedup 맵.
+const thumbInFlight = new Map<string, Promise<boolean>>();
+
+// 썸네일 ffmpeg 동시 실행 최대 2개 — 초과 요청은 큐에서 직렬 대기한다.
+let thumbActiveCount = 0;
+const thumbWaitQueue: (() => void)[] = [];
+
+async function acquireThumbSlot(): Promise<void> {
+  if (thumbActiveCount >= 2) {
+    await new Promise<void>((res) => thumbWaitQueue.push(res));
+  }
+  thumbActiveCount += 1;
+}
+
+function releaseThumbSlot(): void {
+  thumbActiveCount -= 1;
+  const next = thumbWaitQueue.shift();
+  next?.();
+}
+
+/** 프록시에서 t초 지점 프레임 하나를 시크 추출해 cachePath에 저장한다. */
+async function generateThumbnail(proxyPath: string, t: number, cachePath: string): Promise<boolean> {
+  await acquireThumbSlot();
+  try {
+    const tmpPath = `${cachePath}.tmp`;
+    const { code } = await runFfmpeg([
+      "-ss",
+      String(t),
+      "-i",
+      proxyPath,
+      "-frames:v",
+      "1",
+      "-vf",
+      "scale=160:-2",
+      // tmpPath는 원자적 쓰기를 위해 ".tmp"가 붙어 확장자로 포맷을 못 알아채므로 명시한다.
+      "-f",
+      "mjpeg",
+      "-y",
+      tmpPath,
+    ]);
+    if (code !== 0) {
+      return false;
+    }
+    await rename(tmpPath, cachePath);
+    return true;
+  } catch {
+    return false;
+  } finally {
+    releaseThumbSlot();
+  }
+}
+
+/** key(클립스템_반올림시각)로 dedup하며 캐시에 없으면 생성한다. */
+async function getOrGenerateThumb(
+  key: string,
+  proxyPath: string,
+  t: number,
+  cachePath: string,
+): Promise<boolean> {
+  let promise = thumbInFlight.get(key);
+  if (!promise) {
+    promise = generateThumbnail(proxyPath, t, cachePath).finally(() => {
+      thumbInFlight.delete(key);
+    });
+    thumbInFlight.set(key, promise);
+  }
+  return promise;
 }
 
 /**
@@ -599,6 +670,61 @@ export function cuesheetPlugin(): Plugin {
         }
         const files = entries.filter((f) => extname(f).toLowerCase() === ".jpg");
         sendJson(res, 200, files);
+      });
+
+      // 세그먼트 썸네일: /api/thumb?clip=<원본 파일명>&t=<초> — 프록시에서 해당 시각
+      // 프레임을 시크 추출해 jpg로 반환한다. 프록시가 없으면 404(클라이언트가 자리비움
+      // placeholder를 그린다). 캐시 키는 t를 0.5초 단위로 반올림해 드래그 중 미세하게
+      // 다른 t로 인한 캐시 미스/중복 생성을 줄인다.
+      server.middlewares.use("/api/thumb", async (req, res) => {
+        if (req.method !== "GET") {
+          res.statusCode = 405;
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.end("허용되지 않는 메서드입니다");
+          return;
+        }
+        const rawQuery = (req.url ?? "").split("?")[1] ?? "";
+        const params = new URLSearchParams(rawQuery);
+        const clipParam = params.get("clip") ?? "";
+        const tParam = params.get("t");
+        const t = tParam !== null ? Number(tParam) : NaN;
+        if (!clipParam || clipParam !== basename(clipParam) || !Number.isFinite(t) || t < 0) {
+          res.statusCode = 400;
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.end("잘못된 요청입니다");
+          return;
+        }
+
+        const roundedT = Math.round(t * 2) / 2;
+        const clipStem = basename(clipParam, extname(clipParam));
+        const cacheFileName = `${clipStem}_${roundedT}.jpg`;
+        const cachePath = resolve(thumbsDir, cacheFileName);
+
+        if (existsSync(cachePath)) {
+          res.setHeader("Content-Type", "image/jpeg");
+          createReadStream(cachePath).pipe(res);
+          return;
+        }
+
+        const proxyPath = resolve(proxyDir, proxyFileName(clipParam));
+        if (!existsSync(proxyPath)) {
+          res.statusCode = 404;
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.end("프록시가 없어 썸네일을 만들 수 없습니다");
+          return;
+        }
+
+        await mkdir(thumbsDir, { recursive: true });
+        const ok = await getOrGenerateThumb(cacheFileName, proxyPath, roundedT, cachePath);
+        if (!ok || !existsSync(cachePath)) {
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.end("썸네일 생성 실패");
+          return;
+        }
+
+        res.setHeader("Content-Type", "image/jpeg");
+        createReadStream(cachePath).pipe(res);
       });
 
       server.middlewares.use("/out.mp4", (req, res) => {

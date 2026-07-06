@@ -9,6 +9,7 @@ media/clips/*.mp4
 media/clips/*.m4a
 media/dotmix_src
 media/proxies/
+media/.thumbs/
 media/out.mp4
 out.mp4
 proto_draft_*.mp4

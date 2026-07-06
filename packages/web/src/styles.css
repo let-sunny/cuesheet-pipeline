@@ -1013,12 +1013,19 @@ textarea {
 }
 
 .mini-strip-block {
+  position: relative;
   height: 20px;
   padding: 0;
+  overflow: hidden;
   background: #232838;
   border: 1px solid #33394d;
   border-radius: 3px;
   cursor: pointer;
+}
+
+.mini-strip-thumb {
+  position: absolute;
+  inset: 0;
 }
 
 .mini-strip-block.selected {
@@ -1090,6 +1097,26 @@ textarea {
   width: 20px;
   font-size: 13px;
   color: #8a90a2;
+}
+
+/* 세그먼트 썸네일 공통 껍데기 — 크기는 사용처 클래스(compact-list-thumb 등)가 정한다. */
+.segment-thumb {
+  background: #12141a;
+}
+
+.segment-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.compact-list-thumb {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 23px;
+  border-radius: 3px;
+  overflow: hidden;
 }
 
 .compact-list-clip {
