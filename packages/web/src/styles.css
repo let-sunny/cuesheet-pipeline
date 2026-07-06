@@ -22,9 +22,9 @@ body {
 }
 
 .app {
-  max-width: 1100px;
+  max-width: none;
   margin: 0 auto;
-  padding: 24px;
+  padding: 24px 32px;
 }
 
 .app h1 {
@@ -381,10 +381,16 @@ textarea {
 
 .video-context-line {
   font-size: 13px;
+  line-height: 1.4;
   color: #cfd3e0;
+  /* 판단에 필요한 자막 전문을 최대한 보여준다 — 짧으면 1줄, 길면 2줄까지 감싸고
+     그래도 넘치면(드묾) title 툴팁으로 전문을 볼 수 있다. */
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  max-height: 38px;
 }
 
 .video-context-line .video-context-index {
@@ -731,8 +737,15 @@ textarea {
   color: #9aa0b4;
 }
 
-.moment-memo {
+.moment-memo-wrap {
+  /* line-clamp 요소(.moment-memo)가 이 flex-column 카드의 "직속" flex 아이템이
+     되지 않도록 감싸는 플레인 래퍼 — flex 아이템으로 직접 두면(이 환경 Chromium
+     실측 확인) line-clamp 높이 계산이 어긋나 3번째 줄이 잘리다 만 채로 버튼
+     위에 흘러넘치는 버그가 있었다. 패딩도 여기서 준다. */
   padding: 4px 8px 8px;
+}
+
+.moment-memo {
   font-size: 13px;
   line-height: 1.4;
   color: #cfd3e0;
@@ -741,21 +754,30 @@ textarea {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  /* -webkit-line-clamp 단독으로는 이 카드 레이아웃(플렉스 아이템)에서
-     3번째 줄이 잘리지 않고 버튼 위로 흘러넘치는 경우가 있어, 높이를
-     2줄 분량으로 고정해 확실히 자르고 카드 높이도 일관되게 만든다. */
-  height: 48px;
-  min-height: 48px;
+  /* 짧은 메모도 카드 높이가 일관되게 2줄 분량(line-height 1.4 * 2)은 확보한다.
+     explicit height를 같이 주면 위 flex 아이템 이슈와 겹쳐 다시 새므로 넣지 않는다. */
+  min-height: 2.8em;
 }
 
-.moment-add-button,
-.moment-remove-button {
+.moment-card-actions {
+  display: flex;
+  gap: 6px;
   margin: 0 8px 8px;
+}
+
+.moment-card-actions button {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 4px;
 }
 
 .moment-remove-button {
   border-color: #d9575755;
   color: #f29a9a;
+}
+
+.moment-remove-button.placeholder {
+  visibility: hidden;
 }
 
 .category-tag {
@@ -835,6 +857,7 @@ textarea {
 .subtitle-write-mode {
   flex: 1 1 auto;
   min-width: 0;
+  max-width: 720px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -873,6 +896,7 @@ textarea {
 .subtitle-write-row textarea {
   width: 100%;
   box-sizing: border-box;
+  overflow: hidden;
   resize: vertical;
 }
 
@@ -979,6 +1003,11 @@ textarea {
 
 .compact-list {
   flex: 0 0 300px;
+  /* 자막 전문(긴 nowrap 텍스트)을 그대로 두면 그 min-content 폭이 조상까지
+     타고 올라가 컬럼 자체가 늘어나 버린다 — min-width:0으로 끊어서
+     지정한 300px 안에서만 넘치고, 넘친 부분은 자식의 ellipsis가 처리하게 한다. */
+  min-width: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -993,6 +1022,7 @@ textarea {
   border: 1px solid #292f40;
   border-radius: 6px;
   cursor: pointer;
+  min-width: 0;
 }
 
 .compact-list-row.selected {
@@ -1107,6 +1137,10 @@ textarea {
   display: flex;
   gap: 24px;
   flex-wrap: wrap;
+}
+
+.intro-outro-missing {
+  margin-top: 10px;
 }
 
 .intro-outro-preview {

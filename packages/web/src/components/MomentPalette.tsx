@@ -294,21 +294,35 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
                     <span className={`category-tag cat-${meta.className}`}>{meta.label}</span>
                     <span className="moment-duration">{(card.outS - card.inS).toFixed(1)}s</span>
                   </div>
-                  <div className="moment-memo" title={card.memo}>
-                    {card.memo}
+                  {/* -webkit-line-clamp가 걸린 요소가 이 flex-column 카드의 "직속" flex
+                      아이템이면(이 환경 Chromium 실측) 클램프 높이 계산이 어긋나 3번째
+                      줄이 잘리다 만 채로 버튼 위에 흘러넘친다 — 플레인 래퍼로 한 겹
+                      감싸 line-clamp 요소 자체는 flex 아이템이 되지 않게 한다. */}
+                  <div className="moment-memo-wrap">
+                    <div className="moment-memo" title={card.memo}>
+                      {card.memo}
+                    </div>
                   </div>
-                  <button type="button" className="moment-add-button" onClick={() => handleAdd(card)}>
-                    담기
-                  </button>
-                  {inUse ? (
+                  <div className="moment-card-actions">
                     <button
                       type="button"
-                      className="moment-remove-button"
+                      className="moment-add-button"
+                      disabled={inUse}
+                      onClick={() => handleAdd(card)}
+                    >
+                      {inUse ? "담김" : "담기"}
+                    </button>
+                    {/* 사용 안 중일 땐 빼기를 숨기되(disabled+placeholder) 자리는 그대로
+                        차지해 카드 높이가 담기/빼기 유무와 무관하게 일정하게 유지된다. */}
+                    <button
+                      type="button"
+                      className={`moment-remove-button${inUse ? "" : " placeholder"}`}
+                      disabled={!inUse}
                       onClick={() => onRemoveSegment(card.clipFileName, card.inS, card.outS)}
                     >
                       빼기
                     </button>
-                  ) : null}
+                  </div>
                 </div>
               );
             })}

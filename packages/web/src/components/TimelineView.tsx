@@ -134,7 +134,9 @@ export function TimelineView({
         <div className="segment-track">
           {segments.map((seg, i) => {
             const play = playbackSeconds(seg);
-            const label = seg.subtitle ? seg.subtitle.slice(0, 12) : seg.clip || "(파일명 없음)";
+            const label = seg.subtitle.trim() !== "" ? seg.subtitle.trim() : seg.clip || "(파일명 없음)";
+            // 블록 폭이 좁아 라벨은 CSS ellipsis로 잘리므로, title 툴팁엔 화면에 보이는
+            // 것과 같은 전문을 담아 판단에 필요한 텍스트가 실제로는 안 잘리게 한다.
             return (
               <button
                 type="button"
@@ -142,7 +144,7 @@ export function TimelineView({
                 className={`timeline-block${i === selectedIndex ? " selected" : ""}`}
                 style={{ flexGrow: play, flexBasis: 0, minWidth: `${MIN_BLOCK_PX}px` }}
                 onClick={() => onSelectSegment(i)}
-                title={`${seg.clip || "(파일명 없음)"} · ${seg.in.toFixed(1)}s~${seg.out.toFixed(1)}s · ${seg.speed}배속`}
+                title={`${label} · ${seg.clip || "(파일명 없음)"} · ${seg.in.toFixed(1)}s~${seg.out.toFixed(1)}s · ${seg.speed}배속`}
               >
                 {i + 1}. {label}
               </button>

@@ -266,9 +266,9 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
 
   return (
     <div className="video-preview">
-      <div className="video-context-line">
+      <div className="video-context-line" title={subtitleSummary}>
         <span className="video-context-index">#{selectedIndex + 1}</span>
-        {subtitleSummary.slice(0, 30)} · {segment.in.toFixed(1)}s~{segment.out.toFixed(1)}s
+        {subtitleSummary} · {segment.in.toFixed(1)}s~{segment.out.toFixed(1)}s
       </div>
       {missing ? (
         <div className="empty">클립 없음: {segment.clip || "(파일명 없음)"}</div>

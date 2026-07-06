@@ -33,6 +33,9 @@ export function MiniTimelineStrip({ segments, selectedIndex, onSelect, onGoToTri
       <div className="mini-strip-track">
         {segments.map((seg, i) => {
           const play = playbackSeconds(seg);
+          // 블록이 텍스트를 담기엔 너무 좁아 라벨을 렌더하지 않으므로, 판단에 필요한
+          // 내용(자막 전문 포함)은 title 툴팁으로 전달한다.
+          const label = seg.subtitle.trim() !== "" ? seg.subtitle.trim() : seg.clip || "(파일명 없음)";
           return (
             <button
               type="button"
@@ -41,7 +44,7 @@ export function MiniTimelineStrip({ segments, selectedIndex, onSelect, onGoToTri
               style={{ flexGrow: play, flexBasis: 0 }}
               onClick={() => onSelect(i)}
               onDoubleClick={() => onGoToTrim(i)}
-              title={`${i + 1}. ${seg.clip || "(파일명 없음)"} · ${seg.in.toFixed(1)}s~${seg.out.toFixed(1)}s (더블클릭: 다듬기로 이동)`}
+              title={`${i + 1}. ${label} · ${seg.in.toFixed(1)}s~${seg.out.toFixed(1)}s (더블클릭: 다듬기로 이동)`}
             />
           );
         })}

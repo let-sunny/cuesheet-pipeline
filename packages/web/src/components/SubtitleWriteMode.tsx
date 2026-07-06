@@ -28,6 +28,21 @@ export function SubtitleWriteMode({
     rowRefs.current = rowRefs.current.slice(0, segments.length);
   }, [segments.length]);
 
+  // 자막 전문이 잘리지 않고 항상 다 보이게 줄 수에 맞춰 textarea 높이를 늘린다
+  // (고정 rows=2는 시작 최소 높이일 뿐, 넘치면 스크롤이 아니라 높이가 늘어난다).
+  const autoResize = (el: HTMLTextAreaElement | null) => {
+    if (!el) {
+      return;
+    }
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+
+  // 처음 로드 시(이미 여러 줄인 기존 자막 포함) 모든 행 높이를 내용에 맞춘다.
+  useEffect(() => {
+    rowRefs.current.forEach((el) => autoResize(el));
+  }, [segments]);
+
   const focusRow = (i: number) => {
     if (i < 0 || i >= segments.length) {
       return;
@@ -61,12 +76,16 @@ export function SubtitleWriteMode({
           <textarea
             ref={(el) => {
               rowRefs.current[i] = el;
+              autoResize(el);
             }}
             value={seg.subtitle}
             rows={2}
             placeholder="자막을 입력하세요"
             onFocus={() => onSelect(i)}
-            onChange={(e) => onChangeSubtitle(i, e.target.value)}
+            onChange={(e) => {
+              onChangeSubtitle(i, e.target.value);
+              autoResize(e.target);
+            }}
             onKeyDown={handleKeyDown(i)}
           />
         </div>
