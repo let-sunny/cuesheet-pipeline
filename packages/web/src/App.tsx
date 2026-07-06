@@ -60,6 +60,39 @@ const newBgmCue = (): BgmCue => ({
   volume: 1,
 });
 
+/** 미저장 편집 임시 스냅샷을 localStorage에 두는 키. 큐시트(프로젝트명)별로 분리한다. */
+const DRAFT_SNAPSHOT_PREFIX = "cuesheet-draft-snapshot:";
+
+function draftSnapshotKey(projectName: string): string {
+  return `${DRAFT_SNAPSHOT_PREFIX}${projectName}`;
+}
+
+interface DraftSnapshot {
+  cuesheet: CueSheet;
+  savedAt: number;
+}
+
+function loadDraftSnapshot(projectName: string): CueSheet | null {
+  try {
+    const raw = localStorage.getItem(draftSnapshotKey(projectName));
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as DraftSnapshot;
+    return parsed.cuesheet;
+  } catch {
+    return null;
+  }
+}
+
+function clearDraftSnapshot(projectName: string): void {
+  try {
+    localStorage.removeItem(draftSnapshotKey(projectName));
+  } catch {
+    // localStorage 접근 불가 시 조용히 무시한다(best-effort 기능).
+  }
+}
+
 export function App() {
   const [serverCuesheet, setServerCuesheet] = useState<CueSheet | null>(null);
   const [draft, setDraft] = useState<CueSheet | null>(null);
@@ -67,6 +100,7 @@ export function App() {
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle" });
   const [renderState, setRenderState] = useState<RenderState>({ status: "idle" });
   const [externalChangePending, setExternalChangePending] = useState(false);
+  const [restoreSnapshot, setRestoreSnapshot] = useState<CueSheet | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [step, setStep] = useState<Step>("compose");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -89,6 +123,17 @@ export function App() {
       setLoadError(null);
       setExternalChangePending(false);
       setSaveState({ status: "idle" });
+
+      const snapshot = loadDraftSnapshot(cs.project.name);
+      if (snapshot && JSON.stringify(snapshot) !== JSON.stringify(cs)) {
+        setRestoreSnapshot(snapshot);
+      } else {
+        if (snapshot) {
+          // 서버 데이터와 같은 스냅샷은 이미 반영된 것이므로 정리한다.
+          clearDraftSnapshot(cs.project.name);
+        }
+        setRestoreSnapshot(null);
+      }
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : String(e));
     }
@@ -97,6 +142,50 @@ export function App() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // dirty일 때 새로고침/탭 닫기 시 브라우저 기본 확인 대화상자를 띄운다.
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (dirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
+
+  // dirty 상태의 draft를 디바운스(1초)로 localStorage에 임시 저장해 두어,
+  // 저장 없이 새로고침/탭 닫기로 편집이 증발해도 복원할 수 있게 한다.
+  useEffect(() => {
+    if (!draft || !dirty) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      try {
+        const snapshot: DraftSnapshot = { cuesheet: draft, savedAt: Date.now() };
+        localStorage.setItem(draftSnapshotKey(draft.project.name), JSON.stringify(snapshot));
+      } catch {
+        // 용량 초과 등은 무시한다(best-effort 기능).
+      }
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [draft, dirty]);
+
+  const handleRestoreSnapshot = useCallback(() => {
+    if (!restoreSnapshot) {
+      return;
+    }
+    setDraft(restoreSnapshot);
+    setRestoreSnapshot(null);
+  }, [restoreSnapshot]);
+
+  const handleDiscardSnapshot = useCallback(() => {
+    if (draft) {
+      clearDraftSnapshot(draft.project.name);
+    }
+    setRestoreSnapshot(null);
+  }, [draft]);
 
   useEffect(() => {
     const handler = () => {
@@ -233,6 +322,8 @@ export function App() {
         setServerCuesheet(result.data);
         setDraft(result.data);
         setSaveState({ status: "success" });
+        clearDraftSnapshot(result.data.project.name);
+        setRestoreSnapshot(null);
         toast({ type: "info", body: "저장되었습니다." });
       } else {
         setSaveState({ status: "error", errors: result.errors });
@@ -468,6 +559,18 @@ export function App() {
           외부에서 변경됨 — 현재 편집 중인 내용을 버리고 다시 불러올까요?
           <button type="button" onClick={handleReload}>
             다시 불러오기
+          </button>
+        </div>
+      ) : null}
+
+      {restoreSnapshot ? (
+        <div className="banner">
+          저장되지 않은 편집 내역이 있습니다.
+          <button type="button" onClick={handleRestoreSnapshot}>
+            복원
+          </button>
+          <button type="button" onClick={handleDiscardSnapshot}>
+            버리기
           </button>
         </div>
       ) : null}

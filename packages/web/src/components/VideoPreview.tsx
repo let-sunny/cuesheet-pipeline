@@ -270,7 +270,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
         <span className="video-context-index">#{selectedIndex + 1}</span>
         {subtitleSummary} · {segment.in.toFixed(1)}s~{segment.out.toFixed(1)}s
       </div>
-      {missing ? (
+      {missing || segment.clip === "" ? (
         <div className="empty">클립 없음: {segment.clip || "(파일명 없음)"}</div>
       ) : (
         <>

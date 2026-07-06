@@ -1100,6 +1100,21 @@ textarea {
   flex-wrap: wrap;
 }
 
+.volume-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.volume-number-input {
+  width: 56px;
+}
+
+.volume-unit {
+  color: #8a8fa3;
+  font-size: 13px;
+}
+
 .quick-fields-secondary {
   display: flex;
   align-items: center;

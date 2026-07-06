@@ -32,16 +32,34 @@ export function SegmentQuickFields({ segment, narrationEnabled, onChange }: Prop
             }}
           />
         </label>
-        <Slider
-          label="볼륨"
-          value={Math.round(segment.volume * 100)}
-          min={0}
-          max={100}
-          step={5}
-          valueDisplay="text"
-          width={220}
-          onChange={(v: number) => onChange({ volume: v / 100 })}
-        />
+        <div className="volume-field">
+          <Slider
+            label="볼륨"
+            value={Math.round(segment.volume * 100)}
+            min={0}
+            max={100}
+            step={5}
+            valueDisplay="text"
+            width={220}
+            onChange={(v: number) => onChange({ volume: v / 100 })}
+          />
+          <input
+            type="number"
+            className="volume-number-input"
+            value={Math.round(segment.volume * 100)}
+            min={0}
+            max={100}
+            step={1}
+            onChange={(e) => {
+              const v = e.target.valueAsNumber;
+              if (Number.isNaN(v)) {
+                return;
+              }
+              onChange({ volume: Math.min(100, Math.max(0, v)) / 100 });
+            }}
+          />
+          <span className="volume-unit">%</span>
+        </div>
       </div>
 
       <div className="quick-fields-secondary">
