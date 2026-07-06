@@ -367,9 +367,11 @@ export function App() {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const isTyping = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA";
-      if (isTyping) {
-        return;
-      }
+      // Cmd+Z/Cmd+Shift+Z는 isTyping 가드보다 먼저 처리한다: input/textarea에 포커스가
+      // 있어도(예: 자막 입력 후 Tab으로 다음 필드로 이동한 상태) 우리 앱의 통합
+      // 언두/리두가 항상 적용돼야 한다. 여기서 걸러내지 않으면 브라우저 네이티브
+      // per-field 실행취소가 대신 발동해 리액트 상태와 동기화되지 않는 텍스트만
+      // 조용히 되돌리는(토스트도 안 뜨고, 저장 시엔 원래 상태가 남는) 불일치가 생긴다.
       if ((e.metaKey || e.ctrlKey) && (e.key === "z" || e.key === "Z")) {
         e.preventDefault();
         if (e.shiftKey) {
@@ -377,6 +379,9 @@ export function App() {
         } else {
           handleUndo();
         }
+        return;
+      }
+      if (isTyping) {
         return;
       }
       if (e.key === "?") {

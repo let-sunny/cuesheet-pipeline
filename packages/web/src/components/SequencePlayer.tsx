@@ -22,16 +22,35 @@ function clipUrl(clip: string): string {
   return `/clips/${encodeURIComponent(clip)}`;
 }
 
-function waitForMetadata(video: HTMLVideoElement): Promise<void> {
+/**
+ * 메타데이터 로드 완료를 기다린다. 클립이 브라우저가 디코딩할 수 없는 포맷(예: HEVC —
+ * 프록시 생성이 실패/손상된 채 남아 원본 코덱 그대로 서빙되는 경우)이면 loadedmetadata가
+ * 영영 발생하지 않으므로, error 이벤트도 함께 듣고 false로 해소해 무한 대기를 막는다.
+ * 이미 이 비디오 엘리먼트에서 로드가 실패한 적 있으면(video.error 존재) 이벤트가 다시
+ * 발생하지 않으므로 즉시 false로 해소한다.
+ */
+function waitForMetadata(video: HTMLVideoElement): Promise<boolean> {
   if (video.readyState >= 1) {
-    return Promise.resolve();
+    return Promise.resolve(true);
+  }
+  if (video.error) {
+    return Promise.resolve(false);
   }
   return new Promise((resolve) => {
-    const handler = () => {
-      video.removeEventListener("loadedmetadata", handler);
-      resolve();
+    const cleanup = () => {
+      video.removeEventListener("loadedmetadata", onReady);
+      video.removeEventListener("error", onError);
     };
-    video.addEventListener("loadedmetadata", handler);
+    const onReady = () => {
+      cleanup();
+      resolve(true);
+    };
+    const onError = () => {
+      cleanup();
+      resolve(false);
+    };
+    video.addEventListener("loadedmetadata", onReady);
+    video.addEventListener("error", onError);
   });
 }
 
@@ -82,10 +101,10 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
     frontRef.current = front;
   }, [front]);
 
-  function loadClipInto(slot: 0 | 1, clip: string): Promise<void> {
+  function loadClipInto(slot: 0 | 1, clip: string): Promise<boolean> {
     const video = videoRefs[slot].current;
     if (!video) {
-      return Promise.resolve();
+      return Promise.resolve(true);
     }
     if (clipOfSlot.current[slot] === clip) {
       return waitForMetadata(video);
@@ -117,9 +136,26 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
         activeSlot = back;
       } else {
         activeSlot = oldFront;
-        await loadClipInto(activeSlot, seg.clip);
       }
+      // 미리 로드해 둔 슬롯이라도 loadedmetadata가 실제로 끝났다는 보장은 없다
+      // (프리로드는 fire-and-forget) — 그대로 play()를 호출하면 컷 길이가 짧을 때
+      // readyState 0 상태에서 NotSupportedError가 난다. 항상 대기한다
+      // (loadClipInto는 이미 로드된 클립이면 즉시 반환하는 멱등 함수).
+      const loaded = await loadClipInto(activeSlot, seg.clip);
       if (cancelled) {
+        return;
+      }
+
+      if (!loaded) {
+        // 디코딩 자체가 불가능한 클립(코덱 미지원, 손상된 프록시 등) — loadedmetadata가
+        // 영영 안 오므로 여기서 멈추지 않고 다음 컷으로 건너뛴다(무한 정지 방지).
+        console.warn(`[SequencePlayer] 재생할 수 없는 클립, 건너뜀: ${seg.clip}`);
+        const next = segmentsRef.current[currentIndex + 1];
+        if (next) {
+          onIndexChangeRef.current(currentIndex + 1);
+        } else {
+          setPlaying(false);
+        }
         return;
       }
 
@@ -155,10 +191,12 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex]);
 
-  // 재생/일시정지 토글을 현재 활성 슬롯에 반영.
+  // 재생/일시정지 토글을 현재 활성 슬롯에 반영. 마운트 직후(currentIndex 이펙트가
+  // 아직 src를 채우기 전)에는 currentSrc가 비어 있어 play()가 NotSupportedError를
+  // 던지므로, 소스가 실제로 로드된 뒤에만 반영한다.
   useEffect(() => {
     const video = videoRefs[front].current;
-    if (!video) {
+    if (!video || !video.currentSrc) {
       return;
     }
     if (playing) {
