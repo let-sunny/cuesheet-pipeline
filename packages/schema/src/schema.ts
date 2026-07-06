@@ -24,6 +24,27 @@ export const projectSchema = z.object({
   height: z.number().int("height는 정수여야 합니다").positive("height는 양수여야 합니다"),
 });
 
+/**
+ * 세그먼트 단위 크롭. 원본 해상도 기준 **비율(0~1)**로 정의(해상도 독립적).
+ * x,y = 좌상단, w,h = 크기. 예: 얼굴 상단을 잘라내는 세로 크롭
+ * { x: 0, y: 0.25, w: 1, h: 0.75 }.
+ */
+export const cropSchema = z
+  .object({
+    x: z.number().nonnegative("crop.x는 0 이상이어야 합니다"),
+    y: z.number().nonnegative("crop.y는 0 이상이어야 합니다"),
+    w: z.number().gt(0.1, "crop.w는 0.1보다 커야 합니다"),
+    h: z.number().gt(0.1, "crop.h는 0.1보다 커야 합니다"),
+  })
+  .refine((c) => c.x + c.w <= 1, {
+    error: "crop.x + crop.w는 1 이하여야 합니다",
+    path: ["x"],
+  })
+  .refine((c) => c.y + c.h <= 1, {
+    error: "crop.y + crop.h는 1 이하여야 합니다",
+    path: ["y"],
+  });
+
 export const segmentSchema = z
   .object({
     clip: z.string().min(1, "clip 파일명은 비어 있을 수 없습니다"),
@@ -38,6 +59,8 @@ export const segmentSchema = z
     subtitle: z.string(), // 빈 문자열 허용
     // 이 컷에 얹을 내레이션 오디오 파일명(narration.dir 기준). null/생략이면 내레이션 없음.
     narration: z.string().min(1, "narration 파일명은 비어 있을 수 없습니다").nullable().optional(),
+    // 원본 해상도 기준 비율 크롭(0~1). null/생략이면 크롭 없음(원본 그대로).
+    crop: cropSchema.nullable().optional(),
   })
   .refine((s) => s.in < s.out, {
     error: "in은 out보다 작아야 합니다 (in < out)",

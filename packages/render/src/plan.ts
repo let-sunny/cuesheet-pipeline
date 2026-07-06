@@ -72,7 +72,14 @@ export function buildRenderPlan(cue: CueSheet, outputPath: string): RenderPlan {
 
   function addClip(
     path: string,
-    o: { ss?: number; dur?: number; speed?: number; volume?: number; subtitle?: string },
+    o: {
+      ss?: number;
+      dur?: number;
+      speed?: number;
+      volume?: number;
+      subtitle?: string;
+      crop?: CueSheet["segments"][number]["crop"];
+    },
   ): void {
     if (o.ss != null) inputs.push("-ss", String(o.ss));
     if (o.dur != null) inputs.push("-t", String(o.dur));
@@ -83,6 +90,12 @@ export function buildRenderPlan(cue: CueSheet, outputPath: string): RenderPlan {
 
     const vParts = ["setpts=PTS-STARTPTS"];
     if (speed !== 1) vParts.push(`setpts=PTS/${speed}`);
+    if (o.crop) {
+      const { x, y, w, h } = o.crop;
+      vParts.push(`crop=w=iw*${w}:h=ih*${h}:x=iw*${x}:y=ih*${y}`);
+    }
+    // crop은 종횡비를 바꿀 수 있지만, 뒤이은 scale=W:H가 원본 종횡비 보존 없이 항상
+    // W:H로 늘려 채운다(crop 없는 세그먼트도 동일하게 동작) — 별도 letterbox/pad 불필요.
     vParts.push(`scale=${W}:${H}`, `fps=${fps}`);
     if (o.subtitle && o.subtitle.length > 0) {
       vParts.push(drawtextFilter(o.subtitle, cue.subtitleStyle));
@@ -110,6 +123,7 @@ export function buildRenderPlan(cue: CueSheet, outputPath: string): RenderPlan {
       speed: s.speed,
       volume: s.volume,
       subtitle: s.subtitle,
+      crop: s.crop,
     });
     if (cue.narration?.enabled && s.narration) {
       narrationCues.push({ path: join(cue.narration.dir, s.narration), start: segmentOffset });

@@ -29,6 +29,15 @@ cuesheet-render project.cuesheet.json out.mp4
 처리한 뒤 `concat`으로 이어 붙인다. intro/outro는 앞뒤로. bgm은 시작 시각(`adelay`)·볼륨 적용 후
 `amix`로 섞는다. 출력은 project의 fps·해상도, H.264/AAC mp4.
 
+### 세그먼트 크롭 (선택)
+
+`segment.crop`이 있으면 그 세그먼트의 필터 체인에서 **트림 직후, 스케일 전에**
+`crop=w=iw*{w}:h=ih*{h}:x=iw*{x}:y=ih*{y}`를 적용한다(원본 해상도 기준 비율이라
+`iw`/`ih` 표현식으로 해상도 독립적으로 계산됨). crop 이후 종횡비가 바뀔 수 있지만,
+뒤이은 `scale=W:H`가 원래도(=crop 없는 세그먼트도) 종횡비 보존 없이 project 해상도로
+그대로 늘려 채우므로 별도 letterbox/pad 처리는 필요 없다 — crop 세그먼트도 같은
+규칙을 그대로 탄다. `crop` 필드가 없으면 ffmpeg 명령이 기존과 100% 동일하다.
+
 ### 목소리 클로닝 내레이션 (피처 플래그)
 
 `narration.enabled === true`이고 세그먼트에 `narration`(파일명)이 있을 때만 동작한다.

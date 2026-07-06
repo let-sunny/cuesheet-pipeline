@@ -1,5 +1,6 @@
 export {
   bgmCueSchema,
+  cropSchema,
   cueSheetSchema,
   narrationConfigSchema,
   projectSchema,
@@ -9,6 +10,7 @@ export {
 
 export type {
   BgmCue,
+  Crop,
   CueSheet,
   CueSheetInput,
   NarrationConfig,

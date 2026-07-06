@@ -32,6 +32,15 @@ if (result.ok) {
 - `narration.volume` 0~1, `segment.narration`은 빈 문자열 불가(있다면)
 - 실패 시 `필드경로: 이유` 형식의 메시지 배열
 
+## 세그먼트 크롭 (선택)
+
+- `segment.crop?: { x, y, w, h }` — 원본 해상도 기준 **비율(0~1)**로 정의(해상도 독립적).
+  `x,y`는 좌상단, `w,h`는 크기. 예: 얼굴 상단을 잘라내는 세로 크롭
+  `{ x: 0, y: 0.25, w: 1, h: 0.75 }`.
+- 제약: `x, y >= 0`, `x + w <= 1`, `y + h <= 1`, `w, h > 0.1`(실수 방지 하한).
+- null/생략이면 크롭 없음(원본 그대로) — 기존 큐시트는 그대로 유효하다.
+- 렌더 쪽 적용(트림 직후, 스케일 전에 crop 필터)은 `@cuesheet/render` README 참고.
+
 ## 목소리 클로닝 내레이션 (선택, 피처 플래그)
 
 - `cueSheet.narration?: { enabled: boolean, dir: string, volume: number(0~1, 기본 1) }`

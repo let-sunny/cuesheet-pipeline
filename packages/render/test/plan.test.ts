@@ -158,6 +158,35 @@ describe("buildRenderPlan", () => {
     expect(p.filterComplex).toContain("amix=inputs=3:duration=first[aout]");
   });
 
+  it("crop이 없으면 기존과 완전히 동일한 필터가 나온다(crop 필터 없음)", () => {
+    const withCropField = buildRenderPlan(make(), "out.mp4");
+    const withoutCropField = buildRenderPlan(make(), "out.mp4");
+    expect(withCropField.filterComplex).toEqual(withoutCropField.filterComplex);
+    expect(withCropField.filterComplex).not.toContain("crop=");
+  });
+
+  it("crop이 있는 세그먼트는 트림 직후 스케일 전에 crop 필터가 들어간다", () => {
+    const p = buildRenderPlan(
+      make({
+        segments: [
+          {
+            clip: "a.mp4",
+            in: 0,
+            out: 5,
+            speed: 1,
+            volume: 1,
+            subtitle: "",
+            crop: { x: 0, y: 0.25, w: 1, h: 0.75 },
+          },
+        ],
+      }),
+      "out.mp4",
+    );
+    expect(p.filterComplex).toContain(
+      "setpts=PTS-STARTPTS,crop=w=iw*1:h=ih*0.75:x=iw*0:y=ih*0.25,scale=1920:1080",
+    );
+  });
+
   it("출력 인자에 코덱과 fps가 들어간다", () => {
     const p = buildRenderPlan(make(), "final.mp4");
     const s = p.args.join(" ");

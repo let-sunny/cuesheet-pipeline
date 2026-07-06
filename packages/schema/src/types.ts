@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import type {
   bgmCueSchema,
+  cropSchema,
   cueSheetSchema,
   narrationConfigSchema,
   projectSchema,
@@ -13,6 +14,7 @@ import type {
  * `z.infer`는 검증 후 출력 타입 = speed 같은 default가 적용된 형태.
  */
 export type Project = z.infer<typeof projectSchema>;
+export type Crop = z.infer<typeof cropSchema>;
 export type Segment = z.infer<typeof segmentSchema>;
 export type BgmCue = z.infer<typeof bgmCueSchema>;
 export type SubtitleStyle = z.infer<typeof subtitleStyleSchema>;

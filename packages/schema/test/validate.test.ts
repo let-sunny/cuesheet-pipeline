@@ -57,6 +57,28 @@ describe("validateCueSheet - 통과 케이스", () => {
     }
   });
 
+  it("crop이 유효하면 통과하고 그대로 반영된다", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      segments: [
+        { clip: "a.mp4", in: 0, out: 1, subtitle: "", crop: { x: 0, y: 0.25, w: 1, h: 0.75 } },
+      ],
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.segments[0]?.crop).toEqual({ x: 0, y: 0.25, w: 1, h: 0.75 });
+    }
+  });
+
+  it("crop이 없으면(생략) 기존 큐시트도 그대로 유효하다", () => {
+    const result = validateCueSheet(sample);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.segments[0]?.crop).toBeUndefined();
+    }
+  });
+
   it("narration.volume 미지정 시 기본값 1.0이 적용된다", () => {
     const input = {
       ...(sample as Record<string, unknown>),
@@ -126,6 +148,20 @@ describe("validateCueSheet - 실패 케이스", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.errors.some((e) => e.includes("narration.volume"))).toBe(true);
+    }
+  });
+
+  it("crop이 범위를 벗어나면(x+w>1) 실패한다", () => {
+    const bad = {
+      ...(sample as Record<string, unknown>),
+      segments: [
+        { clip: "a.mp4", in: 0, out: 1, subtitle: "", crop: { x: 0.5, y: 0, w: 0.7, h: 0.5 } },
+      ],
+    };
+    const result = validateCueSheet(bad);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.includes("segments[0].crop.x"))).toBe(true);
     }
   });
 
