@@ -15,3 +15,4 @@ proto_draft_*.mp4
 nohup.out
 .claude/scheduled_tasks.lock
 media/drafts/frames/
+proto_final_*.mp4
