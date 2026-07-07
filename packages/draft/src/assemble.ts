@@ -1,5 +1,5 @@
 import type { CueSheetInput } from "@cuesheet/schema";
-import type { ClipMoments } from "./types.js";
+import type { ClipMoments, MonotonousRange } from "./types.js";
 
 /**
  * assemble 단계: moments.json(비전 판단 결과)을 결정적 규칙으로 큐시트로 조립한다.
@@ -35,6 +35,16 @@ export interface AssembleOptions {
   fps?: number;
   width?: number;
   height?: number;
+}
+
+/**
+ * 배속 커넥터 후보 구간의 얼굴 노출 위험 여부. faceExposed가 명시되면 그대로 따르고,
+ * 없으면 desc 텍스트 휴리스틱으로 폴백한다("얼굴"과 "노출"이 동시에 있으면 위험 —
+ * 보수적으로 애매하면 위험 쪽으로 판정한다).
+ */
+function isMonotonousRangeRisky(r: MonotonousRange): boolean {
+  if (typeof r.faceExposed === "boolean") return r.faceExposed;
+  return r.desc.includes("얼굴") && r.desc.includes("노출");
 }
 
 interface Candidate {
@@ -94,6 +104,10 @@ export function assembleDraft(clipsMoments: ClipMoments[], options: AssembleOpti
 
     for (const r of cm.monotonousRanges) {
       if (speedupCount >= SPEEDUP_CAP) break;
+      if (isMonotonousRangeRisky(r)) {
+        console.log(`[assemble] ${cm.clip} ${r.startS}-${r.endS}s: 얼굴 노출 위험으로 배속 커넥터 건너뜀`);
+        continue;
+      }
       const fullDur = r.endS - r.startS;
       if (fullDur < SPEEDUP_MIN_SLICE_S) continue;
       const sliceDur = Math.min(fullDur, SPEEDUP_MAX_SLICE_S);

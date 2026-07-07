@@ -30,6 +30,11 @@ export const monotonousRangeSchema = z.object({
   startS: z.number(),
   endS: z.number(),
   desc: z.string(),
+  /**
+   * 이 구간(배속 커넥터 후보)에 얼굴 노출 위험이 있는지. 비전 판독자가 명시하지 않으면
+   * assemble이 desc 텍스트 휴리스틱으로 폴백한다(권장: 항상 명시).
+   */
+  faceExposed: z.boolean().optional(),
 });
 
 export const clipMomentsSchema = z.object({

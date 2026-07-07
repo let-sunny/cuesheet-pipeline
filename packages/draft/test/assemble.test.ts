@@ -158,6 +158,85 @@ describe("assembleDraft", () => {
     }
   });
 
+  it("faceExposed: true인 monotonousRange는 배속 커넥터로 뽑지 않는다", () => {
+    const moments: ClipMoments[] = [
+      {
+        clip: "a.mp4",
+        clipSummary: "",
+        moments: [],
+        monotonousRanges: [
+          { startS: 0, endS: 42, desc: "얼굴은 안 보임", faceExposed: true },
+        ],
+      },
+    ];
+    const cue = assembleDraft(moments, opts());
+    expect(cue.segments).toHaveLength(0);
+  });
+
+  it("faceExposed가 false면 desc에 위험 단어가 있어도 안전으로 간주해 커넥터를 뽑는다", () => {
+    const moments: ClipMoments[] = [
+      {
+        clip: "a.mp4",
+        clipSummary: "",
+        moments: [],
+        monotonousRanges: [
+          { startS: 0, endS: 42, desc: "얼굴이 노출되어 있음", faceExposed: false },
+        ],
+      },
+    ];
+    const cue = assembleDraft(moments, opts());
+    expect(cue.segments).toHaveLength(1);
+  });
+
+  it("faceExposed 생략 + desc에 '얼굴'과 '노출' 동시 포함 -> 휴리스틱으로 위험 판정해 건너뛴다", () => {
+    const moments: ClipMoments[] = [
+      {
+        clip: "a.mp4",
+        clipSummary: "",
+        moments: [],
+        monotonousRanges: [
+          { startS: 0, endS: 42, desc: "얼굴(눈~입)이 계속 노출되어 있어 세로 크롭 없이는 사용 불가" },
+        ],
+      },
+    ];
+    const cue = assembleDraft(moments, opts());
+    expect(cue.segments).toHaveLength(0);
+  });
+
+  it("faceExposed 생략 + desc에 위험 키워드가 없으면 기존대로 커넥터를 뽑는다(회귀)", () => {
+    const moments: ClipMoments[] = [
+      {
+        clip: "a.mp4",
+        clipSummary: "",
+        moments: [],
+        monotonousRanges: [{ startS: 0, endS: 42, desc: "손으로 계속 뜨는 중" }],
+      },
+    ];
+    const cue = assembleDraft(moments, opts());
+    expect(cue.segments).toHaveLength(1);
+    expect(cue.segments?.[0]?.subtitle).toBe("(빨리감기) 손으로 계속 뜨는 중");
+  });
+
+  it("같은 클립에 안전한 단조구간이 없으면 그 클립엔 커넥터를 넣지 않고, 다른 클립의 안전 구간은 정상 채택한다", () => {
+    const moments: ClipMoments[] = [
+      {
+        clip: "a.mp4",
+        clipSummary: "",
+        moments: [],
+        monotonousRanges: [{ startS: 0, endS: 42, desc: "얼굴 계속 노출" }],
+      },
+      {
+        clip: "b.mp4",
+        clipSummary: "",
+        moments: [],
+        monotonousRanges: [{ startS: 0, endS: 42, desc: "안전 구간", faceExposed: false }],
+      },
+    ];
+    const cue = assembleDraft(moments, opts());
+    expect(cue.segments).toHaveLength(1);
+    expect(cue.segments?.[0]?.clip).toBe("b.mp4");
+  });
+
   it("정속 세그먼트는 speed 1, volume 1로 채운다", () => {
     const moments: ClipMoments[] = [
       {
