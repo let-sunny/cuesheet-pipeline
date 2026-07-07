@@ -548,7 +548,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
             </span>
           ) : null}
           {sceneInfo.kind === "monotonous" ? (
-            <span className="scene-shot-badge shot-monotonous">배속구간</span>
+            <span className="scene-shot-badge shot-monotonous">빨리감기 컷</span>
           ) : null}
           <span className="video-context-scene-label">장면</span>
           <span className="video-context-scene-text">{sceneText}</span>

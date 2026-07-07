@@ -126,7 +126,7 @@ export function CompactSegmentList({
                   </span>
                 ) : null}
                 {sceneInfo.kind === "monotonous" ? (
-                  <span className="scene-shot-badge shot-monotonous">배속구간</span>
+                  <span className="scene-shot-badge shot-monotonous">빨리감기 컷</span>
                 ) : null}
                 {sceneText}
               </span>
