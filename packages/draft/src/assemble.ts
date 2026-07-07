@@ -29,12 +29,22 @@ const SPEEDUP_MAX_SLICE_S = 60;
 /** 에피소드당 배속 커넥터 상한(남발 방지). */
 const SPEEDUP_CAP = 8;
 
+/**
+ * 정속 하이라이트 컷 경계에 기본으로 주는 여유 패딩(초). 동작(뜨개 손짓)이 완성되기 전에
+ * 잘리는 문제를 막기 위함 — Vrew "호흡 안 지킴" 불만, Descript 'Avoid harsh cuts' 참고.
+ */
+const DEFAULT_BOUNDARY_PAD_S = 0.4;
+
 export interface AssembleOptions {
   clipDir: string;
   projectName: string;
   fps?: number;
   width?: number;
   height?: number;
+  /** 정속 하이라이트 컷 경계 패딩(초). 기본 0.4 — 0으로 주면 패딩 없이 조립한다. */
+  boundaryPadS?: number;
+  /** 클립별 실제 길이(초, manifest.json의 durS) — 경계 패딩이 클립 끝을 넘지 않게 클램프하는 데 쓴다. 없는 클립은 클램프 생략. */
+  clipDurations?: Record<string, number>;
 }
 
 /**
@@ -63,6 +73,8 @@ type DraftSegment = { clip: string; in: number; out: number; speed: number; volu
  * 정속 컷(speed===1)의 전체 평균 길이가 AVG_TRIGGER_S(3.1초)를 넘으면, 가장 긴 컷부터
  * 0.25초씩 다듬어 평균을 2.8~3.0초 범위로 수렴시키는 단순 그리디 패스.
  * 배속 커넥터(speed!==1)는 건드리지 않는다. 세그먼트 객체를 직접 변형한다.
+ * 다듬을 때는 in/out 양끝에서 대칭으로 줄인다 — 경계 패딩으로 확보한 동작 중심이
+ * 한쪽으로만 깎여 무의미해지지 않게 하기 위함.
  */
 function convergeSteadyCutAverage(segments: DraftSegment[]): void {
   const steady = segments.filter((s) => s.speed === 1);
@@ -78,8 +90,12 @@ function convergeSteadyCutAverage(segments: DraftSegment[]): void {
     for (const s of steady) {
       if (s.out - s.in > longest.out - longest.in) longest = s;
     }
-    if (longest.out - longest.in <= MIN_CUT_S) break; // 더 다듬을 여지가 없다.
-    longest.out = Math.max(longest.in + MIN_CUT_S, longest.out - TRIM_STEP_S);
+    const curLen = longest.out - longest.in;
+    if (curLen <= MIN_CUT_S) break; // 더 다듬을 여지가 없다.
+    const newLen = Math.max(MIN_CUT_S, curLen - TRIM_STEP_S);
+    const center = (longest.in + longest.out) / 2;
+    longest.in = center - newLen / 2;
+    longest.out = center + newLen / 2;
   }
 }
 
@@ -90,19 +106,45 @@ function convergeSteadyCutAverage(segments: DraftSegment[]): void {
  */
 export function assembleDraft(clipsMoments: ClipMoments[], options: AssembleOptions): CueSheetInput {
   const sortedClips = [...clipsMoments].sort((a, b) => a.clip.localeCompare(b.clip));
+  const padS = options.boundaryPadS ?? DEFAULT_BOUNDARY_PAD_S;
 
   const segments: DraftSegment[] = [];
   let speedupCount = 0;
 
   for (const cm of sortedClips) {
-    const candidates: Candidate[] = [];
+    const clipDur = options.clipDurations?.[cm.clip] ?? Number.POSITIVE_INFINITY;
 
+    const steadyCandidates: Candidate[] = [];
     for (const m of cm.moments) {
       if (m.quality >= MIN_QUALITY) {
-        const outS = m.outS - m.inS > MAX_CUT_S ? m.inS + MAX_CUT_S : m.outS;
-        candidates.push({ inS: m.inS, outS, speed: 1, volume: 1, subtitle: m.memo });
+        let inS = Math.max(0, m.inS - padS);
+        let outS = Math.min(clipDur, m.outS + padS);
+        const len = outS - inS;
+        if (len > MAX_CUT_S) {
+          // 패딩 포함 길이가 상한을 넘으면 양끝을 대칭으로 줄인다(동작 중심 유지) —
+          // 한쪽만 자르면 방금 준 패딩을 그대로 도로 깎아 먹어 의미가 없어진다.
+          const excess = len - MAX_CUT_S;
+          inS += excess / 2;
+          outS -= excess / 2;
+        }
+        steadyCandidates.push({ inS, outS, speed: 1, volume: 1, subtitle: m.memo });
       }
     }
+    steadyCandidates.sort((a, b) => a.inS - b.inS);
+    // 같은 클립 내 인접 컷끼리 패딩으로 겹치면, 겹치지 않는 만큼만 패딩이 남도록
+    // 겹친 폭을 반씩 되돌린다.
+    for (let i = 0; i < steadyCandidates.length - 1; i++) {
+      const cur = steadyCandidates[i] as Candidate;
+      const next = steadyCandidates[i + 1] as Candidate;
+      const overlap = cur.outS - next.inS;
+      if (overlap > 0) {
+        const half = overlap / 2;
+        cur.outS -= half;
+        next.inS += half;
+      }
+    }
+
+    const candidates: Candidate[] = [...steadyCandidates];
 
     for (const r of cm.monotonousRanges) {
       if (speedupCount >= SPEEDUP_CAP) break;

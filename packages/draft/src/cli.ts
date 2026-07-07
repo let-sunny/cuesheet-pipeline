@@ -5,13 +5,14 @@ import type { z } from "zod";
 import { validateCueSheet } from "@cuesheet/schema";
 import { assembleDraft } from "./assemble.js";
 import { scanFolder } from "./scan.js";
+import type { Manifest } from "./scan.js";
 import { momentsFileSchema } from "./types.js";
 
 /**
  * CLI: cuesheet-draft scan <원본폴더> --out <작업폴더>
  *      cuesheet-draft assemble --manifest <경로> --moments <경로> --clip-dir <원본폴더>
  *                               --project-name <이름> --out <큐시트경로>
- *                               [--fps N] [--width N] [--height N]
+ *                               [--fps N] [--width N] [--height N] [--boundary-pad N]
  */
 
 interface ParsedArgs {
@@ -92,8 +93,9 @@ function runAssemble(rest: string[]): void {
   }
 
   // manifest.json은 scan 단계에서 실제 스캔된 클립 목록/프레임 정보를 담고 있다.
-  // assemble 로직 자체는 moments.json만으로 충분하지만, 존재 확인 차 읽는다.
-  JSON.parse(readFileSync(manifestPath, "utf-8"));
+  // 클립별 durS를 뽑아 경계 패딩이 클립 끝을 넘지 않게 클램프하는 데 쓴다.
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf-8")) as Manifest;
+  const clipDurations = Object.fromEntries(manifest.clips.map((c) => [c.name, c.durS]));
 
   const momentsRaw = JSON.parse(readFileSync(momentsPath, "utf-8"));
   const momentsResult = momentsFileSchema.safeParse(momentsRaw);
@@ -108,6 +110,8 @@ function runAssemble(rest: string[]): void {
     fps: flags.fps ? Number(flags.fps) : undefined,
     width: flags.width ? Number(flags.width) : undefined,
     height: flags.height ? Number(flags.height) : undefined,
+    boundaryPadS: flags["boundary-pad"] ? Number(flags["boundary-pad"]) : undefined,
+    clipDurations,
   });
 
   const validated = validateCueSheet(cueInput);
