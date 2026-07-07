@@ -3,6 +3,8 @@ import type { MouseEvent } from "react";
 import type { Segment, SubtitleStyle } from "@cuesheet/schema";
 import { Button } from "@astryxdesign/core/Button";
 import { cropPreviewStyle } from "../cropPreview.js";
+import type { ClipMoments } from "../api.js";
+import { matchSceneInfo } from "../sceneInfo.js";
 
 /** 외부(App.tsx의 Space 단축키 등)에서 이어재생을 제어하기 위한 핸들. */
 export interface SequencePlayerHandle {
@@ -13,6 +15,8 @@ interface Props {
   segments: Segment[];
   /** 현재 재생/선택 중인 컷 인덱스(App의 selectedIndex와 공유). */
   currentIndex: number;
+  /** 초벌 비전 판독 데이터 — 현재 컷의 장면 묘사를 자막 위에 작게 표시하는 데 쓴다. */
+  moments: ClipMoments[];
   subtitleStyle: SubtitleStyle;
   /** subtitleStyle.margin(px, 원본 해상도 기준)을 스테이지 비율(%)로 환산하는 데 쓴다. */
   projectHeight: number;
@@ -104,7 +108,7 @@ const RATE_OPTIONS = [1, 1.5, 2] as const;
  * 타이밍 차이는 허용되는 검토용 미리보기다.
  */
 export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function SequencePlayer(
-  { segments, currentIndex, subtitleStyle, projectHeight, onIndexChange, onExit },
+  { segments, currentIndex, moments, subtitleStyle, projectHeight, onIndexChange, onExit },
   ref,
 ) {
   const videoRefs = [useRef<HTMLVideoElement | null>(null), useRef<HTMLVideoElement | null>(null)] as const;
@@ -305,6 +309,11 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
 
   const currentSegment = segments[currentIndex];
   const subtitle = currentSegment?.subtitle.trim() ?? "";
+  // 처음 보는 사람도 지금 재생 중인 컷이 무슨 장면인지 알 수 있도록 자막 위에
+  // 작게 힌트를 띄운다. 매칭 실패 컷은 조용히 숨긴다(이어재생 몰입을 방해하지 않기
+  // 위함 — "장면 정보 없음" 명시는 컷 리스트/인스펙터에서만 강제한다).
+  const sceneHint = currentSegment ? matchSceneInfo(currentSegment, moments) : { kind: "none" as const };
+  const sceneHintText = sceneHint.kind !== "none" ? sceneHint.memo : null;
 
   // 출력 타임라인 기준 누적 오프셋(초) — 진행 바/시간 표시/클릭 시킹 모두 이 기준을 쓴다.
   const cumulativeStart: number[] = [];
@@ -385,6 +394,11 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
           style={front === 1 ? cropPreviewStyle(currentSegment?.crop) : undefined}
           playsInline
         />
+        {sceneHintText ? (
+          <div className="sequence-scene-hint" title={sceneHintText}>
+            {sceneHintText}
+          </div>
+        ) : null}
         {subtitle !== "" ? (
           <div
             className={`sequence-subtitle sequence-subtitle-${subtitleStyle.position}`}

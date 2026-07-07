@@ -18,9 +18,11 @@ import {
   fetchRenderStatus,
   saveCueSheet,
   startRender,
+  type ClipMoments,
   type NarrationFile,
 } from "./api.js";
 import { buildClipPath, computeClipDurations } from "./clipPaths.js";
+import { matchSceneInfo } from "./sceneInfo.js";
 import { VideoPreview } from "./components/VideoPreview.js";
 import type { VideoPreviewHandle } from "./components/VideoPreview.js";
 import { BgmEditor } from "./components/BgmEditor.js";
@@ -147,6 +149,9 @@ export function App() {
   // 클립별 길이 근사치(초) — 인트로/아웃트로 지정 버튼(팔레트/인스펙터)의 15초 상한
   // 판정에 쓴다. 실패해도 편집 자체는 막지 않고 빈 맵(전부 "알 수 없음" 취급)으로 둔다.
   const [clipDurations, setClipDurations] = useState<Record<string, number>>({});
+  // 초벌 비전 판독 원본 데이터 — 컷 리스트/인스펙터/이어재생에서 "이 컷이 무슨
+  // 장면인지" 매칭해 보여주는 데 쓴다(clipDurations와 같은 fetchMoments 호출 결과 공유).
+  const [moments, setMoments] = useState<ClipMoments[]>([]);
   // narration.dir 안의 오디오 파일 목록(내레이션 사용 중일 때만 갱신). note는
   // 폴더 미설정/미존재 등 안내 메시지.
   const [narrationFiles, setNarrationFiles] = useState<NarrationFile[]>([]);
@@ -300,11 +305,12 @@ export function App() {
   useEffect(() => {
     void (async () => {
       try {
-        const moments = await fetchMoments();
-        setClipDurations(computeClipDurations(moments));
+        const data = await fetchMoments();
+        setMoments(data);
+        setClipDurations(computeClipDurations(data));
       } catch {
         // 순간 데이터가 없어도 편집 자체는 계속되고, 인트로/아웃트로 지정 버튼만
-        // "길이를 알 수 없음"으로 비활성 처리된다.
+        // "길이를 알 수 없음"으로 비활성 처리되며, 장면 표시는 전부 "정보 없음"이 된다.
       }
     })();
   }, []);
@@ -984,6 +990,7 @@ export function App() {
             ref={sequencePlayerRef}
             segments={draft.segments}
             currentIndex={selectedIndex}
+            moments={moments}
             subtitleStyle={draft.subtitleStyle}
             projectHeight={draft.project.height}
             onIndexChange={setSelectedIndex}
@@ -1030,6 +1037,7 @@ export function App() {
                 <CompactSegmentList
                   segments={draft.segments}
                   selectedIndex={selectedIndex}
+                  moments={moments}
                   onSelect={setSelectedIndex}
                   onAdd={addSegment}
                   onRemove={removeSegment}
@@ -1046,6 +1054,9 @@ export function App() {
                   />
                   <SegmentQuickFields
                     segment={selectedSegment}
+                    sceneInfo={
+                      selectedSegment ? matchSceneInfo(selectedSegment, moments) : { kind: "none" }
+                    }
                     narrationEnabled={draft.narration?.enabled ?? false}
                     narrationFiles={narrationFiles}
                     narrationNote={narrationNote}

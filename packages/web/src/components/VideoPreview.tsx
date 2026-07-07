@@ -1,8 +1,9 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import type { Segment } from "@cuesheet/schema";
+import type { Crop, Segment } from "@cuesheet/schema";
 import { fetchProxyStatus, type ProxyStatus } from "../api.js";
 import { cropPreviewStyle } from "../cropPreview.js";
+import { CropEditOverlay } from "./CropEditOverlay.js";
 
 /** 프록시 준비 상태 폴링 주기(ms). */
 const PROXY_STATUS_POLL_INTERVAL_MS = 10000;
@@ -34,6 +35,8 @@ export interface VideoPreviewHandle {
   setInFromCurrent: () => void;
   setOutFromCurrent: () => void;
   splitAtCurrent: () => void;
+  /** 크롭 편집 모드로 진입한다(기존 crop이 있으면 거기서, 없으면 전체 프레임에서 시작). */
+  startCropEdit: () => void;
 }
 
 /**
@@ -47,7 +50,10 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
 ) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const timelineRef = useRef<HTMLDivElement | null>(null);
+  const cropFrameRef = useRef<HTMLDivElement | null>(null);
   const [missing, setMissing] = useState(false);
+  // null = 크롭 편집 모드 아님. 값이 있으면 편집 중인 draft crop(아직 세그먼트에 커밋 전).
+  const [cropEditDraft, setCropEditDraft] = useState<Crop | null>(null);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [playMode, setPlayMode] = useState<PlayMode>("loop");
@@ -69,6 +75,11 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     setDuration(0);
     setCurrentTime(0);
   }, [segment?.clip]);
+
+  // 선택된 컷이 바뀌면 진행 중이던 크롭 편집(다른 컷 기준 draft)은 버린다.
+  useEffect(() => {
+    setCropEditDraft(null);
+  }, [selectedIndex]);
 
   // 선택된 클립이 프록시 생성 대기/진행 중이면 10초마다 상태를 확인해
   // 안내를 갱신하고, 준비가 끝나면 <video>를 다시 마운트해 프록시로 전환한다.
@@ -238,6 +249,49 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     onSplit(currentTime);
   };
 
+  const startCropEdit = () => {
+    if (!segment) {
+      return;
+    }
+    setCropEditDraft(segment.crop ?? { x: 0, y: 0, w: 1, h: 1 });
+  };
+
+  const applyCropEdit = () => {
+    if (!cropEditDraft) {
+      return;
+    }
+    onChange({ crop: cropEditDraft });
+    setCropEditDraft(null);
+  };
+
+  const cancelCropEdit = () => {
+    setCropEditDraft(null);
+  };
+
+  const clearCropEdit = () => {
+    onChange({ crop: null });
+    setCropEditDraft(null);
+  };
+
+  // 크롭 편집 중일 때만 Esc(취소)/Enter(적용)를 가로챈다.
+  useEffect(() => {
+    if (!cropEditDraft) {
+      return;
+    }
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        cancelCropEdit();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        applyCropEdit();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cropEditDraft]);
+
   useImperativeHandle(
     ref,
     () => ({
@@ -258,6 +312,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
       setInFromCurrent: handleSetIn,
       setOutFromCurrent: handleSetOut,
       splitAtCurrent: handleSplit,
+      startCropEdit,
     }),
     [currentTime, duration, playMode, segment],
   );
@@ -332,14 +387,38 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
         <div className="empty">클립 없음: {segment.clip || "(파일명 없음)"}</div>
       ) : isPreparingProxy ? null : (
         <>
-          <div className="video-crop-frame">
+          {cropEditDraft ? (
+            <div className="crop-edit-toolbar">
+              <span className="crop-edit-readout">
+                x {(cropEditDraft.x * 100).toFixed(0)}% · y {(cropEditDraft.y * 100).toFixed(0)}%
+                {" "}· w {(cropEditDraft.w * 100).toFixed(0)}% · h {(cropEditDraft.h * 100).toFixed(0)}%
+              </span>
+              <div className="crop-edit-actions">
+                <button type="button" onClick={applyCropEdit}>
+                  적용
+                </button>
+                <button type="button" onClick={cancelCropEdit}>
+                  취소
+                </button>
+                {segment.crop ? (
+                  <button type="button" onClick={clearCropEdit}>
+                    해제
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+          <div className="video-crop-frame" ref={cropFrameRef}>
             <video
               key={`${segment.clip}:${reloadToken}`}
               ref={videoRef}
               src={`/clips/${encodeURIComponent(segment.clip)}`}
               onError={() => setMissing(true)}
-              style={cropPreviewStyle(segment.crop)}
+              style={cropEditDraft ? undefined : cropPreviewStyle(segment.crop)}
             />
+            {cropEditDraft ? (
+              <CropEditOverlay crop={cropEditDraft} frameRef={cropFrameRef} onChange={setCropEditDraft} />
+            ) : null}
           </div>
 
           <div

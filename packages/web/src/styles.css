@@ -1199,13 +1199,131 @@ textarea {
   overflow: hidden;
 }
 
-.compact-list-clip {
+.compact-list-text {
   flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.compact-list-clip {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 14px;
+}
+
+/* 처음 보는 사람도 이 컷이 무슨 장면인지 알 수 있게 하는 초벌 비전 판독 장면
+   묘사(memo) 2번째 줄. 자막(1번째 줄)보다 톤을 낮추고(무채색·작은 글씨) 한 줄로 잘라낸다. */
+.compact-list-scene {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: #8a90a2;
+}
+
+.compact-list-scene.empty {
+  font-style: italic;
+  color: #5f6473;
+}
+
+.scene-shot-badge {
+  flex: 0 0 auto;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: #242f57;
+  color: #a9b8fb;
+}
+
+.scene-shot-badge.shot-hand-closeup {
+  background: #242f57;
+  color: #a9b8fb;
+}
+
+.scene-shot-badge.shot-object {
+  background: #1f4234;
+  color: #8fd9b7;
+}
+
+.scene-shot-badge.shot-cat {
+  background: #3a2a57;
+  color: #cba9f2;
+}
+
+.scene-shot-badge.shot-change {
+  background: #1f3d4a;
+  color: #8fd3f2;
+}
+
+.scene-shot-badge.shot-reveal {
+  background: #503a20;
+  color: #f2c98a;
+}
+
+.scene-shot-badge.shot-wearing {
+  background: #4a2038;
+  color: #f2a9d8;
+}
+
+.scene-shot-badge.shot-other {
+  background: #2a2e3d;
+  color: #9aa0b4;
+}
+
+.scene-shot-badge.shot-monotonous {
+  background: #1f4d4d;
+  color: #8fd9d9;
+}
+
+/* 인스펙터 상단 "장면" 박스 — 자막 입력칸 바로 위에 배치해 "장면 보고 자막 쓰는" 흐름을 만든다. */
+.scene-info-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  background: #12141a;
+  border: 1px solid #292f40;
+  border-radius: 6px;
+}
+
+.scene-info-label {
+  font-size: 12px;
+  color: #6f7690;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.scene-info-memo {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #e4e6ee;
+}
+
+.scene-info-memo.scene-info-empty {
+  font-style: italic;
+  color: #6f7690;
+}
+
+.scene-info-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scene-info-range {
+  font-size: 12px;
+  color: #6f7690;
 }
 
 .compact-list-time {
@@ -1518,6 +1636,25 @@ textarea {
   font-size: 22px;
   font-weight: 700;
   line-height: 1.4;
+  pointer-events: none;
+}
+
+/* 이어재생 중 지금 컷이 무슨 장면인지 알려주는 작은 힌트(선택 요소) — 자막을
+   가리지 않도록 스테이지 상단 좌측에 조용히 표시하고, 매칭 실패 컷은 숨긴다. */
+.sequence-scene-hint {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  max-width: calc(100% - 20px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #d8dbe6;
+  font-size: 12px;
   pointer-events: none;
 }
 

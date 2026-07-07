@@ -25,7 +25,9 @@ function cuesheetPath(): string {
 }
 
 function momentsPath(): string {
-  return process.env.MOMENTS_PATH ?? resolve(draftsRoot, "dotmix.moments.json");
+  // 기본값은 현재 활성 데이터셋(dotmix_v4)을 가리킨다 — 다른 데이터셋으로 서버를
+  // 띄울 땐 MOMENTS_PATH로 명시적으로 지정한다.
+  return process.env.MOMENTS_PATH ?? resolve(draftsRoot, "dotmix_v4/moments.json");
 }
 
 /** target이 root 안(root 자신 포함)에 있는지 확인 — 경로 탈출 방지. */
