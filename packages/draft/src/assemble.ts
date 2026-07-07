@@ -39,12 +39,14 @@ export interface AssembleOptions {
 
 /**
  * 배속 커넥터 후보 구간의 얼굴 노출 위험 여부. faceExposed가 명시되면 그대로 따르고,
- * 없으면 desc 텍스트 휴리스틱으로 폴백한다("얼굴"과 "노출"이 동시에 있으면 위험 —
- * 보수적으로 애매하면 위험 쪽으로 판정한다).
+ * 없으면 desc 텍스트 휴리스틱으로 폴백한다(얼굴 부위 단어 + "노출"이 동시에 있으면 위험 —
+ * 보수적으로 애매하면 위험 쪽으로 판정한다. 실측: 비전 판독이 "입술이 거의 항상 노출"처럼
+ * "얼굴" 없이 부위명으로만 쓰는 경우가 있어 부위 어휘를 함께 본다).
  */
 function isMonotonousRangeRisky(r: MonotonousRange): boolean {
   if (typeof r.faceExposed === "boolean") return r.faceExposed;
-  return r.desc.includes("얼굴") && r.desc.includes("노출");
+  const facePart = ["얼굴", "입술", "눈~입", "이목구비"].some((w) => r.desc.includes(w));
+  return facePart && r.desc.includes("노출");
 }
 
 interface Candidate {
