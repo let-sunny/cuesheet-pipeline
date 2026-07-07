@@ -1,25 +1,11 @@
-import { useEffect, useState } from "react";
-import type { CSSProperties } from "react";
 import type { NarrationConfig, SubtitleBackground, SubtitleStyle } from "@cuesheet/schema";
-import { subtitleOutlineStyle, toCqw } from "../subtitleOverlay.js";
 
 interface Props {
   subtitleStyle: SubtitleStyle;
   narration: NarrationConfig | undefined;
-  /** 미리보기 화면비 + 비례 스케일 계산 기준이 되는 project.width. */
-  projectWidth: number;
-  /** 미리보기 화면비 계산 기준이 되는 project.height. */
-  projectHeight: number;
-  /** 미리보기 배경으로 쓸 실제 영상 프레임(첫 세그먼트 클립/시각). 없으면 그라데이션 폴백. */
-  previewClip: { clip: string; t: number } | undefined;
   onSubtitleStyleChange: (patch: Partial<SubtitleStyle>) => void;
   onNarrationChange: (patch: Partial<NarrationConfig>) => void;
 }
-
-/** 미리보기 박스의 목표 폭(px) — CSS에서 `min(이 값, 100%)`로 좁은 화면에서도 반응형 축소. */
-const PREVIEW_TARGET_WIDTH_PX = 680;
-/** 미리보기 배경 썸네일 요청 폭(px) — 목표 폭보다 여유 있게 커서 확대해도 선명하도록. */
-const PREVIEW_THUMB_WIDTH = 960;
 
 const DEFAULT_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75, padding: 8 };
 
@@ -40,51 +26,15 @@ function toColorInputValue(hex: string): string {
   return /^#[0-9a-fA-F]{6}$/.test(hex) ? hex : "#000000";
 }
 
-/** #rgb 또는 #rrggbb + 0~1 투명도 -> css rgba() 문자열. */
-function hexToRgba(hex: string, opacity: number): string {
-  const full = toColorInputValue(hex).slice(1);
-  const r = parseInt(full.slice(0, 2), 16);
-  const g = parseInt(full.slice(2, 4), 16);
-  const b = parseInt(full.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-}
-
 /** 마무리 단계(④)의 자막 스타일 + 내레이션 폼. 프로젝트 메타(이름/fps/해상도)는 헤더 설정 다이얼로그로 분리됨. */
 export function FinishingSettings({
   subtitleStyle,
   narration,
-  projectWidth,
-  projectHeight,
-  previewClip,
   onSubtitleStyleChange,
   onNarrationChange,
 }: Props) {
   const background = subtitleStyle.background ?? null;
   const margin = subtitleStyle.margin ?? DEFAULT_MARGIN;
-  const [thumbFailed, setThumbFailed] = useState(false);
-
-  useEffect(() => {
-    setThumbFailed(false);
-  }, [previewClip?.clip, previewClip?.t]);
-
-  // 프레임 전체를 project 화면비 그대로 보여주고, 폰트/외곽선/여백은 전부
-  // cqw(미리보기 박스 실제 렌더 폭 대비 %)로 환산 — 박스 크기가 바뀌어도
-  // "project.width 대비 몇 %인가"라는 진짜 비율이 항상 유지된다.
-  const previewFontSize = toCqw(subtitleStyle.size, projectWidth);
-  const previewOutlineWidth = toCqw(subtitleStyle.outlineWidth, projectWidth);
-  const previewOutlineWidthPx = subtitleStyle.outlineWidth;
-  const previewMargin = toCqw(margin, projectWidth);
-
-  const previewTextStyle: CSSProperties =
-    subtitleStyle.position === "top"
-      ? { top: previewMargin, left: "50%", transform: "translateX(-50%)" }
-      : subtitleStyle.position === "bottom"
-        ? { bottom: previewMargin, left: "50%", transform: "translateX(-50%)" }
-        : { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
-
-  const thumbUrl = previewClip
-    ? `/api/thumb?clip=${encodeURIComponent(previewClip.clip)}&t=${previewClip.t.toFixed(1)}&w=${PREVIEW_THUMB_WIDTH}`
-    : undefined;
 
   function handleBackgroundToggle(enabled: boolean) {
     onSubtitleStyleChange({ background: enabled ? background ?? DEFAULT_BACKGROUND : null });
@@ -248,42 +198,7 @@ export function FinishingSettings({
           </>
         ) : null}
 
-        <div className="subtitle-style-preview">
-          <div
-            className="subtitle-style-preview-stage"
-            style={{
-              width: `min(${PREVIEW_TARGET_WIDTH_PX}px, 100%)`,
-              aspectRatio: `${projectWidth} / ${projectHeight}`,
-            }}
-          >
-            {thumbUrl && !thumbFailed ? (
-              <img
-                key={thumbUrl}
-                src={thumbUrl}
-                alt=""
-                className="subtitle-style-preview-bg"
-                onError={() => setThumbFailed(true)}
-              />
-            ) : null}
-            <span
-              className="subtitle-style-preview-text"
-              style={{
-                ...previewTextStyle,
-                fontFamily: subtitleStyle.font,
-                fontSize: previewFontSize,
-                color: subtitleStyle.color,
-                ...subtitleOutlineStyle(previewOutlineWidthPx, previewOutlineWidth, subtitleStyle.outlineColor),
-                background: background ? hexToRgba(background.color, background.opacity) : undefined,
-                padding: background ? toCqw(background.padding, projectWidth) : undefined,
-              }}
-            >
-              자막 미리보기 문구는 이렇게 보여요
-            </span>
-          </div>
-          <p className="subtitle-style-preview-note">
-            실제 출력 {projectWidth}x{projectHeight} 기준 비례 표시
-          </p>
-        </div>
+        <p className="settings-note">미리보기는 ② 편집의 비디오에서 실시간 확인</p>
       </div>
 
       <div className="settings-group">

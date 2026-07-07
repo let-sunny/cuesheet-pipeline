@@ -397,7 +397,9 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     if (!segment) {
       return;
     }
-    setCropEditDraft(segment.crop ?? { x: 0, y: 0, w: 1, h: 1 });
+    // 신규 크롭 시작값은 정사각 비율(w==h) — 소스·출력이 같은 종횡비(16:9)일 때
+    // w==h면 크롭 창도 16:9라 왜곡이 없다(CropEditOverlay가 드래그 중에도 이 불변을 유지).
+    setCropEditDraft(segment.crop ?? { x: 0.15, y: 0.15, w: 0.7, h: 0.7 });
   };
 
   const applyCropEdit = () => {
@@ -410,6 +412,12 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
 
   const cancelCropEdit = () => {
     setCropEditDraft(null);
+  };
+
+  /** 편집 모드는 유지한 채(적용/커밋 없이) draft만 전체 프레임으로 되돌린다 — 핸들 드래그로
+   * 프레임 경계까지 벌리는 게 번거로울 때 쓰는 지름길. 여기서 다시 좁혀서 적용할 수도 있다. */
+  const resetCropEditToFullFrame = () => {
+    setCropEditDraft({ x: 0, y: 0, w: 1, h: 1 });
   };
 
   const clearCropEdit = () => {
@@ -564,6 +572,9 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
                 {" "}· w {(cropEditDraft.w * 100).toFixed(0)}% · h {(cropEditDraft.h * 100).toFixed(0)}%
               </span>
               <div className="crop-edit-actions">
+                <button type="button" onClick={resetCropEditToFullFrame}>
+                  전체 프레임
+                </button>
                 <button type="button" onClick={applyCropEdit}>
                   적용
                 </button>

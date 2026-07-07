@@ -46,10 +46,9 @@
   --warning-text: light-dark(#8a5a17, #f0a34a);
   --warning-border: light-dark(#f0a34a66, #f0a34a55);
 
-  /* 항상 어두운 톤 — 비디오 스테이지/자막 미리보기/타임라인 썸네일 배경 전용
+  /* 항상 어두운 톤 — 비디오 스테이지/타임라인 썸네일 배경 전용
      (영상 편집 관례상 테마와 무관하게 항상 어둡게 유지) */
   --stage-bg: #12141a;
-  --stage-bg-alt: #0c0e14;
 
   /* 카테고리 배지(장면 태그/샷 유형) - 색상값은 Astryx theme-stone의 라이트 팔레트를
      그대로 채용해 대비가 이미 검증된 값을 재사용한다 */
@@ -463,45 +462,8 @@ textarea {
   width: 90px;
 }
 
-.subtitle-style-preview {
-  margin-top: 12px;
-}
-
-/*
- * 프레임 전체를 project 화면비 그대로 보여주는 미리보기 박스. container-type:
- * inline-size로 컨테이너 쿼리 컨텍스트를 열어, 안쪽 텍스트가 cqw 단위로
- * "박스의 실제 렌더 폭 대비 %"를 쓸 수 있게 한다 — 박스가 반응형으로
- * 축소되어도 project 대비 비율이 항상 정확히 유지된다.
- */
-/* 배경은 의도적으로 테마 무관 고정 다크 — 실제 영상 프레임이 얹히는 캔버스라
-   영상 편집 관례상 라이트 테마에서도 어둡게 유지한다(스펙 3번). */
-.subtitle-style-preview-stage {
-  position: relative;
-  container-type: inline-size;
-  background: var(--stage-bg-alt) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Crect width='16' height='16' fill='%23161925'/%3E%3C/svg%3E");
-  border-radius: 6px;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.subtitle-style-preview-bg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.subtitle-style-preview-text {
-  position: absolute;
-  max-width: calc(100% - 24px);
-  text-align: center;
-  font-weight: 700;
-  white-space: pre-wrap;
-}
-
-.subtitle-style-preview-note {
-  margin: 6px 0 0;
+.settings-note {
+  margin: 12px 0 0;
   font-size: 12px;
   color: var(--text-secondary);
 }

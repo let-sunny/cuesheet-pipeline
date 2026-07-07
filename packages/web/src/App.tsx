@@ -1283,13 +1283,6 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
             <FinishingSettings
               subtitleStyle={draft.subtitleStyle}
               narration={draft.narration}
-              projectWidth={draft.project.width}
-              projectHeight={draft.project.height}
-              previewClip={
-                draft.segments[0]
-                  ? { clip: draft.segments[0].clip, t: draft.segments[0].in + 0.3 }
-                  : undefined
-              }
               onSubtitleStyleChange={updateSubtitleStyle}
               onNarrationChange={updateNarration}
             />
