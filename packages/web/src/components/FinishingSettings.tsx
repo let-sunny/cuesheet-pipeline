@@ -1,6 +1,7 @@
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { Slider } from "@astryxdesign/core/Slider";
 import type { NarrationConfig, SubtitleBackground, SubtitleStyle } from "@cuesheet/schema";
+import { toColorInputValue } from "../subtitleOverlay.js";
 
 const DEFAULT_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75, padding: 8 };
 
@@ -10,16 +11,6 @@ const DEFAULT_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75
  * 저장 전 상태로 열었을 때도 이 값으로 안전하게 표시하기 위한 방어적 fallback.
  */
 const DEFAULT_MARGIN = 40;
-
-/** input[type=color]는 #rrggbb만 받는다 — #rgb 축약형을 늘려서 넘긴다. */
-function toColorInputValue(hex: string): string {
-  const m = /^#([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])$/.exec(hex);
-  if (m) {
-    const [, r, g, b] = m;
-    return `#${r}${r}${g}${g}${b}${b}`;
-  }
-  return /^#[0-9a-fA-F]{6}$/.test(hex) ? hex : "#000000";
-}
 
 interface SubtitleStyleProps {
   subtitleStyle: SubtitleStyle;
