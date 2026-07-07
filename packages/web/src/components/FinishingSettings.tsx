@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import type { NarrationConfig, SubtitleBackground, SubtitleStyle } from "@cuesheet/schema";
+import { subtitleOutlineStyle, toCqw } from "../subtitleOverlay.js";
 
 interface Props {
   subtitleStyle: SubtitleStyle;
@@ -19,17 +20,6 @@ interface Props {
 const PREVIEW_TARGET_WIDTH_PX = 680;
 /** 미리보기 배경 썸네일 요청 폭(px) — 목표 폭보다 여유 있게 커서 확대해도 선명하도록. */
 const PREVIEW_THUMB_WIDTH = 960;
-
-/**
- * project 픽셀 단위 값(폰트 크기·여백·외곽선 두께 등)을 미리보기 박스 폭 기준
- * cqw(container query width) 단위 문자열로 바꾼다. 미리보기 박스에 `container-type:
- * inline-size`가 걸려 있어 1cqw = 박스의 실제 렌더 폭의 1% — 즉 박스가 어떤 크기로
- * 렌더되든(반응형 축소 포함) "project.width 대비 몇 %인가"라는 진짜 비율이 항상
- * 그대로 유지된다. 슬라이스 확대 없이 프레임 전체 + 정확한 사이즈감을 동시에 만족.
- */
-function toCqw(px: number, projectWidth: number): string {
-  return `${(px / Math.max(1, projectWidth)) * 100}cqw`;
-}
 
 const DEFAULT_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75, padding: 8 };
 
@@ -57,20 +47,6 @@ function hexToRgba(hex: string, opacity: number): string {
   const g = parseInt(full.slice(2, 4), 16);
   const b = parseInt(full.slice(4, 6), 16);
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-}
-
-/** drawtext 재현이 아니라 대략적인 외곽선 미리보기용 텍스트 그림자. width는 CSS 길이 문자열(cqw 등). */
-function outlineShadow(color: string, width: number, widthCss: string): string | undefined {
-  if (width <= 0) {
-    return undefined;
-  }
-  const w = widthCss;
-  return [
-    `-${w} -${w} 0 ${color}`,
-    `${w} -${w} 0 ${color}`,
-    `-${w} ${w} 0 ${color}`,
-    `${w} ${w} 0 ${color}`,
-  ].join(", ");
 }
 
 /** 마무리 단계(④)의 자막 스타일 + 내레이션 폼. 프로젝트 메타(이름/fps/해상도)는 헤더 설정 다이얼로그로 분리됨. */
@@ -296,7 +272,7 @@ export function FinishingSettings({
                 fontFamily: subtitleStyle.font,
                 fontSize: previewFontSize,
                 color: subtitleStyle.color,
-                textShadow: outlineShadow(subtitleStyle.outlineColor, previewOutlineWidthPx, previewOutlineWidth),
+                ...subtitleOutlineStyle(previewOutlineWidthPx, previewOutlineWidth, subtitleStyle.outlineColor),
                 background: background ? hexToRgba(background.color, background.opacity) : undefined,
                 padding: background ? toCqw(background.padding, projectWidth) : undefined,
               }}

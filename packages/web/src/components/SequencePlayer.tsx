@@ -8,8 +8,9 @@ import { matchSceneInfo } from "../sceneInfo.js";
 import {
   mergeSubtitleStyle,
   subtitleBackgroundRgba,
-  subtitleOutlineShadow,
+  subtitleOutlineStyle,
   subtitlePositionStyle,
+  toCqw,
 } from "../subtitleOverlay.js";
 
 /** 외부(App.tsx의 Space 단축키 등)에서 이어재생을 제어하기 위한 핸들. */
@@ -32,6 +33,8 @@ interface Props {
   subtitleStyle: SubtitleStyle;
   /** subtitleStyle.margin(px, 원본 해상도 기준)을 스테이지 비율(%)로 환산하는 데 쓴다. */
   projectHeight: number;
+  /** subtitleStyle.size/outlineWidth(px, 원본 해상도 기준)를 스테이지 폭 대비 cqw로 환산하는 데 쓴다. */
+  projectWidth: number;
   /** 자동 전환·미니 타임라인 클릭 모두 이 콜백 하나로 App의 selectedIndex를 갱신한다. */
   onIndexChange: (i: number) => void;
   /** 닫기 버튼 — 이어재생 모드 종료(부모가 스티키 플레이어 영역을 걷어낸다). */
@@ -96,7 +99,7 @@ const RATE_OPTIONS = [1, 1.5, 2] as const;
  * 타이밍 차이는 허용되는 검토용 미리보기다.
  */
 export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function SequencePlayer(
-  { segments, currentIndex, moments, subtitleStyle, projectHeight, onIndexChange, onExit },
+  { segments, currentIndex, moments, subtitleStyle, projectHeight, projectWidth, onIndexChange, onExit },
   ref,
 ) {
   const videoRefs = [useRef<HTMLVideoElement | null>(null), useRef<HTMLVideoElement | null>(null)] as const;
@@ -517,10 +520,11 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
             style={{
               color: effectiveStyle.color,
               fontFamily: effectiveStyle.font,
-              textShadow: subtitleOutlineShadow(
-                effectiveStyle.outlineColor,
+              fontSize: toCqw(effectiveStyle.size, projectWidth),
+              ...subtitleOutlineStyle(
                 effectiveStyle.outlineWidth,
-                `${effectiveStyle.outlineWidth}px`,
+                toCqw(effectiveStyle.outlineWidth, projectWidth),
+                effectiveStyle.outlineColor,
               ),
               // effectiveStyle.margin(원본 px)을 스테이지 높이 대비 %로 환산한 근사치 —
               // 스테이지는 고정 16:9(styles.css)라 project 실제 화면비와 다를 수 있지만,

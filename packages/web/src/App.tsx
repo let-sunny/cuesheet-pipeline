@@ -62,15 +62,6 @@ type RenderState =
 /** 렌더 진행률 폴링 주기(ms). */
 const RENDER_POLL_INTERVAL_MS = 1500;
 
-const newSegment = (): Segment => ({
-  clip: "",
-  in: 0,
-  out: 1,
-  speed: 1,
-  volume: 1,
-  subtitle: "",
-});
-
 const newBgmCue = (): BgmCue => ({
   file: "",
   start: 0,
@@ -807,6 +798,12 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     });
   }, [draft, recordContinuousChange]);
 
+  // "세그먼트 추가" 버튼 — 빈 컷을 맨 뒤에 붙이던 이전 동작은 "누른 다음에 뭘 해야 할지
+  // 모르겠다"는 사용자 신고의 원인이었다(클립 없는 빈 컷이 인스펙터에 "클립 없음"으로만
+  // 뜨고, 파일명을 직접 타이핑해야 함). 대신 선택된 컷을 그 바로 뒤에 복제한다 — 같은
+  // 클립의 다른 구간을 나눠 쓰는(예: 같은 롱테이크에서 두 순간을 따로 컷으로 쓰기) 가장
+  // 흔한 실사용 패턴에 바로 대응되고, 복제본은 clip/in/out/crop이 이미 채워진 채로
+  // 시작해 곧장 트림만 하면 된다(자막은 새로 써야 함을 표시하려고 비운다).
   const addSegment = useCallback(() => {
     if (!draft) {
       return;
@@ -816,11 +813,17 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       if (!prev) {
         return prev;
       }
-      const segments = [...prev.segments, newSegment()];
-      setSelectedIndex(segments.length - 1);
+      const source = prev.segments[selectedIndex];
+      if (!source) {
+        return prev;
+      }
+      const insertAt = selectedIndex + 1;
+      const segments = [...prev.segments];
+      segments.splice(insertAt, 0, { ...source, subtitle: "" });
+      setSelectedIndex(insertAt);
       return { ...prev, segments };
     });
-  }, [draft, recordDiscreteChange]);
+  }, [draft, recordDiscreteChange, selectedIndex]);
 
   const removeSegment = useCallback((i: number) => {
     if (!draft || draft.segments.length <= 1) {
@@ -1172,6 +1175,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
             moments={moments}
             subtitleStyle={draft.subtitleStyle}
             projectHeight={draft.project.height}
+            projectWidth={draft.project.width}
             onIndexChange={setSelectedIndex}
             onExit={() => setSequenceMode(false)}
           />
@@ -1217,6 +1221,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
                     moments={moments}
                     subtitleStyle={draft.subtitleStyle}
                     projectHeight={draft.project.height}
+                    projectWidth={draft.project.width}
                   />
                 </div>
                 <div className="trim-fields-col">

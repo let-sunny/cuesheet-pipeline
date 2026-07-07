@@ -674,11 +674,14 @@ textarea {
 }
 
 /* crop이 있는 컷의 미리보기 — video는 그대로 100% 크기를 유지한 채 CSS transform으로
-   확대/이동되고, 이 래퍼가 overflow:hidden으로 잘라내 crop 영역만 보이게 한다. */
+   확대/이동되고, 이 래퍼가 overflow:hidden으로 잘라내 crop 영역만 보이게 한다.
+   container-type: inline-size로 컨테이너 쿼리 컨텍스트를 열어, 자막 오버레이가 cqw
+   단위로 "이 프레임의 실제 렌더 폭 대비 %"인 폰트 크기/외곽선 두께를 쓸 수 있게 한다. */
 .video-crop-frame {
   position: relative;
   overflow: hidden;
   border-radius: 4px;
+  container-type: inline-size;
 }
 
 .video-crop-frame video {
@@ -2023,6 +2026,8 @@ textarea {
   align-items: center;
 }
 
+/* container-type: inline-size로 컨테이너 쿼리 컨텍스트를 열어, 자막 오버레이가 cqw
+   단위로 "이 스테이지의 실제 렌더 폭 대비 %"인 폰트 크기/외곽선 두께를 쓸 수 있게 한다. */
 .sequence-player-stage {
   position: relative;
   width: 100%;
@@ -2032,6 +2037,7 @@ textarea {
   background: black;
   border-radius: 8px;
   overflow: hidden;
+  container-type: inline-size;
 }
 
 .sequence-video {

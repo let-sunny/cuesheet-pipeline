@@ -7,8 +7,9 @@ import { matchSceneInfo, shotTypeLabel } from "../sceneInfo.js";
 import {
   mergeSubtitleStyle,
   subtitleBackgroundRgba,
-  subtitleOutlineShadow,
+  subtitleOutlineStyle,
   subtitlePositionStyle,
+  toCqw,
 } from "../subtitleOverlay.js";
 import { CropEditOverlay } from "./CropEditOverlay.js";
 
@@ -39,6 +40,8 @@ interface Props {
   subtitleStyle: SubtitleStyle;
   /** subtitleStyle.margin(px, 원본 해상도 기준)을 오버레이 위치(%)로 환산하는 데 쓴다. */
   projectHeight: number;
+  /** subtitleStyle.size/outlineWidth(px, 원본 해상도 기준)를 오버레이 폭 대비 cqw로 환산하는 데 쓴다. */
+  projectWidth: number;
 }
 
 /** 외부(App.tsx의 전역 단축키 등)에서 미리보기를 제어하기 위한 핸들. */
@@ -64,7 +67,7 @@ export interface VideoPreviewHandle {
  * 현재 위치에서 세그먼트를 분할할 수 있다.
  */
 export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function VideoPreview(
-  { segment, selectedIndex, onChange, onSplit, autoPlay = false, moments, subtitleStyle, projectHeight },
+  { segment, selectedIndex, onChange, onSplit, autoPlay = false, moments, subtitleStyle, projectHeight, projectWidth },
   ref,
 ) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -592,10 +595,11 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
                 style={{
                   color: effectiveSubtitleStyle.color,
                   fontFamily: effectiveSubtitleStyle.font,
-                  textShadow: subtitleOutlineShadow(
-                    effectiveSubtitleStyle.outlineColor,
+                  fontSize: toCqw(effectiveSubtitleStyle.size, projectWidth),
+                  ...subtitleOutlineStyle(
                     effectiveSubtitleStyle.outlineWidth,
-                    `${effectiveSubtitleStyle.outlineWidth}px`,
+                    toCqw(effectiveSubtitleStyle.outlineWidth, projectWidth),
+                    effectiveSubtitleStyle.outlineColor,
                   ),
                   ...subtitlePositionStyle(effectiveSubtitleStyle, projectHeight),
                 }}

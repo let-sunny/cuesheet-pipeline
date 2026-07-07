@@ -12,6 +12,7 @@ interface Props {
   moments: ClipMoments[];
   onSelect: (i: number) => void;
   onChangeSubtitle: (i: number, subtitle: string) => void;
+  /** 선택된 컷을 바로 뒤에 복제한다(빈 컷 추가가 아니다 — App.tsx의 addSegment 참고). */
   onAdd: () => void;
   onRemove: (i: number) => void;
   onMove: (i: number, direction: -1 | 1) => void;
@@ -54,6 +55,15 @@ export function CompactSegmentList({
   useEffect(() => {
     rowRefs.current.forEach((el) => autoResize(el));
   }, [segments]);
+
+  // 컷 개수가 바뀔 때(복제/삭제) 선택된 행을 뷰로 스크롤한다. "선택 컷 복제" 버튼은
+  // 목록 맨 아래에 있어 클릭 시 브라우저가 그리로 스크롤시키는데, 복제본은 원본 바로
+  // 뒤(목록 중간)에 꽂히므로 그대로 두면 방금 만든 컷이 화면 밖에 남아 "복제됐는지도
+  // 모르겠다"는 원래 문제가 다른 형태로 재발한다.
+  useEffect(() => {
+    rowRefs.current[selectedIndex]?.scrollIntoView({ block: "nearest" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [segments.length]);
 
   const focusRow = (i: number) => {
     if (i < 0 || i >= segments.length) {
@@ -171,8 +181,13 @@ export function CompactSegmentList({
           </div>
         );
       })}
-      <button type="button" className="add-button" onClick={onAdd}>
-        세그먼트 추가
+      <button
+        type="button"
+        className="add-button"
+        onClick={onAdd}
+        title="선택된 컷을 그 바로 뒤에 복제합니다(같은 클립의 다른 구간을 나눠 쓸 때 유용)"
+      >
+        선택 컷 복제
       </button>
     </div>
   );
