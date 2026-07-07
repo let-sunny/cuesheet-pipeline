@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Collapsible } from "@astryxdesign/core/Collapsible";
+import { Button } from "@astryxdesign/core/Button";
 import { baseName, INTRO_OUTRO_MAX_DURATION_S } from "../clipPaths.js";
 import { fetchClipFiles, type ClipFile } from "../api.js";
 
@@ -89,13 +90,7 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
         {intro ? (
           <div className="intro-outro-current">
             <span className="intro-outro-clip-name">클립: {clipLabel(intro, clipDir)}</span>
-            <button
-              type="button"
-              className="intro-outro-clear-button"
-              onClick={() => onClear("intro")}
-            >
-              해제
-            </button>
+            <Button label="해제" variant="ghost" size="sm" onClick={() => onClear("intro")} />
           </div>
         ) : null}
         <label className="settings-field wide-input">
@@ -151,13 +146,7 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
         {outro ? (
           <div className="intro-outro-current">
             <span className="intro-outro-clip-name">클립: {clipLabel(outro, clipDir)}</span>
-            <button
-              type="button"
-              className="intro-outro-clear-button"
-              onClick={() => onClear("outro")}
-            >
-              해제
-            </button>
+            <Button label="해제" variant="ghost" size="sm" onClick={() => onClear("outro")} />
           </div>
         ) : null}
         <label className="settings-field wide-input">

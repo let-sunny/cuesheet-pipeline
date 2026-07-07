@@ -15,7 +15,6 @@ interface Props {
   onRedo: () => void;
   onSave: () => void;
   onRender: () => void;
-  onOpenSettings: () => void;
   themeMode: ThemeModeSetting;
   onThemeModeChange: (mode: ThemeModeSetting) => void;
 }
@@ -96,7 +95,6 @@ export function HeaderBar({
   onRedo,
   onSave,
   onRender,
-  onOpenSettings,
   themeMode,
   onThemeModeChange,
 }: Props) {
@@ -110,7 +108,6 @@ export function HeaderBar({
         <ThemeModeToggle themeMode={themeMode} onThemeModeChange={onThemeModeChange} />
         <Button label="실행 취소" variant="ghost" isDisabled={!canUndo} onClick={onUndo} />
         <Button label="다시 실행" variant="ghost" isDisabled={!canRedo} onClick={onRedo} />
-        <Button label="설정" variant="ghost" onClick={onOpenSettings} />
         <Button
           label={saving ? "저장 중…" : "저장"}
           variant="secondary"
@@ -118,7 +115,7 @@ export function HeaderBar({
           onClick={onSave}
         />
         <Button
-          label={rendering ? `렌더 중… ${renderProgress ?? 0}%` : "렌더"}
+          label={rendering ? `내보내는 중… ${renderProgress ?? 0}%` : "내보내기"}
           variant="primary"
           isDisabled={renderDisabled}
           onClick={onRender}

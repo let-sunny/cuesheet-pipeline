@@ -1860,6 +1860,16 @@ textarea {
   gap: 20px;
 }
 
+/* .settings-group/.settings-group-wide의 flex:1 1 260px·2 1 480px(가로 flex-wrap
+   레이아웃 전용, 옛 FinishingSettings 참고)를 이 세로 column 레이아웃이 그대로
+   물려받으면 각 섹션이 flex-grow로 남는 세로 공간을 억지로 나눠 채워 내용 아래
+   빈 여백이 커진다(.render-dialog에서 이미 한 번 겪은 것과 같은 버그) — 여기서도
+   그로우/베이시스를 꺼서 섹션이 내용 높이만큼만 차지하게 한다. */
+.finish-layout > .settings-group,
+.finish-layout > .settings-group-wide {
+  flex: 0 0 auto;
+}
+
 .finish-layout h3 {
   font-size: 14px;
   text-transform: uppercase;

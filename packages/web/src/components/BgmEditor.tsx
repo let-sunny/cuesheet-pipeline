@@ -1,3 +1,4 @@
+import { Button } from "@astryxdesign/core/Button";
 import type { BgmCue } from "@cuesheet/schema";
 
 interface Props {
@@ -11,7 +12,7 @@ export function BgmEditor({ bgm, onChange, onAdd, onRemove }: Props) {
   return (
     <div className="bgm-editor">
       {bgm.length === 0 ? (
-        <div className="empty">등록된 BGM 없음</div>
+        <div className="empty">등록된 배경음악(BGM) 없음</div>
       ) : (
         <div className="bgm-rows">
           {bgm.map((cue, i) => (
@@ -63,17 +64,13 @@ export function BgmEditor({ bgm, onChange, onAdd, onRemove }: Props) {
                 />
               </label>
               <div className="segment-row-actions">
-                <button type="button" onClick={() => onRemove(i)}>
-                  삭제
-                </button>
+                <Button label="삭제" variant="destructive" size="sm" onClick={() => onRemove(i)} />
               </div>
             </div>
           ))}
         </div>
       )}
-      <button type="button" className="add-button" onClick={onAdd}>
-        BGM 추가
-      </button>
+      <Button label="배경음악(BGM) 추가" variant="secondary" size="sm" className="add-button" onClick={onAdd} />
     </div>
   );
 }

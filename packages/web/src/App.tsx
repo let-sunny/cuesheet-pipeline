@@ -41,8 +41,8 @@ import type { SequencePlayerHandle } from "./components/SequencePlayer.js";
 import { CompactSegmentList } from "./components/CompactSegmentList.js";
 import { SegmentQuickFields } from "./components/SegmentQuickFields.js";
 import { IntroOutroEditor } from "./components/IntroOutroEditor.js";
-import { FinishingSettings } from "./components/FinishingSettings.js";
-import { SettingsDialog } from "./components/SettingsDialog.js";
+import { SubtitleStyleSettings, NarrationSettings } from "./components/FinishingSettings.js";
+import { ProjectMetaFields } from "./components/ProjectMetaFields.js";
 import { RenderSettingsDialog } from "./components/RenderSettingsDialog.js";
 
 /** ← / → 1회 이동량(1프레임, 30fps 기준). Shift+← / →는 1초. */
@@ -141,7 +141,6 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
   const [restoreSnapshot, setRestoreSnapshot] = useState<CueSheet | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [step, setStep] = useState<Step>("compose");
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [renderDialogOpen, setRenderDialogOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [sequenceMode, setSequenceMode] = useState(false);
@@ -1129,7 +1128,6 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         onRedo={handleRedo}
         onSave={() => void handleSave()}
         onRender={() => setRenderDialogOpen(true)}
-        onOpenSettings={() => setSettingsOpen(true)}
         themeMode={themeMode}
         onThemeModeChange={onThemeModeChange}
       />
@@ -1276,6 +1274,16 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
 
         {step === "finish" ? (
           <div className="finish-layout">
+            {/* 섹션 순서(screen-spec 5절): 프로젝트 -> 자막 스타일(전역) -> 인트로/아웃트로
+                -> 배경음악(BGM) -> 내레이션 -> 출력. 프로젝트 메타는 예전엔 헤더 "설정"
+                다이얼로그에 숨어 있었는데, 출력 준비의 자연스러운 첫 단계로 여기 편입했다. */}
+            <ProjectMetaFields project={draft.project} onChange={updateProject} />
+
+            <SubtitleStyleSettings
+              subtitleStyle={draft.subtitleStyle}
+              onSubtitleStyleChange={updateSubtitleStyle}
+            />
+
             <IntroOutroEditor
               intro={draft.intro}
               outro={draft.outro}
@@ -1286,7 +1294,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
             />
 
             <div>
-              <h3>타임라인 · BGM</h3>
+              <h3>타임라인 · 배경음악(BGM)</h3>
               <TimelineView
                 segments={draft.segments}
                 bgm={draft.bgm}
@@ -1294,29 +1302,24 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
                 onSelectSegment={setSelectedIndex}
                 onChangeBgm={updateBgm}
               />
-              <Collapsible trigger="BGM 큐 편집" defaultIsOpen={false}>
+              <Collapsible trigger="배경음악(BGM) 편집" defaultIsOpen={false}>
                 <BgmEditor bgm={draft.bgm} onChange={updateBgm} onAdd={addBgm} onRemove={removeBgm} />
               </Collapsible>
             </div>
 
-            <FinishingSettings
-              subtitleStyle={draft.subtitleStyle}
-              narration={draft.narration}
-              onSubtitleStyleChange={updateSubtitleStyle}
-              onNarrationChange={updateNarration}
-            />
+            <NarrationSettings narration={draft.narration} onNarrationChange={updateNarration} />
 
             <div className="render-cta">
               <Button
                 label={
                   renderState.status === "rendering"
-                    ? `렌더 중… ${renderState.progress}%`
-                    : "렌더"
+                    ? `내보내는 중… ${renderState.progress}%`
+                    : "내보내기"
                 }
                 variant="primary"
                 size="lg"
                 // dirty여도 다이얼로그를 열 수 있게 한다 — 위 HeaderBar renderDisabled와 동일 규약
-                // (RenderSettingsDialog 안의 dirty 경고+[렌더 시작] 비활성화가 실제 최종 게이트).
+                // (RenderSettingsDialog 안의 dirty 경고+[내보내기 시작] 비활성화가 실제 최종 게이트).
                 isDisabled={renderState.status === "rendering"}
                 onClick={() => setRenderDialogOpen(true)}
               />
@@ -1326,10 +1329,10 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
                 </a>
               ) : null}
               {renderState.status === "error" ? (
-                <span className="render-note render-note-error">렌더 실패: {renderState.error}</span>
+                <span className="render-note render-note-error">내보내기 실패: {renderState.error}</span>
               ) : null}
               <span className="render-note">
-                렌더는 시작 시점에 저장돼 있던 큐시트 기준으로 진행됩니다 — 렌더 중 편집·저장은 이번 렌더에 반영되지 않습니다.
+                내보내기는 시작 시점에 저장돼 있던 큐시트 기준으로 진행됩니다 — 내보내는 중 편집·저장은 이번 내보내기에 반영되지 않습니다.
               </span>
 
               <Button
@@ -1347,13 +1350,6 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
           </div>
         ) : null}
       </div>
-
-      <SettingsDialog
-        isOpen={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        project={draft.project}
-        onProjectChange={updateProject}
-      />
 
       <RenderSettingsDialog
         isOpen={renderDialogOpen}

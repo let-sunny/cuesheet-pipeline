@@ -1,6 +1,7 @@
 import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
 import { Layout, LayoutContent } from "@astryxdesign/core/Layout";
 import { Button } from "@astryxdesign/core/Button";
+import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import type { Project } from "@cuesheet/schema";
 
 /** 다이얼로그에서 고른 해상도 프리셋을 기억해 두는 localStorage 키(다음에 열 때 참고용). */
@@ -36,9 +37,9 @@ interface Props {
 }
 
 /**
- * 렌더 버튼 클릭 시 뜨는 설정 다이얼로그 — 해상도 프리셋(project.width/height 반영),
- * 자막 굽기 여부, 요약(컷 수·출력 길이·프로젝트명)을 확인하고 [렌더 시작]으로 실제
- * 렌더를 건다. 기존 원클릭 발사를 대체한다.
+ * 내보내기(옛 "렌더") 버튼 클릭 시 뜨는 설정 다이얼로그 — 해상도 프리셋
+ * (project.width/height 반영), 자막 굽기 여부, 요약(컷 수·출력 길이·프로젝트명)을
+ * 확인하고 [내보내기 시작]으로 실제 내보내기를 건다. 기존 원클릭 발사를 대체한다.
  */
 export function RenderSettingsDialog({
   isOpen,
@@ -72,7 +73,7 @@ export function RenderSettingsDialog({
   return (
     <Dialog isOpen={isOpen} onOpenChange={onOpenChange} width={480}>
       <Layout
-        header={<DialogHeader title="렌더 설정" onOpenChange={onOpenChange} />}
+        header={<DialogHeader title="내보내기" onOpenChange={onOpenChange} />}
         content={
           <LayoutContent>
             <div className="render-dialog">
@@ -106,14 +107,11 @@ export function RenderSettingsDialog({
 
               <div className="settings-group">
                 <h3>자막</h3>
-                <label className="no-burn-subtitles-toggle">
-                  <input
-                    type="checkbox"
-                    checked={noBurnSubtitles}
-                    onChange={(e) => onToggleNoBurnSubtitles(e.target.checked)}
-                  />
-                  자막 굽지 않기 (CC용 클린 영상)
-                </label>
+                <CheckboxInput
+                  label="자막 없는 영상으로 내보내기 (CC용)"
+                  value={noBurnSubtitles}
+                  onChange={onToggleNoBurnSubtitles}
+                />
               </div>
 
               <div className="settings-group">
@@ -126,14 +124,14 @@ export function RenderSettingsDialog({
 
               {dirty ? (
                 <p className="render-note render-note-error">
-                  저장되지 않은 편집이 있습니다 — 먼저 저장한 뒤 렌더할 수 있습니다.
+                  저장하지 않은 편집이 있어요 — 먼저 저장한 뒤 내보낼 수 있습니다.
                 </p>
               ) : null}
 
               <div className="render-dialog-actions">
                 <Button label="취소" variant="ghost" onClick={() => onOpenChange(false)} />
                 <Button
-                  label={rendering ? "렌더 중…" : "렌더 시작"}
+                  label={rendering ? "내보내는 중…" : "내보내기 시작"}
                   variant="primary"
                   isDisabled={dirty || rendering}
                   onClick={handleStart}
