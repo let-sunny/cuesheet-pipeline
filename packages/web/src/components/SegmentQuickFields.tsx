@@ -2,13 +2,9 @@ import { Slider } from "@astryxdesign/core/Slider";
 import type { Segment } from "@cuesheet/schema";
 import { INTRO_OUTRO_MAX_DURATION_S } from "../clipPaths.js";
 import { narrationFileUrl, type NarrationFile } from "../api.js";
-import type { SceneInfo } from "../sceneInfo.js";
-import { shotTypeLabel } from "../sceneInfo.js";
 
 interface Props {
   segment: Segment | undefined;
-  /** 선택된 컷이 초벌 비전 판독의 어느 순간/배속구간/클립요약에 해당하는지(매칭 결과). */
-  sceneInfo: SceneInfo;
   narrationEnabled: boolean;
   /** narration.dir 안의 오디오 파일 목록(길이 포함). */
   narrationFiles: NarrationFile[];
@@ -29,13 +25,13 @@ interface Props {
 }
 
 /**
- * 편집 단계(②) 우측 인스펙터: 자막 textarea가 주고(트리밍하면서 그 컷 자막을
+ * 편집 단계(②) 우측 필드 패널: 자막 textarea가 최상단(트리밍하면서 그 컷 자막을
  * 바로 고침), 배속/볼륨 입력이 그다음, clip 파일명·내레이션·in/out 숫자 입력은
- * 보조로 축소되어 있다(핸들 드래그가 주된 트림 방법).
+ * 보조로 축소되어 있다(핸들 드래그가 주된 트림 방법). 장면 설명은 비디오 위
+ * 맥락 헤더(VideoPreview)에서만 보여준다 — 여기서는 중복 표시하지 않는다.
  */
 export function SegmentQuickFields({
   segment,
-  sceneInfo,
   narrationEnabled,
   narrationFiles,
   narrationNote,
@@ -72,34 +68,6 @@ export function SegmentQuickFields({
 
   return (
     <div className="quick-fields">
-      <div className="scene-info-box">
-        <span className="scene-info-label">장면</span>
-        {sceneInfo.kind === "none" ? (
-          <p className="scene-info-memo scene-info-empty">장면 정보 없음</p>
-        ) : (
-          <>
-            <p className="scene-info-memo">{sceneInfo.memo}</p>
-            <div className="scene-info-meta">
-              {sceneInfo.kind === "moment" ? (
-                <span className={`scene-shot-badge shot-${sceneInfo.shotType}`}>
-                  {shotTypeLabel(sceneInfo.shotType)}
-                </span>
-              ) : null}
-              {sceneInfo.kind === "monotonous" ? (
-                <span className="scene-shot-badge shot-monotonous">배속구간</span>
-              ) : null}
-              {sceneInfo.kind === "moment" || sceneInfo.kind === "monotonous" ? (
-                <span className="scene-info-range">
-                  {sceneInfo.inS.toFixed(1)}s~{sceneInfo.outS.toFixed(1)}s
-                </span>
-              ) : (
-                <span className="scene-info-range">클립 요약(정확한 구간 매칭 없음)</span>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-
       <label className="quick-fields-subtitle">
         <span>자막</span>
         <textarea

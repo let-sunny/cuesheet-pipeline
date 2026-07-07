@@ -436,8 +436,13 @@ textarea {
   margin-top: 10px;
 }
 
+/* 너비는 사용처(.trim-video-col / .subtitle-video-col)의 컬럼 폭을 그대로 따른다 —
+   예전엔 flex: 0 0 360px로 고정 높이/폭을 강제해, 트림 상태(빈 영상 등)에서
+   컨트롤이 붙어 있어야 할 자리에 빈 여백만 남고 아래 필드 패널이 멀어져 보이는
+   문제가 있었다. */
 .video-preview {
-  flex: 0 0 360px;
+  width: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1135,10 +1140,12 @@ textarea {
   background: #262e46;
 }
 
+/* 우측(비디오+조작부)이 이 목록보다 넓게 보이도록 basis/상한을 좁혀 잡는다
+   (.subtitle-video-col 참고 — 좌:우 비중을 1:1 이상으로 우측을 키운다). */
 .subtitle-write-mode {
-  flex: 1 1 auto;
+  flex: 1 1 420px;
   min-width: 0;
-  max-width: 720px;
+  max-width: 640px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1314,6 +1321,32 @@ textarea {
   align-items: flex-start;
 }
 
+/* 컷 리스트 오른쪽 전체(비디오+필드 패널)를 감싸는 2열 워크스페이스.
+   비디오 열과 필드 열의 최소폭 합이 화면폭을 넘으면(대략 1280px 미만) flex-wrap으로
+   필드 열이 비디오 아래로 자연스럽게 떨어진다. */
+.trim-workspace {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+/* 좌열(넓게): 장면 헤더 -> 비디오 -> 재생/트림 컨트롤이 VideoPreview 한 덩어리 안에
+   이미 붙어 있으므로, 여기서는 그 컬럼의 폭만 잡아준다. */
+.trim-video-col {
+  flex: 2 1 480px;
+  min-width: 480px;
+}
+
+/* 우열(좁게, 비디오 옆): 자막/배속/볼륨/내레이션/크롭 필드 패널. */
+.trim-fields-col {
+  flex: 1 1 320px;
+  min-width: 320px;
+  max-width: 380px;
+}
+
 .compact-list {
   /* 썸네일(40px) 도입 후 자막/파일명 라벨(.compact-list-clip)이 한두 글자만 보일
      만큼 눌렸었다 — 그만큼(썸네일+gap) 폭을 늘려 라벨이 다시 읽히게 한다. */
@@ -1458,53 +1491,6 @@ textarea {
   color: #8fd9d9;
 }
 
-/* 인스펙터 패널 최상단 "장면" 박스 — 컷을 고르면 가장 먼저 읽혀야 하는 정보라
-   패널 안에서 시각적으로 가장 두드러지게(강조 좌측 테두리 + 톤 대비) 만든다. */
-.scene-info-box {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
-  background: #12141a;
-  border: 1px solid #292f40;
-  border-left: 3px solid #5b7cfa;
-  border-radius: 6px;
-}
-
-.scene-info-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: #a9b8fb;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.scene-info-memo {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 1.5;
-  color: #e4e6ee;
-  /* 묘사 전문을 그대로 보여준다 — 잘라내지 않고 필요한 만큼 줄바꿈한다. */
-  white-space: normal;
-}
-
-.scene-info-memo.scene-info-empty {
-  font-style: italic;
-  color: #6f7690;
-}
-
-.scene-info-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.scene-info-range {
-  font-size: 12px;
-  color: #6f7690;
-}
-
 .compact-list-time {
   flex: 0 0 auto;
   font-size: 13px;
@@ -1533,14 +1519,6 @@ textarea {
 
 .compact-list-actions button {
   padding: 2px 8px;
-}
-
-.trim-main {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
 }
 
 .quick-fields {
@@ -1671,6 +1649,17 @@ textarea {
   display: flex;
   gap: 16px;
   align-items: flex-start;
+}
+
+/* 자막을 몰아 쓰며 좌측 목록을 스크롤해도 비디오/조작부가 화면에 계속 보이도록
+   sticky로 뷰포트 상단에 붙인다(좌:우 비중은 .subtitle-write-mode의 basis/상한과
+   짝을 맞춰 우측이 더 넓게 — 비디오가 시원하게 보이도록). */
+.subtitle-video-col {
+  flex: 1 1 560px;
+  min-width: 420px;
+  position: sticky;
+  top: 12px;
+  align-self: flex-start;
 }
 
 /* ③ 마무리 단계 */

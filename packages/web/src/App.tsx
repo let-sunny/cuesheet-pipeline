@@ -22,7 +22,6 @@ import {
   type NarrationFile,
 } from "./api.js";
 import { buildClipPath, computeClipDurations } from "./clipPaths.js";
-import { matchSceneInfo } from "./sceneInfo.js";
 import { VideoPreview } from "./components/VideoPreview.js";
 import type { VideoPreviewHandle } from "./components/VideoPreview.js";
 import { BgmEditor } from "./components/BgmEditor.js";
@@ -1043,36 +1042,37 @@ export function App() {
                   onRemove={removeSegment}
                   onMove={moveSegment}
                 />
-                <div className="trim-main">
-                  <VideoPreview
-                    ref={videoPreviewRef}
-                    segment={selectedSegment}
-                    selectedIndex={selectedIndex}
-                    onChange={(patch) => updateSegment(selectedIndex, patch)}
-                    onSplit={(at) => splitSegment(selectedIndex, at)}
-                    autoPlay={false}
-                    moments={moments}
-                  />
-                  <SegmentQuickFields
-                    segment={selectedSegment}
-                    sceneInfo={
-                      selectedSegment ? matchSceneInfo(selectedSegment, moments) : { kind: "none" }
-                    }
-                    narrationEnabled={draft.narration?.enabled ?? false}
-                    narrationFiles={narrationFiles}
-                    narrationNote={narrationNote}
-                    narrationDir={draft.narration?.dir}
-                    onChange={(patch) => updateSegment(selectedIndex, patch)}
-                    clipDurationS={selectedSegment ? clipDurations[selectedSegment.clip] : undefined}
-                    onSetIntro={() =>
-                      selectedSegment && setIntroOutroFromClip("intro", selectedSegment.clip)
-                    }
-                    onSetOutro={() =>
-                      selectedSegment && setIntroOutroFromClip("outro", selectedSegment.clip)
-                    }
-                    onClearCrop={() => clearSegmentCrop(selectedIndex)}
-                    onEditCrop={() => videoPreviewRef.current?.startCropEdit()}
-                  />
+                <div className="trim-workspace">
+                  <div className="trim-video-col">
+                    <VideoPreview
+                      ref={videoPreviewRef}
+                      segment={selectedSegment}
+                      selectedIndex={selectedIndex}
+                      onChange={(patch) => updateSegment(selectedIndex, patch)}
+                      onSplit={(at) => splitSegment(selectedIndex, at)}
+                      autoPlay={false}
+                      moments={moments}
+                    />
+                  </div>
+                  <div className="trim-fields-col">
+                    <SegmentQuickFields
+                      segment={selectedSegment}
+                      narrationEnabled={draft.narration?.enabled ?? false}
+                      narrationFiles={narrationFiles}
+                      narrationNote={narrationNote}
+                      narrationDir={draft.narration?.dir}
+                      onChange={(patch) => updateSegment(selectedIndex, patch)}
+                      clipDurationS={selectedSegment ? clipDurations[selectedSegment.clip] : undefined}
+                      onSetIntro={() =>
+                        selectedSegment && setIntroOutroFromClip("intro", selectedSegment.clip)
+                      }
+                      onSetOutro={() =>
+                        selectedSegment && setIntroOutroFromClip("outro", selectedSegment.clip)
+                      }
+                      onClearCrop={() => clearSegmentCrop(selectedIndex)}
+                      onEditCrop={() => videoPreviewRef.current?.startCropEdit()}
+                    />
+                  </div>
                 </div>
               </div>
             ) : (
@@ -1084,15 +1084,17 @@ export function App() {
                   onChangeSubtitle={(i, subtitle) => updateSegment(i, { subtitle })}
                   narrationEnabled={draft.narration?.enabled ?? false}
                 />
-                <VideoPreview
-                  ref={videoPreviewRef}
-                  segment={selectedSegment}
-                  selectedIndex={selectedIndex}
-                  onChange={(patch) => updateSegment(selectedIndex, patch)}
-                  onSplit={(at) => splitSegment(selectedIndex, at)}
-                  autoPlay
-                  moments={moments}
-                />
+                <div className="subtitle-video-col">
+                  <VideoPreview
+                    ref={videoPreviewRef}
+                    segment={selectedSegment}
+                    selectedIndex={selectedIndex}
+                    onChange={(patch) => updateSegment(selectedIndex, patch)}
+                    onSplit={(at) => splitSegment(selectedIndex, at)}
+                    autoPlay
+                    moments={moments}
+                  />
+                </div>
               </div>
             )}
           </div>
