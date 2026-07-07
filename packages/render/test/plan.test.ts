@@ -234,6 +234,124 @@ describe("buildRenderPlan", () => {
     expect(p.filterComplex).toContain("box=1:boxcolor=#000000@0.75:boxborderw=10");
   });
 
+  it("styleOverride가 없으면(생략) 기존과 완전히 동일한 drawtext가 나온다(회귀)", () => {
+    const withField = buildRenderPlan(
+      make({
+        segments: [
+          { clip: "a.mp4", in: 0, out: 5, speed: 1, volume: 1, subtitle: "안녕", styleOverride: undefined },
+        ],
+      }),
+      "out.mp4",
+    );
+    const withoutField = buildRenderPlan(
+      make({
+        segments: [{ clip: "a.mp4", in: 0, out: 5, speed: 1, volume: 1, subtitle: "안녕" }],
+      }),
+      "out.mp4",
+    );
+    expect(withField.filterComplex).toEqual(withoutField.filterComplex);
+    expect(withField.filterComplex).toContain(
+      "drawtext=text='안녕':fontsize=48:fontcolor=#ffffff:borderw=3:bordercolor=#000000:font='Pretendard':x=(w-text_w)/2:y=h-text_h-40",
+    );
+  });
+
+  it("styleOverride가 null이면 전역 스타일 그대로 적용된다(오버라이드 없음과 동일)", () => {
+    const p = buildRenderPlan(
+      make({
+        segments: [
+          {
+            clip: "a.mp4",
+            in: 0,
+            out: 5,
+            speed: 1,
+            volume: 1,
+            subtitle: "안녕",
+            styleOverride: null,
+          },
+        ],
+      }),
+      "out.mp4",
+    );
+    expect(p.filterComplex).toContain("fontsize=48:fontcolor=#ffffff");
+  });
+
+  it("styleOverride로 지정한 필드만 전역 스타일 위에 덮어써 drawtext에 반영된다(부분 병합)", () => {
+    const p = buildRenderPlan(
+      make({
+        segments: [
+          {
+            clip: "a.mp4",
+            in: 0,
+            out: 5,
+            speed: 1,
+            volume: 1,
+            subtitle: "이 컷만 다르게",
+            styleOverride: { size: 60, color: "#ffff00" },
+          },
+        ],
+      }),
+      "out.mp4",
+    );
+    // size/color는 오버라이드 값, outlineColor/outlineWidth/font/position/margin은 전역 그대로.
+    expect(p.filterComplex).toContain(
+      "drawtext=text='이 컷만 다르게':fontsize=60:fontcolor=#ffff00" +
+        ":borderw=3:bordercolor=#000000:font='Pretendard':x=(w-text_w)/2:y=h-text_h-40",
+    );
+  });
+
+  it("styleOverride.background가 있으면 전역 background를 부분 병합이 아니라 통짜 교체한다", () => {
+    const p = buildRenderPlan(
+      make({
+        subtitleStyle: {
+          font: "Pretendard",
+          size: 48,
+          color: "#ffffff",
+          outlineColor: "#000000",
+          outlineWidth: 3,
+          position: "bottom",
+          background: { color: "#000000", opacity: 0.75, padding: 10 },
+        },
+        segments: [
+          {
+            clip: "a.mp4",
+            in: 0,
+            out: 5,
+            speed: 1,
+            volume: 1,
+            subtitle: "박스 색만 바꿈",
+            styleOverride: { background: { color: "#ff0000", opacity: 0.4, padding: 8 } },
+          },
+        ],
+      }),
+      "out.mp4",
+    );
+    // 전역 opacity(0.75)/padding(10)이 남지 않고 오버라이드 background로 완전히 교체된다.
+    expect(p.filterComplex).toContain("box=1:boxcolor=#ff0000@0.4:boxborderw=8");
+    expect(p.filterComplex).not.toContain("@0.75");
+  });
+
+  it("styleOverride가 있어도 다른 세그먼트는 전역 스타일 그대로 유지된다", () => {
+    const p = buildRenderPlan(
+      make({
+        segments: [
+          { clip: "a.mp4", in: 0, out: 5, speed: 1, volume: 1, subtitle: "기본" },
+          {
+            clip: "b.mp4",
+            in: 0,
+            out: 4,
+            speed: 1,
+            volume: 1,
+            subtitle: "오버라이드",
+            styleOverride: { size: 72 },
+          },
+        ],
+      }),
+      "out.mp4",
+    );
+    expect(p.filterComplex).toContain("drawtext=text='기본':fontsize=48");
+    expect(p.filterComplex).toContain("drawtext=text='오버라이드':fontsize=72");
+  });
+
   it("출력 인자에 코덱과 fps가 들어간다", () => {
     const p = buildRenderPlan(make(), "final.mp4");
     const s = p.args.join(" ");

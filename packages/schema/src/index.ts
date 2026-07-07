@@ -6,6 +6,7 @@ export {
   projectSchema,
   segmentSchema,
   subtitleBackgroundSchema,
+  subtitleStyleOverrideSchema,
   subtitleStyleSchema,
 } from "./schema.js";
 
@@ -19,6 +20,7 @@ export type {
   Segment,
   SubtitleBackground,
   SubtitleStyle,
+  SubtitleStyleOverride,
 } from "./types.js";
 
 export { validateCueSheet } from "./validate.js";

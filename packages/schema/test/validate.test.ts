@@ -79,6 +79,70 @@ describe("validateCueSheet - 통과 케이스", () => {
     }
   });
 
+  it("segment.styleOverride가 없으면(생략) 기존 큐시트도 그대로 유효하다", () => {
+    const result = validateCueSheet(sample);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.segments[0]?.styleOverride).toBeUndefined();
+    }
+  });
+
+  it("segment.styleOverride가 전체 필드를 채우면 유효하다", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      segments: [
+        {
+          clip: "a.mp4",
+          in: 0,
+          out: 1,
+          subtitle: "",
+          styleOverride: {
+            font: "Pretendard",
+            size: 60,
+            color: "#ffff00",
+            outlineColor: "#000000",
+            outlineWidth: 4,
+            position: "top",
+            background: { color: "#000000", opacity: 0.5, padding: 10 },
+            margin: 20,
+          },
+        },
+      ],
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.segments[0]?.styleOverride?.size).toBe(60);
+      expect(result.data.segments[0]?.styleOverride?.position).toBe("top");
+    }
+  });
+
+  it("segment.styleOverride가 부분(size만)이면 그 필드만 담긴다", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      segments: [
+        { clip: "a.mp4", in: 0, out: 1, subtitle: "", styleOverride: { size: 72 } },
+      ],
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.segments[0]?.styleOverride).toEqual({ size: 72 });
+    }
+  });
+
+  it("segment.styleOverride가 null이면 유효하다(오버라이드 없음과 동일 취급)", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", styleOverride: null }],
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.segments[0]?.styleOverride).toBeNull();
+    }
+  });
+
   it("narration.volume 미지정 시 기본값 1.0이 적용된다", () => {
     const input = {
       ...(sample as Record<string, unknown>),
@@ -162,6 +226,22 @@ describe("validateCueSheet - 실패 케이스", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.errors.some((e) => e.includes("segments[0].crop.x"))).toBe(true);
+    }
+  });
+
+  it("segment.styleOverride에 잘못된 색상이 있으면 실패한다", () => {
+    const bad = {
+      ...(sample as Record<string, unknown>),
+      segments: [
+        { clip: "a.mp4", in: 0, out: 1, subtitle: "", styleOverride: { color: "not-a-hex" } },
+      ],
+    };
+    const result = validateCueSheet(bad);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.includes("segments[0].styleOverride.color"))).toBe(
+        true,
+      );
     }
   });
 

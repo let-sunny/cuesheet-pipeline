@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import type { CueSheet } from "@cuesheet/schema";
+import type { CueSheet, SubtitleStyleOverride } from "@cuesheet/schema";
 
 export interface RenderPlan {
   /** "ffmpeg" 뒤에 붙일 전체 인자 */
@@ -38,6 +38,20 @@ function atempoChain(speed: number): string[] {
   }
   parts.push(Number(s.toFixed(6)));
   return parts.map((p) => `atempo=${p}`);
+}
+
+/**
+ * 세그먼트별 유효 자막 스타일 = 전역 subtitleStyle에 styleOverride를 얕은 병합.
+ * background는 예외적으로 통짜 교체(부분 병합 시 opacity 등이 애매하게 남는 문제 방지) —
+ * 얕은 병합이 객체 필드 단위로 통째로 덮어쓰므로 별도 처리 없이 이 규칙을 만족한다.
+ * override가 없으면(생략/null) 전역 스타일 그대로.
+ */
+function effectiveSubtitleStyle(
+  global: CueSheet["subtitleStyle"],
+  override?: SubtitleStyleOverride | null,
+): CueSheet["subtitleStyle"] {
+  if (!override) return global;
+  return { ...global, ...override };
 }
 
 function drawtextFilter(text: string, style: CueSheet["subtitleStyle"]): string {
@@ -94,6 +108,7 @@ export function buildRenderPlan(
       volume?: number;
       subtitle?: string;
       crop?: CueSheet["segments"][number]["crop"];
+      styleOverride?: CueSheet["segments"][number]["styleOverride"];
     },
   ): void {
     if (o.ss != null) inputs.push("-ss", String(o.ss));
@@ -115,7 +130,8 @@ export function buildRenderPlan(
     // 세그먼트의 SAR 일치를 요구하므로 강제 통일한다 (크롭+일반 컷 혼합 실렌더에서 실측).
     vParts.push(`scale=${W}:${H}`, `setsar=1`, `fps=${fps}`);
     if (burnSubtitles && o.subtitle && o.subtitle.length > 0) {
-      vParts.push(drawtextFilter(o.subtitle, cue.subtitleStyle));
+      const style = effectiveSubtitleStyle(cue.subtitleStyle, o.styleOverride);
+      vParts.push(drawtextFilter(o.subtitle, style));
     }
     filters.push(`[${i}:v]${vParts.join(",")}[v${i}]`);
 
@@ -141,6 +157,7 @@ export function buildRenderPlan(
       volume: s.volume,
       subtitle: s.subtitle,
       crop: s.crop,
+      styleOverride: s.styleOverride,
     });
     if (cue.narration?.enabled && s.narration) {
       narrationCues.push({ path: join(cue.narration.dir, s.narration), start: segmentOffset });

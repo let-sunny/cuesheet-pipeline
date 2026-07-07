@@ -38,6 +38,20 @@ cuesheet-render project.cuesheet.json out.mp4
 그대로 늘려 채우므로 별도 letterbox/pad 처리는 필요 없다 — crop 세그먼트도 같은
 규칙을 그대로 탄다. `crop` 필드가 없으면 ffmpeg 명령이 기존과 100% 동일하다.
 
+### 컷별 자막 스타일 오버라이드 (선택)
+
+세그먼트별 drawtext에 쓰이는 **유효 스타일**은 전역 `subtitleStyle`에 그 세그먼트의
+`segment.styleOverride`를 **얕은 병합**한 결과다: `{ ...subtitleStyle, ...styleOverride }`.
+override에 없는 필드(생략된 필드)는 전역 값을 그대로 쓰고, override에 있는 필드만 덮어쓴다.
+
+- **`background`는 통짜 교체**다 — 얕은 병합이 객체 필드 단위로 동작하므로, override에
+  `background`가 있으면 전역 `background`의 `color`/`opacity`/`padding`이 부분적으로
+  섞이지 않고 override 쪽 객체로 완전히 대체된다(부분 병합하면 색만 바꾸고 opacity가
+  전역 값으로 남는 등 애매함이 생기기 때문에 의도적으로 이렇게 설계했다).
+- `styleOverride`가 없거나(생략) `null`이면 그 세그먼트는 기존과 **100% 동일**한 drawtext가
+  나온다(회귀 없음).
+- `intro`/`outro`에는 `styleOverride`가 없다(세그먼트 전용 필드).
+
 ### 목소리 클로닝 내레이션 (피처 플래그)
 
 `narration.enabled === true`이고 세그먼트에 `narration`(파일명)이 있을 때만 동작한다.

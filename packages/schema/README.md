@@ -41,6 +41,19 @@ if (result.ok) {
 - null/생략이면 크롭 없음(원본 그대로) — 기존 큐시트는 그대로 유효하다.
 - 렌더 쪽 적용(트림 직후, 스케일 전에 crop 필터)은 `@cuesheet/render` README 참고.
 
+## 컷별 자막 스타일 오버라이드 (선택)
+
+- `segment.styleOverride?: SubtitleStyleOverride | null` — `subtitleStyle`의 모든 필드
+  (font/size/color/outlineColor/outlineWidth/position/margin/background)를 전부 선택
+  필드로 가진 부분 스키마. 생략하거나 `null`이면 이 컷은 전역 `subtitleStyle` 그대로다.
+- 기본은 전역 스타일, 예외적인 컷만 부분 오버라이드하는 설계다 — 컷마다 전체 스타일을
+  다시 쓸 필요 없이 바꾸고 싶은 필드만 넣으면 된다.
+- **`background`는 예외**: 지정하면 전역 `background`를 부분 병합이 아니라 통짜
+  교체한다(부분 병합 시 색만 바꾸고 opacity가 전역 값으로 남는 등 애매함이 생기기
+  때문). 배경을 바꾸려면 `color`/`opacity`/`padding`을 전부 넣어야 한다.
+- 병합 규칙(어느 필드가 최종 적용되는지)은 `@cuesheet/render`가 구현한다 — 자세한
+  내용은 그쪽 README 참고.
+
 ## 목소리 클로닝 내레이션 (선택, 피처 플래그)
 
 - `cueSheet.narration?: { enabled: boolean, dir: string, volume: number(0~1, 기본 1) }`

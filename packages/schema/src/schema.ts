@@ -45,43 +45,6 @@ export const cropSchema = z
     path: ["y"],
   });
 
-export const segmentSchema = z
-  .object({
-    clip: z.string().min(1, "clip 파일명은 비어 있을 수 없습니다"),
-    in: z.number().nonnegative("in은 0 이상이어야 합니다"),
-    out: z.number().positive("out은 양수여야 합니다"),
-    speed: z.number().positive("speed는 0보다 커야 합니다").default(1.0),
-    volume: z
-      .number()
-      .min(0, "volume은 0.0 이상이어야 합니다")
-      .max(1, "volume은 1.0 이하여야 합니다")
-      .default(1.0), // 이 세그먼트 오디오 볼륨. 1.0=원본, 0.3="30% 수준", 0=무음
-    subtitle: z.string(), // 빈 문자열 허용
-    // 이 컷에 얹을 내레이션 오디오 파일명(narration.dir 기준). null/생략이면 내레이션 없음.
-    narration: z.string().min(1, "narration 파일명은 비어 있을 수 없습니다").nullable().optional(),
-    // 원본 해상도 기준 비율 크롭(0~1). null/생략이면 크롭 없음(원본 그대로).
-    crop: cropSchema.nullable().optional(),
-  })
-  .refine((s) => s.in < s.out, {
-    error: "in은 out보다 작아야 합니다 (in < out)",
-    path: ["in"],
-  });
-
-export const bgmCueSchema = z
-  .object({
-    file: z.string().min(1, "bgm.file은 비어 있을 수 없습니다"),
-    start: z.number().nonnegative("start는 0 이상이어야 합니다"),
-    end: z.number().positive("end는 양수여야 합니다"),
-    volume: z
-      .number()
-      .min(0, "volume은 0.0 이상이어야 합니다")
-      .max(1, "volume은 1.0 이하여야 합니다"),
-  })
-  .refine((b) => b.start < b.end, {
-    error: "start는 end보다 작아야 합니다 (start < end)",
-    path: ["start"],
-  });
-
 /**
  * 자막 뒤 반투명 배경 박스(유튜브 기본 자막 스타일). 생략/null이면 배경 없음(기존 동작).
  */
@@ -115,6 +78,65 @@ export const subtitleStyleSchema = z.object({
     .max(200, "margin은 200 이하여야 합니다")
     .default(40),
 });
+
+/**
+ * 컷(세그먼트)별 자막 스타일 부분 오버라이드. subtitleStyle의 모든 필드가 선택 필드다.
+ * 생략된 필드는 전역 subtitleStyle 값을 그대로 쓴다(얕은 병합, render 쪽에서 적용).
+ * background만 예외: 지정하면 전역 background를 부분 병합이 아니라 통짜 교체한다
+ * (부분 병합 시 색만 바꾸고 opacity가 전역 값으로 남는 등 애매함이 생기기 때문).
+ *
+ * margin은 `.partial()`만으로는 부족해 별도로 재선언한다: subtitleStyleSchema의
+ * margin은 `.default(40)`이 있어 `.partial()`을 걸어도(선택 필드가 되어도) 생략 시
+ * zod가 기본값 40을 채워 넣는다 — 그러면 병합할 때 "margin은 안 건드리려던" 오버라이드가
+ * 항상 margin을 40으로 덮어써 버린다(부분 병합 취지 위반). 여기서는 기본값 없는
+ * 선택 필드로 둬서 생략 시 진짜로 키 자체가 없게(undefined) 한다.
+ */
+export const subtitleStyleOverrideSchema = subtitleStyleSchema.partial().extend({
+  margin: z
+    .number()
+    .min(8, "margin은 8 이상이어야 합니다")
+    .max(200, "margin은 200 이하여야 합니다")
+    .optional(),
+});
+
+export const segmentSchema = z
+  .object({
+    clip: z.string().min(1, "clip 파일명은 비어 있을 수 없습니다"),
+    in: z.number().nonnegative("in은 0 이상이어야 합니다"),
+    out: z.number().positive("out은 양수여야 합니다"),
+    speed: z.number().positive("speed는 0보다 커야 합니다").default(1.0),
+    volume: z
+      .number()
+      .min(0, "volume은 0.0 이상이어야 합니다")
+      .max(1, "volume은 1.0 이하여야 합니다")
+      .default(1.0), // 이 세그먼트 오디오 볼륨. 1.0=원본, 0.3="30% 수준", 0=무음
+    subtitle: z.string(), // 빈 문자열 허용
+    // 이 컷에 얹을 내레이션 오디오 파일명(narration.dir 기준). null/생략이면 내레이션 없음.
+    narration: z.string().min(1, "narration 파일명은 비어 있을 수 없습니다").nullable().optional(),
+    // 원본 해상도 기준 비율 크롭(0~1). null/생략이면 크롭 없음(원본 그대로).
+    crop: cropSchema.nullable().optional(),
+    // 이 컷만의 자막 스타일 부분 오버라이드. null/생략이면 전역 subtitleStyle 그대로.
+    styleOverride: subtitleStyleOverrideSchema.nullable().optional(),
+  })
+  .refine((s) => s.in < s.out, {
+    error: "in은 out보다 작아야 합니다 (in < out)",
+    path: ["in"],
+  });
+
+export const bgmCueSchema = z
+  .object({
+    file: z.string().min(1, "bgm.file은 비어 있을 수 없습니다"),
+    start: z.number().nonnegative("start는 0 이상이어야 합니다"),
+    end: z.number().positive("end는 양수여야 합니다"),
+    volume: z
+      .number()
+      .min(0, "volume은 0.0 이상이어야 합니다")
+      .max(1, "volume은 1.0 이하여야 합니다"),
+  })
+  .refine((b) => b.start < b.end, {
+    error: "start는 end보다 작아야 합니다 (start < end)",
+    path: ["start"],
+  });
 
 /**
  * 목소리 클로닝 내레이션 배관(피처 플래그). enabled가 false거나 이 필드 자체가
