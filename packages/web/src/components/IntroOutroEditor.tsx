@@ -53,10 +53,19 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
   const [introError, setIntroError] = useState(false);
   const [outroError, setOutroError] = useState(false);
   const [files, setFiles] = useState<ClipFile[]>([]);
+  const [filesNote, setFilesNote] = useState<string | undefined>(undefined);
+  // clipDir 파일 목록은 파일마다 ffprobe로 길이를 재는 요청이라(수십 개면 1~2초+)
+  // 응답 전엔 "파일 없음"과 구분되는 로딩 상태를 보여준다 — 안 그러면 잠깐이지만
+  // clipDir이 실제로 비어있는 것처럼 보여 사용자가 오인할 수 있다.
+  const [filesLoading, setFilesLoading] = useState(true);
 
   useEffect(() => {
+    setFilesLoading(true);
     void (async () => {
-      setFiles(await fetchClipFiles());
+      const result = await fetchClipFiles();
+      setFiles(result.files);
+      setFilesNote(result.note);
+      setFilesLoading(false);
     })();
   }, [clipDir]);
 
@@ -99,7 +108,9 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
               }
             }}
           >
-            <option value="">{files.length === 0 ? "(clipDir에 파일 없음)" : "선택하세요"}</option>
+            <option value="">
+              {filesLoading ? "불러오는 중…" : files.length === 0 ? "(clipDir에 파일 없음)" : "선택하세요"}
+            </option>
             {files.map((f) => (
               <option key={f.name} value={f.name} disabled={f.durationS == null || f.durationS > INTRO_OUTRO_MAX_DURATION_S}>
                 {optionLabel(f)}
@@ -107,6 +118,9 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
             ))}
           </select>
         </label>
+        {!filesLoading && files.length === 0 && filesNote ? (
+          <p className="narration-empty-note">{filesNote}</p>
+        ) : null}
         <Collapsible trigger="직접 경로 입력" defaultIsOpen={!matchedIntroFile && intro != null}>
           <label className="settings-field wide-input">
             <span>경로</span>
@@ -156,7 +170,9 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
               }
             }}
           >
-            <option value="">{files.length === 0 ? "(clipDir에 파일 없음)" : "선택하세요"}</option>
+            <option value="">
+              {filesLoading ? "불러오는 중…" : files.length === 0 ? "(clipDir에 파일 없음)" : "선택하세요"}
+            </option>
             {files.map((f) => (
               <option key={f.name} value={f.name} disabled={f.durationS == null || f.durationS > INTRO_OUTRO_MAX_DURATION_S}>
                 {optionLabel(f)}
@@ -164,6 +180,9 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
             ))}
           </select>
         </label>
+        {!filesLoading && files.length === 0 && filesNote ? (
+          <p className="narration-empty-note">{filesNote}</p>
+        ) : null}
         <Collapsible trigger="직접 경로 입력" defaultIsOpen={!matchedOutroFile && outro != null}>
           <label className="settings-field wide-input">
             <span>경로</span>

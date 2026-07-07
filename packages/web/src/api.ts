@@ -133,12 +133,17 @@ export interface ClipFile {
   durationS: number | null;
 }
 
+export interface ClipFilesResult {
+  files: ClipFile[];
+  /** clipDir 미설정/접근 불가 등 안내 메시지. 정상 목록이면 없음. */
+  note?: string;
+}
+
 /** 디스크에 저장된 큐시트의 clipDir 안 비디오 파일 목록(길이 포함) — 인트로/아웃트로 선택용. */
-export async function fetchClipFiles(): Promise<ClipFile[]> {
+export async function fetchClipFiles(): Promise<ClipFilesResult> {
   const res = await fetch("/api/clip-files");
   if (!res.ok) {
-    return [];
+    return { files: [] };
   }
-  const data = (await res.json()) as { files: ClipFile[] };
-  return data.files;
+  return (await res.json()) as ClipFilesResult;
 }

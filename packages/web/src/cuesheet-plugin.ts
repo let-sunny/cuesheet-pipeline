@@ -697,14 +697,17 @@ export function cuesheetPlugin(): Plugin {
           }
           clipDir = cuesheet.clipDir;
         } catch {
-          sendJson(res, 200, { files: [] });
+          sendJson(res, 200, { files: [], note: "clipDir이 설정되지 않았습니다" });
           return;
         }
         let entries: string[];
         try {
           entries = await readdir(clipDir);
         } catch {
-          sendJson(res, 200, { files: [] });
+          sendJson(res, 200, {
+            files: [],
+            note: `폴더를 찾을 수 없습니다: ${clipDir} (iCloud 폴더 이름 변경/이동 등으로 경로가 끊겼을 수 있습니다)`,
+          });
           return;
         }
         const videoNames = entries

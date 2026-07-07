@@ -1101,7 +1101,10 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         saving={saveState.status === "saving"}
         rendering={renderState.status === "rendering"}
         renderProgress={renderState.status === "rendering" ? renderState.progress : null}
-        renderDisabled={dirty || renderState.status === "rendering"}
+        // dirty여도 다이얼로그는 열 수 있게 한다 — RenderSettingsDialog 자체가 dirty를
+        // 보고 경고 문구를 보여주고 [렌더 시작]만 비활성화한다(아래 render-cta 버튼과
+        // 동일 규약). 여기서도 dirty로 막으면 그 경고를 사용자가 볼 방법이 없어진다.
+        renderDisabled={renderState.status === "rendering"}
         canUndo={canUndo}
         canRedo={canRedo}
         onUndo={handleUndo}
@@ -1295,7 +1298,9 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
                 }
                 variant="primary"
                 size="lg"
-                isDisabled={dirty || renderState.status === "rendering"}
+                // dirty여도 다이얼로그를 열 수 있게 한다 — 위 HeaderBar renderDisabled와 동일 규약
+                // (RenderSettingsDialog 안의 dirty 경고+[렌더 시작] 비활성화가 실제 최종 게이트).
+                isDisabled={renderState.status === "rendering"}
                 onClick={() => setRenderDialogOpen(true)}
               />
               {renderState.status === "success" ? (
