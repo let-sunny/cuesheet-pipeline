@@ -219,19 +219,6 @@ body {
   padding-top: 6px;
 }
 
-.bgm-list,
-.style-summary {
-  padding: 12px 16px;
-  background: var(--surface-1);
-  border-radius: 8px;
-  font-size: 13px;
-}
-
-.bgm-list ul {
-  margin: 0;
-  padding-left: 18px;
-}
-
 .empty {
   color: var(--text-secondary);
   font-size: 13px;
@@ -501,46 +488,6 @@ textarea {
 .field-full textarea {
   width: 100%;
   box-sizing: border-box;
-}
-
-.segment-layout {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-}
-
-.segment-editor {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.segment-rows {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.segment-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 10px 12px;
-  background: var(--surface-1);
-  border: 1px solid var(--border-soft);
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.segment-row.selected {
-  border-color: var(--accent);
-}
-
-.segment-row-index {
-  font-size: 13px;
-  color: var(--text-secondary);
-  width: 18px;
 }
 
 .segment-field {
@@ -1246,15 +1193,6 @@ textarea {
   padding: 6px 4px;
 }
 
-.moment-remove-button {
-  border-color: var(--error-border);
-  color: var(--error-text);
-}
-
-.moment-remove-button.placeholder {
-  visibility: hidden;
-}
-
 .moment-io-actions {
   display: flex;
   gap: 6px;
@@ -1336,23 +1274,6 @@ textarea {
 .category-tag.cat-other {
   background: var(--tag-gray-bg);
   color: var(--tag-gray-text);
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 28px 0 12px;
-}
-
-.section-header h2 {
-  margin: 0;
-}
-
-.section-header button.active {
-  border-color: var(--accent);
-  background: var(--surface-3);
 }
 
 .keyboard-help {
@@ -1928,15 +1849,6 @@ textarea {
   white-space: nowrap;
 }
 
-.intro-outro-clear-button {
-  flex: 0 0 auto;
-  padding: 3px 10px;
-  font-size: 12px;
-  border-color: var(--error-border);
-  color: var(--error-text);
-  background: transparent;
-}
-
 .intro-outro-missing {
   margin-top: 10px;
 }
@@ -1977,15 +1889,6 @@ textarea {
   color: var(--warning-text);
 }
 
-.no-burn-subtitles-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-quaternary-soft);
-  cursor: pointer;
-  white-space: nowrap;
-}
 
 /* 렌더 설정 다이얼로그(RenderSettingsDialog) */
 .render-dialog {
