@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "@astryxdesign/core/Button";
 import type { Segment } from "@cuesheet/schema";
 import { fetchDraftFrames, fetchMoments } from "../api.js";
 import type { ClipMoments, ShotType } from "../api.js";
@@ -61,6 +62,17 @@ const CATEGORY_META: Record<Category, { label: string; className: string }> = {
   "착용": { label: "착용", className: "wearing" },
   "변화": { label: "변화", className: "change" },
   "기타": { label: "기타", className: "other" },
+};
+
+type StatusFilter = "전체" | "채택만" | "탈락만";
+
+/* 화면에 보이는 문구(PRD 4절 용어 사전) - 내부 필터 값("채택만"/"탈락만")은 카드
+   판정 로직(inUseCutNumber 등)과 이미 얽혀 있는 코드 식별자라 그대로 두고,
+   사용자에게 보이는 라벨만 "사용 중만"/"자동 제외만"으로 바꾼다. */
+const STATUS_FILTER_LABEL: Record<StatusFilter, string> = {
+  "전체": "전체",
+  "채택만": "사용 중만",
+  "탈락만": "자동 제외만",
 };
 
 const CATEGORY_ORDER: Category[] = [
@@ -182,7 +194,7 @@ export function MomentPalette({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [frameMap, setFrameMap] = useState<Record<string, string[]>>({});
   const [selectedCategory, setSelectedCategory] = useState<Category | "전체">("전체");
-  const [statusFilter, setStatusFilter] = useState<"전체" | "채택만" | "탈락만">("전체");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("전체");
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -277,22 +289,26 @@ export function MomentPalette({
   };
 
   if (loadError) {
-    return <div className="moment-palette status">순간 데이터를 불러오지 못했습니다: {loadError}</div>;
+    return <div className="moment-palette status">장면 후보를 불러오지 못했습니다: {loadError}</div>;
   }
   if (!moments) {
-    return <div className="moment-palette status">순간 데이터를 불러오는 중…</div>;
+    return <div className="moment-palette status">장면 후보를 불러오는 중…</div>;
   }
 
   return (
     <div className="moment-palette">
       <div className="moment-palette-header">
-        <span>{cards.length}개 순간</span>
+        <span>장면 후보 {cards.length}개</span>
         <button type="button" onClick={() => setCollapsed((v) => !v)}>
           {collapsed ? "펼치기" : "접기"}
         </button>
       </div>
 
-      {collapsed ? null : (
+      {collapsed ? null : cards.length === 0 ? (
+        <div className="empty-state">
+          아직 장면 후보가 없어요 - <code>pnpm episode</code>로 원본 폴더를 넣어 자동 생성해 보세요.
+        </div>
+      ) : (
         <>
           <div className="moment-filters">
             <button
@@ -315,27 +331,16 @@ export function MomentPalette({
           </div>
 
           <div className="moment-filters moment-status-filters">
-            <button
-              type="button"
-              className={statusFilter === "전체" ? "active" : ""}
-              onClick={() => setStatusFilter("전체")}
-            >
-              전체
-            </button>
-            <button
-              type="button"
-              className={statusFilter === "채택만" ? "active" : ""}
-              onClick={() => setStatusFilter("채택만")}
-            >
-              채택만
-            </button>
-            <button
-              type="button"
-              className={statusFilter === "탈락만" ? "active" : ""}
-              onClick={() => setStatusFilter("탈락만")}
-            >
-              탈락만
-            </button>
+            {(["전체", "채택만", "탈락만"] as const).map((f) => (
+              <button
+                type="button"
+                key={f}
+                className={statusFilter === f ? "active" : ""}
+                onClick={() => setStatusFilter(f)}
+              >
+                {STATUS_FILTER_LABEL[f]}
+              </button>
+            ))}
           </div>
 
           <div className="moment-grid">
@@ -386,7 +391,7 @@ export function MomentPalette({
                     <span className="moment-number">
                       {card.clipFolder} · {card.inS.toFixed(1)}s
                     </span>
-                    {inUse ? <span className="moment-badge-in-use">채택됨 · 컷 {cutNumber}</span> : null}
+                    {inUse ? <span className="moment-badge-in-use">사용 중 · 컷 {cutNumber}</span> : null}
                     {!inUse && faceRejected ? (
                       <span className="moment-badge-rejected face">자동 제외: 얼굴 노출</span>
                     ) : null}
@@ -394,64 +399,68 @@ export function MomentPalette({
                       <span className="moment-badge-rejected quality">자동 제외: 품질 낮음</span>
                     ) : null}
                   </div>
-                  <div className="moment-info">
-                    <span className={`category-tag cat-${meta.className}`}>{meta.label}</span>
-                    <span className="moment-duration">{(card.outS - card.inS).toFixed(1)}s</span>
-                  </div>
-                  {/* -webkit-line-clamp가 걸린 요소가 이 flex-column 카드의 "직속" flex
-                      아이템이면(이 환경 Chromium 실측) 클램프 높이 계산이 어긋나 3번째
-                      줄이 잘리다 만 채로 버튼 위에 흘러넘친다 — 플레인 래퍼로 한 겹
-                      감싸 line-clamp 요소 자체는 flex 아이템이 되지 않게 한다. */}
+                  {/* 카드 위계(screen-spec 2절): 썸네일 -> 상태 배지(위, 썸네일 오버레이) ->
+                      장면 설명(2줄) -> 메타(샷유형·길이·품질) -> 액션. -webkit-line-clamp가
+                      걸린 요소가 이 flex-column 카드의 "직속" flex 아이템이면(이 환경
+                      Chromium 실측) 클램프 높이 계산이 어긋나 3번째 줄이 잘리다 만 채로
+                      버튼 위에 흘러넘친다 — 플레인 래퍼로 한 겹 감싸 line-clamp 요소
+                      자체는 flex 아이템이 되지 않게 한다. */}
                   <div className="moment-memo-wrap">
                     <div className="moment-memo" title={displayMemo}>
                       {displayMemo}
                     </div>
                   </div>
+                  <div className="moment-info">
+                    <span className={`category-tag cat-${meta.className}`}>{meta.label}</span>
+                    <span className="moment-duration">{(card.outS - card.inS).toFixed(1)}s</span>
+                    {card.quality != null ? (
+                      <span className="moment-quality">품질 {card.quality}/5</span>
+                    ) : null}
+                  </div>
                   <div className="moment-card-actions">
-                    <button
-                      type="button"
-                      className="moment-add-button"
-                      disabled={inUse}
+                    <Button
+                      label={inUse ? "담김" : "담기"}
+                      variant="primary"
+                      size="sm"
+                      isDisabled={inUse}
                       onClick={() => handleAdd(card)}
-                    >
-                      {inUse ? "담김" : "담기"}
-                    </button>
-                    {/* 사용 안 중일 땐 빼기를 숨기되(disabled+placeholder) 자리는 그대로
-                        차지해 카드 높이가 담기/빼기 유무와 무관하게 일정하게 유지된다. */}
-                    <button
-                      type="button"
-                      className={`moment-remove-button${inUse ? "" : " placeholder"}`}
-                      disabled={!inUse}
+                    />
+                    {/* 사용 안 중일 땐 빼기를 숨기되(자리는 그대로 차지해 카드 높이가
+                        담기/빼기 유무와 무관하게 일정하게 유지된다). */}
+                    <Button
+                      label="빼기"
+                      variant="destructive"
+                      size="sm"
+                      isDisabled={!inUse}
+                      className={inUse ? "" : "placeholder"}
                       onClick={() => onRemoveSegment(card.clipFileName, card.inS, card.outS)}
-                    >
-                      빼기
-                    </button>
+                    />
                   </div>
                   <div className="moment-io-actions">
-                    <button
-                      type="button"
+                    <Button
+                      label={isIntro ? "인트로 지정됨" : "인트로로"}
+                      variant="ghost"
+                      size="sm"
                       className={`moment-io-button${isIntro ? " active" : ""}`}
-                      disabled={tooLongForIntroOutro}
-                      title={
+                      isDisabled={tooLongForIntroOutro}
+                      tooltip={
                         introOutroDisabledTitle ??
                         "이 클립 전체를 인트로로 지정합니다(구간 지정 불가, 클립 전체 삽입)"
                       }
                       onClick={() => onSetIntro(card.clipFileName)}
-                    >
-                      {isIntro ? "인트로 지정됨" : "인트로로"}
-                    </button>
-                    <button
-                      type="button"
+                    />
+                    <Button
+                      label={isOutro ? "아웃트로 지정됨" : "아웃트로로"}
+                      variant="ghost"
+                      size="sm"
                       className={`moment-io-button${isOutro ? " active" : ""}`}
-                      disabled={tooLongForIntroOutro}
-                      title={
+                      isDisabled={tooLongForIntroOutro}
+                      tooltip={
                         introOutroDisabledTitle ??
                         "이 클립 전체를 아웃트로로 지정합니다(구간 지정 불가, 클립 전체 삽입)"
                       }
                       onClick={() => onSetOutro(card.clipFileName)}
-                    >
-                      {isOutro ? "아웃트로 지정됨" : "아웃트로로"}
-                    </button>
+                    />
                   </div>
                 </div>
               );
