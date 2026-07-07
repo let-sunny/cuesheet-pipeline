@@ -40,6 +40,12 @@ export interface VideoPreviewHandle {
   splitAtCurrent: () => void;
   /** 크롭 편집 모드로 진입한다(기존 crop이 있으면 거기서, 없으면 전체 프레임에서 시작). */
   startCropEdit: () => void;
+  /** L: 정방향 재생/배속 셔틀(연타 시 1x -> 2x -> 4x). */
+  shuttleForward: () => void;
+  /** J: 역방향 재생/배속 셔틀(근사, 연타 시 1x -> 2x -> 4x, 오디오 음소거). */
+  shuttleBackward: () => void;
+  /** K: 셔틀 정지. */
+  shuttleStop: () => void;
 }
 
 /**
@@ -68,6 +74,12 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   // 프록시가 새로 준비됐을 때 <video>를 강제로 다시 마운트해 새로 서빙되는
   // 프록시 파일을 다시 요청하게 만드는 값(원본 로드 실패로 남은 missing 상태도 함께 지운다).
   const [reloadToken, setReloadToken] = useState(0);
+  // J/K/L 셔틀 상태 — 리렌더를 유발할 필요가 없는 재생 방향/배속이라 ref로만 관리한다.
+  // "stopped"는 셔틀이 관여하지 않는 평상시 재생/일시정지 상태(기존 handlePlay 등이 담당).
+  const shuttleDirectionRef = useRef<"stopped" | "forward" | "backward">("stopped");
+  const shuttleLevelRef = useRef(1);
+  const shuttleRafRef = useRef<number | null>(null);
+  const shuttleLastTsRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     autoPlayRef.current = autoPlay;
@@ -79,13 +91,31 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     setCurrentTime(0);
   }, [segment?.clip]);
 
-  // 선택된 컷이 바뀌면 진행 중이던 크롭 편집(다른 컷 기준 draft)은 버린다.
+  // 선택된 컷이 바뀌면 진행 중이던 크롭 편집(다른 컷 기준 draft)은 버리고, 이전 컷
+  // 기준으로 돌던 셔틀(J/K/L 배속/역재생)도 정리한다.
   useEffect(() => {
     setCropEditDraft(null);
+    resetShuttle();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIndex]);
+
+  // 언마운트 시 역재생 rAF 루프가 남아있지 않게 정리한다.
+  useEffect(() => {
+    return () => {
+      stopShuttleRaf();
+    };
+  }, []);
 
   // 선택된 클립이 프록시 생성 대기/진행 중이면 10초마다 상태를 확인해
   // 안내를 갱신하고, 준비가 끝나면 <video>를 다시 마운트해 프록시로 전환한다.
+  //
+  // 레이스 주의: 마운트 직후 첫 체크가 "이미 준비 중이 아님"으로 응답하면(애초에
+  // 프록시 대기가 필요 없던 클립) reloadToken을 올리면 안 된다 — 그 시점엔 이미
+  // 원본 <video>가 자기 src를 로딩 중일 수 있고, key 변경으로 인한 리마운트가 그
+  // 진행 중이던 요청을 abort시켜 onError(missing=true)로 잘못 귀결된다(missing은
+  // segment.clip이 바뀔 때만 리셋되므로 그 뒤로도 계속 굳어버림). 그래서 실제로
+  // "준비 중 -> 준비 끝"으로 전환된 경우에만(즉 이 클립에 대해 한 번이라도
+  // stillPreparing===true를 관측한 뒤에만) reloadToken을 올린다.
   useEffect(() => {
     const clip = segment?.clip;
     if (!clip) {
@@ -93,6 +123,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     }
     let stopped = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let wasPreparing = false;
 
     const check = async () => {
       try {
@@ -103,8 +134,9 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
         setProxyStatus(status);
         const stillPreparing = status.generating === clip || status.pending.includes(clip);
         if (stillPreparing) {
+          wasPreparing = true;
           timer = setTimeout(() => void check(), PROXY_STATUS_POLL_INTERVAL_MS);
-        } else {
+        } else if (wasPreparing) {
           setMissing(false);
           setReloadToken((v) => v + 1);
         }
@@ -202,11 +234,30 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     setCurrentTime(clamped);
   };
 
+  const stopShuttleRaf = () => {
+    if (shuttleRafRef.current !== null) {
+      cancelAnimationFrame(shuttleRafRef.current);
+      shuttleRafRef.current = null;
+    }
+  };
+
+  /** 셔틀(J/K/L) 상태를 평상시(정지) 상태로 되돌린다 — 배속/음소거/역재생 루프 정리. */
+  const resetShuttle = () => {
+    stopShuttleRaf();
+    shuttleDirectionRef.current = "stopped";
+    shuttleLevelRef.current = 1;
+    const video = videoRef.current;
+    if (video) {
+      video.muted = false;
+    }
+  };
+
   const handlePlay = () => {
     const video = videoRef.current;
     if (!video || !segment) {
       return;
     }
+    resetShuttle();
     if (
       playMode === "loop" &&
       (video.currentTime < segment.in || video.currentTime >= segment.out)
@@ -217,6 +268,83 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     video.playbackRate = segment.speed;
     video.volume = segment.volume;
     void video.play();
+  };
+
+  const shuttleStop = () => {
+    const video = videoRef.current;
+    resetShuttle();
+    if (video) {
+      video.pause();
+    }
+  };
+
+  /** 역재생 프레임 루프 — video는 일시정지 상태로 두고 rAF마다 currentTime을 직접 깎는다
+      (HTML video는 음수 playbackRate를 지원하지 않아 이렇게 근사한다). */
+  const reverseTick = (ts: number) => {
+    const video = videoRef.current;
+    if (!video || !segment || shuttleDirectionRef.current !== "backward") {
+      stopShuttleRaf();
+      return;
+    }
+    const last = shuttleLastTsRef.current;
+    shuttleLastTsRef.current = ts;
+    if (last === undefined) {
+      shuttleRafRef.current = requestAnimationFrame(reverseTick);
+      return;
+    }
+    const dt = (ts - last) / 1000;
+    const next = Math.max(segment.in, video.currentTime - dt * shuttleLevelRef.current);
+    video.currentTime = next;
+    setCurrentTime(next);
+    if (next <= segment.in) {
+      shuttleStop();
+      return;
+    }
+    shuttleRafRef.current = requestAnimationFrame(reverseTick);
+  };
+
+  /** L: 정방향 재생. 연타 시 1x -> 2x -> 4x로 배속이 오른다(4x 상한). 역재생 중이면 정방향
+      1x로 전환한다. */
+  const shuttleForward = () => {
+    const video = videoRef.current;
+    if (!video || !segment) {
+      return;
+    }
+    if (shuttleDirectionRef.current === "forward") {
+      shuttleLevelRef.current = shuttleLevelRef.current >= 4 ? 4 : shuttleLevelRef.current * 2;
+    } else {
+      stopShuttleRaf();
+      shuttleDirectionRef.current = "forward";
+      shuttleLevelRef.current = 1;
+      video.muted = false;
+      if (video.currentTime < segment.in || video.currentTime >= segment.out) {
+        video.currentTime = segment.in;
+        setCurrentTime(segment.in);
+      }
+    }
+    video.playbackRate = segment.speed * shuttleLevelRef.current;
+    video.volume = segment.volume;
+    void video.play();
+  };
+
+  /** J: 역방향 재생(근사). 연타 시 1x -> 2x -> 4x로 배속이 오른다(4x 상한). 오디오는
+      의미가 없으므로 음소거한다. 정방향 재생 중이면 역방향 1x로 전환한다. */
+  const shuttleBackward = () => {
+    const video = videoRef.current;
+    if (!video || !segment) {
+      return;
+    }
+    if (shuttleDirectionRef.current === "backward") {
+      shuttleLevelRef.current = shuttleLevelRef.current >= 4 ? 4 : shuttleLevelRef.current * 2;
+      return;
+    }
+    video.pause();
+    shuttleDirectionRef.current = "backward";
+    shuttleLevelRef.current = 1;
+    video.muted = true;
+    stopShuttleRaf();
+    shuttleLastTsRef.current = undefined;
+    shuttleRafRef.current = requestAnimationFrame(reverseTick);
   };
 
   const handleSetIn = () => {
@@ -306,6 +434,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
         if (video.paused) {
           handlePlay();
         } else {
+          resetShuttle();
           video.pause();
         }
       },
@@ -316,6 +445,9 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
       setOutFromCurrent: handleSetOut,
       splitAtCurrent: handleSplit,
       startCropEdit,
+      shuttleForward,
+      shuttleBackward,
+      shuttleStop,
     }),
     [currentTime, duration, playMode, segment],
   );

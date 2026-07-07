@@ -1323,7 +1323,11 @@ textarea {
 
 /* 컷 리스트 오른쪽 전체(비디오+필드 패널)를 감싸는 2열 워크스페이스.
    비디오 열과 필드 열의 최소폭 합이 화면폭을 넘으면(대략 1280px 미만) flex-wrap으로
-   필드 열이 비디오 아래로 자연스럽게 떨어진다. */
+   필드 열이 비디오 아래로 자연스럽게 떨어진다.
+   좌측 컷 리스트(.compact-list)가 페이지 스크롤을 만들 만큼 길어지는 컷 수(수십~
+   수백 개)에서도 비디오+필드가 화면에 계속 보이도록 sticky로 뷰포트 상단에 붙인다
+   (.subtitle-video-col과 동일한 패턴 — 이 레포는 리스트 자체 스크롤 대신 페이지
+   스크롤+sticky 우측 열로 통일한다). */
 .trim-workspace {
   flex: 1 1 auto;
   min-width: 0;
@@ -1331,6 +1335,9 @@ textarea {
   flex-wrap: wrap;
   gap: 16px;
   align-items: flex-start;
+  position: sticky;
+  top: 12px;
+  align-self: flex-start;
 }
 
 /* 좌열(넓게): 장면 헤더 -> 비디오 -> 재생/트림 컨트롤이 VideoPreview 한 덩어리 안에
@@ -1639,6 +1646,19 @@ textarea {
 }
 
 .quick-fields-crop button {
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
+.quick-fields-merge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #3a4056;
+}
+
+.quick-fields-merge button {
   font-size: 12px;
   padding: 3px 10px;
 }

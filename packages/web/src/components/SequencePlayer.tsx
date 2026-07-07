@@ -9,6 +9,12 @@ import { matchSceneInfo } from "../sceneInfo.js";
 /** 외부(App.tsx의 Space 단축키 등)에서 이어재생을 제어하기 위한 핸들. */
 export interface SequencePlayerHandle {
   togglePlay: () => void;
+  /** L: 정방향 재생/배속 셔틀(연타 시 1x -> 2x -> 4x). */
+  shuttleForward: () => void;
+  /** J: 역방향 재생/배속 셔틀(근사, 연타 시 1x -> 2x -> 4x, 오디오 음소거). */
+  shuttleBackward: () => void;
+  /** K: 셔틀 정지. */
+  shuttleStop: () => void;
 }
 
 interface Props {
@@ -128,6 +134,12 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
   // 진행 바 클릭 시킹 중 다른 세그먼트로 넘어가야 할 때, 다음 currentIndex 이펙트가
   // seg.in 대신 사용할 source 시각을 1회성으로 전달하는 통로.
   const pendingSeekRef = useRef<{ index: number; time: number } | null>(null);
+  // J/K/L 셔틀 상태(VideoPreview와 동일한 방식) — "stopped"는 셔틀이 관여하지 않는
+  // 평상시 재생/일시정지(userRate 배속 등 기존 로직이 담당).
+  const shuttleDirectionRef = useRef<"stopped" | "forward" | "backward">("stopped");
+  const shuttleLevelRef = useRef(1);
+  const shuttleRafRef = useRef<number | null>(null);
+  const shuttleLastTsRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     segmentsRef.current = segments;
@@ -141,6 +153,10 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
   useEffect(() => {
     frontRef.current = front;
   }, [front]);
+  // 언마운트 시 역재생 rAF 루프가 남아있지 않게 정리한다.
+  useEffect(() => {
+    return () => stopShuttleRaf();
+  }, []);
   useEffect(() => {
     userRateRef.current = userRate;
     // 재생 중 배속 토글 — 컷 전환을 기다리지 않고 지금 보고 있는 비디오에 바로 반영한다.
@@ -165,11 +181,113 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
     return waitForMetadata(video);
   }
 
+  function stopShuttleRaf() {
+    if (shuttleRafRef.current !== null) {
+      cancelAnimationFrame(shuttleRafRef.current);
+      shuttleRafRef.current = null;
+    }
+  }
+
+  /** 셔틀(J/K/L)을 평상시 상태로 되돌린다 — 배속을 seg.speed*userRate로 복원한다. */
+  function resetShuttle() {
+    stopShuttleRaf();
+    shuttleDirectionRef.current = "stopped";
+    shuttleLevelRef.current = 1;
+    const video = videoRefs[frontRef.current].current;
+    const seg = segmentsRef.current[currentIndex];
+    if (video) {
+      video.muted = false;
+      if (seg) {
+        video.playbackRate = seg.speed * userRateRef.current;
+      }
+    }
+  }
+
+  function shuttleStop() {
+    const video = videoRefs[frontRef.current].current;
+    resetShuttle();
+    if (video) {
+      video.pause();
+    }
+    setPlaying(false);
+  }
+
+  /** 역재생 프레임 루프 — 활성 슬롯 video는 일시정지 상태로 두고 rAF마다 currentTime을
+      직접 깎는다(음수 playbackRate 미지원 근사). 컷 경계는 넘지 않고 0에서 멈춘다. */
+  function reverseTick(ts: number) {
+    const video = videoRefs[frontRef.current].current;
+    if (!video || shuttleDirectionRef.current !== "backward") {
+      stopShuttleRaf();
+      return;
+    }
+    const last = shuttleLastTsRef.current;
+    shuttleLastTsRef.current = ts;
+    if (last === undefined) {
+      shuttleRafRef.current = requestAnimationFrame(reverseTick);
+      return;
+    }
+    const dt = (ts - last) / 1000;
+    const next = Math.max(0, video.currentTime - dt * shuttleLevelRef.current);
+    video.currentTime = next;
+    setVideoNow(next);
+    if (next <= 0) {
+      shuttleStop();
+      return;
+    }
+    shuttleRafRef.current = requestAnimationFrame(reverseTick);
+  }
+
+  /** L: 정방향 재생. 연타 시 1x -> 2x -> 4x로 배속이 오른다(4x 상한). 역재생 중이면
+      정방향 1x로 전환한다. */
+  function shuttleForward() {
+    const video = videoRefs[frontRef.current].current;
+    const seg = segmentsRef.current[currentIndex];
+    if (!video || !seg) {
+      return;
+    }
+    if (shuttleDirectionRef.current === "forward") {
+      shuttleLevelRef.current = shuttleLevelRef.current >= 4 ? 4 : shuttleLevelRef.current * 2;
+    } else {
+      stopShuttleRaf();
+      shuttleDirectionRef.current = "forward";
+      shuttleLevelRef.current = 1;
+      video.muted = false;
+    }
+    video.playbackRate = seg.speed * shuttleLevelRef.current;
+    video.volume = seg.volume;
+    setPlaying(true);
+    void video.play();
+  }
+
+  /** J: 역방향 재생(근사). 연타 시 1x -> 2x -> 4x. 오디오는 의미가 없어 음소거한다.
+      정방향 재생 중이면 역방향 1x로 전환한다. */
+  function shuttleBackward() {
+    const video = videoRefs[frontRef.current].current;
+    const seg = segmentsRef.current[currentIndex];
+    if (!video || !seg) {
+      return;
+    }
+    if (shuttleDirectionRef.current === "backward") {
+      shuttleLevelRef.current = shuttleLevelRef.current >= 4 ? 4 : shuttleLevelRef.current * 2;
+      return;
+    }
+    video.pause();
+    setPlaying(false);
+    shuttleDirectionRef.current = "backward";
+    shuttleLevelRef.current = 1;
+    video.muted = true;
+    stopShuttleRaf();
+    shuttleLastTsRef.current = undefined;
+    shuttleRafRef.current = requestAnimationFrame(reverseTick);
+  }
+
   // 현재 컷(currentIndex)으로 전환 — 미니 타임라인 클릭(외부)과 자동 전환(내부)이
   // 둘 다 onIndexChange를 거쳐 이 prop을 바꾸므로 한 경로로 처리된다.
   useEffect(() => {
     let cancelled = false;
     advancingRef.current = false;
+    // 컷이 바뀌면 이전 컷 기준으로 돌던 셔틀(J/K/L)은 정리한다(정방향 배속/역재생 루프 모두).
+    resetShuttle();
 
     void (async () => {
       const seg = segmentsRef.current[currentIndex];
@@ -302,9 +420,18 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
   useImperativeHandle(
     ref,
     () => ({
-      togglePlay: () => setPlaying((p) => !p),
+      togglePlay: () => {
+        resetShuttle();
+        setPlaying((p) => !p);
+      },
+      shuttleForward,
+      shuttleBackward,
+      shuttleStop,
     }),
-    [],
+    // shuttle* 함수들은 segmentsRef.current[currentIndex]를 클로저로 참조하므로
+    // currentIndex가 바뀔 때마다 핸들을 다시 만들어야 최신 컷을 가리킨다(togglePlay는
+    // setPlaying 함수형 업데이트만 쓰므로 currentIndex 의존이 없어도 안전하다).
+    [currentIndex],
   );
 
   const currentSegment = segments[currentIndex];

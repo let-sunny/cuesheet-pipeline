@@ -2,6 +2,7 @@ import { Slider } from "@astryxdesign/core/Slider";
 import type { Segment } from "@cuesheet/schema";
 import { INTRO_OUTRO_MAX_DURATION_S } from "../clipPaths.js";
 import { narrationFileUrl, type NarrationFile } from "../api.js";
+import type { MergeEligibility } from "../segmentMerge.js";
 
 interface Props {
   segment: Segment | undefined;
@@ -22,6 +23,10 @@ interface Props {
   onClearCrop: () => void;
   /** 크롭 편집 모드로 진입한다(미리보기 위 오버레이에서 직접 드래그 조절). */
   onEditCrop: () => void;
+  /** [다음 컷과 합치기] 버튼 활성 여부와 비활성 사유. */
+  mergeEligibility: MergeEligibility;
+  /** 다음 컷과 합친다(Cmd+J와 동일 동작). */
+  onMergeNext: () => void;
 }
 
 /**
@@ -42,6 +47,8 @@ export function SegmentQuickFields({
   onSetOutro,
   onClearCrop,
   onEditCrop,
+  mergeEligibility,
+  onMergeNext,
 }: Props) {
   if (!segment) {
     return null;
@@ -236,6 +243,17 @@ export function SegmentQuickFields({
             크롭 추가
           </button>
         )}
+      </div>
+
+      <div className="quick-fields-merge">
+        <button
+          type="button"
+          disabled={!mergeEligibility.eligible}
+          title={mergeEligibility.eligible ? "Cmd/Ctrl + J" : mergeEligibility.reason}
+          onClick={onMergeNext}
+        >
+          다음 컷과 합치기
+        </button>
       </div>
     </div>
   );

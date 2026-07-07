@@ -22,6 +22,7 @@ import {
   type NarrationFile,
 } from "./api.js";
 import { buildClipPath, computeClipDurations } from "./clipPaths.js";
+import { computeMergeEligibility } from "./segmentMerge.js";
 import { VideoPreview } from "./components/VideoPreview.js";
 import type { VideoPreviewHandle } from "./components/VideoPreview.js";
 import { BgmEditor } from "./components/BgmEditor.js";
@@ -74,6 +75,7 @@ const newBgmCue = (): BgmCue => ({
   end: 1,
   volume: 1,
 });
+
 
 /** 언두 히스토리에 보관하는 과거 스냅샷 최대 개수. */
 const HISTORY_LIMIT = 50;
@@ -266,6 +268,45 @@ export function App() {
     setSelectedIndex(next.selectedIndex);
   }, [draft, future, selectedIndex]);
 
+  // 인접 컷 합치기(Cmd+J / 인스펙터 버튼) — 같은 클립·시간상 인접(computeMergeEligibility)일
+  // 때만 실행된다. 병합 결과는 in=현재 in, out=다음 out, 자막은 현재 컷 것을 유지한다.
+  // 다음 컷 자막이 다르고 비어있지 않으면 그걸 버린다는 확인을 받는다.
+  const mergeSegmentWithNext = useCallback((i: number) => {
+    if (!draft) {
+      return;
+    }
+    const eligibility = computeMergeEligibility(draft, i);
+    if (!eligibility.eligible) {
+      return;
+    }
+    const current = draft.segments[i];
+    const next = draft.segments[i + 1];
+    if (!current || !next) {
+      return;
+    }
+    if (next.subtitle.trim() !== "" && next.subtitle.trim() !== current.subtitle.trim()) {
+      const confirmed = window.confirm("다음 컷 자막은 버려집니다. 계속할까요?");
+      if (!confirmed) {
+        return;
+      }
+    }
+    recordDiscreteChange();
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const cur = prev.segments[i];
+      const nxt = prev.segments[i + 1];
+      if (!cur || !nxt) {
+        return prev;
+      }
+      const merged: Segment = { ...cur, out: nxt.out };
+      const segments = [...prev.segments];
+      segments.splice(i, 2, merged);
+      return { ...prev, segments };
+    });
+  }, [draft, recordDiscreteChange]);
+
   const dirty = useMemo(() => {
     if (!draft || !serverCuesheet) {
       return false;
@@ -450,6 +491,24 @@ export function App() {
         if (e.key === " ") {
           e.preventDefault();
           sequencePlayerRef.current?.togglePlay();
+          return;
+        }
+        if (e.key === "l" || e.key === "L") {
+          e.preventDefault();
+          sequencePlayerRef.current?.shuttleForward();
+          return;
+        }
+        if (e.key === "k" || e.key === "K") {
+          e.preventDefault();
+          sequencePlayerRef.current?.shuttleStop();
+          return;
+        }
+        if (e.key === "j" || e.key === "J") {
+          if (!e.metaKey && !e.ctrlKey) {
+            e.preventDefault();
+            sequencePlayerRef.current?.shuttleBackward();
+          }
+          return;
         }
         return;
       }
@@ -508,10 +567,30 @@ export function App() {
         videoPreviewRef.current?.splitAtCurrent();
         return;
       }
+      if ((e.metaKey || e.ctrlKey) && (e.key === "j" || e.key === "J")) {
+        e.preventDefault();
+        mergeSegmentWithNext(selectedIndex);
+        return;
+      }
+      if (e.key === "l" || e.key === "L") {
+        e.preventDefault();
+        videoPreviewRef.current?.shuttleForward();
+        return;
+      }
+      if (e.key === "k" || e.key === "K") {
+        e.preventDefault();
+        videoPreviewRef.current?.shuttleStop();
+        return;
+      }
+      if (e.key === "j" || e.key === "J") {
+        e.preventDefault();
+        videoPreviewRef.current?.shuttleBackward();
+        return;
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [step, editMode, selectRelative, sequenceMode, handleUndo, handleRedo]);
+  }, [step, editMode, selectRelative, sequenceMode, handleUndo, handleRedo, selectedIndex, mergeSegmentWithNext]);
 
   const handleSave = useCallback(async () => {
     if (!draft) {
@@ -1071,6 +1150,8 @@ export function App() {
                       }
                       onClearCrop={() => clearSegmentCrop(selectedIndex)}
                       onEditCrop={() => videoPreviewRef.current?.startCropEdit()}
+                      mergeEligibility={computeMergeEligibility(draft, selectedIndex)}
+                      onMergeNext={() => mergeSegmentWithNext(selectedIndex)}
                     />
                   </div>
                 </div>
