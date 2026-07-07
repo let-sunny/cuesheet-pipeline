@@ -1258,6 +1258,10 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
                     onEditCrop={() => videoPreviewRef.current?.startCropEdit()}
                     mergeEligibility={computeMergeEligibility(draft, selectedIndex)}
                     onMergeNext={() => mergeSegmentWithNext(selectedIndex)}
+                    onSplit={() => videoPreviewRef.current?.splitAtCurrent()}
+                    onDuplicate={addSegment}
+                    onDelete={() => removeSegment(selectedIndex)}
+                    canDelete={draft.segments.length > 1}
                     globalSubtitleStyle={draft.subtitleStyle}
                     onToggleStyleOverride={(enabled) => toggleSegmentStyleOverride(selectedIndex, enabled)}
                     onChangeStyleOverride={(patch) => updateSegmentStyleOverride(selectedIndex, patch)}

@@ -1,3 +1,7 @@
+import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
+import { Collapsible } from "@astryxdesign/core/Collapsible";
+import { Slider } from "@astryxdesign/core/Slider";
+import { Button } from "@astryxdesign/core/Button";
 import type { Segment, SubtitleBackground, SubtitleStyle, SubtitleStyleOverride } from "@cuesheet/schema";
 import { toColorInputValue } from "../subtitleOverlay.js";
 
@@ -14,10 +18,14 @@ interface Props {
 }
 
 /**
- * 편집 단계(②) 우측 필드 패널의 "이 컷만 스타일" 접이식 섹션. 켜면 segment.styleOverride가
- * (초기엔 전역 스타일을 그대로 복사한 값으로) 생겨 size/color/outlineColor/배경/margin을
- * 이 컷만 따로 편집할 수 있다. FinishingSettings의 컨트롤 패턴(슬라이더+색상 인풋 페어)을
- * 그대로 재사용한다.
+ * 자막(G3) 그룹 하위의 "이 컷만 자막 스타일" - 켜면 segment.styleOverride가(초기엔
+ * 전역 스타일을 그대로 복사한 값으로) 생겨 size/color/outlineColor/배경/margin을 이
+ * 컷만 따로 편집할 수 있다. 켜고 끄는 토글(데이터 변경)과 세부 필드를 접고 펼치는
+ * 디스클로저(순수 UI)를 분리했다 - Astryx Collapsible의 트리거는 통째로 버튼이라
+ * 그 안에 체크박스를 중첩하면(무효한 HTML 중첩 + 클릭 버블링 충돌) 펼치기만 해도
+ * 오버라이드가 켜지는 사고가 날 수 있어서다. 좌측 세로선(.qf-style-override)으로
+ * "자막 소속"임을 표시한다 - 독립 섹션처럼 보이지 않게 하는 것이 이 컴포넌트의
+ * 핵심 존재 이유(screen-spec 4절 "현행 문제의 핵심 교정").
  */
 export function SegmentStyleOverride({
   segment,
@@ -30,138 +38,126 @@ export function SegmentStyleOverride({
   const override = segment.styleOverride;
 
   return (
-    <div className="quick-fields-style-override">
-      <label className="settings-field">
-        <span>이 컷만 스타일</span>
-        <input type="checkbox" checked={!!override} onChange={(e) => onToggle(e.target.checked)} />
-      </label>
+    <div className="qf-style-override">
+      <div className="qf-style-override-toggle">
+        <CheckboxInput label="이 컷만 자막 스타일" value={!!override} onChange={onToggle} />
+      </div>
 
       {override ? (
-        <div className="style-override-fields">
-          <label className="settings-field">
-            <span>크기</span>
-            <input
-              type="number"
-              min={1}
-              value={override.size ?? globalStyle.size}
-              onChange={(e) => {
-                const v = e.target.valueAsNumber;
-                onChangeOverride({ size: Number.isNaN(v) ? globalStyle.size : v });
-              }}
-            />
-          </label>
+        <Collapsible trigger="스타일 세부 설정" defaultIsOpen>
+          <div className="style-override-fields">
+            <label className="settings-field">
+              <span>크기</span>
+              <input
+                type="number"
+                min={1}
+                value={override.size ?? globalStyle.size}
+                onChange={(e) => {
+                  const v = e.target.valueAsNumber;
+                  onChangeOverride({ size: Number.isNaN(v) ? globalStyle.size : v });
+                }}
+              />
+            </label>
 
-          <label className="settings-field">
-            <span>
-              색상 <span className="swatch" style={{ background: override.color ?? globalStyle.color }} />
-            </span>
-            <div className="color-field-inputs">
-              <input
-                type="color"
-                value={toColorInputValue(override.color ?? globalStyle.color)}
-                onChange={(e) => onChangeOverride({ color: e.target.value })}
-              />
-              <input
-                type="text"
-                value={override.color ?? globalStyle.color}
-                onChange={(e) => onChangeOverride({ color: e.target.value })}
-              />
-            </div>
-          </label>
+            <label className="settings-field">
+              <span>
+                색상 <span className="swatch" style={{ background: override.color ?? globalStyle.color }} />
+              </span>
+              <div className="color-field-inputs">
+                <input
+                  type="color"
+                  value={toColorInputValue(override.color ?? globalStyle.color)}
+                  onChange={(e) => onChangeOverride({ color: e.target.value })}
+                />
+                <input
+                  type="text"
+                  value={override.color ?? globalStyle.color}
+                  onChange={(e) => onChangeOverride({ color: e.target.value })}
+                />
+              </div>
+            </label>
 
-          <label className="settings-field">
-            <span>
-              외곽선 색상{" "}
-              <span className="swatch" style={{ background: override.outlineColor ?? globalStyle.outlineColor }} />
-            </span>
-            <div className="color-field-inputs">
-              <input
-                type="color"
-                value={toColorInputValue(override.outlineColor ?? globalStyle.outlineColor)}
-                onChange={(e) => onChangeOverride({ outlineColor: e.target.value })}
-              />
-              <input
-                type="text"
-                value={override.outlineColor ?? globalStyle.outlineColor}
-                onChange={(e) => onChangeOverride({ outlineColor: e.target.value })}
-              />
-            </div>
-          </label>
+            <label className="settings-field">
+              <span>
+                외곽선 색상{" "}
+                <span className="swatch" style={{ background: override.outlineColor ?? globalStyle.outlineColor }} />
+              </span>
+              <div className="color-field-inputs">
+                <input
+                  type="color"
+                  value={toColorInputValue(override.outlineColor ?? globalStyle.outlineColor)}
+                  onChange={(e) => onChangeOverride({ outlineColor: e.target.value })}
+                />
+                <input
+                  type="text"
+                  value={override.outlineColor ?? globalStyle.outlineColor}
+                  onChange={(e) => onChangeOverride({ outlineColor: e.target.value })}
+                />
+              </div>
+            </label>
 
-          <label className="settings-field">
-            <span>배경 박스</span>
-            <input
-              type="checkbox"
-              checked={override.background != null}
-              onChange={(e) =>
+            <CheckboxInput
+              label="배경 박스"
+              value={override.background != null}
+              onChange={(checked) =>
                 onChangeOverride({
-                  background: e.target.checked ? override.background ?? DEFAULT_OVERRIDE_BACKGROUND : null,
+                  background: checked ? override.background ?? DEFAULT_OVERRIDE_BACKGROUND : null,
                 })
               }
             />
-          </label>
-          {override.background ? (
-            <>
-              <label className="settings-field">
-                <span>
-                  배경 색상 <span className="swatch" style={{ background: override.background.color }} />
-                </span>
-                <div className="color-field-inputs">
-                  <input
-                    type="color"
-                    value={toColorInputValue(override.background.color)}
-                    onChange={(e) =>
-                      onChangeOverride({ background: { ...override.background!, color: e.target.value } })
-                    }
-                  />
-                  <input
-                    type="text"
-                    value={override.background.color}
-                    onChange={(e) =>
-                      onChangeOverride({ background: { ...override.background!, color: e.target.value } })
-                    }
-                  />
-                </div>
-              </label>
-              <label className="settings-field">
-                <span>배경 투명도 ({Math.round(override.background.opacity * 100)}%)</span>
-                <input
-                  type="range"
+            {override.background ? (
+              <>
+                <label className="settings-field">
+                  <span>
+                    배경 색상 <span className="swatch" style={{ background: override.background.color }} />
+                  </span>
+                  <div className="color-field-inputs">
+                    <input
+                      type="color"
+                      value={toColorInputValue(override.background.color)}
+                      onChange={(e) =>
+                        onChangeOverride({ background: { ...override.background!, color: e.target.value } })
+                      }
+                    />
+                    <input
+                      type="text"
+                      value={override.background.color}
+                      onChange={(e) =>
+                        onChangeOverride({ background: { ...override.background!, color: e.target.value } })
+                      }
+                    />
+                  </div>
+                </label>
+                <Slider
+                  label="배경 투명도"
+                  value={Math.round(override.background.opacity * 100)}
                   min={0}
                   max={100}
                   step={5}
-                  value={Math.round(override.background.opacity * 100)}
-                  onChange={(e) =>
-                    onChangeOverride({
-                      background: { ...override.background!, opacity: Number(e.target.value) / 100 },
-                    })
+                  valueDisplay="text"
+                  onChange={(v: number) =>
+                    onChangeOverride({ background: { ...override.background!, opacity: v / 100 } })
                   }
                 />
-              </label>
-            </>
-          ) : null}
+              </>
+            ) : null}
 
-          <label className="settings-field">
-            <span>가장자리 여백 ({override.margin ?? globalStyle.margin ?? 40}px)</span>
-            <input
-              type="range"
+            <Slider
+              label="가장자리 여백"
+              value={override.margin ?? globalStyle.margin ?? 40}
               min={8}
               max={600}
               step={1}
-              value={override.margin ?? globalStyle.margin ?? 40}
-              onChange={(e) => onChangeOverride({ margin: Number(e.target.value) })}
+              valueDisplay="text"
+              onChange={(v: number) => onChangeOverride({ margin: v })}
             />
-          </label>
 
-          <div className="style-override-actions">
-            <button type="button" onClick={onPromote}>
-              전역 스타일로 승격
-            </button>
-            <button type="button" onClick={onClear}>
-              오버라이드 해제
-            </button>
+            <div className="style-override-actions">
+              <Button label="모든 컷에 적용" variant="secondary" size="sm" onClick={onPromote} />
+              <Button label="오버라이드 해제" variant="ghost" size="sm" onClick={onClear} />
+            </div>
           </div>
-        </div>
+        </Collapsible>
       ) : null}
     </div>
   );

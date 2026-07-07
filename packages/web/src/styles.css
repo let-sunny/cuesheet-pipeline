@@ -468,6 +468,33 @@ textarea {
   color: var(--text-secondary);
 }
 
+/*
+ * 폭 토큰 3종(screen-spec 0-2) — 라벨+입력 페어가 있는 화면 전반(컷 설정/마무리 등)에서
+ * 공유한다. narrow=숫자 5자(IN/OUT/배속/볼륨), medium=셀렉트·짧은 텍스트, full=textarea·슬라이더.
+ */
+.field-narrow input,
+.field-narrow select {
+  width: 64px;
+  flex: 0 0 auto;
+}
+
+.field-medium input,
+.field-medium select {
+  width: 180px;
+  flex: 0 0 auto;
+}
+
+.field-full {
+  width: 100%;
+}
+
+.field-full input,
+.field-full select,
+.field-full textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .segment-layout {
   display: flex;
   gap: 16px;
@@ -1674,89 +1701,114 @@ textarea {
 .quick-fields {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 4px;
   padding: 12px 16px;
   background: var(--surface-1);
   border-radius: 8px;
 }
 
-.quick-fields-subtitle {
+/* 컷 설정(PRD 4절 "인스펙터"의 정본 명칭) 패널 제목 — 우측 필드 패널 전체의 소속을 밝힌다. */
+.qf-panel-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* G1~G6 그룹 공통 껍데기 — 그룹마다 작은 라벨 헤더 + 구분선(첫 그룹 제외)으로
+   "이름 있는 섹션 소속"을 명시한다(screen-spec 0-1). */
+.qf-group {
+  padding-top: 10px;
+  border-top: 1px dashed var(--border-dashed);
+}
+
+.qf-group:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.qf-group-label {
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+/* 한 행에 쌍(IN·OUT, 배속·볼륨 등)을 나란히 두는 공통 행 — screen-spec 0-4 "쌍은 나란히". */
+.qf-row {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.qf-row:last-child {
+  margin-bottom: 0;
+}
+
+.qf-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 13px;
   color: var(--text-secondary);
 }
 
-.quick-fields-subtitle textarea {
-  width: 100%;
-  box-sizing: border-box;
+.qf-field > span:first-child {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.qf-suffix {
+  color: var(--text-muted-3);
+  font-size: 13px;
+}
+
+.qf-readonly {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.qf-subtitle-field textarea {
   resize: vertical;
 }
 
-.quick-fields-primary {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
+/* "이 컷만 자막 스타일" — 자막(G3) 소속임을 들여쓰기+좌측 경계선으로 명시한다
+   (screen-spec 4절 "독립 섹션 금지"). */
+.qf-style-override {
+  margin-top: 10px;
+  padding-left: 10px;
+  border-left: 2px solid var(--border-dashed);
 }
 
-.volume-field {
+.qf-style-override-toggle {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.volume-number-input {
-  width: 56px;
-}
-
-.volume-unit {
-  color: var(--text-muted-3);
-  font-size: 13px;
-}
-
-.quick-fields-secondary {
+.style-override-fields {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 10px;
-  padding-top: 8px;
-  border-top: 1px dashed var(--border-dashed);
+  margin-top: 8px;
 }
 
-.quick-fields-io {
+.style-override-actions {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
   gap: 8px;
-  padding-top: 8px;
-  border-top: 1px dashed var(--border-dashed);
+  margin-top: 4px;
 }
 
-.quick-fields-io-label {
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.quick-fields-io .moment-io-button {
-  flex: 0 0 auto;
-  padding: 4px 10px;
-}
-
-.quick-fields-io-note {
-  font-size: 12px;
-  color: var(--text-muted-4);
-}
-
-.quick-fields-crop {
-  display: flex;
-  align-items: center;
+.qf-actions-row {
   gap: 8px;
-  padding-top: 8px;
-  border-top: 1px dashed var(--border-dashed);
-  font-size: 13px;
-  color: var(--text-tertiary);
+}
+
+.qf-actions-row > :last-child {
+  margin-left: auto;
 }
 
 .narration-guide {
@@ -1788,49 +1840,7 @@ textarea {
   height: 32px;
 }
 
-.quick-fields-crop button {
-  font-size: 12px;
-  padding: 3px 10px;
-}
-
-.quick-fields-merge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-top: 8px;
-  border-top: 1px dashed var(--border-dashed);
-}
-
-.quick-fields-merge button {
-  font-size: 12px;
-  padding: 3px 10px;
-}
-
-/* 컷별 자막 스타일 오버라이드 섹션(SegmentStyleOverride) — FinishingSettings의
-   .settings-field 패턴을 그대로 재사용하고, 구분선/버튼 줄만 추가한다. */
-.quick-fields-style-override {
-  padding-top: 8px;
-  border-top: 1px dashed var(--border-dashed);
-}
-
-.style-override-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.style-override-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.style-override-actions button {
-  font-size: 12px;
-  padding: 3px 10px;
-}
-
-/* 컷 리스트 행의 "이 컷만 스타일 다름" 배지. */
+/* 컷 리스트 행의 "이 컷만 자막 스타일 다름" 배지. */
 .compact-list-style-badge {
   flex: 0 0 auto;
   padding: 1px 5px;
