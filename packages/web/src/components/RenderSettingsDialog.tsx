@@ -100,7 +100,7 @@ export function RenderSettingsDialog({
                 ) : null}
                 {project.width === 3840 && project.height === 2160 ? (
                   <p className="render-note">
-                    4K는 렌더 시간이 크게 늘어납니다 (원본 4K 기준 약 3~5배).
+                    4K는 내보내기 시간이 크게 늘어납니다 (원본 4K 기준 약 3~5배).
                   </p>
                 ) : null}
               </div>

@@ -349,6 +349,14 @@ textarea {
   padding: 2px 8px;
 }
 
+/* 헤더 버튼 클러스터 구분선(screen-spec 1절 "|") - 실행취소/다시실행 | 테마/?
+   | 저장/내보내기 세 묶음의 소속을 시각적으로 나눈다. */
+.header-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border);
+}
+
 .banner {
   padding: 12px 16px;
   background: var(--surface-2);

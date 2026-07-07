@@ -105,17 +105,25 @@ interface DraftSnapshot {
   savedAt: number;
 }
 
-function loadDraftSnapshot(projectName: string): CueSheet | null {
+function loadDraftSnapshot(projectName: string): DraftSnapshot | null {
   try {
     const raw = localStorage.getItem(draftSnapshotKey(projectName));
     if (!raw) {
       return null;
     }
-    const parsed = JSON.parse(raw) as DraftSnapshot;
-    return parsed.cuesheet;
+    return JSON.parse(raw) as DraftSnapshot;
   } catch {
     return null;
   }
+}
+
+/** "3분 전"처럼 사람이 읽는 경과 시간 - 복원 배너 문구에 쓴다. */
+function minutesAgoLabel(savedAt: number): string {
+  const minutes = Math.max(0, Math.round((Date.now() - savedAt) / 60000));
+  if (minutes === 0) {
+    return "방금 전";
+  }
+  return `${minutes}분 전`;
 }
 
 function clearDraftSnapshot(projectName: string): void {
@@ -138,7 +146,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle" });
   const [renderState, setRenderState] = useState<RenderState>({ status: "idle" });
   const [externalChangePending, setExternalChangePending] = useState(false);
-  const [restoreSnapshot, setRestoreSnapshot] = useState<CueSheet | null>(null);
+  const [restoreSnapshot, setRestoreSnapshot] = useState<DraftSnapshot | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [step, setStep] = useState<Step>("compose");
   const [renderDialogOpen, setRenderDialogOpen] = useState(false);
@@ -331,7 +339,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       setSaveState({ status: "idle" });
 
       const snapshot = loadDraftSnapshot(cs.project.name);
-      if (snapshot && JSON.stringify(snapshot) !== JSON.stringify(cs)) {
+      if (snapshot && JSON.stringify(snapshot.cuesheet) !== JSON.stringify(cs)) {
         setRestoreSnapshot(snapshot);
       } else {
         if (snapshot) {
@@ -423,9 +431,10 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     if (!restoreSnapshot) {
       return;
     }
-    setDraft(restoreSnapshot);
+    setDraft(restoreSnapshot.cuesheet);
     setRestoreSnapshot(null);
-  }, [restoreSnapshot]);
+    toast({ type: "info", body: "복원됐어요 - 마음에 들면 저장을 눌러 확정하세요." });
+  }, [restoreSnapshot, toast]);
 
   const handleDiscardSnapshot = useCallback(() => {
     if (draft) {
@@ -610,7 +619,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         type: "error",
         body: (
           <div>
-            저장 실패:
+            저장할 수 없어요:
             <ul>
               {localCheck.errors.map((err, i) => (
                 <li key={i}>{err}</li>
@@ -650,7 +659,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setSaveState({ status: "error", errors: [message] });
-      toast({ type: "error", body: `저장 실패: ${message}` });
+      toast({ type: "error", body: `저장하지 못했어요: ${message} - 다시 시도해 주세요.` });
     }
   }, [draft, toast]);
 
@@ -670,11 +679,11 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
           renderPollTimer.current = setTimeout(() => void tick(), RENDER_POLL_INTERVAL_MS);
         } else if (status.state === "done") {
           setRenderState({ status: "success", path: "out.mp4" });
-          toast({ type: "info", body: "렌더가 완료되었습니다." });
+          toast({ type: "info", body: "내보내기가 완료되었습니다." });
         } else if (status.state === "error") {
           const message = status.error ?? "알 수 없는 오류";
           setRenderState({ status: "error", error: message });
-          toast({ type: "error", body: `렌더 실패: ${message}` });
+          toast({ type: "error", body: `내보내기 실패: ${message}` });
         }
       } catch {
         // 네트워크 일시 오류는 폴링을 이어간다.
@@ -701,12 +710,12 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         pollRenderStatus();
       } else {
         setRenderState({ status: "error", error: result.error });
-        toast({ type: "error", body: `렌더 실패: ${result.error}` });
+        toast({ type: "error", body: `내보내기 실패: ${result.error}` });
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setRenderState({ status: "error", error: message });
-      toast({ type: "error", body: `렌더 실패: ${message}` });
+      toast({ type: "error", body: `내보내기 실패: ${message}` });
     }
   }, [toast, pollRenderStatus, noBurnSubtitles]);
 
@@ -1062,7 +1071,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       return;
     }
     const confirmed = window.confirm(
-      "이 컷의 스타일을 전역 자막 스타일로 승격할까요? 이 컷의 개별 오버라이드는 사라집니다.",
+      "이 컷의 자막 스타일을 모든 컷에 적용할까요? 이 컷만의 스타일 설정은 사라집니다.",
     );
     if (!confirmed) {
       return;
@@ -1130,26 +1139,21 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         onRender={() => setRenderDialogOpen(true)}
         themeMode={themeMode}
         onThemeModeChange={onThemeModeChange}
+        onToggleShortcuts={() => setShowShortcuts((v) => !v)}
       />
 
       {externalChangePending ? (
         <div className="banner">
-          외부에서 변경됨 — 현재 편집 중인 내용을 버리고 다시 불러올까요?
-          <button type="button" onClick={handleReload}>
-            다시 불러오기
-          </button>
+          다른 곳에서 큐시트가 바뀌었어요 - 지금 화면의 편집 내용을 버리고 새로 불러올까요?
+          <Button label="다시 불러오기" variant="secondary" size="sm" onClick={handleReload} />
         </div>
       ) : null}
 
       {restoreSnapshot ? (
         <div className="banner">
-          저장되지 않은 편집 내역이 있습니다.
-          <button type="button" onClick={handleRestoreSnapshot}>
-            복원
-          </button>
-          <button type="button" onClick={handleDiscardSnapshot}>
-            버리기
-          </button>
+          지난 세션에서 저장하지 않은 편집이 있어요 (마지막 수정 {minutesAgoLabel(restoreSnapshot.savedAt)}).
+          <Button label="이어서 편집" variant="secondary" size="sm" onClick={handleRestoreSnapshot} />
+          <Button label="버리고 저장본으로" variant="ghost" size="sm" onClick={handleDiscardSnapshot} />
         </div>
       ) : null}
 
@@ -1172,7 +1176,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
           onGoToEdit={goToEdit}
         />
         <Button
-          label="본편 재생"
+          label="전체 재생"
           variant="secondary"
           isDisabled={draft.segments.length === 0}
           onClick={() => setSequenceMode(true)}

@@ -18,13 +18,13 @@ interface Props {
 export function StepNav({ step, onChange, segmentCount, subtitleFilled, subtitleTotal }: Props) {
   return (
     <TabList value={step} onChange={(v) => onChange(v as Step)} hasDivider size="lg">
-      <Tab value="compose" label="① 구성" endContent={<Badge variant="neutral" label={segmentCount} />} />
+      <Tab value="compose" label="① 장면 고르기" endContent={<Badge variant="neutral" label={segmentCount} />} />
       <Tab
         value="edit"
-        label="② 편집"
+        label="② 다듬기"
         endContent={<Badge variant="neutral" label={`${subtitleFilled}/${subtitleTotal}`} />}
       />
-      <Tab value="finish" label="③ 마무리" />
+      <Tab value="finish" label="③ 내보내기" />
     </TabList>
   );
 }

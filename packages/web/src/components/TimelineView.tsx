@@ -155,7 +155,7 @@ export function TimelineView({
 
       <div className="bgm-track" ref={trackRef}>
         <div className="bgm-track-bg" />
-        {bgm.length === 0 ? <div className="bgm-track-empty">BGM 없음</div> : null}
+        {bgm.length === 0 ? <div className="bgm-track-empty">배경음악 없음</div> : null}
         {bgm.map((cue, i) => (
           <div
             className="bgm-cue"

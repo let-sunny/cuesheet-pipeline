@@ -504,7 +504,7 @@ export function cuesheetPlugin(): Plugin {
             sendJson(res, 400, {
               ok: false,
               errors: [
-                `저장 시 필드 유실 감지: ${lostPaths.join(", ")} - 서버 재시작(스키마 갱신) 필요`,
+                `저장 시스템이 갱신돼야 해요 - 서버를 재시작한 뒤 다시 시도해 주세요 (유실 필드: ${lostPaths.join(", ")})`,
               ],
             });
             return;

@@ -272,7 +272,7 @@ export function MomentPalette({
 
   const handleAdd = (card: MomentCard) => {
     if (hasFaceTag(card.memo)) {
-      const proceed = window.confirm("얼굴 정책 위반 가능 - 크롭 필요할 수 있음");
+      const proceed = window.confirm("얼굴 정책 위반 가능 - 화면 조정이 필요할 수 있음");
       if (!proceed) {
         return;
       }

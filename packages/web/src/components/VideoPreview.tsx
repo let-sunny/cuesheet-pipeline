@@ -475,7 +475,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   );
 
   if (!segment) {
-    return <div className="video-preview empty">세그먼트를 선택하세요</div>;
+    return <div className="video-preview empty">컷을 선택하세요</div>;
   }
 
   const timeAtClientX = (clientX: number): number => {

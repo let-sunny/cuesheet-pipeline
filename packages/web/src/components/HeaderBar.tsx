@@ -17,6 +17,7 @@ interface Props {
   onRender: () => void;
   themeMode: ThemeModeSetting;
   onThemeModeChange: (mode: ThemeModeSetting) => void;
+  onToggleShortcuts: () => void;
 }
 
 const THEME_MODE_OPTIONS: Array<{ value: ThemeModeSetting; label: string; icon: ReactNode }> = [
@@ -81,7 +82,10 @@ function ThemeModeToggle({
   );
 }
 
-/** 슬림 고정 헤더: 프로젝트명, dirty 표시, 테마 토글, 실행취소/재실행/저장/렌더/설정 버튼. */
+/**
+ * 슬림 고정 헤더(screen-spec 1절): [앱명] ··· [실행취소][다시실행] | [테마 토글][?]
+ * | [저장(dirty점)][내보내기] — 오른쪽 끝이 주행동(저장/내보내기).
+ */
 export function HeaderBar({
   projectName,
   dirty,
@@ -97,21 +101,34 @@ export function HeaderBar({
   onRender,
   themeMode,
   onThemeModeChange,
+  onToggleShortcuts,
 }: Props) {
   return (
     <div className="header-row">
       <div className="header-title-group">
         <h1>{projectName || "(이름 없음)"}</h1>
-        {dirty ? <span className="dirty-badge">저장 안 됨</span> : null}
+        {dirty ? (
+          <span className="dirty-badge" title="저장 버튼을 눌러야 디스크에 반영됩니다">
+            ● 저장 안 됨
+          </span>
+        ) : null}
       </div>
       <div className="save-row">
-        <ThemeModeToggle themeMode={themeMode} onThemeModeChange={onThemeModeChange} />
         <Button label="실행 취소" variant="ghost" isDisabled={!canUndo} onClick={onUndo} />
         <Button label="다시 실행" variant="ghost" isDisabled={!canRedo} onClick={onRedo} />
+
+        <span className="header-divider" aria-hidden="true" />
+
+        <ThemeModeToggle themeMode={themeMode} onThemeModeChange={onThemeModeChange} />
+        <Button label="?" variant="ghost" tooltip="단축키 안내" onClick={onToggleShortcuts} />
+
+        <span className="header-divider" aria-hidden="true" />
+
         <Button
           label={saving ? "저장 중…" : "저장"}
           variant="secondary"
           isDisabled={saving}
+          tooltip={dirty ? "저장 버튼을 눌러야 디스크에 반영됩니다" : undefined}
           onClick={onSave}
         />
         <Button
