@@ -679,6 +679,56 @@ export function cuesheetPlugin(): Plugin {
         sendJson(res, 200, { files });
       });
 
+      // 인트로/아웃트로 선택용 clipDir 안 비디오 파일 목록(+ffprobe 길이).
+      // narration-files 엔드포인트와 같은 패턴: 매 요청 디스크를 읽어 항상 최신 목록을 준다.
+      server.middlewares.use("/api/clip-files", async (req, res) => {
+        if (req.method !== "GET") {
+          res.statusCode = 405;
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.end("허용되지 않는 메서드입니다");
+          return;
+        }
+        let clipDir: string;
+        try {
+          const raw = await readFile(filePath, "utf8");
+          const cuesheet = JSON.parse(raw) as { clipDir?: unknown };
+          if (typeof cuesheet.clipDir !== "string" || cuesheet.clipDir.length === 0) {
+            throw new Error("clipDir 없음");
+          }
+          clipDir = cuesheet.clipDir;
+        } catch {
+          sendJson(res, 200, { files: [] });
+          return;
+        }
+        let entries: string[];
+        try {
+          entries = await readdir(clipDir);
+        } catch {
+          sendJson(res, 200, { files: [] });
+          return;
+        }
+        const videoNames = entries
+          .filter((name) => clipMimeTypes[extname(name).toLowerCase()] !== undefined)
+          .sort((a, b) => a.localeCompare(b));
+        const files = await Promise.all(
+          videoNames.map(async (name) => {
+            const p = resolve(clipDir, name);
+            let s;
+            try {
+              s = await stat(p);
+            } catch {
+              return { name, durationS: null };
+            }
+            if (s.blocks === 0) {
+              // iCloud 등 클라우드 전용 placeholder는 ffprobe를 돌리면 무한 정지하므로 건너뛴다.
+              return { name, durationS: null };
+            }
+            return { name, durationS: await probeDurationSeconds(p) };
+          }),
+        );
+        sendJson(res, 200, { files });
+      });
+
       // intro/outro는 clipDir와 무관한 독립 파일 경로라 /clips가 아닌 별도 경로로 서빙한다.
       // 상대 경로면 저장소 루트 기준으로 해석한다. 읽기 전용 GET만 허용.
       server.middlewares.use("/api/local-video", async (req, res) => {

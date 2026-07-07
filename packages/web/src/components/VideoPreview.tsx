@@ -1,9 +1,15 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import type { Crop, Segment } from "@cuesheet/schema";
+import type { Crop, Segment, SubtitleStyle } from "@cuesheet/schema";
 import { fetchProxyStatus, type ClipMoments, type ProxyStatus } from "../api.js";
 import { cropPreviewStyle } from "../cropPreview.js";
 import { matchSceneInfo, shotTypeLabel } from "../sceneInfo.js";
+import {
+  mergeSubtitleStyle,
+  subtitleBackgroundRgba,
+  subtitleOutlineShadow,
+  subtitlePositionStyle,
+} from "../subtitleOverlay.js";
 import { CropEditOverlay } from "./CropEditOverlay.js";
 
 /** 프록시 준비 상태 폴링 주기(ms). */
@@ -29,6 +35,10 @@ interface Props {
   autoPlay?: boolean;
   /** 초벌 비전 판독 데이터 — 비디오 위 맥락 헤더에 "지금 보는 게 무슨 장면인지" 보여주는 데 쓴다. */
   moments: ClipMoments[];
+  /** 전역 자막 스타일 — 세그먼트 styleOverride와 병합해 비디오 위 자막 오버레이를 그리는 데 쓴다. */
+  subtitleStyle: SubtitleStyle;
+  /** subtitleStyle.margin(px, 원본 해상도 기준)을 오버레이 위치(%)로 환산하는 데 쓴다. */
+  projectHeight: number;
 }
 
 /** 외부(App.tsx의 전역 단축키 등)에서 미리보기를 제어하기 위한 핸들. */
@@ -54,7 +64,7 @@ export interface VideoPreviewHandle {
  * 현재 위치에서 세그먼트를 분할할 수 있다.
  */
 export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function VideoPreview(
-  { segment, selectedIndex, onChange, onSplit, autoPlay = false, moments },
+  { segment, selectedIndex, onChange, onSplit, autoPlay = false, moments, subtitleStyle, projectHeight },
   ref,
 ) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -502,6 +512,9 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   const pct = (t: number): number => (duration > 0 ? clamp((t / duration) * 100, 0, 100) : 0);
 
   const subtitleSummary = segment.subtitle.trim() !== "" ? segment.subtitle.trim() : "(자막 없음)";
+  // 이 컷만의 스타일 오버라이드가 있으면 전역 subtitleStyle에 병합한 결과를 오버레이에 쓴다
+  // (렌더/미리보기 모두 같은 병합 규칙 — subtitleOverlay.ts 참고).
+  const effectiveSubtitleStyle = mergeSubtitleStyle(subtitleStyle, segment.styleOverride);
   const sceneInfo = matchSceneInfo(segment, moments);
   const sceneText = sceneInfo.kind === "none" ? "장면 정보 없음" : sceneInfo.memo;
 
@@ -572,6 +585,38 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
             />
             {cropEditDraft ? (
               <CropEditOverlay crop={cropEditDraft} frameRef={cropFrameRef} onChange={setCropEditDraft} />
+            ) : null}
+            {!cropEditDraft && segment.subtitle.trim() !== "" ? (
+              <div
+                className={`video-subtitle-overlay video-subtitle-overlay-${effectiveSubtitleStyle.position}`}
+                style={{
+                  color: effectiveSubtitleStyle.color,
+                  fontFamily: effectiveSubtitleStyle.font,
+                  textShadow: subtitleOutlineShadow(
+                    effectiveSubtitleStyle.outlineColor,
+                    effectiveSubtitleStyle.outlineWidth,
+                    `${effectiveSubtitleStyle.outlineWidth}px`,
+                  ),
+                  ...subtitlePositionStyle(effectiveSubtitleStyle, projectHeight),
+                }}
+              >
+                <span
+                  className="video-subtitle-overlay-text"
+                  style={
+                    effectiveSubtitleStyle.background
+                      ? {
+                          background: subtitleBackgroundRgba(
+                            effectiveSubtitleStyle.background.color,
+                            effectiveSubtitleStyle.background.opacity,
+                          ),
+                          padding: `${effectiveSubtitleStyle.background.padding}px`,
+                        }
+                      : undefined
+                  }
+                >
+                  {segment.subtitle.trim()}
+                </span>
+              </div>
             ) : null}
           </div>
 

@@ -6,6 +6,7 @@ import type {
   Project,
   Segment,
   SubtitleStyle,
+  SubtitleStyleOverride,
 } from "@cuesheet/schema";
 import { validateCueSheet } from "@cuesheet/schema";
 import { useToast } from "@astryxdesign/core/Toast";
@@ -28,7 +29,6 @@ import type { VideoPreviewHandle } from "./components/VideoPreview.js";
 import { BgmEditor } from "./components/BgmEditor.js";
 import { TimelineView } from "./components/TimelineView.js";
 import { MomentPalette } from "./components/MomentPalette.js";
-import { SubtitleWriteMode } from "./components/SubtitleWriteMode.js";
 import { KeyboardHelp } from "./components/KeyboardHelp.js";
 import { HeaderBar } from "./components/HeaderBar.js";
 import { StepNav } from "./components/StepNav.js";
@@ -41,6 +41,7 @@ import { SegmentQuickFields } from "./components/SegmentQuickFields.js";
 import { IntroOutroEditor } from "./components/IntroOutroEditor.js";
 import { FinishingSettings } from "./components/FinishingSettings.js";
 import { SettingsDialog } from "./components/SettingsDialog.js";
+import { RenderSettingsDialog } from "./components/RenderSettingsDialog.js";
 
 /** ← / → 1회 이동량(1프레임, 30fps 기준). Shift+← / →는 1초. */
 const FRAME_SECONDS = 1 / 30;
@@ -142,8 +143,8 @@ export function App() {
   const [restoreSnapshot, setRestoreSnapshot] = useState<CueSheet | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [step, setStep] = useState<Step>("compose");
-  const [editMode, setEditMode] = useState<"inspect" | "batch">("inspect");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [renderDialogOpen, setRenderDialogOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [sequenceMode, setSequenceMode] = useState(false);
   const [noBurnSubtitles, setNoBurnSubtitles] = useState(loadNoBurnSubtitles);
@@ -313,6 +314,15 @@ export function App() {
     }
     return JSON.stringify(draft) !== JSON.stringify(serverCuesheet);
   }, [draft, serverCuesheet]);
+
+  // 렌더 설정 다이얼로그 요약용 출력 길이 근사치 — intro/outro는 파일 프로빙 없이
+  // 알 수 없어 서버의 estimateOutputSeconds와 동일하게 세그먼트 합만 쓴다.
+  const outputSecondsEstimate = useMemo(() => {
+    if (!draft) {
+      return 0;
+    }
+    return draft.segments.reduce((sum, s) => sum + (s.out - s.in) / s.speed, 0);
+  }, [draft]);
 
   const load = useCallback(async () => {
     try {
@@ -557,7 +567,7 @@ export function App() {
         selectRelative(1);
         return;
       }
-      if (e.key === "Tab" && editMode !== "batch") {
+      if (e.key === "Tab") {
         e.preventDefault();
         selectRelative(e.shiftKey ? -1 : 1);
         return;
@@ -590,7 +600,7 @@ export function App() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [step, editMode, selectRelative, sequenceMode, handleUndo, handleRedo, selectedIndex, mergeSegmentWithNext]);
+  }, [step, selectRelative, sequenceMode, handleUndo, handleRedo, selectedIndex, mergeSegmentWithNext]);
 
   const handleSave = useCallback(async () => {
     if (!draft) {
@@ -929,7 +939,6 @@ export function App() {
   const goToEdit = useCallback((i: number) => {
     setSequenceMode(false);
     setStep("edit");
-    setEditMode("inspect");
     setSelectedIndex(i);
   }, []);
 
@@ -966,6 +975,87 @@ export function App() {
       }
       const segments = prev.segments.map((s, idx) => (idx === i ? { ...s, crop: null } : s));
       return { ...prev, segments };
+    });
+  }, [draft, recordDiscreteChange]);
+
+  // "이 컷만 스타일" 토글 — 켜면 전역 subtitleStyle을 그대로 복사한 오버라이드로 시작해서
+  // (편집 즉시 눈에 보이는 값이 바뀌지 않게) 사용자가 거기서부터 값을 조정하게 한다.
+  // 끄면(=오버라이드 해제) styleOverride를 null로 되돌린다. 토글 자체는 개별 편집.
+  const toggleSegmentStyleOverride = useCallback((i: number, enabled: boolean) => {
+    if (!draft) {
+      return;
+    }
+    recordDiscreteChange();
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const segments = prev.segments.map((s, idx) =>
+        idx === i ? { ...s, styleOverride: enabled ? { ...prev.subtitleStyle } : null } : s,
+      );
+      return { ...prev, segments };
+    });
+  }, [draft, recordDiscreteChange]);
+
+  const updateSegmentStyleOverride = useCallback((i: number, patch: Partial<SubtitleStyleOverride>) => {
+    if (!draft) {
+      return;
+    }
+    recordContinuousChange();
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const segments = prev.segments.map((s, idx) =>
+        idx === i ? { ...s, styleOverride: { ...(s.styleOverride ?? {}), ...patch } } : s,
+      );
+      return { ...prev, segments };
+    });
+  }, [draft, recordContinuousChange]);
+
+  const clearSegmentStyleOverride = useCallback((i: number) => {
+    if (!draft) {
+      return;
+    }
+    recordDiscreteChange();
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const segments = prev.segments.map((s, idx) => (idx === i ? { ...s, styleOverride: null } : s));
+      return { ...prev, segments };
+    });
+  }, [draft, recordDiscreteChange]);
+
+  // "전역 스타일로 승격" — 이 컷의 오버라이드를 전역 subtitleStyle에 병합하고, 이 컷의
+  // 오버라이드는 제거한다(다른 컷에 영향을 주는 확정적 편집이라 확인을 받는다).
+  // 두 필드(subtitleStyle, segments[i].styleOverride) 변경을 히스토리 1개로 묶는다.
+  const promoteSegmentStyleOverride = useCallback((i: number) => {
+    if (!draft) {
+      return;
+    }
+    const seg = draft.segments[i];
+    if (!seg?.styleOverride) {
+      return;
+    }
+    const confirmed = window.confirm(
+      "이 컷의 스타일을 전역 자막 스타일로 승격할까요? 이 컷의 개별 오버라이드는 사라집니다.",
+    );
+    if (!confirmed) {
+      return;
+    }
+    recordDiscreteChange();
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const target = prev.segments[i];
+      if (!target?.styleOverride) {
+        return prev;
+      }
+      const mergedGlobal: SubtitleStyle = { ...prev.subtitleStyle, ...target.styleOverride };
+      const segments = prev.segments.map((s, idx) => (idx === i ? { ...s, styleOverride: null } : s));
+      return { ...prev, subtitleStyle: mergedGlobal, segments };
     });
   }, [draft, recordDiscreteChange]);
 
@@ -1011,7 +1101,7 @@ export function App() {
         onUndo={handleUndo}
         onRedo={handleRedo}
         onSave={() => void handleSave()}
-        onRender={() => void handleRender()}
+        onRender={() => setRenderDialogOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
@@ -1093,91 +1183,59 @@ export function App() {
 
         {step === "edit" ? (
           <div className="edit-layout">
-            <div className="edit-mode-toggle">
-              <button
-                type="button"
-                className={editMode === "inspect" ? "active" : ""}
-                onClick={() => setEditMode("inspect")}
-              >
-                다듬기
-              </button>
-              <button
-                type="button"
-                className={editMode === "batch" ? "active" : ""}
-                onClick={() => setEditMode("batch")}
-              >
-                몰아쓰기 모드
-              </button>
-            </div>
-
-            {editMode === "inspect" ? (
-              <div className="trim-layout">
-                <CompactSegmentList
-                  segments={draft.segments}
-                  selectedIndex={selectedIndex}
-                  moments={moments}
-                  onSelect={setSelectedIndex}
-                  onAdd={addSegment}
-                  onRemove={removeSegment}
-                  onMove={moveSegment}
-                />
-                <div className="trim-workspace">
-                  <div className="trim-video-col">
-                    <VideoPreview
-                      ref={videoPreviewRef}
-                      segment={selectedSegment}
-                      selectedIndex={selectedIndex}
-                      onChange={(patch) => updateSegment(selectedIndex, patch)}
-                      onSplit={(at) => splitSegment(selectedIndex, at)}
-                      autoPlay={false}
-                      moments={moments}
-                    />
-                  </div>
-                  <div className="trim-fields-col">
-                    <SegmentQuickFields
-                      segment={selectedSegment}
-                      narrationEnabled={draft.narration?.enabled ?? false}
-                      narrationFiles={narrationFiles}
-                      narrationNote={narrationNote}
-                      narrationDir={draft.narration?.dir}
-                      onChange={(patch) => updateSegment(selectedIndex, patch)}
-                      clipDurationS={selectedSegment ? clipDurations[selectedSegment.clip] : undefined}
-                      onSetIntro={() =>
-                        selectedSegment && setIntroOutroFromClip("intro", selectedSegment.clip)
-                      }
-                      onSetOutro={() =>
-                        selectedSegment && setIntroOutroFromClip("outro", selectedSegment.clip)
-                      }
-                      onClearCrop={() => clearSegmentCrop(selectedIndex)}
-                      onEditCrop={() => videoPreviewRef.current?.startCropEdit()}
-                      mergeEligibility={computeMergeEligibility(draft, selectedIndex)}
-                      onMergeNext={() => mergeSegmentWithNext(selectedIndex)}
-                    />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="subtitle-layout">
-                <SubtitleWriteMode
-                  segments={draft.segments}
-                  selectedIndex={selectedIndex}
-                  onSelect={setSelectedIndex}
-                  onChangeSubtitle={(i, subtitle) => updateSegment(i, { subtitle })}
-                  narrationEnabled={draft.narration?.enabled ?? false}
-                />
-                <div className="subtitle-video-col">
+            <div className="trim-layout">
+              <CompactSegmentList
+                segments={draft.segments}
+                selectedIndex={selectedIndex}
+                moments={moments}
+                onSelect={setSelectedIndex}
+                onChangeSubtitle={(i, subtitle) => updateSegment(i, { subtitle })}
+                onAdd={addSegment}
+                onRemove={removeSegment}
+                onMove={moveSegment}
+              />
+              <div className="trim-workspace">
+                <div className="trim-video-col">
                   <VideoPreview
                     ref={videoPreviewRef}
                     segment={selectedSegment}
                     selectedIndex={selectedIndex}
                     onChange={(patch) => updateSegment(selectedIndex, patch)}
                     onSplit={(at) => splitSegment(selectedIndex, at)}
-                    autoPlay
+                    autoPlay={false}
                     moments={moments}
+                    subtitleStyle={draft.subtitleStyle}
+                    projectHeight={draft.project.height}
+                  />
+                </div>
+                <div className="trim-fields-col">
+                  <SegmentQuickFields
+                    segment={selectedSegment}
+                    narrationEnabled={draft.narration?.enabled ?? false}
+                    narrationFiles={narrationFiles}
+                    narrationNote={narrationNote}
+                    narrationDir={draft.narration?.dir}
+                    onChange={(patch) => updateSegment(selectedIndex, patch)}
+                    clipDurationS={selectedSegment ? clipDurations[selectedSegment.clip] : undefined}
+                    onSetIntro={() =>
+                      selectedSegment && setIntroOutroFromClip("intro", selectedSegment.clip)
+                    }
+                    onSetOutro={() =>
+                      selectedSegment && setIntroOutroFromClip("outro", selectedSegment.clip)
+                    }
+                    onClearCrop={() => clearSegmentCrop(selectedIndex)}
+                    onEditCrop={() => videoPreviewRef.current?.startCropEdit()}
+                    mergeEligibility={computeMergeEligibility(draft, selectedIndex)}
+                    onMergeNext={() => mergeSegmentWithNext(selectedIndex)}
+                    globalSubtitleStyle={draft.subtitleStyle}
+                    onToggleStyleOverride={(enabled) => toggleSegmentStyleOverride(selectedIndex, enabled)}
+                    onChangeStyleOverride={(patch) => updateSegmentStyleOverride(selectedIndex, patch)}
+                    onPromoteStyleOverride={() => promoteSegmentStyleOverride(selectedIndex)}
+                    onClearStyleOverride={() => clearSegmentStyleOverride(selectedIndex)}
                   />
                 </div>
               </div>
-            )}
+            </div>
           </div>
         ) : null}
 
@@ -1188,6 +1246,7 @@ export function App() {
               outro={draft.outro}
               clipDir={draft.clipDir}
               onChangeText={updateIntroOutro}
+              onSelectClip={(role, clip) => setIntroOutroFromClip(role, clip)}
               onClear={clearIntroOutro}
             />
 
@@ -1229,7 +1288,7 @@ export function App() {
                 variant="primary"
                 size="lg"
                 isDisabled={dirty || renderState.status === "rendering"}
-                onClick={() => void handleRender()}
+                onClick={() => setRenderDialogOpen(true)}
               />
               {renderState.status === "success" ? (
                 <a href={`/${renderState.path}`} download>
@@ -1242,15 +1301,6 @@ export function App() {
               <span className="render-note">
                 렌더는 시작 시점에 저장돼 있던 큐시트 기준으로 진행됩니다 — 렌더 중 편집·저장은 이번 렌더에 반영되지 않습니다.
               </span>
-
-              <label className="no-burn-subtitles-toggle">
-                <input
-                  type="checkbox"
-                  checked={noBurnSubtitles}
-                  onChange={(e) => handleToggleNoBurnSubtitles(e.target.checked)}
-                />
-                자막 굽지 않기 (CC용 클린 영상)
-              </label>
 
               <Button
                 label="자막 다운로드 (.srt)"
@@ -1273,6 +1323,20 @@ export function App() {
         onOpenChange={setSettingsOpen}
         project={draft.project}
         onProjectChange={updateProject}
+      />
+
+      <RenderSettingsDialog
+        isOpen={renderDialogOpen}
+        onOpenChange={setRenderDialogOpen}
+        project={draft.project}
+        dirty={dirty}
+        rendering={renderState.status === "rendering"}
+        segmentCount={draft.segments.length}
+        outputSeconds={outputSecondsEstimate}
+        noBurnSubtitles={noBurnSubtitles}
+        onToggleNoBurnSubtitles={handleToggleNoBurnSubtitles}
+        onChangeResolution={(width, height) => updateProject({ width, height })}
+        onStartRender={() => void handleRender()}
       />
 
       <KeyboardHelp visible={showShortcuts} onToggle={() => setShowShortcuts((v) => !v)} />

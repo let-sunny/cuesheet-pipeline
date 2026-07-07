@@ -1,8 +1,9 @@
 import { Slider } from "@astryxdesign/core/Slider";
-import type { Segment } from "@cuesheet/schema";
+import type { Segment, SubtitleStyle, SubtitleStyleOverride } from "@cuesheet/schema";
 import { INTRO_OUTRO_MAX_DURATION_S } from "../clipPaths.js";
 import { narrationFileUrl, type NarrationFile } from "../api.js";
 import type { MergeEligibility } from "../segmentMerge.js";
+import { SegmentStyleOverride } from "./SegmentStyleOverride.js";
 
 interface Props {
   segment: Segment | undefined;
@@ -27,6 +28,12 @@ interface Props {
   mergeEligibility: MergeEligibility;
   /** 다음 컷과 합친다(Cmd+J와 동일 동작). */
   onMergeNext: () => void;
+  /** 전역 자막 스타일 — 이 컷만 스타일 섹션에서 오버라이드 기본값/표시값으로 쓴다. */
+  globalSubtitleStyle: SubtitleStyle;
+  onToggleStyleOverride: (enabled: boolean) => void;
+  onChangeStyleOverride: (patch: Partial<SubtitleStyleOverride>) => void;
+  onPromoteStyleOverride: () => void;
+  onClearStyleOverride: () => void;
 }
 
 /**
@@ -49,6 +56,11 @@ export function SegmentQuickFields({
   onEditCrop,
   mergeEligibility,
   onMergeNext,
+  globalSubtitleStyle,
+  onToggleStyleOverride,
+  onChangeStyleOverride,
+  onPromoteStyleOverride,
+  onClearStyleOverride,
 }: Props) {
   if (!segment) {
     return null;
@@ -255,6 +267,15 @@ export function SegmentQuickFields({
           다음 컷과 합치기
         </button>
       </div>
+
+      <SegmentStyleOverride
+        segment={segment}
+        globalStyle={globalSubtitleStyle}
+        onToggle={onToggleStyleOverride}
+        onChangeOverride={onChangeStyleOverride}
+        onPromote={onPromoteStyleOverride}
+        onClear={onClearStyleOverride}
+      />
     </div>
   );
 }

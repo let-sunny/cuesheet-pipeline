@@ -5,6 +5,12 @@ import { Button } from "@astryxdesign/core/Button";
 import { cropPreviewStyle } from "../cropPreview.js";
 import type { ClipMoments } from "../api.js";
 import { matchSceneInfo } from "../sceneInfo.js";
+import {
+  mergeSubtitleStyle,
+  subtitleBackgroundRgba,
+  subtitleOutlineShadow,
+  subtitlePositionStyle,
+} from "../subtitleOverlay.js";
 
 /** 외부(App.tsx의 Space 단축키 등)에서 이어재생을 제어하기 위한 핸들. */
 export interface SequencePlayerHandle {
@@ -66,30 +72,6 @@ function waitForMetadata(video: HTMLVideoElement): Promise<boolean> {
     video.addEventListener("loadedmetadata", onReady);
     video.addEventListener("error", onError);
   });
-}
-
-/** drawtext 재현이 아니라 대략적인 위치/색 확인용 텍스트 그림자 외곽선. */
-function outlineShadow(color: string, width: number): string | undefined {
-  if (width <= 0) {
-    return undefined;
-  }
-  const w = width;
-  return [
-    `-${w}px -${w}px 0 ${color}`,
-    `${w}px -${w}px 0 ${color}`,
-    `-${w}px ${w}px 0 ${color}`,
-    `${w}px ${w}px 0 ${color}`,
-  ].join(", ");
-}
-
-/** #rgb 또는 #rrggbb + 0~1 투명도 -> css rgba() 문자열(자막 배경 박스 미리보기용). */
-function hexToRgba(hex: string, opacity: number): string {
-  const m3 = /^#([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])$/.exec(hex);
-  const full = m3 ? `${m3[1]}${m3[1]}${m3[2]}${m3[2]}${m3[3]}${m3[3]}` : hex.slice(1);
-  const r = parseInt(full.slice(0, 2), 16);
-  const g = parseInt(full.slice(2, 4), 16);
-  const b = parseInt(full.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
 /** 세그먼트의 출력 타임라인상 재생 길이(초). speed가 빠를수록 짧아진다. */
@@ -436,6 +418,9 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
 
   const currentSegment = segments[currentIndex];
   const subtitle = currentSegment?.subtitle.trim() ?? "";
+  // 이 컷만의 스타일 오버라이드가 있으면 전역 subtitleStyle에 병합한 결과를 쓴다
+  // (렌더/미리보기 모두 같은 병합 규칙 — subtitleOverlay.ts 참고).
+  const effectiveStyle = mergeSubtitleStyle(subtitleStyle, currentSegment?.styleOverride);
   // 처음 보는 사람도 지금 재생 중인 컷이 무슨 장면인지 알 수 있도록 자막 위에
   // 작게 힌트를 띄운다. 매칭 실패 컷은 조용히 숨긴다(이어재생 몰입을 방해하지 않기
   // 위함 — "장면 정보 없음" 명시는 컷 리스트/인스펙터에서만 강제한다).
@@ -528,34 +513,31 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
         ) : null}
         {subtitle !== "" ? (
           <div
-            className={`sequence-subtitle sequence-subtitle-${subtitleStyle.position}`}
+            className={`sequence-subtitle sequence-subtitle-${effectiveStyle.position}`}
             style={{
-              color: subtitleStyle.color,
-              fontFamily: subtitleStyle.font,
-              textShadow: outlineShadow(subtitleStyle.outlineColor, subtitleStyle.outlineWidth),
-              // subtitleStyle.margin(원본 px)을 스테이지 높이 대비 %로 환산한 근사치 —
+              color: effectiveStyle.color,
+              fontFamily: effectiveStyle.font,
+              textShadow: subtitleOutlineShadow(
+                effectiveStyle.outlineColor,
+                effectiveStyle.outlineWidth,
+                `${effectiveStyle.outlineWidth}px`,
+              ),
+              // effectiveStyle.margin(원본 px)을 스테이지 높이 대비 %로 환산한 근사치 —
               // 스테이지는 고정 16:9(styles.css)라 project 실제 화면비와 다를 수 있지만,
               // top/bottom 오프셋을 CSS 고정값(24px) 대신 반영하는 데는 이 정도 근사로 충분하다.
-              // margin이 없는(검증 없이 서빙된 구 큐시트) 경우 schema 기본값(40)으로 대체한다.
-              ...(subtitleStyle.position === "top"
-                ? { top: `${((subtitleStyle.margin ?? 40) / Math.max(1, projectHeight)) * 100}%` }
-                : subtitleStyle.position === "bottom"
-                  ? {
-                      bottom: `${((subtitleStyle.margin ?? 40) / Math.max(1, projectHeight)) * 100}%`,
-                    }
-                  : {}),
+              ...subtitlePositionStyle(effectiveStyle, projectHeight),
             }}
           >
             <span
               className="sequence-subtitle-text"
               style={
-                subtitleStyle.background
+                effectiveStyle.background
                   ? {
-                      background: hexToRgba(
-                        subtitleStyle.background.color,
-                        subtitleStyle.background.opacity,
+                      background: subtitleBackgroundRgba(
+                        effectiveStyle.background.color,
+                        effectiveStyle.background.opacity,
                       ),
-                      padding: `${subtitleStyle.background.padding}px`,
+                      padding: `${effectiveStyle.background.padding}px`,
                     }
                   : undefined
               }

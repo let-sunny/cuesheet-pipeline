@@ -436,7 +436,7 @@ textarea {
   margin-top: 10px;
 }
 
-/* 너비는 사용처(.trim-video-col / .subtitle-video-col)의 컬럼 폭을 그대로 따른다 —
+/* 너비는 사용처(.trim-video-col)의 컬럼 폭을 그대로 따른다 —
    예전엔 flex: 0 0 360px로 고정 높이/폭을 강제해, 트림 상태(빈 영상 등)에서
    컨트롤이 붙어 있어야 할 자리에 빈 여백만 남고 아래 필드 패널이 멀어져 보이는
    문제가 있었다. */
@@ -531,6 +531,40 @@ textarea {
 
 .video-crop-frame video {
   display: block;
+}
+
+/* 자막 인라인 편집 중 우측 비디오 위 즉시 오버레이(대략적 CSS 근사 — 렌더가 최종 진실).
+   .sequence-subtitle과 같은 패턴이지만 video-crop-frame(비디오 자연 비율) 기준. */
+.video-subtitle-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  padding: 0 16px;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.video-subtitle-overlay-bottom {
+  bottom: 16px;
+}
+
+.video-subtitle-overlay-top {
+  top: 16px;
+}
+
+.video-subtitle-overlay-center {
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.video-subtitle-overlay-text {
+  display: inline-block;
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
 /* 크롭 편집 모드 — 상단 수치/버튼 바 */
@@ -1140,54 +1174,6 @@ textarea {
   background: #262e46;
 }
 
-/* 우측(비디오+조작부)이 이 목록보다 넓게 보이도록 basis/상한을 좁혀 잡는다
-   (.subtitle-video-col 참고 — 좌:우 비중을 1:1 이상으로 우측을 키운다). */
-.subtitle-write-mode {
-  flex: 1 1 420px;
-  min-width: 0;
-  max-width: 640px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.subtitle-write-row {
-  padding: 10px 12px;
-  background: #1b1e28;
-  border: 1px solid #292f40;
-  border-radius: 6px;
-}
-
-.subtitle-write-row.selected {
-  border-color: #5b7cfa;
-}
-
-.subtitle-write-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 6px;
-  font-size: 13px;
-  color: #8a90a2;
-}
-
-.subtitle-write-index {
-  font-weight: 600;
-  color: #cfd3e0;
-}
-
-.subtitle-write-narration {
-  margin-left: auto;
-  font-style: italic;
-}
-
-.subtitle-write-row textarea {
-  width: 100%;
-  box-sizing: border-box;
-  overflow: hidden;
-  resize: vertical;
-}
-
 .keyboard-help {
   position: fixed;
   right: 16px;
@@ -1263,6 +1249,14 @@ textarea {
   min-width: 0;
 }
 
+/* 줌(확대) 시 track이 이 폭보다 넓어져 가로 스크롤이 생긴다. */
+.mini-strip-viewport {
+  flex: 1 1 auto;
+  display: flex;
+  min-width: 0;
+  overflow-x: auto;
+}
+
 .mini-strip-track {
   flex: 1 1 auto;
   display: flex;
@@ -1281,6 +1275,11 @@ textarea {
   cursor: pointer;
 }
 
+/* 축소(전체 보기) 상태에서도 클립이 바뀌는 경계가 눈에 띄도록 얇은 구분선을 준다. */
+.mini-strip-block.clip-boundary {
+  border-left: 2px solid #5b7cfa88;
+}
+
 .mini-strip-thumb {
   position: absolute;
   inset: 0;
@@ -1289,6 +1288,17 @@ textarea {
 .mini-strip-block.selected {
   border-color: #5b7cfa;
   background: #262e46;
+}
+
+.mini-strip-zoom-controls {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 4px;
+}
+
+.mini-strip-zoom-controls button {
+  padding: 2px 8px;
+  font-size: 13px;
 }
 
 .mini-strip-total {
@@ -1305,16 +1315,6 @@ textarea {
   gap: 12px;
 }
 
-.edit-mode-toggle {
-  display: flex;
-  gap: 6px;
-}
-
-.edit-mode-toggle button.active {
-  border-color: #5b7cfa;
-  background: #262e46;
-}
-
 .trim-layout {
   display: flex;
   gap: 16px;
@@ -1325,9 +1325,7 @@ textarea {
    비디오 열과 필드 열의 최소폭 합이 화면폭을 넘으면(대략 1280px 미만) flex-wrap으로
    필드 열이 비디오 아래로 자연스럽게 떨어진다.
    좌측 컷 리스트(.compact-list)가 페이지 스크롤을 만들 만큼 길어지는 컷 수(수십~
-   수백 개)에서도 비디오+필드가 화면에 계속 보이도록 sticky로 뷰포트 상단에 붙인다
-   (.subtitle-video-col과 동일한 패턴 — 이 레포는 리스트 자체 스크롤 대신 페이지
-   스크롤+sticky 우측 열로 통일한다). */
+   수백 개)에서도 비디오+필드가 화면에 계속 보이도록 sticky로 뷰포트 상단에 붙인다. */
 .trim-workspace {
   flex: 1 1 auto;
   min-width: 0;
@@ -1420,12 +1418,26 @@ textarea {
   gap: 3px;
 }
 
-.compact-list-clip {
+/* 컷 리스트 행에서 자막을 그 자리에서 바로 고치는 인라인 입력 — 다듬기/몰아쓰기
+   통합의 핵심. rows=1 시작이고 내용에 맞춰 높이가 자동으로 늘어난다(JS로 처리). */
+.compact-list-subtitle-input {
+  width: 100%;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  box-sizing: border-box;
+  padding: 3px 6px;
   font-size: 14px;
+  font-family: inherit;
+  color: inherit;
+  background: #12141a;
+  border: 1px solid #292f40;
+  border-radius: 4px;
+  resize: none;
+  overflow: hidden;
+}
+
+.compact-list-subtitle-input:focus {
+  outline: none;
+  border-color: #5b7cfa;
 }
 
 /* 처음 보는 사람도 이 컷이 무슨 장면인지 알 수 있게 하는 초벌 비전 판독 장면
@@ -1663,23 +1675,40 @@ textarea {
   padding: 3px 10px;
 }
 
-/* ② 편집 단계 - 몰아쓰기 모드 */
-
-.subtitle-layout {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
+/* 컷별 자막 스타일 오버라이드 섹션(SegmentStyleOverride) — FinishingSettings의
+   .settings-field 패턴을 그대로 재사용하고, 구분선/버튼 줄만 추가한다. */
+.quick-fields-style-override {
+  padding-top: 8px;
+  border-top: 1px dashed #3a4056;
 }
 
-/* 자막을 몰아 쓰며 좌측 목록을 스크롤해도 비디오/조작부가 화면에 계속 보이도록
-   sticky로 뷰포트 상단에 붙인다(좌:우 비중은 .subtitle-write-mode의 basis/상한과
-   짝을 맞춰 우측이 더 넓게 — 비디오가 시원하게 보이도록). */
-.subtitle-video-col {
-  flex: 1 1 560px;
-  min-width: 420px;
-  position: sticky;
-  top: 12px;
-  align-self: flex-start;
+.style-override-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.style-override-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.style-override-actions button {
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
+/* 컷 리스트 행의 "이 컷만 스타일 다름" 배지. */
+.compact-list-style-badge {
+  flex: 0 0 auto;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  background: #4a2038;
+  color: #f2a9d8;
 }
 
 /* ③ 마무리 단계 */
@@ -1776,6 +1805,35 @@ textarea {
   color: #cdd2e0;
   cursor: pointer;
   white-space: nowrap;
+}
+
+/* 렌더 설정 다이얼로그(RenderSettingsDialog) */
+.render-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.render-resolution-options {
+  display: flex;
+  gap: 8px;
+}
+
+.render-resolution-options button.active {
+  border-color: #5b7cfa;
+  background: #262e46;
+}
+
+.render-dialog-summary-line {
+  margin: 0 0 4px;
+  font-size: 13px;
+  color: #cdd2e0;
+}
+
+.render-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .proxy-preparing {

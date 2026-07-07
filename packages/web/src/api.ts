@@ -126,3 +126,19 @@ export function narrationFileUrl(name: string, dir?: string): string {
   const query = dir ? `?dir=${encodeURIComponent(dir)}` : "";
   return `/api/narration-files/${encodeURIComponent(name)}${query}`;
 }
+
+export interface ClipFile {
+  name: string;
+  /** ffprobe로 읽은 길이(초). iCloud 미다운로드 등으로 알 수 없으면 null. */
+  durationS: number | null;
+}
+
+/** 디스크에 저장된 큐시트의 clipDir 안 비디오 파일 목록(길이 포함) — 인트로/아웃트로 선택용. */
+export async function fetchClipFiles(): Promise<ClipFile[]> {
+  const res = await fetch("/api/clip-files");
+  if (!res.ok) {
+    return [];
+  }
+  const data = (await res.json()) as { files: ClipFile[] };
+  return data.files;
+}
