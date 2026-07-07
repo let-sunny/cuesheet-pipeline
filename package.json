@@ -10,7 +10,8 @@
   "scripts": {
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "episode": "node scripts/episode.mjs"
   },
   "devDependencies": {
     "typescript": "^5.6.0"
