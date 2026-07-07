@@ -1,23 +1,137 @@
 :root {
-  color-scheme: dark;
   font-family: system-ui, -apple-system, "Pretendard", sans-serif;
+
+  /*
+   * 커스텀(비-Astryx) 색 토큰. light-dark()로 라이트/다크 값을 한 선언에 묶는다 —
+   * html의 color-scheme(Astryx Theme가 data-theme로 동기화)에 따라 자동 전환되므로
+   * 테마 토글을 위한 별도 선택자 분기가 필요 없다. 다크 값은 기존 하드코딩 값 그대로
+   * 보존해 회귀가 없게 하고, 라이트 값만 새로 추가한다.
+   */
+
+  /* 표면(패널/카드/행 배경) */
+  --surface-0: light-dark(#eef0f5, #12141a);
+  --surface-1: light-dark(#ffffff, #1b1e28);
+  --surface-2: light-dark(#e7e9f2, #232838);
+  --surface-3: light-dark(#dde3f7, #262e46);
+  --surface-3-soft: light-dark(#e6eaf8, #1e2436);
+  --surface-button: light-dark(#e7e9f2, #2a3042);
+  --surface-button-hover: light-dark(#dbe0ee, #333a50);
+
+  /* 보더 */
+  --border: light-dark(#d5d9e6, #33394d);
+  --border-soft: light-dark(#dde1ee, #292f40);
+  --border-dashed: light-dark(#cdd2e2, #3a4056);
+
+  /* 텍스트 */
+  --text-primary: light-dark(#1f2430, #e6e8ee);
+  --text-secondary: light-dark(#6b7080, #8a90a2);
+  --text-tertiary: light-dark(#5b6172, #9aa0b4);
+  --text-quaternary: light-dark(#3c4150, #cfd3e0);
+  --text-quaternary-soft: light-dark(#3c4150, #cdd2e0);
+  --text-faint: light-dark(#8085a0, #5f6473);
+  --text-muted: light-dark(#7d829a, #6d7286);
+  --text-muted-2: light-dark(#7d829a, #9098ac);
+  --text-muted-3: light-dark(#7d829a, #8a8fa3);
+  --text-muted-4: light-dark(#7d829a, #6a7086);
+
+  /* 강조(accent) - 브랜드 블루는 양 테마 공통 */
+  --accent: #5b7cfa;
+  --accent-strong: light-dark(#4f6de0, #5b7cfa88);
+
+  /* 상태 색 */
+  --success-text: light-dark(#1f7a45, #7fe3a3);
+  --success-border: light-dark(#3fae6a66, #3fae6a55);
+  --error-text: light-dark(#a13a3a, #f29a9a);
+  --error-border: light-dark(#d9575766, #d9575755);
+  --warning-text: light-dark(#8a5a17, #f0a34a);
+  --warning-border: light-dark(#f0a34a66, #f0a34a55);
+
+  /* 항상 어두운 톤 — 비디오 스테이지/자막 미리보기/타임라인 썸네일 배경 전용
+     (영상 편집 관례상 테마와 무관하게 항상 어둡게 유지) */
+  --stage-bg: #12141a;
+  --stage-bg-alt: #0c0e14;
+
+  /* 카테고리 배지(장면 태그/샷 유형) - 색상값은 Astryx theme-stone의 라이트 팔레트를
+     그대로 채용해 대비가 이미 검증된 값을 재사용한다 */
+  --tag-blue-bg: light-dark(#d7e4f5, #242f57);
+  --tag-blue-text: light-dark(#3c4856, #a9b8fb);
+  --tag-blue-border: light-dark(#a9c2e6, #6a8dfa88);
+  --tag-teal-bg: light-dark(#d4e7dc, #1f4d4d);
+  --tag-teal-text: light-dark(#3b4a41, #8fd9d9);
+  --tag-purple-bg: light-dark(#e8dff3, #3a2a57);
+  --tag-purple-text: light-dark(#4b4454, #cba9f2);
+  --tag-reveal-bg: light-dark(#ffdcbb, #503a20);
+  --tag-reveal-text: light-dark(#5b4227, #f2c98a);
+  --tag-green-bg: light-dark(#d0e9ce, #1f4234);
+  --tag-green-text: light-dark(#374c36, #8fd9b7);
+  --tag-outing-bg: light-dark(#f5dcc4, #4a2e17);
+  --tag-outing-text: light-dark(#6b3d13, #f0a86a);
+  --tag-red-bg: light-dark(#f9dcd7, #4a2020);
+  --tag-red-text: light-dark(#58413e, #f29a9a);
+  --tag-pink-bg: light-dark(#f0dde8, #4a2038);
+  --tag-pink-text: light-dark(#52424c, #f2a9d8);
+  --tag-cyan-bg: light-dark(#cce8e5, #1f3d4a);
+  --tag-cyan-text: light-dark(#334b49, #8fd3f2);
+  --tag-gray-bg: light-dark(#e2e2e8, #2a2e3d);
+  --tag-gray-text: light-dark(#46464b, #9aa0b4);
+
+  /* 반투명 배지(탈락/사용중 표시) — moment-thumb(항상 어두운 썸네일 캔버스, 스펙 3번)
+     위에 얹히는 오버레이라 테마와 무관하게 고정값이어야 한다(밝은 배경 위 배지가
+     아니라 항상 어두운 사진 위 배지). light-dark()로 만들면 라이트 모드에서
+     어두운 배경+어두운 텍스트가 되어 사라지므로 고정 다크 값만 쓴다. */
+  --badge-quality-bg: #4a4d5799;
+  --badge-quality-text: #c7cbd8;
+  --badge-face-bg: #b56a1acc;
+  --badge-face-text: #ffe3c2;
+  --badge-inuse-bg: #d95757cc;
+  --badge-inuse-text: #ffffff;
+
+  /* BGM 트랙 */
+  --bgm-cue-bg: light-dark(#cbe8da, #2f5a45);
+  --bgm-cue-border: light-dark(#63b58f, #4f9c76);
+
+  /* 비디오 위 장면 컨텍스트 헤더 박스 */
+  --context-box-bg: light-dark(#e3e8fb, #1a2036);
+  --context-box-border: light-dark(#c5d0f5, #2c355a);
 }
 
 /*
  * @astryxdesign/theme-stone의 다크 모드 --color-overlay-hover/--color-overlay-pressed
  * 값에 알파가 빠져 있어(라이트 모드는 #25252a0d처럼 알파 포함, 다크는 #f3f3f5로 불투명)
  * hover 시 Tab 등 컴포넌트의 절대배치 오버레이 span이 라벨을 완전히 덮는 흰 박스로
- * 렌더된다. 앱은 항상 다크 모드로 고정되므로 여기서 반투명 값으로 덮어써 고친다.
+ * 렌더된다. light-dark()로 직접 both 값을 다시 정의해 고친다(시스템 모드에서 OS가
+ * 다크를 선택한 경우도 포함해 항상 반투명이 되도록 data-theme 대신 색상 함수로 분기).
  */
 [data-astryx-theme="stone"] {
-  --color-overlay-hover: rgba(243, 243, 245, 0.08);
-  --color-overlay-pressed: rgba(243, 243, 245, 0.16);
+  --color-overlay-hover: light-dark(#25252a0d, rgba(243, 243, 245, 0.08));
+  --color-overlay-pressed: light-dark(#25252a1a, rgba(243, 243, 245, 0.16));
+}
+
+/*
+ * @astryxdesign/theme-stone의 theme.css가 `@layer astryx-theme { :root { color-scheme:
+ * light dark; } }`를 무조건 선언한다 — CSS 레이어는 명시도와 무관하게 나중 레이어가
+ * 항상 이기므로, Astryx reset.css의 `@layer reset` 안 data-theme 기반 color-scheme
+ * 규칙(:where(html[data-theme="dark"]) 등)을 이 astryx-theme 레이어가 덮어써 버린다.
+ * 우리 스타일시트는 레이어 밖(unlayered)이라 항상 모든 레이어를 이기므로, 여기서
+ * data-theme -> color-scheme을 직접 다시 연결해야 body 등 Theme 래퍼 밖 요소까지
+ * light-dark()가 올바르게 풀린다.
+ */
+html[data-theme="light"] {
+  color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+html:not([data-theme]) {
+  color-scheme: light dark;
 }
 
 body {
   margin: 0;
-  background: #12141a;
-  color: #e6e8ee;
+  background: var(--surface-0);
+  color: var(--text-primary);
   font-size: 15px;
 }
 
@@ -36,7 +150,7 @@ body {
   font-size: 14px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #8a90a2;
+  color: var(--text-secondary);
   margin: 28px 0 12px;
 }
 
@@ -44,13 +158,13 @@ body {
   display: flex;
   gap: 24px;
   padding: 16px;
-  background: #1b1e28;
+  background: var(--surface-1);
   border-radius: 8px;
 }
 
 .project .field .label {
   font-size: 13px;
-  color: #8a90a2;
+  color: var(--text-secondary);
 }
 
 .project .field .value {
@@ -69,8 +183,8 @@ body {
   flex: 0 0 auto;
   min-width: 120px;
   padding: 12px;
-  background: #232838;
-  border: 1px solid #33394d;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 6px;
   box-sizing: border-box;
   font: inherit;
@@ -80,8 +194,8 @@ body {
 }
 
 .segment.selected {
-  border-color: #5b7cfa;
-  background: #262e46;
+  border-color: var(--accent);
+  background: var(--surface-3);
 }
 
 .segment .clip {
@@ -94,22 +208,22 @@ body {
 
 .segment .meta {
   font-size: 13px;
-  color: #9aa0b4;
+  color: var(--text-tertiary);
   margin-top: 4px;
 }
 
 .segment .subtitle {
   margin-top: 8px;
   font-size: 13px;
-  color: #cfd3e0;
-  border-top: 1px dashed #3a4056;
+  color: var(--text-quaternary);
+  border-top: 1px dashed var(--border-dashed);
   padding-top: 6px;
 }
 
 .bgm-list,
 .style-summary {
   padding: 12px 16px;
-  background: #1b1e28;
+  background: var(--surface-1);
   border-radius: 8px;
   font-size: 13px;
 }
@@ -120,7 +234,7 @@ body {
 }
 
 .empty {
-  color: #8a90a2;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
@@ -137,21 +251,21 @@ body {
 .status {
   padding: 40px;
   text-align: center;
-  color: #8a90a2;
+  color: var(--text-secondary);
 }
 
 button {
   font: inherit;
   color: inherit;
-  background: #2a3042;
-  border: 1px solid #3a4056;
+  background: var(--surface-button);
+  border: 1px solid var(--border-dashed);
   border-radius: 6px;
   padding: 6px 12px;
   cursor: pointer;
 }
 
 button:hover:not(:disabled) {
-  background: #333a50;
+  background: var(--surface-button-hover);
 }
 
 button:disabled {
@@ -165,8 +279,8 @@ select,
 textarea {
   font: inherit;
   color: inherit;
-  background: #1b1e28;
-  border: 1px solid #33394d;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
   border-radius: 4px;
   padding: 4px 8px;
 }
@@ -192,18 +306,54 @@ textarea {
   gap: 12px;
 }
 
+/* 헤더의 시스템/라이트/다크 3단 테마 토글 — .playmode-toggle/.render-resolution-options와
+   같은 "plain button + .active" 패턴. */
+.theme-mode-toggle {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface-2);
+  border-radius: 8px;
+}
+
+.theme-mode-toggle button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.theme-mode-toggle button:hover:not(.active) {
+  background: var(--surface-button-hover);
+}
+
+.theme-mode-toggle button.active {
+  color: var(--text-primary);
+  background: var(--surface-1);
+  border-color: var(--border);
+}
+
+.theme-mode-toggle button svg {
+  flex: 0 0 auto;
+}
+
 .dirty-badge {
   font-size: 13px;
-  color: #f0a34a;
-  border: 1px solid #f0a34a55;
+  color: var(--warning-text);
+  border: 1px solid var(--warning-border);
   border-radius: 4px;
   padding: 2px 8px;
 }
 
 .banner {
   padding: 12px 16px;
-  background: #232838;
-  border: 1px solid #3a4056;
+  background: var(--surface-2);
+  border: 1px solid var(--border-dashed);
   border-radius: 6px;
   margin-bottom: 16px;
   display: flex;
@@ -214,13 +364,13 @@ textarea {
 }
 
 .banner.success {
-  border-color: #3fae6a55;
-  color: #7fe3a3;
+  border-color: var(--success-border);
+  color: var(--success-text);
 }
 
 .banner.error {
-  border-color: #d9575755;
-  color: #f29a9a;
+  border-color: var(--error-border);
+  color: var(--error-text);
   flex-direction: column;
   align-items: flex-start;
 }
@@ -249,7 +399,7 @@ textarea {
 .settings-group {
   flex: 1 1 260px;
   padding: 16px;
-  background: #1b1e28;
+  background: var(--surface-1);
   border-radius: 8px;
 }
 
@@ -261,7 +411,7 @@ textarea {
 .settings-group h3 {
   margin: 0 0 12px;
   font-size: 13px;
-  color: #8a90a2;
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -303,7 +453,7 @@ textarea {
   width: 32px;
   height: 26px;
   padding: 0;
-  border: 1px solid #33394d;
+  border: 1px solid var(--border);
   border-radius: 4px;
   background: none;
   cursor: pointer;
@@ -323,10 +473,12 @@ textarea {
  * "박스의 실제 렌더 폭 대비 %"를 쓸 수 있게 한다 — 박스가 반응형으로
  * 축소되어도 project 대비 비율이 항상 정확히 유지된다.
  */
+/* 배경은 의도적으로 테마 무관 고정 다크 — 실제 영상 프레임이 얹히는 캔버스라
+   영상 편집 관례상 라이트 테마에서도 어둡게 유지한다(스펙 3번). */
 .subtitle-style-preview-stage {
   position: relative;
   container-type: inline-size;
-  background: #0c0e14 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Crect width='16' height='16' fill='%23161925'/%3E%3C/svg%3E");
+  background: var(--stage-bg-alt) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Crect width='16' height='16' fill='%23161925'/%3E%3C/svg%3E");
   border-radius: 6px;
   box-sizing: border-box;
   overflow: hidden;
@@ -351,7 +503,7 @@ textarea {
 .subtitle-style-preview-note {
   margin: 6px 0 0;
   font-size: 12px;
-  color: #8a90a2;
+  color: var(--text-secondary);
 }
 
 .segment-layout {
@@ -378,19 +530,19 @@ textarea {
   flex-wrap: wrap;
   gap: 10px;
   padding: 10px 12px;
-  background: #1b1e28;
-  border: 1px solid #292f40;
+  background: var(--surface-1);
+  border: 1px solid var(--border-soft);
   border-radius: 6px;
   cursor: pointer;
 }
 
 .segment-row.selected {
-  border-color: #5b7cfa;
+  border-color: var(--accent);
 }
 
 .segment-row-index {
   font-size: 13px;
-  color: #8a90a2;
+  color: var(--text-secondary);
   width: 18px;
 }
 
@@ -399,13 +551,13 @@ textarea {
   flex-direction: column;
   gap: 2px;
   font-size: 13px;
-  color: #8a90a2;
+  color: var(--text-secondary);
 }
 
 .segment-field input,
 .segment-field select {
   font-size: 13px;
-  color: #e6e8ee;
+  color: var(--text-primary);
 }
 
 .segment-field.narrow input {
@@ -447,7 +599,7 @@ textarea {
   flex-direction: column;
   gap: 8px;
   padding: 12px;
-  background: #1b1e28;
+  background: var(--surface-1);
   border-radius: 8px;
 }
 
@@ -465,25 +617,25 @@ textarea {
   flex-wrap: wrap;
   gap: 6px;
   padding: 8px 10px;
-  background: #1a2036;
-  border: 1px solid #2c355a;
-  border-left: 3px solid #5b7cfa;
+  background: var(--context-box-bg);
+  border: 1px solid var(--context-box-border);
+  border-left: 3px solid var(--accent);
   border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
   line-height: 1.4;
-  color: #e6e8ee;
+  color: var(--text-primary);
 }
 
 .video-context-scene.empty {
   font-style: italic;
-  color: #8a90a2;
+  color: var(--text-secondary);
   font-weight: 400;
 }
 
 .video-context-scene .video-context-index {
   font-weight: 700;
-  color: #e6e8ee;
+  color: var(--text-primary);
 }
 
 .video-context-scene-label {
@@ -491,7 +643,7 @@ textarea {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #a9b8fb;
+  color: var(--tag-blue-text);
 }
 
 .video-context-scene-text {
@@ -504,7 +656,7 @@ textarea {
 .video-context-line {
   font-size: 12px;
   line-height: 1.4;
-  color: #9aa0b4;
+  color: var(--text-tertiary);
   padding-left: 2px;
   /* 자막은 장면보다 톤을 낮춘 보조 정보 — 판단에 필요한 전문은 title 툴팁으로 볼 수 있다. */
   overflow: hidden;
@@ -574,10 +726,10 @@ textarea {
   justify-content: space-between;
   gap: 8px;
   padding: 6px 8px;
-  background: #232838;
+  background: var(--surface-2);
   border-radius: 4px;
   font-size: 12px;
-  color: #cfd3e0;
+  color: var(--text-quaternary);
 }
 
 .crop-edit-actions {
@@ -590,7 +742,8 @@ textarea {
   padding: 3px 10px;
 }
 
-/* 크롭 편집 모드 — 비디오 위 오버레이(어두운 바깥 + 밝은 크롭 사각형 + 핸들) */
+/* 크롭 편집 모드 — 비디오 위 오버레이(어두운 바깥 + 밝은 크롭 사각형 + 핸들).
+   실제 영상 픽셀 위에 얹히는 요소라 테마와 무관하게 고정 색을 그대로 쓴다. */
 .crop-edit-overlay {
   position: absolute;
   inset: 0;
@@ -665,7 +818,7 @@ textarea {
 }
 
 .video-preview.empty {
-  color: #8a90a2;
+  color: var(--text-secondary);
   font-size: 13px;
   align-items: center;
   justify-content: center;
@@ -686,7 +839,7 @@ textarea {
   left: 0;
   right: 0;
   height: 4px;
-  background: #2a3042;
+  background: var(--surface-button);
   border-radius: 2px;
 }
 
@@ -694,7 +847,7 @@ textarea {
   position: absolute;
   top: 12px;
   height: 4px;
-  background: #5b7cfa;
+  background: var(--accent);
   border-radius: 2px;
   pointer-events: none;
 }
@@ -705,8 +858,8 @@ textarea {
   width: 12px;
   height: 20px;
   margin-left: -6px;
-  background: #e6e8ee;
-  border: 1px solid #5b7cfa;
+  background: var(--text-primary);
+  border: 1px solid var(--accent);
   border-radius: 3px;
   cursor: ew-resize;
   touch-action: none;
@@ -718,13 +871,13 @@ textarea {
   width: 2px;
   height: 28px;
   margin-left: -1px;
-  background: #f0a34a;
+  background: var(--warning-text);
   pointer-events: none;
 }
 
 .time-readout {
   font-size: 13px;
-  color: #9aa0b4;
+  color: var(--text-tertiary);
 }
 
 .video-controls-row {
@@ -739,19 +892,19 @@ textarea {
 }
 
 .playmode-toggle button.active {
-  border-color: #5b7cfa;
-  background: #262e46;
+  border-color: var(--accent);
+  background: var(--surface-3);
 }
 
 .notice {
   font-size: 13px;
-  color: #f0a34a;
+  color: var(--warning-text);
 }
 
 .timeline-view {
   margin-bottom: 4px;
   padding: 12px 16px;
-  background: #1b1e28;
+  background: var(--surface-1);
   border-radius: 8px;
 }
 
@@ -766,7 +919,7 @@ textarea {
   top: 0;
   transform: translateX(-50%);
   font-size: 13px;
-  color: #6d7286;
+  color: var(--text-muted);
   white-space: nowrap;
 }
 
@@ -787,8 +940,8 @@ textarea {
   box-sizing: border-box;
   overflow: hidden;
   padding: 6px 8px;
-  background: #232838;
-  border: 1px solid #33394d;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 4px;
   font: inherit;
   font-size: 13px;
@@ -801,8 +954,8 @@ textarea {
 }
 
 .timeline-block.selected {
-  border-color: #5b7cfa;
-  background: #262e46;
+  border-color: var(--accent);
+  background: var(--surface-3);
 }
 
 .bgm-track {
@@ -817,7 +970,7 @@ textarea {
   left: 0;
   right: 0;
   height: 8px;
-  background: #232838;
+  background: var(--surface-2);
   border-radius: 4px;
 }
 
@@ -826,7 +979,7 @@ textarea {
   top: 8px;
   left: 0;
   font-size: 13px;
-  color: #8a90a2;
+  color: var(--text-secondary);
 }
 
 .bgm-cue {
@@ -836,8 +989,8 @@ textarea {
   min-width: 24px;
   display: flex;
   align-items: center;
-  background: #2f5a45;
-  border: 1px solid #4f9c76;
+  background: var(--bgm-cue-bg);
+  border: 1px solid var(--bgm-cue-border);
   border-radius: 4px;
   cursor: grab;
   overflow: hidden;
@@ -858,14 +1011,14 @@ textarea {
   flex: 0 0 auto;
   align-self: stretch;
   width: 8px;
-  background: #4f9c76;
+  background: var(--bgm-cue-border);
   cursor: ew-resize;
   touch-action: none;
 }
 
 .bgm-editor {
   padding: 12px 16px;
-  background: #1b1e28;
+  background: var(--surface-1);
   border-radius: 8px;
 }
 
@@ -882,20 +1035,20 @@ textarea {
   flex-wrap: wrap;
   gap: 10px;
   padding: 8px 10px;
-  background: #232838;
-  border: 1px solid #292f40;
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
   border-radius: 6px;
 }
 
 .moment-palette {
   margin-bottom: 4px;
   padding: 12px 16px;
-  background: #1b1e28;
+  background: var(--surface-1);
   border-radius: 8px;
 }
 
 .moment-palette.status {
-  color: #8a90a2;
+  color: var(--text-secondary);
   font-size: 13px;
 }
 
@@ -906,7 +1059,7 @@ textarea {
   gap: 12px;
   margin-bottom: 10px;
   font-size: 13px;
-  color: #8a90a2;
+  color: var(--text-secondary);
 }
 
 .moment-filters {
@@ -922,8 +1075,8 @@ textarea {
 }
 
 .moment-filters button.active {
-  border-color: #5b7cfa;
-  background: #262e46;
+  border-color: var(--accent);
+  background: var(--surface-3);
 }
 
 .moment-grid {
@@ -937,8 +1090,8 @@ textarea {
   width: 168px;
   display: flex;
   flex-direction: column;
-  background: #232838;
-  border: 1px solid #33394d;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 6px;
   overflow: hidden;
 }
@@ -969,20 +1122,22 @@ textarea {
 }
 
 .moment-badge-rejected.quality {
-  background: #4a4d5799;
-  color: #c7cbd8;
+  background: var(--badge-quality-bg);
+  color: var(--badge-quality-text);
 }
 
 .moment-badge-rejected.face {
-  background: #b56a1acc;
-  color: #ffe3c2;
+  background: var(--badge-face-bg);
+  color: var(--badge-face-text);
 }
 
+/* 배경은 의도적으로 테마 무관 고정 다크 — 로드 전/후 항상 영상 프레임 썸네일이
+   얹히는 캔버스라 라이트 테마에서도 어둡게 유지한다(스펙 3번). */
 .moment-thumb {
   position: relative;
   width: 100%;
   height: 94px;
-  background: #12141a;
+  background: var(--stage-bg);
 }
 
 .moment-thumb img {
@@ -995,9 +1150,12 @@ textarea {
 .moment-thumb-empty {
   width: 100%;
   height: 100%;
-  background: #12141a;
+  background: var(--stage-bg);
 }
 
+/* moment-thumb(항상 어두운 썸네일 캔버스) 위 오버레이라 텍스트 색도 테마와 무관하게
+   고정 밝은 색이어야 한다 — 안 그러면 라이트 테마에서 색(--text-primary가 어두워짐)이
+   상속돼 어두운 칩 위 어두운 글자로 보이지 않는다. */
 .moment-number {
   position: absolute;
   top: 4px;
@@ -1009,6 +1167,7 @@ textarea {
   font-size: 12px;
   padding: 1px 5px;
   background: #00000099;
+  color: #e6e8ee;
   border-radius: 3px;
 }
 
@@ -1018,7 +1177,8 @@ textarea {
   right: 4px;
   font-size: 13px;
   padding: 1px 5px;
-  background: #d95757cc;
+  background: var(--badge-inuse-bg);
+  color: var(--badge-inuse-text);
   border-radius: 3px;
 }
 
@@ -1028,7 +1188,7 @@ textarea {
   justify-content: space-between;
   padding: 6px 8px 0;
   font-size: 13px;
-  color: #9aa0b4;
+  color: var(--text-tertiary);
 }
 
 .moment-memo-wrap {
@@ -1042,7 +1202,7 @@ textarea {
 .moment-memo {
   font-size: 13px;
   line-height: 1.4;
-  color: #cfd3e0;
+  color: var(--text-quaternary);
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -1066,8 +1226,8 @@ textarea {
 }
 
 .moment-remove-button {
-  border-color: #d9575755;
-  color: #f29a9a;
+  border-color: var(--error-border);
+  color: var(--error-text);
 }
 
 .moment-remove-button.placeholder {
@@ -1085,15 +1245,15 @@ textarea {
   min-width: 0;
   padding: 4px 4px;
   font-size: 12px;
-  border-color: #3a4056;
-  color: #9aa0b4;
+  border-color: var(--border-dashed);
+  color: var(--text-tertiary);
   background: transparent;
 }
 
 .moment-io-button.active {
-  border-color: #6a8dfa88;
-  color: #a9b8fb;
-  background: #242f57;
+  border-color: var(--tag-blue-border);
+  color: var(--tag-blue-text);
+  background: var(--tag-blue-bg);
 }
 
 .moment-io-button:disabled {
@@ -1108,53 +1268,53 @@ textarea {
 }
 
 .category-tag.cat-knit-range {
-  background: #1f4d4d;
-  color: #8fd9d9;
+  background: var(--tag-teal-bg);
+  color: var(--tag-teal-text);
 }
 
 .category-tag.cat-knit {
-  background: #242f57;
-  color: #a9b8fb;
+  background: var(--tag-blue-bg);
+  color: var(--tag-blue-text);
 }
 
 .category-tag.cat-cat {
-  background: #3a2a57;
-  color: #cba9f2;
+  background: var(--tag-purple-bg);
+  color: var(--tag-purple-text);
 }
 
 .category-tag.cat-reveal {
-  background: #503a20;
-  color: #f2c98a;
+  background: var(--tag-reveal-bg);
+  color: var(--tag-reveal-text);
 }
 
 .category-tag.cat-object {
-  background: #1f4234;
-  color: #8fd9b7;
+  background: var(--tag-green-bg);
+  color: var(--tag-green-text);
 }
 
 .category-tag.cat-outing {
-  background: #4a2e17;
-  color: #f0a86a;
+  background: var(--tag-outing-bg);
+  color: var(--tag-outing-text);
 }
 
 .category-tag.cat-mistake {
-  background: #4a2020;
-  color: #f29a9a;
+  background: var(--tag-red-bg);
+  color: var(--tag-red-text);
 }
 
 .category-tag.cat-wearing {
-  background: #4a2038;
-  color: #f2a9d8;
+  background: var(--tag-pink-bg);
+  color: var(--tag-pink-text);
 }
 
 .category-tag.cat-change {
-  background: #1f3d4a;
-  color: #8fd3f2;
+  background: var(--tag-cyan-bg);
+  color: var(--tag-cyan-text);
 }
 
 .category-tag.cat-other {
-  background: #2a2e3d;
-  color: #9aa0b4;
+  background: var(--tag-gray-bg);
+  color: var(--tag-gray-text);
 }
 
 .section-header {
@@ -1170,8 +1330,8 @@ textarea {
 }
 
 .section-header button.active {
-  border-color: #5b7cfa;
-  background: #262e46;
+  border-color: var(--accent);
+  background: var(--surface-3);
 }
 
 .keyboard-help {
@@ -1193,8 +1353,8 @@ textarea {
   list-style: none;
   margin: 0;
   padding: 10px 12px;
-  background: #1b1e28;
-  border: 1px solid #33394d;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 13px;
   max-width: 280px;
@@ -1209,9 +1369,9 @@ textarea {
 
 .keyboard-help-list kbd {
   font: inherit;
-  color: #cfd3e0;
-  background: #232838;
-  border: 1px solid #33394d;
+  color: var(--text-quaternary);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 3px;
   padding: 1px 5px;
   white-space: nowrap;
@@ -1244,7 +1404,7 @@ textarea {
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  background: #1b1e28;
+  background: var(--surface-1);
   border-radius: 8px;
   min-width: 0;
 }
@@ -1264,20 +1424,22 @@ textarea {
   min-width: 0;
 }
 
+/* 배경은 의도적으로 테마 무관 고정 다크 — 영상 프레임 썸네일이 얹히는 타임라인
+   캔버스라 라이트 테마에서도 어둡게 유지한다(스펙 3번). */
 .mini-strip-block {
   position: relative;
   height: 20px;
   padding: 0;
   overflow: hidden;
-  background: #232838;
-  border: 1px solid #33394d;
+  background: var(--stage-bg);
+  border: 1px solid var(--border);
   border-radius: 3px;
   cursor: pointer;
 }
 
 /* 축소(전체 보기) 상태에서도 클립이 바뀌는 경계가 눈에 띄도록 얇은 구분선을 준다. */
 .mini-strip-block.clip-boundary {
-  border-left: 2px solid #5b7cfa88;
+  border-left: 2px solid var(--accent-strong);
 }
 
 .mini-strip-thumb {
@@ -1286,8 +1448,8 @@ textarea {
 }
 
 .mini-strip-block.selected {
-  border-color: #5b7cfa;
-  background: #262e46;
+  border-color: var(--accent);
+  background: var(--surface-3);
 }
 
 .mini-strip-zoom-controls {
@@ -1304,7 +1466,7 @@ textarea {
 .mini-strip-total {
   flex: 0 0 auto;
   font-size: 13px;
-  color: #9aa0b4;
+  color: var(--text-tertiary);
 }
 
 /* ② 편집 단계 */
@@ -1371,28 +1533,29 @@ textarea {
   align-items: center;
   gap: 10px;
   padding: 9px 10px;
-  background: #1b1e28;
-  border: 1px solid #292f40;
+  background: var(--surface-1);
+  border: 1px solid var(--border-soft);
   border-radius: 6px;
   cursor: pointer;
   min-width: 0;
 }
 
 .compact-list-row.selected {
-  border-color: #5b7cfa;
-  background: #1e2436;
+  border-color: var(--accent);
+  background: var(--surface-3-soft);
 }
 
 .compact-list-index {
   flex: 0 0 auto;
   width: 20px;
   font-size: 13px;
-  color: #8a90a2;
+  color: var(--text-secondary);
 }
 
-/* 세그먼트 썸네일 공통 껍데기 — 크기는 사용처 클래스(compact-list-thumb 등)가 정한다. */
+/* 세그먼트 썸네일 공통 껍데기 — 크기는 사용처 클래스(compact-list-thumb 등)가 정한다.
+   배경은 의도적으로 테마 무관 고정 다크 — 영상 프레임 썸네일 캔버스(스펙 3번). */
 .segment-thumb {
-  background: #12141a;
+  background: var(--stage-bg);
 }
 
 .segment-thumb img {
@@ -1428,8 +1591,8 @@ textarea {
   font-size: 14px;
   font-family: inherit;
   color: inherit;
-  background: #12141a;
-  border: 1px solid #292f40;
+  background: var(--surface-1);
+  border: 1px solid var(--border-soft);
   border-radius: 4px;
   resize: none;
   overflow: hidden;
@@ -1437,7 +1600,7 @@ textarea {
 
 .compact-list-subtitle-input:focus {
   outline: none;
-  border-color: #5b7cfa;
+  border-color: var(--accent);
 }
 
 /* 처음 보는 사람도 이 컷이 무슨 장면인지 알 수 있게 하는 초벌 비전 판독 장면
@@ -1451,12 +1614,12 @@ textarea {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 13px;
-  color: #9aa0b4;
+  color: var(--text-tertiary);
 }
 
 .compact-list-scene.empty {
   font-style: italic;
-  color: #5f6473;
+  color: var(--text-faint);
 }
 
 .scene-shot-badge {
@@ -1466,54 +1629,54 @@ textarea {
   font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
-  background: #242f57;
-  color: #a9b8fb;
+  background: var(--tag-blue-bg);
+  color: var(--tag-blue-text);
 }
 
 .scene-shot-badge.shot-hand-closeup {
-  background: #242f57;
-  color: #a9b8fb;
+  background: var(--tag-blue-bg);
+  color: var(--tag-blue-text);
 }
 
 .scene-shot-badge.shot-object {
-  background: #1f4234;
-  color: #8fd9b7;
+  background: var(--tag-green-bg);
+  color: var(--tag-green-text);
 }
 
 .scene-shot-badge.shot-cat {
-  background: #3a2a57;
-  color: #cba9f2;
+  background: var(--tag-purple-bg);
+  color: var(--tag-purple-text);
 }
 
 .scene-shot-badge.shot-change {
-  background: #1f3d4a;
-  color: #8fd3f2;
+  background: var(--tag-cyan-bg);
+  color: var(--tag-cyan-text);
 }
 
 .scene-shot-badge.shot-reveal {
-  background: #503a20;
-  color: #f2c98a;
+  background: var(--tag-reveal-bg);
+  color: var(--tag-reveal-text);
 }
 
 .scene-shot-badge.shot-wearing {
-  background: #4a2038;
-  color: #f2a9d8;
+  background: var(--tag-pink-bg);
+  color: var(--tag-pink-text);
 }
 
 .scene-shot-badge.shot-other {
-  background: #2a2e3d;
-  color: #9aa0b4;
+  background: var(--tag-gray-bg);
+  color: var(--tag-gray-text);
 }
 
 .scene-shot-badge.shot-monotonous {
-  background: #1f4d4d;
-  color: #8fd9d9;
+  background: var(--tag-teal-bg);
+  color: var(--tag-teal-text);
 }
 
 .compact-list-time {
   flex: 0 0 auto;
   font-size: 13px;
-  color: #9aa0b4;
+  color: var(--text-tertiary);
   white-space: nowrap;
 }
 
@@ -1522,12 +1685,12 @@ textarea {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  border: 1px solid #5b7cfa;
+  border: 1px solid var(--accent);
   background: transparent;
 }
 
 .compact-list-subtitle-dot.filled {
-  background: #5b7cfa;
+  background: var(--accent);
 }
 
 .compact-list-actions {
@@ -1545,7 +1708,7 @@ textarea {
   flex-direction: column;
   gap: 12px;
   padding: 12px 16px;
-  background: #1b1e28;
+  background: var(--surface-1);
   border-radius: 8px;
 }
 
@@ -1554,7 +1717,7 @@ textarea {
   flex-direction: column;
   gap: 4px;
   font-size: 13px;
-  color: #8a90a2;
+  color: var(--text-secondary);
 }
 
 .quick-fields-subtitle textarea {
@@ -1581,7 +1744,7 @@ textarea {
 }
 
 .volume-unit {
-  color: #8a8fa3;
+  color: var(--text-muted-3);
   font-size: 13px;
 }
 
@@ -1591,7 +1754,7 @@ textarea {
   flex-wrap: wrap;
   gap: 10px;
   padding-top: 8px;
-  border-top: 1px dashed #3a4056;
+  border-top: 1px dashed var(--border-dashed);
 }
 
 .quick-fields-io {
@@ -1600,12 +1763,12 @@ textarea {
   flex-wrap: wrap;
   gap: 8px;
   padding-top: 8px;
-  border-top: 1px dashed #3a4056;
+  border-top: 1px dashed var(--border-dashed);
 }
 
 .quick-fields-io-label {
   font-size: 13px;
-  color: #8a90a2;
+  color: var(--text-secondary);
 }
 
 .quick-fields-io .moment-io-button {
@@ -1615,7 +1778,7 @@ textarea {
 
 .quick-fields-io-note {
   font-size: 12px;
-  color: #6a7086;
+  color: var(--text-muted-4);
 }
 
 .quick-fields-crop {
@@ -1623,33 +1786,33 @@ textarea {
   align-items: center;
   gap: 8px;
   padding-top: 8px;
-  border-top: 1px dashed #3a4056;
+  border-top: 1px dashed var(--border-dashed);
   font-size: 13px;
-  color: #9aa0b4;
+  color: var(--text-tertiary);
 }
 
 .narration-guide {
   margin: 0 0 12px;
   font-size: 12px;
   line-height: 1.5;
-  color: #9aa0b4;
+  color: var(--text-tertiary);
 }
 
 .narration-empty-note {
   margin: 4px 0 0;
   font-size: 12px;
-  color: #8a90a2;
+  color: var(--text-secondary);
 }
 
 .narration-warning {
   margin: 4px 0 0;
   font-size: 12px;
-  color: #e0a95c;
+  color: var(--warning-text);
 }
 
 .quick-fields-narration-preview {
   padding-top: 8px;
-  border-top: 1px dashed #3a4056;
+  border-top: 1px dashed var(--border-dashed);
 }
 
 .quick-fields-narration-preview audio {
@@ -1667,7 +1830,7 @@ textarea {
   align-items: center;
   gap: 8px;
   padding-top: 8px;
-  border-top: 1px dashed #3a4056;
+  border-top: 1px dashed var(--border-dashed);
 }
 
 .quick-fields-merge button {
@@ -1679,7 +1842,7 @@ textarea {
    .settings-field 패턴을 그대로 재사용하고, 구분선/버튼 줄만 추가한다. */
 .quick-fields-style-override {
   padding-top: 8px;
-  border-top: 1px dashed #3a4056;
+  border-top: 1px dashed var(--border-dashed);
 }
 
 .style-override-fields {
@@ -1707,8 +1870,8 @@ textarea {
   font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
-  background: #4a2038;
-  color: #f2a9d8;
+  background: var(--tag-pink-bg);
+  color: var(--tag-pink-text);
 }
 
 /* ③ 마무리 단계 */
@@ -1723,7 +1886,7 @@ textarea {
   font-size: 14px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #8a90a2;
+  color: var(--text-secondary);
   margin: 0 0 12px;
 }
 
@@ -1739,7 +1902,7 @@ textarea {
   gap: 10px;
   margin-bottom: 8px;
   font-size: 13px;
-  color: #cfd3e0;
+  color: var(--text-quaternary);
 }
 
 .intro-outro-clip-name {
@@ -1752,8 +1915,8 @@ textarea {
   flex: 0 0 auto;
   padding: 3px 10px;
   font-size: 12px;
-  border-color: #d9575755;
-  color: #f29a9a;
+  border-color: var(--error-border);
+  color: var(--error-text);
   background: transparent;
 }
 
@@ -1790,11 +1953,11 @@ textarea {
 
 .render-note {
   font-size: 13px;
-  color: #9098ac;
+  color: var(--text-muted-2);
 }
 
 .render-note-error {
-  color: #f0a34a;
+  color: var(--warning-text);
 }
 
 .no-burn-subtitles-toggle {
@@ -1802,7 +1965,7 @@ textarea {
   align-items: center;
   gap: 6px;
   font-size: 13px;
-  color: #cdd2e0;
+  color: var(--text-quaternary-soft);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -1820,14 +1983,14 @@ textarea {
 }
 
 .render-resolution-options button.active {
-  border-color: #5b7cfa;
-  background: #262e46;
+  border-color: var(--accent);
+  background: var(--surface-3);
 }
 
 .render-dialog-summary-line {
   margin: 0 0 4px;
   font-size: 13px;
-  color: #cdd2e0;
+  color: var(--text-quaternary-soft);
 }
 
 .render-dialog-actions {
@@ -1940,8 +2103,8 @@ textarea {
   width: 100%;
   max-width: 960px;
   height: 8px;
-  background: #232838;
-  border: 1px solid #33394d;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   border-radius: 4px;
   cursor: pointer;
   overflow: hidden;
@@ -1949,7 +2112,7 @@ textarea {
 
 .sequence-player-progress-fill {
   height: 100%;
-  background: #5b7cfa;
+  background: var(--accent);
 }
 
 .sequence-player-controls {
@@ -1975,22 +2138,22 @@ textarea {
 .sequence-player-speed-toggle button {
   padding: 4px 10px;
   font-size: 13px;
-  background: #1b1e28;
-  color: #9aa0b4;
-  border: 1px solid #33394d;
+  background: var(--surface-1);
+  color: var(--text-tertiary);
+  border: 1px solid var(--border);
   border-radius: 6px;
   cursor: pointer;
 }
 
 .sequence-player-speed-toggle button.active {
-  border-color: #5b7cfa;
-  background: #262e46;
-  color: #e6e8ee;
+  border-color: var(--accent);
+  background: var(--surface-3);
+  color: var(--text-primary);
 }
 
 .sequence-player-counter {
   font-size: 13px;
-  color: #9aa0b4;
+  color: var(--text-tertiary);
   margin-left: auto;
 }
 
@@ -1999,8 +2162,8 @@ textarea {
   position: sticky;
   top: 0;
   z-index: 20;
-  background: #12141a;
+  background: var(--surface-0);
   padding: 12px 0;
   margin-top: 12px;
-  border-bottom: 1px solid #232838;
+  border-bottom: 1px solid var(--surface-2);
 }

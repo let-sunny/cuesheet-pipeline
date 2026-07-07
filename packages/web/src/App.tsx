@@ -31,6 +31,7 @@ import { TimelineView } from "./components/TimelineView.js";
 import { MomentPalette } from "./components/MomentPalette.js";
 import { KeyboardHelp } from "./components/KeyboardHelp.js";
 import { HeaderBar } from "./components/HeaderBar.js";
+import type { ThemeModeSetting } from "./theme.js";
 import { StepNav } from "./components/StepNav.js";
 import type { Step } from "./components/StepNav.js";
 import { MiniTimelineStrip } from "./components/MiniTimelineStrip.js";
@@ -133,7 +134,12 @@ function clearDraftSnapshot(projectName: string): void {
   }
 }
 
-export function App() {
+interface AppProps {
+  themeMode: ThemeModeSetting;
+  onThemeModeChange: (mode: ThemeModeSetting) => void;
+}
+
+export function App({ themeMode, onThemeModeChange }: AppProps) {
   const [serverCuesheet, setServerCuesheet] = useState<CueSheet | null>(null);
   const [draft, setDraft] = useState<CueSheet | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -1103,6 +1109,8 @@ export function App() {
         onSave={() => void handleSave()}
         onRender={() => setRenderDialogOpen(true)}
         onOpenSettings={() => setSettingsOpen(true)}
+        themeMode={themeMode}
+        onThemeModeChange={onThemeModeChange}
       />
 
       {externalChangePending ? (
