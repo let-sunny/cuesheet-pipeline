@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
+import { Button } from "@astryxdesign/core/Button";
 import type { Crop, Segment, SubtitleStyle } from "@cuesheet/schema";
 import { fetchProxyStatus, type ClipMoments, type ProxyStatus } from "../api.js";
 import { cropPreviewStyle } from "../cropPreview.js";
@@ -558,11 +559,12 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
       </div>
       {isPreparingProxy ? (
         <div className="notice proxy-preparing">
-          프록시 준비 중입니다 ({isGeneratingProxy ? "생성 중" : `${pendingIndex + 1}번째 대기`})
+          영상 준비 중이에요 - 곧 자동 재생됩니다 (
+          {isGeneratingProxy ? "지금 처리 중" : `${pendingIndex + 1}번째 순서 대기`})
         </div>
       ) : null}
       {!isPreparingProxy && (missing || segment.clip === "") ? (
-        <div className="empty">클립 없음: {segment.clip || "(파일명 없음)"}</div>
+        <div className="empty">원본을 찾을 수 없어요: {segment.clip || "(파일명 없음)"}</div>
       ) : isPreparingProxy ? null : (
         <>
           {cropEditDraft ? (
@@ -572,19 +574,11 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
                 {" "}· w {(cropEditDraft.w * 100).toFixed(0)}% · h {(cropEditDraft.h * 100).toFixed(0)}%
               </span>
               <div className="crop-edit-actions">
-                <button type="button" onClick={resetCropEditToFullFrame}>
-                  전체 프레임
-                </button>
-                <button type="button" onClick={applyCropEdit}>
-                  적용
-                </button>
-                <button type="button" onClick={cancelCropEdit}>
-                  취소
-                </button>
+                <Button label="전체 프레임" variant="ghost" size="sm" onClick={resetCropEditToFullFrame} />
+                <Button label="적용" variant="primary" size="sm" onClick={applyCropEdit} />
+                <Button label="취소" variant="ghost" size="sm" onClick={cancelCropEdit} />
                 {segment.crop ? (
-                  <button type="button" onClick={clearCropEdit}>
-                    해제
-                  </button>
+                  <Button label="해제" variant="ghost" size="sm" onClick={clearCropEdit} />
                 ) : null}
               </div>
             </div>
@@ -662,19 +656,15 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
           </div>
 
           <div className="time-readout">
-            현재 {currentTime.toFixed(1)}s · IN {segment.in.toFixed(1)}s · OUT {segment.out.toFixed(1)}s
+            현재 {currentTime.toFixed(1)}s · 시작 {segment.in.toFixed(1)}s · 끝 {segment.out.toFixed(1)}s
           </div>
 
+          {/* 재생 컨트롤 — 비디오(+스크럽)에 바로 붙는 한 행(screen-spec 3절). */}
           <div className="video-controls-row">
-            <button type="button" onClick={handleSetIn}>
-              현재 위치를 IN으로
-            </button>
-            <button type="button" onClick={handleSetOut}>
-              현재 위치를 OUT으로
-            </button>
-            <button type="button" onClick={handleSplit}>
-              현재 위치에서 분할
-            </button>
+            <Button label="재생" variant="primary" size="sm" onClick={handlePlay} />
+            <Button label="현재 위치를 시작으로" variant="secondary" size="sm" onClick={handleSetIn} />
+            <Button label="현재 위치를 끝으로" variant="secondary" size="sm" onClick={handleSetOut} />
+            <Button label="분할" variant="secondary" size="sm" onClick={handleSplit} />
           </div>
 
           <div className="playmode-toggle">
@@ -690,16 +680,13 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
               className={playMode === "free" ? "active" : ""}
               onClick={() => setPlayMode("free")}
             >
-              전체 재생
+              클립 전체
             </button>
           </div>
 
           {notice ? <div className="notice">{notice}</div> : null}
         </>
       )}
-      <button type="button" onClick={handlePlay} disabled={missing || isPreparingProxy}>
-        재생 ({segment.in.toFixed(1)}s → {segment.out.toFixed(1)}s)
-      </button>
     </div>
   );
 });
