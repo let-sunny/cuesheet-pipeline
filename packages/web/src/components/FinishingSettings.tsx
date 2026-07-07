@@ -136,7 +136,7 @@ export function FinishingSettings({
           <input
             type="range"
             min={8}
-            max={200}
+            max={600}
             step={1}
             value={margin}
             disabled={subtitleStyle.position === "center"}
@@ -187,7 +187,7 @@ export function FinishingSettings({
               <input
                 type="number"
                 min={0}
-                max={40}
+                max={120}
                 value={background.padding}
                 onChange={(e) => {
                   const v = e.target.valueAsNumber;

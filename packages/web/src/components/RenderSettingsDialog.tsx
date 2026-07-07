@@ -9,6 +9,7 @@ const LAST_RESOLUTION_KEY = "cuesheet-render-last-resolution";
 const RESOLUTION_PRESETS = [
   { label: "1280x720", width: 1280, height: 720 },
   { label: "1920x1080", width: 1920, height: 1080 },
+  { label: "3840x2160 (4K)", width: 3840, height: 2160 },
 ] as const;
 
 function formatDuration(totalSeconds: number): string {
@@ -96,6 +97,11 @@ export function RenderSettingsDialog({
                     현재 설정: {project.width}x{project.height}(사용자 지정)
                   </p>
                 ) : null}
+                {project.width === 3840 && project.height === 2160 ? (
+                  <p className="render-note">
+                    4K는 렌더 시간이 크게 늘어납니다 (원본 4K 기준 약 3~5배).
+                  </p>
+                ) : null}
               </div>
 
               <div className="settings-group">
@@ -113,6 +119,7 @@ export function RenderSettingsDialog({
               <div className="settings-group">
                 <h3>요약</h3>
                 <p className="render-dialog-summary-line">프로젝트: {project.name || "(이름 없음)"}</p>
+                <p className="render-dialog-summary-line">해상도: {project.width}x{project.height}</p>
                 <p className="render-dialog-summary-line">컷 수: {segmentCount}개</p>
                 <p className="render-dialog-summary-line">출력 길이(예상): {formatDuration(outputSeconds)}</p>
               </div>

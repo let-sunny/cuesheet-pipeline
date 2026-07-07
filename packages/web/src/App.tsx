@@ -24,6 +24,7 @@ import {
 } from "./api.js";
 import { buildClipPath, computeClipDurations } from "./clipPaths.js";
 import { computeMergeEligibility } from "./segmentMerge.js";
+import { scaleCueSheetForResolution } from "./subtitleScale.js";
 import { VideoPreview } from "./components/VideoPreview.js";
 import type { VideoPreviewHandle } from "./components/VideoPreview.js";
 import { BgmEditor } from "./components/BgmEditor.js";
@@ -718,6 +719,20 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     setDraft((prev) => (prev ? { ...prev, project: { ...prev.project, ...patch } } : prev));
   }, [draft, recordContinuousChange]);
 
+  // 렌더 설정 다이얼로그의 해상도 프리셋 전환 — subtitleStyle/styleOverride의 절대 px 값을
+  // height 비율로 함께 스케일해야 하는 구조적 편집이라(단순 project 필드 패치가 아님)
+  // updateProject 대신 별도 핸들러로 recordDiscreteChange(언두 1스텝)만 남긴다.
+  const handleChangeResolution = useCallback((width: number, height: number) => {
+    if (!draft) {
+      return;
+    }
+    if (draft.project.width === width && draft.project.height === height) {
+      return;
+    }
+    recordDiscreteChange();
+    setDraft((prev) => (prev ? scaleCueSheetForResolution(prev, width, height) : prev));
+  }, [draft, recordDiscreteChange]);
+
   const updateNarration = useCallback((patch: Partial<NarrationConfig>) => {
     if (!draft) {
       return;
@@ -1346,7 +1361,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         outputSeconds={outputSecondsEstimate}
         noBurnSubtitles={noBurnSubtitles}
         onToggleNoBurnSubtitles={handleToggleNoBurnSubtitles}
-        onChangeResolution={(width, height) => updateProject({ width, height })}
+        onChangeResolution={handleChangeResolution}
         onStartRender={() => void handleRender()}
       />
 

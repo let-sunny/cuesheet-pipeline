@@ -146,7 +146,7 @@ export function SegmentStyleOverride({
             <input
               type="range"
               min={8}
-              max={200}
+              max={600}
               step={1}
               value={override.margin ?? globalStyle.margin ?? 40}
               onChange={(e) => onChangeOverride({ margin: Number(e.target.value) })}

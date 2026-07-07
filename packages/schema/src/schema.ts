@@ -57,7 +57,7 @@ export const subtitleBackgroundSchema = z.object({
   padding: z
     .number()
     .min(0, "background.padding은 0 이상이어야 합니다")
-    .max(40, "background.padding은 40 이하여야 합니다")
+    .max(120, "background.padding은 120 이하여야 합니다")
     .default(8),
 });
 
@@ -75,7 +75,7 @@ export const subtitleStyleSchema = z.object({
   margin: z
     .number()
     .min(8, "margin은 8 이상이어야 합니다")
-    .max(200, "margin은 200 이하여야 합니다")
+    .max(600, "margin은 600 이하여야 합니다")
     .default(40),
 });
 
@@ -95,7 +95,7 @@ export const subtitleStyleOverrideSchema = subtitleStyleSchema.partial().extend(
   margin: z
     .number()
     .min(8, "margin은 8 이상이어야 합니다")
-    .max(200, "margin은 200 이하여야 합니다")
+    .max(600, "margin은 600 이하여야 합니다")
     .optional(),
 });
 

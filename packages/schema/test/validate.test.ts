@@ -143,6 +143,28 @@ describe("validateCueSheet - 통과 케이스", () => {
     }
   });
 
+  it("4K 프리셋 스케일 크기의 margin/background.padding도 유효하다(상한 완화: margin<=600, padding<=120)", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      subtitleStyle: {
+        font: "Pretendard",
+        size: 108,
+        color: "#ffffff",
+        outlineColor: "#000000",
+        outlineWidth: 12,
+        position: "bottom",
+        background: { color: "#000000", opacity: 0.75, padding: 24 },
+        margin: 120,
+      },
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.subtitleStyle.margin).toBe(120);
+      expect(result.data.subtitleStyle.background?.padding).toBe(24);
+    }
+  });
+
   it("narration.volume 미지정 시 기본값 1.0이 적용된다", () => {
     const input = {
       ...(sample as Record<string, unknown>),
@@ -278,6 +300,46 @@ describe("validateCueSheet - 실패 케이스", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.errors.length).toBeGreaterThan(3);
+    }
+  });
+
+  it("margin이 상한(600)을 넘으면 실패한다", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      subtitleStyle: {
+        font: "Pretendard",
+        size: 48,
+        color: "#ffffff",
+        outlineColor: "#000000",
+        outlineWidth: 2,
+        position: "bottom",
+        margin: 601,
+      },
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.includes("margin"))).toBe(true);
+    }
+  });
+
+  it("background.padding이 상한(120)을 넘으면 실패한다", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      subtitleStyle: {
+        font: "Pretendard",
+        size: 48,
+        color: "#ffffff",
+        outlineColor: "#000000",
+        outlineWidth: 2,
+        position: "bottom",
+        background: { color: "#000000", opacity: 0.75, padding: 121 },
+      },
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.includes("padding"))).toBe(true);
     }
   });
 });
