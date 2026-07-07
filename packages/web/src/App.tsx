@@ -1051,6 +1051,7 @@ export function App() {
                     onChange={(patch) => updateSegment(selectedIndex, patch)}
                     onSplit={(at) => splitSegment(selectedIndex, at)}
                     autoPlay={false}
+                    moments={moments}
                   />
                   <SegmentQuickFields
                     segment={selectedSegment}
@@ -1070,6 +1071,7 @@ export function App() {
                       selectedSegment && setIntroOutroFromClip("outro", selectedSegment.clip)
                     }
                     onClearCrop={() => clearSegmentCrop(selectedIndex)}
+                    onEditCrop={() => videoPreviewRef.current?.startCropEdit()}
                   />
                 </div>
               </div>
@@ -1089,6 +1091,7 @@ export function App() {
                   onChange={(patch) => updateSegment(selectedIndex, patch)}
                   onSplit={(at) => splitSegment(selectedIndex, at)}
                   autoPlay
+                  moments={moments}
                 />
               </div>
             )}

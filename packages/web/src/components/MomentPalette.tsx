@@ -24,6 +24,20 @@ interface MomentCard {
   outS: number;
   category: Category;
   memo: string;
+  /** moments 항목만 값이 있음(monotonousRanges엔 품질 점수 개념이 없음). */
+  quality: number | null;
+}
+
+/** 비전 판독자가 memo/desc에 남기는 얼굴 노출 위험 태그. 화면 표시에선 배지로
+ * 대체하고 원문 텍스트는 제거한다(자막으로도 새 나가지 않게). */
+const FACE_TAG = "[얼굴노출]";
+
+function hasFaceTag(memo: string): boolean {
+  return memo.includes(FACE_TAG);
+}
+
+function stripFaceTag(memo: string): string {
+  return memo.replace(FACE_TAG, "").trim();
 }
 
 const SHOT_TYPE_CATEGORY: Record<ShotType, Category> = {
@@ -108,6 +122,7 @@ function buildCards(entries: ClipMoments[]): MomentCard[] {
         outS: m.outS,
         category: categoryFor(m.shotType, m.memo),
         memo: m.memo,
+        quality: m.quality,
       });
     }
     for (const r of entry.monotonousRanges) {
@@ -122,6 +137,7 @@ function buildCards(entries: ClipMoments[]): MomentCard[] {
         outS,
         category: "뜨개구간",
         memo: r.desc,
+        quality: null,
       });
     }
   }
@@ -166,6 +182,7 @@ export function MomentPalette({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [frameMap, setFrameMap] = useState<Record<string, string[]>>({});
   const [selectedCategory, setSelectedCategory] = useState<Category | "전체">("전체");
+  const [statusFilter, setStatusFilter] = useState<"전체" | "채택만" | "탈락만">("전체");
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -222,17 +239,39 @@ export function MomentPalette({
     return map;
   }, [cards, segments]);
 
-  const filtered =
+  const byCategory =
     selectedCategory === "전체" ? cards : cards.filter((c) => c.category === selectedCategory);
 
+  const filtered = byCategory.filter((c) => {
+    if (statusFilter === "전체") {
+      return true;
+    }
+    const inUse = inUseCutNumber.has(c.key);
+    if (statusFilter === "채택만") {
+      return inUse;
+    }
+    // 탈락만: 자동 조립에서 채택되지 않았고(inUse 아님), 품질 미달이거나 얼굴 노출로
+    // 걸러진 카드만.
+    if (inUse) {
+      return false;
+    }
+    return hasFaceTag(c.memo) || (c.quality !== null && c.quality < 3);
+  });
+
   const handleAdd = (card: MomentCard) => {
+    if (hasFaceTag(card.memo)) {
+      const proceed = window.confirm("얼굴 정책 위반 가능 - 크롭 필요할 수 있음");
+      if (!proceed) {
+        return;
+      }
+    }
     const seg: Segment = {
       clip: card.clipFileName,
       in: card.inS,
       out: card.outS,
       speed: 1,
       volume: 1,
-      subtitle: card.memo,
+      subtitle: stripFaceTag(card.memo),
     };
     onAddSegment(seg);
   };
@@ -275,6 +314,30 @@ export function MomentPalette({
             ))}
           </div>
 
+          <div className="moment-filters moment-status-filters">
+            <button
+              type="button"
+              className={statusFilter === "전체" ? "active" : ""}
+              onClick={() => setStatusFilter("전체")}
+            >
+              전체
+            </button>
+            <button
+              type="button"
+              className={statusFilter === "채택만" ? "active" : ""}
+              onClick={() => setStatusFilter("채택만")}
+            >
+              채택만
+            </button>
+            <button
+              type="button"
+              className={statusFilter === "탈락만" ? "active" : ""}
+              onClick={() => setStatusFilter("탈락만")}
+            >
+              탈락만
+            </button>
+          </div>
+
           <div className="moment-grid">
             {filtered.map((card) => {
               const meta = CATEGORY_META[card.category];
@@ -282,9 +345,12 @@ export function MomentPalette({
               const frame = nearestFrame(frames, card.inS);
               const cutNumber = inUseCutNumber.get(card.key);
               const inUse = cutNumber !== undefined;
+              const faceRejected = !inUse && hasFaceTag(card.memo);
+              const qualityRejected = !inUse && !faceRejected && card.quality !== null && card.quality < 3;
+              const displayMemo = hasFaceTag(card.memo) ? stripFaceTag(card.memo) : card.memo;
               // 카드 자체엔 축약된 클립명·시각만 보이고, 판단에 필요한 전체 정보
               // (원본 파일명·구간·카테고리·메모)는 title 툴팁으로 전달한다.
-              const fullInfo = `${card.clipFileName} · ${card.inS.toFixed(1)}s~${card.outS.toFixed(1)}s · ${meta.label} · ${card.memo}`;
+              const fullInfo = `${card.clipFileName} · ${card.inS.toFixed(1)}s~${card.outS.toFixed(1)}s · ${meta.label} · ${displayMemo}`;
 
               // 인트로/아웃트로는 in/out 구간 지정이 안 되는 통짜 클립 삽입이라
               // 이 카드가 속한 클립 파일 전체 길이(근사치)가 상한을 넘으면 지정을 막는다.
@@ -297,9 +363,14 @@ export function MomentPalette({
               const introOutroDisabledTitle = tooLongForIntroOutro
                 ? `15초를 넘는 클립(추정 ${clipDurationS?.toFixed(1) ?? "?"}s)은 인트로/아웃트로로 쓸 수 없습니다 — 구간 지정 없이 클립 전체가 통째로 삽입되므로 짧은 클립에만 적합합니다.`
                 : null;
+              const statusClass = faceRejected
+                ? " status-rejected-face"
+                : qualityRejected
+                  ? " status-rejected-quality"
+                  : "";
               return (
                 <div
-                  className={`moment-card${inUse ? " in-use" : ""}`}
+                  className={`moment-card${inUse ? " in-use" : ""}${statusClass}`}
                   key={card.key}
                   title={fullInfo}
                 >
@@ -315,7 +386,13 @@ export function MomentPalette({
                     <span className="moment-number">
                       {card.clipFolder} · {card.inS.toFixed(1)}s
                     </span>
-                    {inUse ? <span className="moment-badge-in-use">컷 {cutNumber}</span> : null}
+                    {inUse ? <span className="moment-badge-in-use">채택됨 · 컷 {cutNumber}</span> : null}
+                    {!inUse && faceRejected ? (
+                      <span className="moment-badge-rejected face">자동 제외: 얼굴 노출</span>
+                    ) : null}
+                    {!inUse && qualityRejected ? (
+                      <span className="moment-badge-rejected quality">자동 제외: 품질 낮음</span>
+                    ) : null}
                   </div>
                   <div className="moment-info">
                     <span className={`category-tag cat-${meta.className}`}>{meta.label}</span>
@@ -326,8 +403,8 @@ export function MomentPalette({
                       줄이 잘리다 만 채로 버튼 위에 흘러넘친다 — 플레인 래퍼로 한 겹
                       감싸 line-clamp 요소 자체는 flex 아이템이 되지 않게 한다. */}
                   <div className="moment-memo-wrap">
-                    <div className="moment-memo" title={card.memo}>
-                      {card.memo}
+                    <div className="moment-memo" title={displayMemo}>
+                      {displayMemo}
                     </div>
                   </div>
                   <div className="moment-card-actions">

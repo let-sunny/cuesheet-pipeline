@@ -22,8 +22,10 @@ interface Props {
   /** 이 컷의 원본 클립 파일 전체(in/out 무시)를 인트로/아웃트로로 지정한다. */
   onSetIntro: () => void;
   onSetOutro: () => void;
-  /** crop이 적용된 컷의 crop을 해제한다(수치 편집 UI는 범위 밖). */
+  /** crop이 적용된 컷의 crop을 해제한다. */
   onClearCrop: () => void;
+  /** 크롭 편집 모드로 진입한다(미리보기 위 오버레이에서 직접 드래그 조절). */
+  onEditCrop: () => void;
 }
 
 /**
@@ -43,6 +45,7 @@ export function SegmentQuickFields({
   onSetIntro,
   onSetOutro,
   onClearCrop,
+  onEditCrop,
 }: Props) {
   if (!segment) {
     return null;
@@ -249,14 +252,23 @@ export function SegmentQuickFields({
         </span>
       </div>
 
-      {segment.crop ? (
-        <div className="quick-fields-crop">
-          <span>크롭 적용됨</span>
-          <button type="button" onClick={onClearCrop}>
-            해제
+      <div className="quick-fields-crop">
+        {segment.crop ? (
+          <>
+            <span>크롭 적용됨</span>
+            <button type="button" onClick={onEditCrop}>
+              편집
+            </button>
+            <button type="button" onClick={onClearCrop}>
+              해제
+            </button>
+          </>
+        ) : (
+          <button type="button" onClick={onEditCrop}>
+            크롭 추가
           </button>
-        </div>
-      ) : null}
+        )}
+      </div>
     </div>
   );
 }

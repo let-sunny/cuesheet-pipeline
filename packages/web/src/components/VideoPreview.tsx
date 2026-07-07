@@ -1,8 +1,9 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { Crop, Segment } from "@cuesheet/schema";
-import { fetchProxyStatus, type ProxyStatus } from "../api.js";
+import { fetchProxyStatus, type ClipMoments, type ProxyStatus } from "../api.js";
 import { cropPreviewStyle } from "../cropPreview.js";
+import { matchSceneInfo, shotTypeLabel } from "../sceneInfo.js";
 import { CropEditOverlay } from "./CropEditOverlay.js";
 
 /** 프록시 준비 상태 폴링 주기(ms). */
@@ -26,6 +27,8 @@ interface Props {
   onSplit: (at: number) => void;
   /** 켜지면 선택 세그먼트가 바뀔 때(자막 쓰기 모드 등) 자동으로 재생을 시작한다. */
   autoPlay?: boolean;
+  /** 초벌 비전 판독 데이터 — 비디오 위 맥락 헤더에 "지금 보는 게 무슨 장면인지" 보여주는 데 쓴다. */
+  moments: ClipMoments[];
 }
 
 /** 외부(App.tsx의 전역 단축키 등)에서 미리보기를 제어하기 위한 핸들. */
@@ -45,7 +48,7 @@ export interface VideoPreviewHandle {
  * 현재 위치에서 세그먼트를 분할할 수 있다.
  */
 export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function VideoPreview(
-  { segment, selectedIndex, onChange, onSplit, autoPlay = false },
+  { segment, selectedIndex, onChange, onSplit, autoPlay = false, moments },
   ref,
 ) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -367,6 +370,8 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   const pct = (t: number): number => (duration > 0 ? clamp((t / duration) * 100, 0, 100) : 0);
 
   const subtitleSummary = segment.subtitle.trim() !== "" ? segment.subtitle.trim() : "(자막 없음)";
+  const sceneInfo = matchSceneInfo(segment, moments);
+  const sceneText = sceneInfo.kind === "none" ? "장면 정보 없음" : sceneInfo.memo;
 
   const pendingIndex = proxyStatus ? proxyStatus.pending.indexOf(segment.clip) : -1;
   const isGeneratingProxy = proxyStatus?.generating === segment.clip;
@@ -374,9 +379,26 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
 
   return (
     <div className="video-preview">
-      <div className="video-context-line" title={subtitleSummary}>
-        <span className="video-context-index">#{selectedIndex + 1}</span>
-        {subtitleSummary} · {segment.in.toFixed(1)}s~{segment.out.toFixed(1)}s
+      <div className="video-context-header">
+        <div
+          className={`video-context-scene${sceneInfo.kind === "none" ? " empty" : ""}`}
+          title={sceneText}
+        >
+          <span className="video-context-index">#{selectedIndex + 1}</span>
+          {sceneInfo.kind === "moment" ? (
+            <span className={`scene-shot-badge shot-${sceneInfo.shotType}`}>
+              {shotTypeLabel(sceneInfo.shotType)}
+            </span>
+          ) : null}
+          {sceneInfo.kind === "monotonous" ? (
+            <span className="scene-shot-badge shot-monotonous">배속구간</span>
+          ) : null}
+          <span className="video-context-scene-label">장면</span>
+          <span className="video-context-scene-text">{sceneText}</span>
+        </div>
+        <div className="video-context-line" title={subtitleSummary}>
+          자막 {subtitleSummary} · {segment.in.toFixed(1)}s~{segment.out.toFixed(1)}s
+        </div>
       </div>
       {isPreparingProxy ? (
         <div className="notice proxy-preparing">

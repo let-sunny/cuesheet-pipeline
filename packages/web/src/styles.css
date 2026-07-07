@@ -446,24 +446,68 @@ textarea {
   border-radius: 8px;
 }
 
-.video-context-line {
-  font-size: 13px;
+/* 비디오 위 맥락 헤더 — "지금 보는 게 무슨 장면인지"가 화면을 켜자마자 가장 먼저
+   눈에 들어와야 하므로 장면 줄(video-context-scene)을 자막/시간 줄보다 위·크게 둔다. */
+.video-context-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.video-context-scene {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 10px;
+  background: #1a2036;
+  border: 1px solid #2c355a;
+  border-left: 3px solid #5b7cfa;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
   line-height: 1.4;
-  color: #cfd3e0;
-  /* 판단에 필요한 자막 전문을 최대한 보여준다 — 짧으면 1줄, 길면 2줄까지 감싸고
-     그래도 넘치면(드묾) title 툴팁으로 전문을 볼 수 있다. */
+  color: #e6e8ee;
+}
+
+.video-context-scene.empty {
+  font-style: italic;
+  color: #8a90a2;
+  font-weight: 400;
+}
+
+.video-context-scene .video-context-index {
+  font-weight: 700;
+  color: #e6e8ee;
+}
+
+.video-context-scene-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #a9b8fb;
+}
+
+.video-context-scene-text {
+  /* 판단에 필요한 장면 묘사 전문을 최대한 보여준다 — 짧으면 1줄, 길면 여러 줄까지
+     그대로 줄바꿈하고 잘라내지 않는다(말줄임 금지). */
+  white-space: normal;
+  word-break: keep-all;
+}
+
+.video-context-line {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #9aa0b4;
+  padding-left: 2px;
+  /* 자막은 장면보다 톤을 낮춘 보조 정보 — 판단에 필요한 전문은 title 툴팁으로 볼 수 있다. */
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  max-height: 38px;
-}
-
-.video-context-line .video-context-index {
-  font-weight: 600;
-  color: #e6e8ee;
-  margin-right: 6px;
+  max-height: 32px;
 }
 
 .video-preview video {
@@ -475,12 +519,110 @@ textarea {
 /* crop이 있는 컷의 미리보기 — video는 그대로 100% 크기를 유지한 채 CSS transform으로
    확대/이동되고, 이 래퍼가 overflow:hidden으로 잘라내 crop 영역만 보이게 한다. */
 .video-crop-frame {
+  position: relative;
   overflow: hidden;
   border-radius: 4px;
 }
 
 .video-crop-frame video {
   display: block;
+}
+
+/* 크롭 편집 모드 — 상단 수치/버튼 바 */
+.crop-edit-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  background: #232838;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #cfd3e0;
+}
+
+.crop-edit-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.crop-edit-actions button {
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
+/* 크롭 편집 모드 — 비디오 위 오버레이(어두운 바깥 + 밝은 크롭 사각형 + 핸들) */
+.crop-edit-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.crop-edit-box {
+  position: absolute;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6);
+  border: 2px solid #f0a34a;
+  cursor: move;
+  touch-action: none;
+}
+
+.crop-edit-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #e6e8ee;
+  border: 1px solid #f0a34a;
+  border-radius: 2px;
+  touch-action: none;
+}
+
+.crop-edit-handle.handle-nw {
+  top: -6px;
+  left: -6px;
+  cursor: nwse-resize;
+}
+
+.crop-edit-handle.handle-n {
+  top: -6px;
+  left: calc(50% - 6px);
+  cursor: ns-resize;
+}
+
+.crop-edit-handle.handle-ne {
+  top: -6px;
+  right: -6px;
+  cursor: nesw-resize;
+}
+
+.crop-edit-handle.handle-e {
+  top: calc(50% - 6px);
+  right: -6px;
+  cursor: ew-resize;
+}
+
+.crop-edit-handle.handle-se {
+  bottom: -6px;
+  right: -6px;
+  cursor: nwse-resize;
+}
+
+.crop-edit-handle.handle-s {
+  bottom: -6px;
+  left: calc(50% - 6px);
+  cursor: ns-resize;
+}
+
+.crop-edit-handle.handle-sw {
+  bottom: -6px;
+  left: -6px;
+  cursor: nesw-resize;
+}
+
+.crop-edit-handle.handle-w {
+  top: calc(50% - 6px);
+  left: -6px;
+  cursor: ew-resize;
 }
 
 .video-preview.empty {
@@ -764,6 +906,37 @@ textarea {
 
 .moment-card.in-use {
   opacity: 0.5;
+}
+
+/* 탈락(자동 제외) 카드 — 썸네일/메모는 읽혀야 하므로 완전 회색아웃은 금지,
+   중간 정도만 흐리게 해 "존재하지만 채택되지 않았다"를 표시한다. */
+.moment-card.status-rejected-quality,
+.moment-card.status-rejected-face {
+  opacity: 0.62;
+  filter: grayscale(0.35);
+}
+
+.moment-badge-rejected {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 12px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  max-width: calc(100% - 8px);
+  white-space: normal;
+  line-height: 1.3;
+  text-align: right;
+}
+
+.moment-badge-rejected.quality {
+  background: #4a4d5799;
+  color: #c7cbd8;
+}
+
+.moment-badge-rejected.face {
+  background: #b56a1acc;
+  color: #ffe3c2;
 }
 
 .moment-thumb {
@@ -1159,7 +1332,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 9px 10px;
   background: #1b1e28;
   border: 1px solid #292f40;
   border-radius: 6px;
@@ -1204,7 +1377,7 @@ textarea {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .compact-list-clip {
@@ -1225,8 +1398,8 @@ textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
-  color: #8a90a2;
+  font-size: 13px;
+  color: #9aa0b4;
 }
 
 .compact-list-scene.empty {
@@ -1285,7 +1458,8 @@ textarea {
   color: #8fd9d9;
 }
 
-/* 인스펙터 상단 "장면" 박스 — 자막 입력칸 바로 위에 배치해 "장면 보고 자막 쓰는" 흐름을 만든다. */
+/* 인스펙터 패널 최상단 "장면" 박스 — 컷을 고르면 가장 먼저 읽혀야 하는 정보라
+   패널 안에서 시각적으로 가장 두드러지게(강조 좌측 테두리 + 톤 대비) 만든다. */
 .scene-info-box {
   display: flex;
   flex-direction: column;
@@ -1293,21 +1467,26 @@ textarea {
   padding: 10px 12px;
   background: #12141a;
   border: 1px solid #292f40;
+  border-left: 3px solid #5b7cfa;
   border-radius: 6px;
 }
 
 .scene-info-label {
   font-size: 12px;
-  color: #6f7690;
+  font-weight: 700;
+  color: #a9b8fb;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 .scene-info-memo {
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 500;
   line-height: 1.5;
   color: #e4e6ee;
+  /* 묘사 전문을 그대로 보여준다 — 잘라내지 않고 필요한 만큼 줄바꿈한다. */
+  white-space: normal;
 }
 
 .scene-info-memo.scene-info-empty {
