@@ -2,12 +2,6 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { findLostFieldPaths, validateCueSheet } from "@cuesheet/schema";
 import type { ValidationResult } from "@cuesheet/schema";
 
-/** Reads the cuesheet file as-is (before validation). Returns null if missing. */
-export function readRaw(path: string): unknown {
-  if (!existsSync(path)) return null;
-  return JSON.parse(readFileSync(path, "utf-8"));
-}
-
 /**
  * Validates and returns the current cuesheet.
  * If the file is missing or malformed, returns ok:false with a reason.
@@ -53,4 +47,10 @@ export function updateCuesheet(path: string, next: unknown): ValidationResult {
 
   writeFileSync(path, `${JSON.stringify(result.data, null, 2)}\n`, "utf-8");
   return result;
+}
+
+/** Reads the cuesheet file as-is (before validation). Returns null if missing. */
+export function readRaw(path: string): unknown {
+  if (!existsSync(path)) return null;
+  return JSON.parse(readFileSync(path, "utf-8"));
 }
