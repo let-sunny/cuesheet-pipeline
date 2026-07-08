@@ -150,6 +150,13 @@ edits handled grows, schema expands along with it.
   out`).
 - **No emoji** (in code, comments, commits, or subtitle text examples — anywhere).
 
+## Testability as the size limit (user rule, 2026-07-09)
+
+A file must always be small enough to write test code for. If a module is too big or
+too entangled to test, that is the signal to split it — do not wait for it to hurt.
+Corollary: pure logic (state transitions, calculations, parsing/formatting) lives in
+its own module with unit tests; UI components stay thin over tested logic.
+
 ## Code layout
 
 Within each source file, order top to bottom by importance (2026-07-08 convention, applied
