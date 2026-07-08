@@ -23,7 +23,7 @@ export type {
   SubtitleStyleOverride,
 } from "./types.js";
 
-export { validateCueSheet } from "./validate.js";
+export { validateCueSheet, formatIssue } from "./validate.js";
 export type { ValidationResult } from "./validate.js";
 
 export { findLostFieldPaths } from "./lostKeys.js";
