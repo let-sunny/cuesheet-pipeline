@@ -6,9 +6,10 @@ import { toColorInputValue } from "../lib/subtitleOverlay.js";
 const DEFAULT_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75, padding: 8 };
 
 /**
- * schema의 subtitleStyle.margin 기본값(40)과 동일 — GET /api/cuesheet는 파일을
- * 검증 없이 그대로 서빙하므로, margin 필드가 없는(스키마 추가 이전) 기존 큐시트를
- * 저장 전 상태로 열었을 때도 이 값으로 안전하게 표시하기 위한 방어적 fallback.
+ * Matches the schema's subtitleStyle.margin default (40) — GET /api/cuesheet serves the file
+ * as-is without validation, so this is a defensive fallback to safely display this value even
+ * when opening an existing cuesheet (from before the margin field was added) that hasn't been
+ * saved yet.
  */
 const DEFAULT_MARGIN = 40;
 
@@ -18,9 +19,10 @@ interface SubtitleStyleProps {
 }
 
 /**
- * 내보내기 단계(③) "자막 스타일(전역)" 섹션 — screen-spec 5절 순서: 크기·색·외곽선
- * 한 그룹 / 배경 박스 한 그룹(토글+색+투명도+여백) / 위치+가장자리 여백 한 행 /
- * 미리보기 안내. 컷별 개별 오버라이드(SegmentStyleOverride)와 컨트롤 패턴을 공유한다.
+ * "Subtitle style (global)" section of the Export step (③) — following screen-spec section 5's
+ * order: one group for size/color/outline / one group for the background box (toggle+color+
+ * opacity+padding) / one row for position+edge margin / preview note. Shares its control pattern
+ * with the per-cut override (SegmentStyleOverride).
  */
 export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: SubtitleStyleProps) {
   const background = subtitleStyle.background ?? null;
@@ -39,7 +41,7 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
     <div className="settings-group settings-group-wide">
       <h3>Subtitle style (global)</h3>
 
-      {/* 크기·색·외곽선 한 그룹 */}
+      {/* Size/color/outline group */}
       <label className="settings-field">
         <span>Font</span>
         <input
@@ -108,7 +110,7 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
         />
       </label>
 
-      {/* 배경 박스 한 그룹(토글+색+투명도+여백) */}
+      {/* Background box group (toggle+color+opacity+padding) */}
       <CheckboxInput label="Background box" value={background != null} onChange={handleBackgroundToggle} />
       {background ? (
         <>
@@ -154,7 +156,7 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
         </>
       ) : null}
 
-      {/* 위치 + 가장자리 여백 한 행 */}
+      {/* Position + edge margin row */}
       <div className="qf-row">
         <label className="qf-field field-medium">
           <span>Position</span>
@@ -193,7 +195,7 @@ interface NarrationProps {
   onNarrationChange: (patch: Partial<NarrationConfig>) => void;
 }
 
-/** 내보내기 단계(③) "내레이션" 섹션 — 사용 토글·폴더·전체 볼륨·안내문. */
+/** "Narration" section of the Export step (③) — enable toggle, folder, overall volume, and guide text. */
 export function NarrationSettings({ narration, onNarrationChange }: NarrationProps) {
   return (
     <div className="settings-group">

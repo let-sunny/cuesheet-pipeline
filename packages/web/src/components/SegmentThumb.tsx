@@ -1,20 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 
-/** 드래그 중 매 프레임 요청이 나가지 않도록 t 값을 늦춰 반영하는 디바운스 지연(ms). */
+/** Debounce delay (ms) for applying the t value with a delay so a request isn't fired for every frame during a drag. */
 const DEBOUNCE_MS = 250;
 
 interface Props {
   clip: string;
-  /** 썸네일을 뽑을 시각(초). */
+  /** Timestamp (seconds) to grab the thumbnail from. */
   t: number;
   className?: string;
 }
 
 /**
- * 세그먼트 썸네일 하나. IntersectionObserver로 화면 근처에 들어올 때만 요청해
- * 컷이 많을 때(수십~백여 개) 한꺼번에 요청이 몰리는 걸 피하고, in 값이 드래그로
- * 빠르게 바뀌는 동안은 디바운스된 t로만 갱신한다. 프록시가 없어 서버가 404를
- * 주면(onError) 빈 자리 placeholder로 남는다.
+ * A single segment thumbnail. Uses IntersectionObserver to request it only when it comes near
+ * the viewport, avoiding a flood of requests all at once when there are many cuts (tens to
+ * hundreds), and updates only with the debounced t while the in value is changing rapidly from
+ * dragging. If there's no proxy and the server returns 404 (onError), it's left as an empty
+ * placeholder.
  */
 export function SegmentThumb({ clip, t, className }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);

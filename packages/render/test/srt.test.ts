@@ -53,8 +53,8 @@ describe("buildSrt", () => {
 
   it("speed를 반영해 출력 타임라인을 누적한다((out-in)/speed)", () => {
     const srt = buildSrt(make());
-    // 세그먼트1: 0~5s(자막), 세그먼트2: 5~7.667s(자막 없음, speed 1.5 → 4/1.5=2.667s),
-    // 세그먼트3: 7.667~9.667s(자막, speed 2 → 4/2=2s)
+    // Segment 1: 0-5s (subtitle), segment 2: 5-7.667s (no subtitle, speed 1.5 -> 4/1.5=2.667s),
+    // segment 3: 7.667-9.667s (subtitle, speed 2 -> 4/2=2s)
     expect(srt).toContain("00:00:00,000 --> 00:00:05,000");
     expect(srt).toContain("00:00:07,667 --> 00:00:09,667");
   });

@@ -55,8 +55,8 @@ const THEME_MODE_OPTIONS: Array<{ value: ThemeModeSetting; label: string; icon: 
   },
 ];
 
-/** 시스템/라이트/다크 3단 테마 토글 — 클릭한 값을 그대로 상위(main.tsx의 Root)에 알리고,
-    거기서 localStorage에 기억한 뒤 Astryx <Theme mode>에 반영한다. */
+/** System/Light/Dark 3-way theme toggle — reports the clicked value straight up to the parent
+    (Root in main.tsx), which remembers it in localStorage and then applies it to Astryx's <Theme mode>. */
 function ThemeModeToggle({
   themeMode,
   onThemeModeChange,
@@ -83,8 +83,8 @@ function ThemeModeToggle({
 }
 
 /**
- * 슬림 고정 헤더(screen-spec 1절): [앱명] ··· [실행취소][다시실행] | [테마 토글][?]
- * | [저장(dirty점)][내보내기] — 오른쪽 끝이 주행동(저장/내보내기).
+ * Slim fixed header (screen-spec section 1): [app name] ... [Undo][Redo] | [theme toggle][?]
+ * | [Save (dirty dot)][Export] — the far right holds the primary actions (Save/Export).
  */
 export function HeaderBar({
   projectName,

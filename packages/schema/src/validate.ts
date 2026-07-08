@@ -6,7 +6,7 @@ export type ValidationResult =
   | { ok: true; data: CueSheet }
   | { ok: false; errors: string[] };
 
-/** zod issue path(예: ["segments", 0, "in"])를 "segments[0].in" 형태로 변환 */
+/** Converts a zod issue path (e.g. ["segments", 0, "in"]) into "segments[0].in" form */
 function pathToString(path: ReadonlyArray<PropertyKey>): string {
   let out = "";
   for (const key of path) {
@@ -24,9 +24,9 @@ function formatIssue(issue: z.core.$ZodIssue): string {
 }
 
 /**
- * 큐시트 JSON을 검증한다.
- * 성공 시 파싱된 데이터(default 적용), 실패 시 어느 필드가 왜 틀렸는지
- * 명확한 에러 메시지 목록을 돌려준다.
+ * Validates a cuesheet JSON.
+ * On success, returns the parsed data (with defaults applied); on failure, returns a
+ * list of clear error messages describing which field is wrong and why.
  */
 export function validateCueSheet(json: unknown): ValidationResult {
   const result = cueSheetSchema.safeParse(json);

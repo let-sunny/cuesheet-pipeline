@@ -9,7 +9,7 @@ const DEFAULT_OVERRIDE_BACKGROUND: SubtitleBackground = { color: "#000000", opac
 
 interface Props {
   segment: Segment;
-  /** 오버라이드가 생략한 필드의 실제 표시값(전역 스타일) — 편집 시작값과 슬라이더 표시에 쓴다. */
+  /** The actual displayed value (global style) for fields the override omits — used as the starting edit value and the slider display. */
   globalStyle: SubtitleStyle;
   onToggle: (enabled: boolean) => void;
   onChangeOverride: (patch: Partial<SubtitleStyleOverride>) => void;
@@ -18,14 +18,15 @@ interface Props {
 }
 
 /**
- * 자막(G3) 그룹 하위의 "이 컷만 자막 스타일" - 켜면 segment.styleOverride가(초기엔
- * 전역 스타일을 그대로 복사한 값으로) 생겨 size/color/outlineColor/배경/margin을 이
- * 컷만 따로 편집할 수 있다. 켜고 끄는 토글(데이터 변경)과 세부 필드를 접고 펼치는
- * 디스클로저(순수 UI)를 분리했다 - Astryx Collapsible의 트리거는 통째로 버튼이라
- * 그 안에 체크박스를 중첩하면(무효한 HTML 중첩 + 클릭 버블링 충돌) 펼치기만 해도
- * 오버라이드가 켜지는 사고가 날 수 있어서다. 좌측 세로선(.qf-style-override)으로
- * "자막 소속"임을 표시한다 - 독립 섹션처럼 보이지 않게 하는 것이 이 컴포넌트의
- * 핵심 존재 이유(screen-spec 4절 "현행 문제의 핵심 교정").
+ * "Subtitle style for this cut" nested under the Subtitle (G3) group - turning it on creates
+ * segment.styleOverride (initially a copy of the global style), letting you edit
+ * size/color/outlineColor/background/margin for this cut alone. The on/off toggle (a data
+ * change) is kept separate from the disclosure that expands/collapses the detail fields (pure
+ * UI) - because Astryx's Collapsible trigger is a single button, and nesting a checkbox inside
+ * it (invalid HTML nesting + click-bubbling conflict) could accidentally turn the override on
+ * just by expanding it. The left vertical line (.qf-style-override) marks it as "belonging to
+ * subtitle" - keeping it from looking like an independent section is this component's core
+ * reason for existing (screen-spec section 4, "key fix for the current problem").
  */
 export function SegmentStyleOverride({
   segment,

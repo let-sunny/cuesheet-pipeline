@@ -2,9 +2,10 @@ import { z } from "zod";
 import type { Manifest } from "./scan.js";
 
 /**
- * "실수/풀기(frogging) 서사" 감지 프로토타입: 단일 프레임 판독으론 편물이 자라는 중인지
- * 줄어드는(풀리는) 중인지 알 수 없다 — 시간축 인접 프레임 쌍을 Claude가 비교 판독해야
- * 잡힌다. 롱테이크(5분 이상)만 대상으로 한다 — 짧은 클립엔 이 서사가 나올 시간이 없다.
+ * Prototype for detecting "mistake / frogging" narratives: a single-frame reading can't
+ * tell whether the knitted piece is growing or shrinking (being frogged/undone) — this
+ * requires Claude to compare adjacent frame pairs along the time axis. Only long-take
+ * clips (5+ minutes) are targeted — short clips don't have time for this narrative to unfold.
  */
 
 const LONGTAKE_MIN_DUR_S = 300;
@@ -18,8 +19,8 @@ export interface FramePair {
 }
 
 /**
- * manifest의 클립별 프레임 시퀀스에서 인접 프레임 쌍 스케줄을 만든다.
- * minDurS 미만인 클립은 제외(기본 300초=5분).
+ * Builds a schedule of adjacent frame pairs from each clip's frame sequence in the manifest.
+ * Clips shorter than minDurS are excluded (default 300s = 5 minutes).
  */
 export function buildPairSchedule(manifest: Manifest, minDurS = LONGTAKE_MIN_DUR_S): FramePair[] {
   const pairs: FramePair[] = [];
@@ -37,8 +38,9 @@ export function buildPairSchedule(manifest: Manifest, minDurS = LONGTAKE_MIN_DUR
 }
 
 /**
- * progress.json 스키마(zod). 프레임 쌍마다 Claude가 두 프레임을 보고 작성하는 판정.
- * shrank = 편물이 줄어듦(바늘에서 빠짐/실뭉치로 되돌아감 등) = 풀기(frogging) 신호.
+ * progress.json schema (zod). The judgment Claude writes for each frame pair after
+ * looking at both frames. shrank = the knitted piece got smaller (came off the needles,
+ * reverted to yarn, etc.) = a frogging signal.
  */
 export const progressVerdictSchema = z.enum(["grew", "shrank", "same", "unclear"]);
 
@@ -66,11 +68,13 @@ export interface NarrativeEvent {
 }
 
 /**
- * 판정 배열에서 실수/풀기 서사 이벤트를 뽑는다. 클립별로 tA 오름차순 정렬 후
- * "마지막 유효 상태"(same/unclear/저신뢰를 건너뛴 최근 grew|shrank)의 전이를 본다 —
- * 롱테이크는 인접 쌍 대부분이 same이라 인접 전이만 보면 이벤트가 과소 발화된다(실측).
- * - mistake_discovered: 유효 상태가 shrank가 아니었다가 shrank가 되는 경계.
- * - resumed: 유효 상태가 shrank였다가 grew로 돌아오는 경계(다시 뜨기 시작).
+ * Extracts mistake/frogging narrative events from an array of judgments. Sorts by tA
+ * ascending per clip, then looks at transitions in the "last valid state" (the most recent
+ * grew|shrank, skipping over same/unclear/low-confidence) — in long takes, most adjacent
+ * pairs are "same", so looking only at adjacent transitions under-fires events (observed
+ * in practice).
+ * - mistake_discovered: the boundary where the valid state was not shrank and becomes shrank.
+ * - resumed: the boundary where the valid state was shrank and returns to grew (knitting resumes).
  */
 export function extractNarrativeEvents(
   judgments: ProgressJudgment[],

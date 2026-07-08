@@ -84,7 +84,7 @@ describe("assembleDraft", () => {
     expect(cue.segments).toHaveLength(1);
     const seg = cue.segments?.[0];
     expect(seg?.in).toBe(0);
-    expect(seg?.out).toBe(60); // 90초 구간이지만 60초로 슬라이스 제한
+    expect(seg?.out).toBe(60); // 90s range, but the slice is capped at 60s
   });
 
   it("배속 커넥터는 에피소드당 8개 상한을 넘지 않는다", () => {
@@ -118,8 +118,9 @@ describe("assembleDraft", () => {
   });
 
   it("패딩 포함 길이가 3.5초를 넘으면 양끝을 대칭으로 줄여 3.5초로 클램프한다", () => {
-    // 두 번째(짧은) 컷을 함께 넣어 전체 평균을 3.1초 미만으로 유지 — 평균 수렴 패스가
-    // 끼어들어 이 케이스의 클램프 값을 추가로 다듬는 것을 막기 위함(별도 테스트에서 검증).
+    // Add a second (short) cut too, to keep the overall average under 3.1s — this prevents
+    // the average-convergence pass from kicking in and further trimming this case's clamp
+    // value (verified separately in another test).
     const moments: ClipMoments[] = [
       {
         clip: "a.mp4",
@@ -131,7 +132,7 @@ describe("assembleDraft", () => {
         monotonousRanges: [],
       },
     ];
-    // 기본 패딩 0.4s: 패딩 포함 길이 6.8 -> 초과분 3.3을 양끝에서 1.65씩 줄여 3.5초.
+    // Default padding 0.4s: padded length 6.8 -> excess 3.3 trimmed 1.65 from each end to reach 3.5s.
     const cue = assembleDraft(moments, opts());
     const seg = cue.segments?.find((s) => s.subtitle === "긴 컷");
     expect((seg?.out ?? 0) - (seg?.in ?? 0)).toBeCloseTo(3.5, 10);
@@ -275,8 +276,9 @@ describe("assembleDraft", () => {
   });
 
   it("클립 경계(clipDurations)를 넘는 패딩은 클립 길이에서 클램프한다", () => {
-    // 패딩 포함 길이가 MAX_CUT_S(3.5초)를 넘지 않게 짧은 moment로 구성해 클램프/평균수렴
-    // 패스가 섞이지 않고 경계(clipDurations) 클램프만 단독으로 관찰되게 한다.
+    // Compose a short moment so the padded length doesn't exceed MAX_CUT_S (3.5s), keeping
+    // the clamp/average-convergence passes from mixing in — so only the boundary
+    // (clipDurations) clamp is observed in isolation.
     const moments: ClipMoments[] = [
       {
         clip: "a.mp4",
@@ -287,7 +289,7 @@ describe("assembleDraft", () => {
     ];
     const cue = assembleDraft(moments, { ...opts(), clipDurations: { "a.mp4": 2 } });
     const seg = cue.segments?.[0];
-    // 앞쪽은 0.2 - 0.4 = -0.2 -> 0으로, 뒤쪽은 1.7 + 0.4 = 2.1 -> 클립 길이 2로 클램프.
+    // Front: 0.2 - 0.4 = -0.2 -> clamped to 0. Back: 1.7 + 0.4 = 2.1 -> clamped to clip length 2.
     expect(seg?.in).toBe(0);
     expect(seg?.out).toBe(2);
   });
@@ -304,7 +306,8 @@ describe("assembleDraft", () => {
         monotonousRanges: [],
       },
     ];
-    // 패딩만 적용하면 앞컷 out=2.4, 뒤컷 in=2.1로 0.3초 겹친다 -> 절반씩(0.15) 되돌려 2.25에서 맞닿는다.
+    // With padding alone, front cut out=2.4 and back cut in=2.1 would overlap by 0.3s ->
+    // rolled back by half (0.15) each, meeting at 2.25.
     const cue = assembleDraft(moments, opts());
     const front = cue.segments?.[0];
     const back = cue.segments?.[1];

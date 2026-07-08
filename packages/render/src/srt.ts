@@ -1,6 +1,6 @@
 import type { CueSheet } from "@cuesheet/schema";
 
-/** 초 단위 시각을 SRT 타임스탬프(HH:MM:SS,mmm)로 포맷한다. */
+/** Formats a time in seconds as an SRT timestamp (HH:MM:SS,mmm). */
 export function secondsToSrtTimestamp(totalSeconds: number): string {
   const ms = Math.max(0, Math.round(totalSeconds * 1000));
   const hh = Math.floor(ms / 3600000);
@@ -12,13 +12,15 @@ export function secondsToSrtTimestamp(totalSeconds: number): string {
 }
 
 /**
- * 세그먼트를 순서대로 훑으며 출력 타임라인 시각((out-in)/speed 누적)을 SRT로 변환한다.
- * 자막이 빈 컷은 스킵하고 인덱스는 남은 큐만으로 연속 재부여한다.
- * intro/outro는 narration 오프셋과 동일한 v1 제약으로 이 누적에 포함하지 않는다
- * (render/plan.ts 참고 — intro 길이를 파일 프로빙 없이 알 수 없어서).
+ * Walks the segments in order and converts the output-timeline time ((out-in)/speed,
+ * cumulative) into SRT. Cuts with an empty subtitle are skipped, and indices are
+ * renumbered consecutively using only the remaining cues.
+ * intro/outro are excluded from this accumulation under the same v1 constraint as the
+ * narration offset (see render/plan.ts — intro duration can't be known without probing the file).
  *
- * 큐시트를 소비해 출력물(SRT)을 만드는 로직이라 render 패키지 소속 —
- * web(cuesheet-plugin.ts)의 /api/subtitles.srt 라우트와 CLI(--srt) 둘 다 이 함수를 그대로 쓴다.
+ * This lives in the render package because it's logic that consumes a cuesheet to produce
+ * an output artifact (SRT) — both web's (cuesheet-plugin.ts) /api/subtitles.srt route and
+ * the CLI (--srt) use this function as-is.
  */
 export function buildSrt(cue: CueSheet): string {
   let cursor = 0;

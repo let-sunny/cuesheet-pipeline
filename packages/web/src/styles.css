@@ -2,13 +2,14 @@
   font-family: system-ui, -apple-system, "Pretendard", sans-serif;
 
   /*
-   * 커스텀(비-Astryx) 색 토큰. light-dark()로 라이트/다크 값을 한 선언에 묶는다 —
-   * html의 color-scheme(Astryx Theme가 data-theme로 동기화)에 따라 자동 전환되므로
-   * 테마 토글을 위한 별도 선택자 분기가 필요 없다. 다크 값은 기존 하드코딩 값 그대로
-   * 보존해 회귀가 없게 하고, 라이트 값만 새로 추가한다.
+   * Custom (non-Astryx) color tokens. light-dark() bundles the light/dark value into one
+   * declaration — it switches automatically based on html's color-scheme (kept in sync with
+   * data-theme by Astryx Theme), so no separate selector branch is needed for the theme toggle.
+   * The dark values are kept exactly as their existing hardcoded values to avoid regressions;
+   * only the light values are newly added.
    */
 
-  /* 표면(패널/카드/행 배경) */
+  /* Surfaces (panel/card/row backgrounds) */
   --surface-0: light-dark(#eef0f5, #12141a);
   --surface-1: light-dark(#ffffff, #1b1e28);
   --surface-2: light-dark(#e7e9f2, #232838);
@@ -17,12 +18,12 @@
   --surface-button: light-dark(#e7e9f2, #2a3042);
   --surface-button-hover: light-dark(#dbe0ee, #333a50);
 
-  /* 보더 */
+  /* Borders */
   --border: light-dark(#d5d9e6, #33394d);
   --border-soft: light-dark(#dde1ee, #292f40);
   --border-dashed: light-dark(#cdd2e2, #3a4056);
 
-  /* 텍스트 */
+  /* Text */
   --text-primary: light-dark(#1f2430, #e6e8ee);
   --text-secondary: light-dark(#6b7080, #8a90a2);
   --text-tertiary: light-dark(#5b6172, #9aa0b4);
@@ -34,11 +35,11 @@
   --text-muted-3: light-dark(#7d829a, #8a8fa3);
   --text-muted-4: light-dark(#7d829a, #6a7086);
 
-  /* 강조(accent) - 브랜드 블루는 양 테마 공통 */
+  /* Accent - brand blue is shared across both themes */
   --accent: #5b7cfa;
   --accent-strong: light-dark(#4f6de0, #5b7cfa88);
 
-  /* 상태 색 */
+  /* Status colors */
   --success-text: light-dark(#1f7a45, #7fe3a3);
   --success-border: light-dark(#3fae6a66, #3fae6a55);
   --error-text: light-dark(#a13a3a, #f29a9a);
@@ -46,12 +47,12 @@
   --warning-text: light-dark(#8a5a17, #f0a34a);
   --warning-border: light-dark(#f0a34a66, #f0a34a55);
 
-  /* 항상 어두운 톤 — 비디오 스테이지/타임라인 썸네일 배경 전용
-     (영상 편집 관례상 테마와 무관하게 항상 어둡게 유지) */
+  /* Always-dark tone — used only for the video stage/timeline thumbnail background
+     (kept always dark regardless of theme, per video editing convention) */
   --stage-bg: #12141a;
 
-  /* 카테고리 배지(장면 태그/샷 유형) - 색상값은 Astryx theme-stone의 라이트 팔레트를
-     그대로 채용해 대비가 이미 검증된 값을 재사용한다 */
+  /* Category badges (scene tags/shot type) - the color values adopt Astryx theme-stone's light
+     palette as-is, reusing values whose contrast is already verified */
   --tag-blue-bg: light-dark(#d7e4f5, #242f57);
   --tag-blue-text: light-dark(#3c4856, #a9b8fb);
   --tag-blue-border: light-dark(#a9c2e6, #6a8dfa88);
@@ -74,10 +75,11 @@
   --tag-gray-bg: light-dark(#e2e2e8, #2a2e3d);
   --tag-gray-text: light-dark(#46464b, #9aa0b4);
 
-  /* 반투명 배지(탈락/사용중 표시) — moment-thumb(항상 어두운 썸네일 캔버스, 스펙 3번)
-     위에 얹히는 오버레이라 테마와 무관하게 고정값이어야 한다(밝은 배경 위 배지가
-     아니라 항상 어두운 사진 위 배지). light-dark()로 만들면 라이트 모드에서
-     어두운 배경+어두운 텍스트가 되어 사라지므로 고정 다크 값만 쓴다. */
+  /* Semi-transparent badges (excluded/in-use indicators) — since these overlay moment-thumb
+     (an always-dark thumbnail canvas, spec item 3), they must be fixed values regardless of theme
+     (a badge on an always-dark photo, not a badge on a light background). Making these
+     light-dark() would turn into a dark background + dark text in light mode and disappear, so
+     only fixed dark values are used. */
   --badge-quality-bg: #4a4d5799;
   --badge-quality-text: #c7cbd8;
   --badge-face-bg: #b56a1acc;
@@ -85,21 +87,22 @@
   --badge-inuse-bg: #d95757cc;
   --badge-inuse-text: #ffffff;
 
-  /* BGM 트랙 */
+  /* BGM track */
   --bgm-cue-bg: light-dark(#cbe8da, #2f5a45);
   --bgm-cue-border: light-dark(#63b58f, #4f9c76);
 
-  /* 비디오 위 장면 컨텍스트 헤더 박스 */
+  /* Scene context header box over the video */
   --context-box-bg: light-dark(#e3e8fb, #1a2036);
   --context-box-border: light-dark(#c5d0f5, #2c355a);
 }
 
 /*
- * @astryxdesign/theme-stone의 다크 모드 --color-overlay-hover/--color-overlay-pressed
- * 값에 알파가 빠져 있어(라이트 모드는 #25252a0d처럼 알파 포함, 다크는 #f3f3f5로 불투명)
- * hover 시 Tab 등 컴포넌트의 절대배치 오버레이 span이 라벨을 완전히 덮는 흰 박스로
- * 렌더된다. light-dark()로 직접 both 값을 다시 정의해 고친다(시스템 모드에서 OS가
- * 다크를 선택한 경우도 포함해 항상 반투명이 되도록 data-theme 대신 색상 함수로 분기).
+ * @astryxdesign/theme-stone's dark-mode --color-overlay-hover/--color-overlay-pressed values are
+ * missing alpha (light mode includes alpha like #25252a0d, but dark is opaque #f3f3f5), so on
+ * hover, components like Tab render an absolutely-positioned overlay span that renders as a solid
+ * white box fully covering the label. This is fixed by redefining both values directly with
+ * light-dark() (branching on the color function instead of data-theme, so it stays semi-transparent
+ * even when the OS picks dark under system mode).
  */
 [data-astryx-theme="stone"] {
   --color-overlay-hover: light-dark(#25252a0d, rgba(243, 243, 245, 0.08));
@@ -107,13 +110,13 @@
 }
 
 /*
- * @astryxdesign/theme-stone의 theme.css가 `@layer astryx-theme { :root { color-scheme:
- * light dark; } }`를 무조건 선언한다 — CSS 레이어는 명시도와 무관하게 나중 레이어가
- * 항상 이기므로, Astryx reset.css의 `@layer reset` 안 data-theme 기반 color-scheme
- * 규칙(:where(html[data-theme="dark"]) 등)을 이 astryx-theme 레이어가 덮어써 버린다.
- * 우리 스타일시트는 레이어 밖(unlayered)이라 항상 모든 레이어를 이기므로, 여기서
- * data-theme -> color-scheme을 직접 다시 연결해야 body 등 Theme 래퍼 밖 요소까지
- * light-dark()가 올바르게 풀린다.
+ * @astryxdesign/theme-stone's theme.css unconditionally declares
+ * `@layer astryx-theme { :root { color-scheme: light dark; } }` — since CSS layers always let a
+ * later layer win regardless of specificity, this astryx-theme layer overrides the data-theme-based
+ * color-scheme rules (e.g. :where(html[data-theme="dark"])) inside Astryx reset.css's `@layer reset`.
+ * Our stylesheet is unlayered, so it always wins over every layer — meaning data-theme -> color-scheme
+ * must be reconnected directly here for light-dark() to resolve correctly even for elements outside
+ * the Theme wrapper, like body.
  */
 html[data-theme="light"] {
   color-scheme: light;
@@ -292,8 +295,8 @@ textarea {
   gap: 12px;
 }
 
-/* 헤더의 시스템/라이트/다크 3단 테마 토글 — .playmode-toggle/.render-resolution-options와
-   같은 "plain button + .active" 패턴. */
+/* The header's system/light/dark three-way theme toggle — same "plain button + .active" pattern
+   as .playmode-toggle/.render-resolution-options. */
 .theme-mode-toggle {
   display: flex;
   gap: 2px;
@@ -336,8 +339,8 @@ textarea {
   padding: 2px 8px;
 }
 
-/* 헤더 버튼 클러스터 구분선(screen-spec 1절 "|") - 실행취소/다시실행 | 테마/?
-   | 저장/내보내기 세 묶음의 소속을 시각적으로 나눈다. */
+/* Header button cluster divider (screen-spec section 1, "|") - visually separates the three
+   groups: undo/redo | theme/? | save/export. */
 .header-divider {
   width: 1px;
   height: 20px;
@@ -357,8 +360,8 @@ textarea {
   font-size: 13px;
 }
 
-/* 배너 안 버튼 그룹(예: 이어서 편집/폐기) — 텍스트와 분리된 하나의 액션 묶음으로
-   나란히·우측에 붙인다(screen-spec 6절). */
+/* Button group inside a banner (e.g. continue editing/discard) — grouped as one action unit
+   separated from the text, laid out side by side and right-aligned (screen-spec section 6). */
 .banner-actions {
   display: flex;
   flex-shrink: 0;
@@ -405,7 +408,7 @@ textarea {
   border-radius: 8px;
 }
 
-/* 자막 스타일 패널은 큰 프레임 미리보기를 담으므로 더 넓게 자란다. */
+/* The subtitle style panel holds a large frame preview, so it grows wider. */
 .settings-group-wide {
   flex: 2 1 480px;
 }
@@ -472,12 +475,12 @@ textarea {
 }
 
 /*
- * 폭 토큰 3종(screen-spec 0-2/4절 확정, 2026-07-08) — 라벨+입력 페어가 있는 화면
- * 전반(컷 설정/마무리 등)에서 공유한다. narrow=숫자 5자(IN/OUT/배속/볼륨),
- * medium=셀렉트·짧은 텍스트, full=textarea·슬라이더.
- * narrow 폭은 64px -> 80px로 확정 — 64px는 실측값 "39.87"(5자+소수점) 같은 값이
- * 네이티브 number 스피너 화살표와 겹쳐 잘려 보이는 문제가 있었다(컷 설정 실측
- * 스크린샷에서 재현). 80px는 5자+소수점+스피너가 잘리지 않고 들어간다.
+ * 3 width tokens (finalized in screen-spec sections 0-2/4, 2026-07-08) — shared across screens
+ * with label+input pairs (cut settings/finishing, etc). narrow=5 digits (IN/OUT/speed/volume),
+ * medium=select/short text, full=textarea/slider.
+ * The narrow width was finalized at 64px -> 80px — 64px had a problem where a measured value like
+ * "39.87" (5 digits + decimal point) overlapped and got clipped by the native number spinner
+ * arrows (reproduced in cut-settings screenshots). 80px fits 5 digits + decimal + spinner without clipping.
  */
 .field-narrow input,
 .field-narrow select {
@@ -544,10 +547,10 @@ textarea {
   margin-top: 10px;
 }
 
-/* 너비는 사용처(.trim-video-col)의 컬럼 폭을 그대로 따른다 —
-   예전엔 flex: 0 0 360px로 고정 높이/폭을 강제해, 트림 상태(빈 영상 등)에서
-   컨트롤이 붙어 있어야 할 자리에 빈 여백만 남고 아래 필드 패널이 멀어져 보이는
-   문제가 있었다. */
+/* Width follows the column width of the consumer (.trim-video-col) as-is —
+   this used to force a fixed height/width via flex: 0 0 360px, which left just empty space where
+   controls should have been attached during trim states (e.g. no video), making the field panel
+   below look pushed too far away. */
 .video-preview {
   width: 100%;
   box-sizing: border-box;
@@ -559,8 +562,9 @@ textarea {
   border-radius: 8px;
 }
 
-/* 비디오 위 맥락 헤더 — "지금 보는 게 무슨 장면인지"가 화면을 켜자마자 가장 먼저
-   눈에 들어와야 하므로 장면 줄(video-context-scene)을 자막/시간 줄보다 위·크게 둔다. */
+/* Context header over the video — since "what scene am I looking at" should be the very first
+   thing seen the moment the screen appears, the scene line (video-context-scene) is placed above
+   and larger than the subtitle/time line. */
 .video-context-header {
   display: flex;
   flex-direction: column;
@@ -603,8 +607,8 @@ textarea {
 }
 
 .video-context-scene-text {
-  /* 판단에 필요한 장면 묘사 전문을 최대한 보여준다 — 짧으면 1줄, 길면 여러 줄까지
-     그대로 줄바꿈하고 잘라내지 않는다(말줄임 금지). */
+  /* Shows the full scene description text needed for judgment as much as possible — wraps as-is,
+     from one line if short to multiple lines if long, and is never truncated (no ellipsis). */
   white-space: normal;
   word-break: keep-all;
 }
@@ -614,7 +618,7 @@ textarea {
   line-height: 1.4;
   color: var(--text-tertiary);
   padding-left: 2px;
-  /* 자막은 장면보다 톤을 낮춘 보조 정보 — 판단에 필요한 전문은 title 툴팁으로 볼 수 있다. */
+  /* The subtitle is secondary info toned down relative to the scene — the full text needed for judgment can be seen via the title tooltip. */
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -629,10 +633,10 @@ textarea {
   background: black;
 }
 
-/* crop이 있는 컷의 미리보기 — video는 그대로 100% 크기를 유지한 채 CSS transform으로
-   확대/이동되고, 이 래퍼가 overflow:hidden으로 잘라내 crop 영역만 보이게 한다.
-   container-type: inline-size로 컨테이너 쿼리 컨텍스트를 열어, 자막 오버레이가 cqw
-   단위로 "이 프레임의 실제 렌더 폭 대비 %"인 폰트 크기/외곽선 두께를 쓸 수 있게 한다. */
+/* Preview of a cut that has a crop — the video keeps its 100% size as-is and is scaled/moved via
+   CSS transform, and this wrapper cuts it off with overflow:hidden so only the crop area is
+   visible. container-type: inline-size opens a container query context, so the subtitle overlay
+   can use cqw units for a font size/outline width that's "a % of this frame's actual rendered width". */
 .video-crop-frame {
   position: relative;
   overflow: hidden;
@@ -644,8 +648,9 @@ textarea {
   display: block;
 }
 
-/* 자막 인라인 편집 중 우측 비디오 위 즉시 오버레이(대략적 CSS 근사 — 렌더가 최종 진실).
-   .sequence-subtitle과 같은 패턴이지만 video-crop-frame(비디오 자연 비율) 기준. */
+/* Live overlay on the video to the right during inline subtitle editing (a rough CSS approximation
+   — the render is the ground truth). Same pattern as .sequence-subtitle but relative to
+   video-crop-frame (the video's natural aspect ratio). */
 .video-subtitle-overlay {
   position: absolute;
   left: 0;
@@ -678,7 +683,7 @@ textarea {
   -webkit-box-decoration-break: clone;
 }
 
-/* 크롭 편집 모드 — 상단 수치/버튼 바 */
+/* Crop edit mode — top values/button bar */
 .crop-edit-toolbar {
   display: flex;
   align-items: center;
@@ -701,8 +706,8 @@ textarea {
   padding: 3px 10px;
 }
 
-/* 크롭 편집 모드 — 비디오 위 오버레이(어두운 바깥 + 밝은 크롭 사각형 + 핸들).
-   실제 영상 픽셀 위에 얹히는 요소라 테마와 무관하게 고정 색을 그대로 쓴다. */
+/* Crop edit mode — overlay on the video (dark outside + bright crop rectangle + handles).
+   Since this sits directly on actual video pixels, it uses fixed colors regardless of theme. */
 .crop-edit-overlay {
   position: absolute;
   inset: 0;
@@ -882,8 +887,9 @@ textarea {
   white-space: nowrap;
 }
 
-/* segment-track 자체는 세그먼트 수만큼 최소 폭이 커질 수 있어(세그먼트당 최소 64px),
-   페이지로 삐져나가지 않게 이 안에서만 가로 스크롤되게 감싼다. */
+/* segment-track itself can grow its minimum width in proportion to the segment count (minimum
+   64px per segment), so this wraps it to scroll horizontally within itself, keeping it from
+   overflowing the page. */
 .segment-track-scroll {
   overflow-x: auto;
   margin-bottom: 10px;
@@ -1011,8 +1017,8 @@ textarea {
   font-size: 13px;
 }
 
-/* 장면 후보가 아직 하나도 없을 때(초안 미생성) 다음 행동을 알려주는 안내 - PRD 8절
-   "초안 없음(빈 상태)" 카탈로그. */
+/* Guidance shown when there are no scene candidates yet (draft not generated), telling the user
+   what to do next - PRD section 8 "No draft (empty state)" catalog. */
 .empty-state {
   padding: 24px 16px;
   text-align: center;
@@ -1063,9 +1069,9 @@ textarea {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  /* 카드 높이가 이제 장면 묘사 길이에 따라 제각각이라(클램프 제거) 기본값인
-     stretch를 두면 짧은 메모 카드가 같은 줄의 긴 카드 높이만큼 늘어나 버린다.
-     각 줄은 독립적으로(masonry는 아님) 자기 콘텐츠 높이만 차지하게 한다. */
+  /* Since card heights now vary by scene description length (clamp removed), leaving the default
+     stretch would make a short memo card stretch to the height of a longer card on the same row.
+     Each row independently (not masonry) takes only its own content's height. */
   align-items: flex-start;
 }
 
@@ -1073,9 +1079,9 @@ textarea {
   width: 168px;
 }
 
-/* 배경/테두리/둥근 모서리는 이제 Astryx Card(variant="default")가 담당한다 —
-   여기서는 그리드 안에서의 크기·레이아웃·overflow-hidden(썸네일 위 모서리
-   클리핑용)만 얹는다. */
+/* Background/border/rounded corners are now handled by Astryx Card (variant="default") —
+   this only adds size/layout within the grid and overflow-hidden (for clipping the thumbnail's
+   top corners). */
 .moment-card {
   width: 100%;
   display: flex;
@@ -1083,13 +1089,15 @@ textarea {
   overflow: hidden;
 }
 
-/* 탈락(자동 제외) 카드 및 사용 중 카드 상태 표현 규칙(screen-spec 2절, 2026-07-08 개정,
-   2026-07-08 재개정) — 전체 opacity 흐림도, 썸네일만 채도를 낮추는 것도(grayscale) 둘 다
-   가독성을 해친다는 사용자 피드백으로 완전히 폐기했다. 이제 두 상태 모두 카드/썸네일은
-   항상 100% 대비로 그대로 보여주고, 상태는 오직 (a) 카드 최상단 전폭 배너
-   (.moment-status-banner, 제외 사유) (b) 코너 배지(.moment-badge-in-use, 사용 중)
-   (c) 테두리 색(아래)만으로 전달한다 — "존재하지만 자동으로는 채택 안 됨(되살릴 수 있음)"
-   이지 "흐려서/탈색돼서 안 보이는 것"이 아니다. 설명/메타/액션 영역도 항상 온전한 대비. */
+/* Rules for representing excluded (auto-filtered) card and in-use card state (screen-spec section
+   2, revised 2026-07-08, re-revised 2026-07-08) — both a full-opacity dimming and a
+   thumbnail-only desaturation (grayscale) were entirely abandoned based on user feedback that both
+   hurt readability. Now both states always show the card/thumbnail at full 100% contrast, and
+   state is conveyed only via (a) a full-width banner at the top of the card
+   (.moment-status-banner, the exclusion reason), (b) a corner badge (.moment-badge-in-use,
+   in use), and (c) the border color (below) — the message is "exists but wasn't auto-adopted
+   (can be brought back)", not "dimmed/desaturated and hard to see". The description/meta/action
+   areas always keep full contrast too. */
 .moment-card.status-rejected-face {
   border: 1px solid var(--error-border);
 }
@@ -1098,8 +1106,9 @@ textarea {
   border: 1px solid var(--warning-border);
 }
 
-/* 자동 제외 사유 배너 — 카드 맨 위, 전폭. 코너의 작은 배지보다 훨씬 눈에 띄어야
-   한다는 게 이번 개정의 핵심(작아서 "흐린 카드=비활성"으로 오독됐던 문제). */
+/* Auto-exclusion reason banner — top of the card, full width. The core of this revision is that
+   it must be far more noticeable than the small corner badge (the previous problem where its
+   smallness got misread as "dimmed card = inactive"). */
 .moment-status-banner {
   padding: 4px 8px;
   font-size: 11px;
@@ -1120,8 +1129,8 @@ textarea {
   color: var(--warning-text);
 }
 
-/* 배경은 의도적으로 테마 무관 고정 다크 — 로드 전/후 항상 영상 프레임 썸네일이
-   얹히는 캔버스라 라이트 테마에서도 어둡게 유지한다(스펙 3번). */
+/* Background is intentionally fixed dark regardless of theme — since this is a canvas that always
+   holds a video frame thumbnail before/after loading, it stays dark even in light theme (spec item 3). */
 .moment-thumb {
   position: relative;
   width: 100%;
@@ -1142,11 +1151,11 @@ textarea {
   background: var(--stage-bg);
 }
 
-/* 번호칩(클립명+시각) + "사용 중" 배지를 한 flex-wrap 행에 담는 오버레이 컨테이너
-   (2026-07-08 개정) — 예전엔 둘 다 독립적으로 absolute 배치(좌상단/우상단)라 클립
-   폴더명이 길면 번호칩이 우상단 배지와 겹치거나(overflow) 텍스트가 잘렸다. 이제는 같은
-   행의 두 flex 아이템이라 폭이 모자라면 배지가 자동으로 다음 줄로 내려간다(줄바꿈 우선,
-   텍스트 잘림/겹침 금지 — 사용자 피드백). */
+/* Overlay container holding the number chip (clip name + time) + "in use" badge in one flex-wrap
+   row (revised 2026-07-08) — previously both were independently absolute-positioned (top-left/
+   top-right), so a long clip folder name made the chip overlap the top-right badge (overflow) or
+   get its text clipped. Now, as two flex items on the same row, when width is insufficient the
+   badge automatically drops to the next line (wrapping is prioritized, no text clipping/overlap — per user feedback). */
 .moment-thumb-overlay {
   position: absolute;
   top: 4px;
@@ -1159,9 +1168,9 @@ textarea {
   gap: 4px;
 }
 
-/* moment-thumb(항상 어두운 썸네일 캔버스) 위 오버레이라 텍스트 색도 테마와 무관하게
-   고정 밝은 색이어야 한다 — 안 그러면 라이트 테마에서 색(--text-primary가 어두워짐)이
-   상속돼 어두운 칩 위 어두운 글자로 보이지 않는다. */
+/* Since this overlays moment-thumb (an always-dark thumbnail canvas), the text color must also be
+   a fixed light color regardless of theme — otherwise in light theme, an inherited color
+   (--text-primary turning dark) would show as dark text on a dark chip, invisible. */
 .moment-number {
   min-width: 0;
   overflow-wrap: break-word;
@@ -1172,15 +1181,15 @@ textarea {
   border-radius: 3px;
 }
 
-/* 색("사용 중" 강조)은 이제 Badge의 variant="success"가 담당 — 여기서는 오버레이 행
-   안에서 줄어들지 않게(항상 온전한 텍스트로 다음 줄에 내려가게)만 얹는다. */
+/* Color (the "in use" emphasis) is now handled by Badge's variant="success" — this only adds
+   not-shrinking behavior within the overlay row (always dropping to the next line with full text intact). */
 .moment-badge-in-use {
   flex-shrink: 0;
 }
 
-/* 메타 행(카테고리 배지·길이·품질) — screen-spec 0-2 "같은 행의 요소는 베이스라인
-   정렬"에 따라 align-items: baseline (2026-07-08). flex-wrap(2026-07-08 재개정): 카테고리
-   배지 라벨이 길어 폭이 모자라면 뒤 항목이 잘리는 대신 다음 줄로 내려간다. */
+/* Meta row (category badge/duration/quality) — align-items: baseline per screen-spec 0-2 "elements
+   on the same row are baseline-aligned" (2026-07-08). flex-wrap (re-revised 2026-07-08): if a long
+   category badge label leaves insufficient width, later items drop to the next line instead of getting clipped. */
 .moment-info {
   display: flex;
   align-items: baseline;
@@ -1191,9 +1200,10 @@ textarea {
   color: var(--text-tertiary);
 }
 
-/* 카드 내부 위계(screen-spec 2절) 컨테이너 — 썸네일(전폭, 패딩 없음) 아래
-   설명/메타/액션 세 그룹을 일관 패딩 12px + 그룹 간 명확한 gap으로 배치한다.
-   패딩·gap 수치는 screen-spec 4절 폭 토큰과 짝을 이루는 카드 전용 값. */
+/* Container for the card's internal hierarchy (screen-spec section 2) — below the thumbnail
+   (full width, no padding), lays out the description/meta/action three groups with consistent
+   12px padding + a clear gap between groups. The padding/gap figures are card-specific values
+   paired with the width tokens in screen-spec section 4. */
 .moment-card-body {
   display: flex;
   flex-direction: column;
@@ -1201,16 +1211,16 @@ textarea {
   padding: 12px;
 }
 
-/* 이 화면은 장면을 "읽고 고르는" 화면이라 설명 텍스트는 더 이상 클램프하지
-   않는다(Text maxLines={0}, 전문 노출) — 과거 line-clamp 요소가 이 flex-column
-   카드의 "직속" flex 아이템일 때 높이 계산이 어긋나던 버그 때문에 플레인
-   래퍼로 감쌌던 것인데, 패딩/gap은 이제 부모 .moment-card-body가 전담한다.  */
+/* Since this screen is for "reading and choosing" scenes, the description text is no longer
+   clamped (Text maxLines={0}, full text shown) — this used to be wrapped in a plain wrapper
+   because of a bug where a line-clamp element's height calculation broke when it was a "direct"
+   flex item of this flex-column card, but padding/gap are now fully owned by the parent .moment-card-body. */
 .moment-memo-wrap {
   padding: 0;
 }
 
-/* 담기/빼기(주 액션)와 인트로/아웃트로(보조 액션)는 같은 "액션" 그룹 — 그룹
-   내부는 촘촘히(6px), 위의 메타 행과는 body의 gap(10px)으로 분리된다. */
+/* Add/remove (primary action) and intro/outro (secondary action) are the same "action" group —
+   tight (6px) within the group, and separated from the meta row above by the body's gap (10px). */
 .moment-actions-group {
   display: flex;
   flex-direction: column;
@@ -1296,7 +1306,7 @@ textarea {
   white-space: nowrap;
 }
 
-/* ---- 편집 여정 4단계 셸 ---- */
+/* ---- 4-step editing journey shell ---- */
 
 .header-title-group {
   display: flex;
@@ -1308,7 +1318,7 @@ textarea {
   margin-top: 16px;
 }
 
-/* 미니 타임라인 스트립 + "본편 재생" 버튼을 나란히 두는 행 */
+/* Row placing the mini timeline strip + "Play all" button side by side */
 .mini-strip-row {
   display: flex;
   align-items: center;
@@ -1316,7 +1326,7 @@ textarea {
   margin-top: 12px;
 }
 
-/* 항상 표시되는 얇은 타임라인 스트립 */
+/* Always-visible thin timeline strip */
 .mini-strip {
   flex: 1 1 auto;
   display: flex;
@@ -1328,7 +1338,7 @@ textarea {
   min-width: 0;
 }
 
-/* 줌(확대) 시 track이 이 폭보다 넓어져 가로 스크롤이 생긴다. */
+/* When zoomed in, track becomes wider than this width, causing horizontal scroll. */
 .mini-strip-viewport {
   flex: 1 1 auto;
   display: flex;
@@ -1343,8 +1353,8 @@ textarea {
   min-width: 0;
 }
 
-/* 배경은 의도적으로 테마 무관 고정 다크 — 영상 프레임 썸네일이 얹히는 타임라인
-   캔버스라 라이트 테마에서도 어둡게 유지한다(스펙 3번). */
+/* Background is intentionally fixed dark regardless of theme — since this is a timeline canvas
+   that holds a video frame thumbnail, it stays dark even in light theme (spec item 3). */
 .mini-strip-block {
   position: relative;
   height: 20px;
@@ -1356,7 +1366,7 @@ textarea {
   cursor: pointer;
 }
 
-/* 축소(전체 보기) 상태에서도 클립이 바뀌는 경계가 눈에 띄도록 얇은 구분선을 준다. */
+/* Adds a thin divider so clip boundaries stand out even in the zoomed-out (full view) state. */
 .mini-strip-block.clip-boundary {
   border-left: 2px solid var(--accent-strong);
 }
@@ -1388,7 +1398,7 @@ textarea {
   color: var(--text-tertiary);
 }
 
-/* ② 편집 단계 */
+/* Step ② Edit */
 
 .edit-layout {
   display: flex;
@@ -1402,11 +1412,11 @@ textarea {
   align-items: flex-start;
 }
 
-/* 컷 리스트 오른쪽 전체(비디오+필드 패널)를 감싸는 2열 워크스페이스.
-   비디오 열과 필드 열의 최소폭 합이 화면폭을 넘으면(대략 1280px 미만) flex-wrap으로
-   필드 열이 비디오 아래로 자연스럽게 떨어진다.
-   좌측 컷 리스트(.compact-list)가 페이지 스크롤을 만들 만큼 길어지는 컷 수(수십~
-   수백 개)에서도 비디오+필드가 화면에 계속 보이도록 sticky로 뷰포트 상단에 붙인다. */
+/* Two-column workspace wrapping everything to the right of the cut list (video + field panel).
+   If the combined minimum width of the video column and field column exceeds the screen width
+   (roughly under 1280px), flex-wrap naturally drops the field column below the video.
+   Stuck to the top of the viewport via sticky, so the video+fields stay visible on screen even
+   when the cut count (tens to hundreds) makes the left cut list (.compact-list) long enough to create page scroll. */
 .trim-workspace {
   flex: 1 1 auto;
   min-width: 0;
@@ -1419,14 +1429,14 @@ textarea {
   align-self: flex-start;
 }
 
-/* 좌열(넓게): 장면 헤더 -> 비디오 -> 재생/트림 컨트롤이 VideoPreview 한 덩어리 안에
-   이미 붙어 있으므로, 여기서는 그 컬럼의 폭만 잡아준다. */
+/* Left column (wide): scene header -> video -> playback/trim controls are already bundled
+   together inside a single VideoPreview block, so this just sets that column's width. */
 .trim-video-col {
   flex: 2 1 480px;
   min-width: 480px;
 }
 
-/* 우열(좁게, 비디오 옆): 자막/배속/볼륨/내레이션/크롭 필드 패널. */
+/* Right column (narrow, next to the video): subtitle/speed/volume/narration/crop field panel. */
 .trim-fields-col {
   flex: 1 1 320px;
   min-width: 320px;
@@ -1434,15 +1444,17 @@ textarea {
 }
 
 .compact-list {
-  /* 썸네일(40px) 도입 후 자막/파일명 라벨(.compact-list-clip)이 한두 글자만 보일
-     만큼 눌렸었다 — 그만큼(썸네일+gap) 폭을 늘려 라벨이 다시 읽히게 한다.
-     360px에선 인라인 자막 textarea(.compact-list-text)가 시간/점/액션 버튼에 밀려
-     실사용 폭이 ~70px까지 줄어 한글이 4~5자마다 줄바꿈되는 문제가 있어(몰아쓰기 중
-     가독성 저해) 480px로 넓혀 textarea 실사용 폭을 ~190px까지 확보한다. */
+  /* After the thumbnail (40px) was introduced, the subtitle/file name label (.compact-list-clip)
+     got squeezed down to showing only one or two characters — widening by that much
+     (thumbnail+gap) lets the label be readable again.
+     At 360px, the inline subtitle textarea (.compact-list-text) got pushed by the time/dot/action
+     buttons down to an actual usable width of only ~70px, causing Korean text to wrap every 4-5
+     characters (hurting readability during batch subtitle writing) — widened to 480px to secure
+     the textarea's actual usable width up to ~190px. */
   flex: 0 0 480px;
-  /* 자막 전문(긴 nowrap 텍스트)을 그대로 두면 그 min-content 폭이 조상까지
-     타고 올라가 컬럼 자체가 늘어나 버린다 — min-width:0으로 끊어서
-     지정한 300px 안에서만 넘치고, 넘친 부분은 자식의 ellipsis가 처리하게 한다. */
+  /* Leaving the full subtitle text (a long nowrap text) as-is would let its min-content width
+     propagate up to the ancestor, growing the column itself — cut this off with min-width:0 so it
+     only overflows within the specified 300px, and let the child's ellipsis handle the overflowing part. */
   min-width: 0;
   overflow: hidden;
   display: flex;
@@ -1474,8 +1486,8 @@ textarea {
   color: var(--text-secondary);
 }
 
-/* 세그먼트 썸네일 공통 껍데기 — 크기는 사용처 클래스(compact-list-thumb 등)가 정한다.
-   배경은 의도적으로 테마 무관 고정 다크 — 영상 프레임 썸네일 캔버스(스펙 3번). */
+/* Common shell for segment thumbnails — size is set by the consumer class (compact-list-thumb, etc).
+   Background is intentionally fixed dark regardless of theme — a video frame thumbnail canvas (spec item 3). */
 .segment-thumb {
   background: var(--stage-bg);
 }
@@ -1503,8 +1515,8 @@ textarea {
   gap: 3px;
 }
 
-/* 컷 리스트 행에서 자막을 그 자리에서 바로 고치는 인라인 입력 — 다듬기/몰아쓰기
-   통합의 핵심. rows=1 시작이고 내용에 맞춰 높이가 자동으로 늘어난다(JS로 처리). */
+/* Inline input for fixing subtitles right in place on a cut list row — the core of merging
+   trim/batch-writing. Starts at rows=1 and its height auto-grows to fit content (handled in JS). */
 .compact-list-subtitle-input {
   width: 100%;
   min-width: 0;
@@ -1525,8 +1537,9 @@ textarea {
   border-color: var(--accent);
 }
 
-/* 처음 보는 사람도 이 컷이 무슨 장면인지 알 수 있게 하는 초벌 비전 판독 장면
-   묘사(memo) 2번째 줄. 자막(1번째 줄)보다 톤을 낮추고(무채색·작은 글씨) 한 줄로 잘라낸다. */
+/* Second line: the rough vision-reading scene description (memo), letting even a first-time viewer
+   understand what scene this cut is. Toned down (achromatic, small text) relative to the subtitle
+   (first line) and truncated to a single line. */
 .compact-list-scene {
   display: flex;
   align-items: center;
@@ -1634,7 +1647,8 @@ textarea {
   border-radius: 8px;
 }
 
-/* 컷 설정(PRD 4절 "인스펙터"의 정본 명칭) 패널 제목 — 우측 필드 패널 전체의 소속을 밝힌다. */
+/* Cut settings (PRD section 4's canonical name for the "inspector") panel title — identifies what
+   the entire right-side field panel belongs to. */
 .qf-panel-title {
   margin: 0 0 8px;
   font-size: 13px;
@@ -1642,8 +1656,8 @@ textarea {
   color: var(--text-secondary);
 }
 
-/* G1~G6 그룹 공통 껍데기 — 그룹마다 작은 라벨 헤더 + 구분선(첫 그룹 제외)으로
-   "이름 있는 섹션 소속"을 명시한다(screen-spec 0-1). */
+/* Common shell for groups G1-G6 — each group makes its "belongs to a named section" explicit via
+   a small label header + a divider (except the first group) (screen-spec 0-1). */
 .qf-group {
   padding-top: 10px;
   border-top: 1px dashed var(--border-dashed);
@@ -1663,7 +1677,7 @@ textarea {
   color: var(--text-secondary);
 }
 
-/* 한 행에 쌍(IN·OUT, 배속·볼륨 등)을 나란히 두는 공통 행 — screen-spec 0-4 "쌍은 나란히". */
+/* Common row placing a pair (IN/OUT, speed/volume, etc.) side by side on one row — screen-spec 0-4 "pairs go side by side". */
 .qf-row {
   display: flex;
   align-items: baseline;
@@ -1689,17 +1703,18 @@ textarea {
   white-space: nowrap;
 }
 
-/* screen-spec 0-2 "라벨은 좌정렬 1열" — G1(시작/끝)·G2(배속/볼륨)처럼 한 행에 쌍을
-   두는 필드는 라벨 폭을 고정해 인풋 시작 x가 필드마다 들쭉날쭉해지지 않게 한다.
-   실측(2026-07-08): 라벨 폭이 자동(끝=1자 vs 볼륨=2자)이면 두 번째 필드의 인풋
-   시작 위치가 행마다 최대 24px씩 어긋나 "오른쪽으로 쏠려 보인다"는 원인이었다. */
+/* screen-spec 0-2 "labels are a left-aligned single column" — for fields that place a pair on one
+   row like G1 (start/end) and G2 (speed/volume), the label width is fixed so the input's starting
+   x doesn't get jagged row to row.
+   Measured (2026-07-08): when the label width was automatic (end=1 char vs volume=2 chars), the
+   second field's input starting position drifted by up to 24px per row, which was the cause of it "looking skewed to the right". */
 .qf-row .qf-field > span:first-child {
   width: 40px;
 }
 
-/* 필드 슬롯 자체도 고정 폭으로 — G2(배속x/볼륨%)만 있는 단위 접미사(qf-suffix)가
-   두 번째 필드(끝/볼륨)의 시작 x를 행마다 다시 어긋나게 하는 걸 막는다(단위가
-   없는 G1 시작/끝도 같은 폭을 차지해 빈 여백으로 자리를 맞춘다). */
+/* The field slot itself is also a fixed width — this prevents the unit suffix (qf-suffix) present
+   only on G2 (speed x/volume %) from making the second field's (end/volume) starting x drift row
+   to row again (G1's unitless start/end also occupies the same width, aligning via empty space). */
 .qf-row .field-narrow {
   width: 144px;
 }
@@ -1714,8 +1729,9 @@ textarea {
   color: var(--text-tertiary);
 }
 
-/* clip 파일명(읽기 전용) - 다른 qf-field 값과 같은 자리에 앉되, 길어도 카드/패널 폭을
-   벗어나지 않게 줄임표로 담는다(선택/복사는 잘림과 무관하게 전체 텍스트로 된다). */
+/* clip file name (read-only) - sits in the same place as other qf-field values, but is
+   ellipsis-truncated so a long name doesn't overflow the card/panel width (selecting/copying still
+   gets the full text regardless of the visual truncation). */
 .qf-readonly-value {
   flex: 1 1 auto;
   min-width: 0;
@@ -1730,8 +1746,8 @@ textarea {
   resize: vertical;
 }
 
-/* "이 컷만 자막 스타일" — 자막(G3) 소속임을 들여쓰기+좌측 경계선으로 명시한다
-   (screen-spec 4절 "독립 섹션 금지"). */
+/* "Style for this cut only" — makes explicit that it belongs to the subtitle (G3) group via
+   indentation + a left border (screen-spec section 4 "no standalone sections"). */
 .qf-style-override {
   margin-top: 10px;
   padding-left: 10px;
@@ -1761,9 +1777,9 @@ textarea {
   gap: 8px;
 }
 
-/* 삭제(위험 동작)는 컷 작업 그룹에서 분리해 패널 맨 아래 별도 zone에 둔다(screen-spec
-   4절 2026-07-08 개정) - 구분선(에러 색)+여백으로 확실히 갈라 다른 액션과 나란히
-   눌려 실수로 삭제되지 않게 한다. */
+/* Delete (a dangerous action) is separated from the cut-operations group into its own zone at the
+   bottom of the panel (screen-spec section 4, revised 2026-07-08) - clearly divided by a divider
+   (error color) + spacing, so it can't be accidentally pressed alongside other actions. */
 .qf-danger-zone {
   margin-top: 14px;
   padding-top: 10px;
@@ -1801,7 +1817,7 @@ textarea {
   height: 32px;
 }
 
-/* 컷 리스트 행의 "이 컷만 자막 스타일 다름" 배지. */
+/* The "this cut has a different subtitle style" badge on a cut list row. */
 .compact-list-style-badge {
   flex: 0 0 auto;
   padding: 1px 5px;
@@ -1813,7 +1829,7 @@ textarea {
   color: var(--tag-pink-text);
 }
 
-/* ③ 마무리 단계 */
+/* Step ③ Finish */
 
 .finish-layout {
   display: flex;
@@ -1821,11 +1837,11 @@ textarea {
   gap: 20px;
 }
 
-/* .settings-group/.settings-group-wide의 flex:1 1 260px·2 1 480px(가로 flex-wrap
-   레이아웃 전용, 옛 FinishingSettings 참고)를 이 세로 column 레이아웃이 그대로
-   물려받으면 각 섹션이 flex-grow로 남는 세로 공간을 억지로 나눠 채워 내용 아래
-   빈 여백이 커진다(.render-dialog에서 이미 한 번 겪은 것과 같은 버그) — 여기서도
-   그로우/베이시스를 꺼서 섹션이 내용 높이만큼만 차지하게 한다. */
+/* If this vertical column layout directly inherited .settings-group/.settings-group-wide's
+   flex:1 1 260px / 2 1 480px (meant only for the horizontal flex-wrap layout, see the old
+   FinishingSettings), each section would be forced by flex-grow to divide up and fill the leftover
+   vertical space, growing a large empty gap below the content (the same bug already hit once in
+   .render-dialog) — so here too, grow/basis are turned off so a section only takes up its content's height. */
 .finish-layout > .settings-group,
 .finish-layout > .settings-group-wide {
   flex: 0 0 auto;
@@ -1935,18 +1951,19 @@ textarea {
 }
 
 
-/* 렌더 설정 다이얼로그(RenderSettingsDialog) */
+/* Render settings dialog (RenderSettingsDialog) */
 .render-dialog {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-/* .settings-group의 flex:1 1 260px(FinishingSettings 등 가로 flex-wrap 레이아웃 전용)를
-   이 세로 column 다이얼로그에 그대로 물려받으면 3개 그룹이 flex-grow:1로 다이얼로그
-   높이를 균등 분할해 억지로 늘어나며(각 ~260px), 그만큼 아래로 밀린 [취소]/[렌더 시작]
-   버튼(.render-dialog-actions)이 900px 뷰포트 기준 뷰포트 밖으로 넘어가 클릭 불가능해지는
-   실측 버그가 있었다 — 여기서는 그로우를 꺼서 그룹이 내용 높이만큼만 차지하게 한다. */
+/* If this vertical column dialog directly inherited .settings-group's flex:1 1 260px (meant only
+   for the horizontal flex-wrap layout of FinishingSettings, etc.), the 3 groups would be forced by
+   flex-grow:1 to equally divide the dialog height and stretch out (~260px each), and there was a
+   measured bug where the [Cancel]/[Start render] buttons (.render-dialog-actions), pushed down by
+   that much, ended up outside a 900px viewport, unclickable — so here too, grow is turned off so a
+   group only takes up its content's height. */
 .render-dialog .settings-group {
   flex: 0 1 auto;
 }
@@ -1977,7 +1994,7 @@ textarea {
   margin: 8px 0;
 }
 
-/* 본편 이어재생 */
+/* Sequential playback of the full edit */
 .sequence-player {
   display: flex;
   flex-direction: column;
@@ -1985,8 +2002,8 @@ textarea {
   align-items: center;
 }
 
-/* container-type: inline-size로 컨테이너 쿼리 컨텍스트를 열어, 자막 오버레이가 cqw
-   단위로 "이 스테이지의 실제 렌더 폭 대비 %"인 폰트 크기/외곽선 두께를 쓸 수 있게 한다. */
+/* container-type: inline-size opens a container query context, so the subtitle overlay can use
+   cqw units for a font size/outline width that's "a % of this stage's actual rendered width". */
 .sequence-player-stage {
   position: relative;
   width: 100%;
@@ -2025,8 +2042,8 @@ textarea {
   pointer-events: none;
 }
 
-/* 이어재생 중 지금 컷이 무슨 장면인지 알려주는 작은 힌트(선택 요소) — 자막을
-   가리지 않도록 스테이지 상단 좌측에 조용히 표시하고, 매칭 실패 컷은 숨긴다. */
+/* A small hint (optional element) telling what scene the current cut is during sequential playback
+   — shown quietly at the top-left of the stage so it doesn't cover the subtitle, and hidden for cuts with no match. */
 .sequence-scene-hint {
   position: absolute;
   top: 10px;
@@ -2045,8 +2062,8 @@ textarea {
 }
 
 .sequence-subtitle-bottom {
-  /* 실제 offset은 SequencePlayer.tsx가 subtitleStyle.margin 기반으로 인라인 지정한다.
-     이 24px는 margin 계산이 실패할 극히 드문 경우를 위한 폴백일 뿐이다. */
+  /* The actual offset is set inline by SequencePlayer.tsx based on subtitleStyle.margin.
+     This 24px is just a fallback for the extremely rare case where the margin calculation fails. */
   bottom: 24px;
 }
 
@@ -2134,7 +2151,7 @@ textarea {
   margin-left: auto;
 }
 
-/* 이어재생 스티키 영역: 미니 타임라인 아래 고정, 그 아래 편집 콘텐츠는 그대로 보인다. */
+/* Sequential playback sticky area: fixed below the mini timeline, with the edit content below it still visible as-is. */
 .sequence-player-sticky {
   position: sticky;
   top: 0;

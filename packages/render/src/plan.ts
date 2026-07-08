@@ -2,20 +2,20 @@ import { join } from "node:path";
 import type { CueSheet, SubtitleStyleOverride } from "@cuesheet/schema";
 
 export interface RenderPlan {
-  /** "ffmpeg" 뒤에 붙일 전체 인자 */
+  /** Full argument list to follow "ffmpeg" */
   args: string[];
-  /** -filter_complex 그래프 (디버깅/검증용) */
+  /** -filter_complex graph (for debugging/verification) */
   filterComplex: string;
   outputPath: string;
 }
 
 export interface RenderPlanOptions {
-  /** 자막을 drawtext로 영상에 굽는다. 기본값 true(기존 동작).
-   * false면 CC/SRT 트랙과 조합해 쓸 클린 영상을 만든다 — drawtext를 생략한다. */
+  /** Burns subtitles into the video via drawtext. Defaults to true (existing behavior).
+   * If false, produces a clean video meant to be combined with a CC/SRT track — drawtext is omitted. */
   burnSubtitles?: boolean;
 }
 
-/** ffmpeg drawtext text 이스케이프 (백슬래시·콜론·작은따옴표·퍼센트) */
+/** Escapes text for ffmpeg drawtext (backslash, colon, single quote, percent) */
 function escapeDrawtext(text: string): string {
   return text
     .replace(/\\/g, "\\\\")
@@ -24,7 +24,7 @@ function escapeDrawtext(text: string): string {
     .replace(/%/g, "\\%");
 }
 
-/** atempo는 0.5~2.0만 지원 → 범위 밖 배속은 체인으로 분해 */
+/** atempo only supports 0.5-2.0 -> speeds outside that range are decomposed into a chain */
 function atempoChain(speed: number): string[] {
   const parts: number[] = [];
   let s = speed;
@@ -41,10 +41,11 @@ function atempoChain(speed: number): string[] {
 }
 
 /**
- * 세그먼트별 유효 자막 스타일 = 전역 subtitleStyle에 styleOverride를 얕은 병합.
- * background는 예외적으로 통짜 교체(부분 병합 시 opacity 등이 애매하게 남는 문제 방지) —
- * 얕은 병합이 객체 필드 단위로 통째로 덮어쓰므로 별도 처리 없이 이 규칙을 만족한다.
- * override가 없으면(생략/null) 전역 스타일 그대로.
+ * Effective subtitle style per segment = shallow merge of styleOverride onto the global subtitleStyle.
+ * background is the one exception and is replaced wholesale (avoids ambiguous leftovers like
+ * opacity from a partial merge) — since the shallow merge overwrites whole object fields anyway,
+ * this rule is satisfied without any extra handling.
+ * If override is absent (omitted/null), the global style is used as-is.
  */
 function effectiveSubtitleStyle(
   global: CueSheet["subtitleStyle"],
@@ -79,11 +80,12 @@ function drawtextFilter(text: string, style: CueSheet["subtitleStyle"]): string 
 }
 
 /**
- * 큐시트를 ffmpeg 렌더 계획(명령 인자)으로 변환한다.
- * 각 세그먼트를 트림→배속→스케일→fps 정규화→자막(있으면)한 뒤 concat으로 이어 붙이고,
- * bgm이 있으면 시작 시각(adelay)·볼륨을 적용해 amix로 섞는다.
+ * Converts a cuesheet into an ffmpeg render plan (command arguments).
+ * Each segment is trimmed -> sped up -> scaled -> fps-normalized -> subtitled (if any),
+ * then joined via concat; if bgm is present, its start time (adelay) and volume are
+ * applied and mixed in with amix.
  *
- * 단위는 초. clip 경로는 clipDir + 파일명으로 조립(폴더 이동에 안 깨지게).
+ * Units are seconds. Clip paths are assembled from clipDir + filename (so moving the folder doesn't break things).
  */
 export function buildRenderPlan(
   cue: CueSheet,
@@ -94,7 +96,7 @@ export function buildRenderPlan(
   const { width: W, height: H, fps } = cue.project;
   const inputs: string[] = [];
   const filters: string[] = [];
-  // concat 필터는 세그먼트별 [v][a]가 번갈아 나와야 한다: [v0][a0][v1][a1]...
+  // The concat filter requires per-segment [v][a] pairs to alternate: [v0][a0][v1][a1]...
   const concatLabels: string[] = [];
   let clipCount = 0;
   let idx = 0;
@@ -124,10 +126,12 @@ export function buildRenderPlan(
       const { x, y, w, h } = o.crop;
       vParts.push(`crop=w=iw*${w}:h=ih*${h}:x=iw*${x}:y=ih*${y}`);
     }
-    // crop은 종횡비를 바꿀 수 있지만, 뒤이은 scale=W:H가 원본 종횡비 보존 없이 항상
-    // W:H로 늘려 채운다(crop 없는 세그먼트도 동일하게 동작) — 별도 letterbox/pad 불필요.
-    // setsar=1: crop 후 스케일은 SAR이 1:1이 아니게 되는데(예: 4:3), concat은 전
-    // 세그먼트의 SAR 일치를 요구하므로 강제 통일한다 (크롭+일반 컷 혼합 실렌더에서 실측).
+    // crop can change the aspect ratio, but the following scale=W:H always stretches
+    // to fill W:H without preserving the original aspect ratio (same behavior for
+    // segments without crop) — no separate letterbox/pad is needed.
+    // setsar=1: scaling after crop can leave the SAR not 1:1 (e.g. 4:3), but concat
+    // requires SAR to match across all segments, so this forces it uniform (confirmed
+    // in an actual render mixing cropped and regular cuts).
     vParts.push(`scale=${W}:${H}`, `setsar=1`, `fps=${fps}`);
     if (burnSubtitles && o.subtitle && o.subtitle.length > 0) {
       const style = effectiveSubtitleStyle(cue.subtitleStyle, o.styleOverride);
@@ -145,8 +149,8 @@ export function buildRenderPlan(
   }
 
   if (cue.intro) addClip(cue.intro, {});
-  // 세그먼트별 출력 타임라인 시작 시각(누적, 배속 반영) — 내레이션 오디오를 그 시각에 배치하기 위함.
-  // v1 제약: intro 길이는 파일 프로빙 없이 알 수 없어 이 오프셋에 포함하지 않는다.
+  // Cumulative output-timeline start time per segment (speed-adjusted) — used to place narration audio at that time.
+  // v1 constraint: intro duration can't be known without probing the file, so it's not included in this offset.
   let segmentOffset = 0;
   const narrationCues: { path: string; start: number }[] = [];
   for (const s of cue.segments) {

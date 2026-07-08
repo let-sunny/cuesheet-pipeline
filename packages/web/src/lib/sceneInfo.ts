@@ -9,9 +9,10 @@ export type SceneInfo =
   | { kind: "none" };
 
 /**
- * 세그먼트 in이 순간/배속구간의 [start,end] 밖이라도 이 허용치(초) 안이면 매칭으로 본다.
- * coarse-to-fine 탐색으로 뽑은 초벌 in 지점이 실제 하이라이트 경계와 몇 초 어긋날 수
- * 있어서(STATUS.md 참고), 정확 일치 대신 근접 허용 매칭이 필요하다.
+ * If a segment's in is outside a moment's/speed-range's [start,end] but within this tolerance
+ * (seconds), it still counts as a match. Because the rough in-point found by coarse-to-fine search
+ * can be off from the real highlight boundary by a few seconds (see STATUS.md), we need tolerant
+ * proximity matching instead of exact matching.
  */
 const MATCH_TOLERANCE_S = 3;
 
@@ -34,12 +35,12 @@ function withinTolerance(t: number, startS: number, endS: number): boolean {
 }
 
 /**
- * 세그먼트가 초벌 비전 판독(moments.json)의 어느 순간/배속구간/클립요약에 해당하는지
- * 찾는다. 편집 화면에서 "이 컷이 무슨 장면인가"를 보여주기 위한 매칭 규칙:
- * 1) 같은 clip 파일 + in이 moment의 [inS,outS] 안(±허용치 근접 포함)이면 그 memo.
- * 2) 배속 컷(speed !== 1)은 같은 방식으로 monotonousRanges에서 찾는다.
- * 3) 둘 다 없으면 clipSummary로 폴백.
- * 4) 그마저 없으면(clip 자체가 순간 데이터에 없음) "없음".
+ * Finds which moment/speed-range/clip summary in the rough vision reading (moments.json) a segment
+ * corresponds to. Matching rule used to show "what scene is this cut" in the edit screen:
+ * 1) Same clip file + in falls inside a moment's [inS,outS] (including ± tolerance) -> that memo.
+ * 2) A speed cut (speed !== 1) is looked up the same way in monotonousRanges.
+ * 3) If neither matches, fall back to clipSummary.
+ * 4) If even that is missing (the clip itself isn't in the moment data), "none".
  */
 export function matchSceneInfo(
   segment: Pick<Segment, "clip" | "in" | "speed">,

@@ -2,10 +2,10 @@ import type { CSSProperties } from "react";
 import type { SubtitleStyle, SubtitleStyleOverride } from "@cuesheet/schema";
 
 /**
- * 전역 subtitleStyle에 세그먼트 styleOverride를 얕은 병합한다. render 패키지의
- * effectiveSubtitleStyle(packages/render/src/plan.ts)과 동일한 규칙 — background는
- * 부분 병합이 아니라 통짜 교체된다(override에 있으면 override.background를 그대로 쓴다).
- * 미리보기(VideoPreview/SequencePlayer)와 실제 렌더가 항상 같은 병합 결과를 보게 한다.
+ * Shallow-merges a segment's styleOverride onto the global subtitleStyle. Same rule as the render
+ * package's effectiveSubtitleStyle (packages/render/src/plan.ts) — background is replaced wholesale
+ * rather than partially merged (if override has it, override.background is used as-is).
+ * Keeps the preview (VideoPreview/SequencePlayer) and the actual render always seeing the same merge result.
  */
 export function mergeSubtitleStyle(
   global: SubtitleStyle,
@@ -18,14 +18,16 @@ export function mergeSubtitleStyle(
 }
 
 /**
- * drawtext borderw(외곽선)를 근사하는 CSS 스타일. -webkit-text-stroke로 글자 획 전체를
- * 감싸는 연속된 외곽선을 그리고, paint-order: stroke로 채움(글자색)을 그 위에 그려
- * (렌더의 "외곽선이 뒤, 글자가 앞" 순서와 동일) 두께나 글자 크기가 커져도 매끈하게 유지된다.
+ * CSS style approximating drawtext's borderw (outline). Draws a continuous outline wrapping the
+ * entire letter stroke via -webkit-text-stroke, then draws the fill (text color) on top via
+ * paint-order: stroke (same "outline behind, text in front" order as the render), staying smooth
+ * even as thickness or font size grows.
  *
- * 이전엔 text-shadow 4방향(대각선) 오프셋 근사를 썼는데, 오프셋(외곽선 두께)이 커지면
- * 대각선 사이(상/하/좌/우 축)엔 그림자가 없어 외곽선이 4개의 분리된 사본으로 갈라져
- * 보이는 문제가 있었다(특히 컷별 styleOverride로 크기를 키운 컷에서 두드러짐).
- * widthCss는 이미 단위가 붙은 CSS 길이(px/cqw 등).
+ * Previously this used a 4-direction (diagonal) text-shadow offset approximation, but as the offset
+ * (outline width) grew, there was no shadow between the diagonals (on the up/down/left/right axes),
+ * so the outline appeared to split into 4 separate copies (especially noticeable on cuts where a
+ * per-cut styleOverride enlarged the size).
+ * widthCss is a CSS length that already has a unit attached (px/cqw/etc).
  */
 export function subtitleOutlineStyle(widthPx: number, widthCss: string, color: string): CSSProperties {
   if (widthPx <= 0) {
@@ -37,7 +39,7 @@ export function subtitleOutlineStyle(widthPx: number, widthCss: string, color: s
   };
 }
 
-/** #rgb 또는 #rrggbb + 0~1 투명도 -> css rgba() 문자열(자막 배경 박스 미리보기용). */
+/** #rgb or #rrggbb + 0-1 opacity -> a CSS rgba() string (for previewing the subtitle background box). */
 export function subtitleBackgroundRgba(hex: string, opacity: number): string {
   const m3 = /^#([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])$/.exec(hex);
   const full = m3 ? `${m3[1]}${m3[1]}${m3[2]}${m3[2]}${m3[3]}${m3[3]}` : hex.slice(1);
@@ -48,9 +50,9 @@ export function subtitleBackgroundRgba(hex: string, opacity: number): string {
 }
 
 /**
- * subtitleStyle.position/margin(원본 px)을 스테이지 top/bottom 오프셋(스테이지 높이 대비 %)으로
- * 환산한다. margin이 없는(검증 없이 서빙된 구 큐시트) 경우 schema 기본값(40)으로 대체한다.
- * center는 CSS 클래스(top:50%/translateY)가 처리하므로 빈 객체를 반환한다.
+ * Converts subtitleStyle.position/margin (raw px) into a stage top/bottom offset (% of stage height).
+ * If margin is missing (an old cuesheet served without validation), falls back to the schema default (40).
+ * center is handled by a CSS class (top:50%/translateY), so this returns an empty object for it.
  */
 export function subtitlePositionStyle(style: SubtitleStyle, projectHeight: number): CSSProperties {
   const marginPct = `${((style.margin ?? 40) / Math.max(1, projectHeight)) * 100}%`;
@@ -64,17 +66,17 @@ export function subtitlePositionStyle(style: SubtitleStyle, projectHeight: numbe
 }
 
 /**
- * project 픽셀 단위 값(폰트 크기·외곽선 두께 등)을 컨테이너 쿼리 cqw(container query
- * width) 단위 문자열로 바꾼다. 이 값을 쓰는 요소의 조상에 `container-type: inline-size`가
- * 걸려 있어야 하며, 그러면 1cqw = 그 조상 박스의 실제 렌더 폭의 1%다 — 박스가 어떤
- * 크기로(반응형 축소 포함) 렌더되든 "referenceWidth(보통 project.width) 대비 몇 %인가"라는
- * 진짜 비율이 항상 유지된다.
+ * Converts a project pixel-unit value (font size, outline width, etc) into a container-query cqw
+ * (container query width) unit string. An ancestor of the element using this value must have
+ * `container-type: inline-size` set, in which case 1cqw = 1% of that ancestor box's actual rendered
+ * width — so no matter what size the box renders at (including responsive shrinking), the real ratio
+ * of "what % of referenceWidth (usually project.width) is this" is always preserved.
  */
 export function toCqw(px: number, referenceWidth: number): string {
   return `${(px / Math.max(1, referenceWidth)) * 100}cqw`;
 }
 
-/** input[type=color]는 #rrggbb만 받는다 — #rgb 축약형을 늘려서 넘긴다. */
+/** input[type=color] only accepts #rrggbb — expand a #rgb shorthand before passing it in. */
 export function toColorInputValue(hex: string): string {
   const m = /^#([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])$/.exec(hex);
   if (m) {

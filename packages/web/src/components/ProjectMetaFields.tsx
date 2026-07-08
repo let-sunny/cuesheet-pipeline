@@ -5,7 +5,7 @@ interface Props {
   onChange: (patch: Partial<Project>) => void;
 }
 
-/** 설정 다이얼로그 안에 담기는 프로젝트 메타 필드(이름/fps/해상도) — 매 에피소드 안 바뀌는 값. */
+/** Project meta fields (name/fps/resolution) shown inside the settings dialog — values that don't change per episode. */
 export function ProjectMetaFields({ project, onChange }: Props) {
   return (
     <div className="settings-group">

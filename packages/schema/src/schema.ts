@@ -1,15 +1,15 @@
 import { z } from "zod";
 
 /**
- * 큐시트 스키마 (zod). 이 파일이 타입/검증의 single source of truth.
- * TypeScript 타입은 여기서 z.infer로 파생되어 `types.ts`에서 export된다.
+ * Cuesheet schema (zod). This file is the single source of truth for types/validation.
+ * TypeScript types are derived here via z.infer and exported from `types.ts`.
  *
- * 단위 규칙:
- * - 모든 시간 값은 초(second) 기준. 프레임 환산은 render 모듈이 fps로 처리.
- * - 클립은 파일명만 저장(`segment.clip`), 폴더는 `clipDir`로 분리.
+ * Unit conventions:
+ * - All time values are in seconds. Frame conversion is handled by the render module using fps.
+ * - Clips are stored as filename only (`segment.clip`); the folder is kept separate as `clipDir`.
  */
 
-/** #RGB 또는 #RRGGBB 형태의 hex 색상 */
+/** Hex color in #RGB or #RRGGBB form */
 const hexColor = z
   .string()
   .regex(
@@ -25,9 +25,9 @@ export const projectSchema = z.object({
 });
 
 /**
- * 세그먼트 단위 크롭. 원본 해상도 기준 **비율(0~1)**로 정의(해상도 독립적).
- * x,y = 좌상단, w,h = 크기. 예: 얼굴 상단을 잘라내는 세로 크롭
- * { x: 0, y: 0.25, w: 1, h: 0.75 }.
+ * Per-segment crop. Defined as a **ratio (0-1)** relative to the source resolution
+ * (resolution-independent). x,y = top-left, w,h = size. Example: a vertical crop that
+ * cuts off the top of the face: { x: 0, y: 0.25, w: 1, h: 0.75 }.
  */
 export const cropSchema = z
   .object({
@@ -46,7 +46,8 @@ export const cropSchema = z
   });
 
 /**
- * 자막 뒤 반투명 배경 박스(유튜브 기본 자막 스타일). 생략/null이면 배경 없음(기존 동작).
+ * Semi-transparent background box behind the subtitle (YouTube's default subtitle
+ * style). If omitted/null, there's no background (existing behavior).
  */
 export const subtitleBackgroundSchema = z.object({
   color: hexColor,
@@ -68,10 +69,10 @@ export const subtitleStyleSchema = z.object({
   outlineColor: hexColor,
   outlineWidth: z.number().nonnegative("outlineWidth must be >= 0"),
   position: z.enum(["bottom", "top", "center"]),
-  // 자막 뒤 반투명 배경 박스. 생략/null = 배경 없음(기존 동작 100% 유지).
+  // Semi-transparent background box behind the subtitle. Omitted/null = no background (100% preserves existing behavior).
   background: subtitleBackgroundSchema.nullable().optional(),
-  // top/bottom일 때 가장자리로부터의 여백(px). center는 이 값을 무시한다.
-  // 생략 시 40(기존 하드코딩 값과 동일) — 기존 큐시트 렌더 결과가 그대로 유지된다.
+  // Margin from the edge (px) when position is top/bottom. Ignored for center.
+  // Defaults to 40 if omitted (same as the old hardcoded value) — existing cuesheets render identically.
   margin: z
     .number()
     .min(8, "margin must be >= 8")
@@ -80,16 +81,19 @@ export const subtitleStyleSchema = z.object({
 });
 
 /**
- * 컷(세그먼트)별 자막 스타일 부분 오버라이드. subtitleStyle의 모든 필드가 선택 필드다.
- * 생략된 필드는 전역 subtitleStyle 값을 그대로 쓴다(얕은 병합, render 쪽에서 적용).
- * background만 예외: 지정하면 전역 background를 부분 병합이 아니라 통짜 교체한다
- * (부분 병합 시 색만 바꾸고 opacity가 전역 값으로 남는 등 애매함이 생기기 때문).
+ * Per-cut (per-segment) partial override of the subtitle style. Every field of
+ * subtitleStyle is optional here. An omitted field falls back to the global
+ * subtitleStyle value (shallow merge, applied on the render side). background is the
+ * one exception: if specified, it replaces the global background wholesale rather
+ * than being partially merged (a partial merge would create ambiguity, e.g. changing
+ * only the color while opacity stays at the global value).
  *
- * margin은 `.partial()`만으로는 부족해 별도로 재선언한다: subtitleStyleSchema의
- * margin은 `.default(40)`이 있어 `.partial()`을 걸어도(선택 필드가 되어도) 생략 시
- * zod가 기본값 40을 채워 넣는다 — 그러면 병합할 때 "margin은 안 건드리려던" 오버라이드가
- * 항상 margin을 40으로 덮어써 버린다(부분 병합 취지 위반). 여기서는 기본값 없는
- * 선택 필드로 둬서 생략 시 진짜로 키 자체가 없게(undefined) 한다.
+ * margin needs to be redeclared separately because `.partial()` alone isn't enough:
+ * subtitleStyleSchema's margin has `.default(40)`, so even after `.partial()` makes it
+ * optional, zod still fills in the default of 40 when it's omitted — which means an
+ * override that "didn't intend to touch margin" would always overwrite margin to 40
+ * on merge (defeating the purpose of a partial override). Here it's redeclared as an
+ * optional field with no default, so omitting it truly leaves the key absent (undefined).
  */
 export const subtitleStyleOverrideSchema = subtitleStyleSchema.partial().extend({
   margin: z
@@ -109,13 +113,13 @@ export const segmentSchema = z
       .number()
       .min(0, "volume must be >= 0.0")
       .max(1, "volume must be <= 1.0")
-      .default(1.0), // 이 세그먼트 오디오 볼륨. 1.0=원본, 0.3="30% 수준", 0=무음
-    subtitle: z.string(), // 빈 문자열 허용
-    // 이 컷에 얹을 내레이션 오디오 파일명(narration.dir 기준). null/생략이면 내레이션 없음.
+      .default(1.0), // This segment's audio volume. 1.0=original, 0.3="30% level", 0=muted
+    subtitle: z.string(), // empty string allowed
+    // Narration audio filename for this cut (relative to narration.dir). null/omitted = no narration.
     narration: z.string().min(1, "narration filename must not be empty").nullable().optional(),
-    // 원본 해상도 기준 비율 크롭(0~1). null/생략이면 크롭 없음(원본 그대로).
+    // Ratio-based crop (0-1) relative to the source resolution. null/omitted = no crop (source as-is).
     crop: cropSchema.nullable().optional(),
-    // 이 컷만의 자막 스타일 부분 오버라이드. null/생략이면 전역 subtitleStyle 그대로.
+    // Partial subtitle style override for this cut only. null/omitted = use global subtitleStyle as-is.
     styleOverride: subtitleStyleOverrideSchema.nullable().optional(),
   })
   .refine((s) => s.in < s.out, {
@@ -139,9 +143,10 @@ export const bgmCueSchema = z
   });
 
 /**
- * 목소리 클로닝 내레이션 배관(피처 플래그). enabled가 false거나 이 필드 자체가
- * 없으면 렌더는 기존 동작과 100% 동일해야 한다. dir은 clipDir와 같은 철학으로
- * 내레이션 오디오 파일들이 있는 디렉토리(파일명은 segment.narration에 저장).
+ * Voice-cloned narration plumbing (feature flag). If enabled is false or this field
+ * is absent entirely, render must behave 100% identically to before. dir follows the
+ * same philosophy as clipDir: the directory containing the narration audio files
+ * (filenames are stored in segment.narration).
  */
 export const narrationConfigSchema = z.object({
   enabled: z.boolean(),

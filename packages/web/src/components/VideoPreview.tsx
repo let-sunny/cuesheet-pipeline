@@ -14,12 +14,12 @@ import {
 } from "../lib/subtitleOverlay.js";
 import { CropEditOverlay } from "./CropEditOverlay.js";
 
-/** 프록시 준비 상태 폴링 주기(ms). */
+/** Polling interval (ms) for proxy readiness status. */
 const PROXY_STATUS_POLL_INTERVAL_MS = 10000;
 
-/** 핸들 드래그 시 in/out 사이 최소 간격(초). */
+/** Minimum gap (seconds) between in/out when dragging a handle. */
 const MIN_GAP = 0.05;
-/** 분할 시 in/out 경계와 최소 간격(초). */
+/** Minimum gap (seconds) from the in/out boundary when splitting. */
 const SPLIT_MARGIN = 0.2;
 
 type PlayMode = "loop" | "free";
@@ -33,39 +33,39 @@ interface Props {
   selectedIndex: number;
   onChange: (patch: Partial<Segment>) => void;
   onSplit: (at: number) => void;
-  /** 켜지면 선택 세그먼트가 바뀔 때(자막 쓰기 모드 등) 자동으로 재생을 시작한다. */
+  /** When on, automatically starts playback when the selected segment changes (e.g. subtitle-writing mode). */
   autoPlay?: boolean;
-  /** 초벌 비전 판독 데이터 — 비디오 위 맥락 헤더에 "지금 보는 게 무슨 장면인지" 보여주는 데 쓴다. */
+  /** Draft vision-analysis data — used to show "what scene is this" in the context header above the video. */
   moments: ClipMoments[];
-  /** 전역 자막 스타일 — 세그먼트 styleOverride와 병합해 비디오 위 자막 오버레이를 그리는 데 쓴다. */
+  /** Global subtitle style — merged with the segment's styleOverride to draw the subtitle overlay over the video. */
   subtitleStyle: SubtitleStyle;
-  /** subtitleStyle.margin(px, 원본 해상도 기준)을 오버레이 위치(%)로 환산하는 데 쓴다. */
+  /** Used to convert subtitleStyle.margin (px, relative to source resolution) into overlay position (%). */
   projectHeight: number;
-  /** subtitleStyle.size/outlineWidth(px, 원본 해상도 기준)를 오버레이 폭 대비 cqw로 환산하는 데 쓴다. */
+  /** Used to convert subtitleStyle.size/outlineWidth (px, relative to source resolution) into cqw relative to overlay width. */
   projectWidth: number;
 }
 
-/** 외부(App.tsx의 전역 단축키 등)에서 미리보기를 제어하기 위한 핸들. */
+/** Handle for controlling the preview from outside (e.g. global shortcuts in App.tsx). */
 export interface VideoPreviewHandle {
   togglePlay: () => void;
   seekBy: (deltaSeconds: number) => void;
   setInFromCurrent: () => void;
   setOutFromCurrent: () => void;
   splitAtCurrent: () => void;
-  /** 크롭 편집 모드로 진입한다(기존 crop이 있으면 거기서, 없으면 전체 프레임에서 시작). */
+  /** Enters crop edit mode (starts from the existing crop if there is one, otherwise the full frame). */
   startCropEdit: () => void;
-  /** L: 정방향 재생/배속 셔틀(연타 시 1x -> 2x -> 4x). */
+  /** L: forward playback/speed shuttle (repeated presses go 1x -> 2x -> 4x). */
   shuttleForward: () => void;
-  /** J: 역방향 재생/배속 셔틀(근사, 연타 시 1x -> 2x -> 4x, 오디오 음소거). */
+  /** J: reverse playback/speed shuttle (approximate, repeated presses go 1x -> 2x -> 4x, audio muted). */
   shuttleBackward: () => void;
-  /** K: 셔틀 정지. */
+  /** K: stop shuttle. */
   shuttleStop: () => void;
 }
 
 /**
- * 선택된 세그먼트의 플레이어: 클립 전체 길이 기준 스크럽 타임라인 위에
- * in~out 구간을 표시하고, 핸들 드래그·버튼으로 in/out을 조정하며,
- * 현재 위치에서 세그먼트를 분할할 수 있다.
+ * Player for the selected segment: shows the in~out range on a scrub timeline based on the
+ * clip's full length, lets you adjust in/out by dragging handles or using buttons, and can
+ * split the segment at the current position.
  */
 export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function VideoPreview(
   { segment, selectedIndex, onChange, onSplit, autoPlay = false, moments, subtitleStyle, projectHeight, projectWidth },
@@ -75,7 +75,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const cropFrameRef = useRef<HTMLDivElement | null>(null);
   const [missing, setMissing] = useState(false);
-  // null = 크롭 편집 모드 아님. 값이 있으면 편집 중인 draft crop(아직 세그먼트에 커밋 전).
+  // null = not in crop edit mode. A value means an in-progress draft crop (not yet committed to the segment).
   const [cropEditDraft, setCropEditDraft] = useState<Crop | null>(null);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -85,11 +85,11 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   const prevClipRef = useRef<string | undefined>(segment?.clip);
   const autoPlayRef = useRef(autoPlay);
   const [proxyStatus, setProxyStatus] = useState<ProxyStatus | null>(null);
-  // 프록시가 새로 준비됐을 때 <video>를 강제로 다시 마운트해 새로 서빙되는
-  // 프록시 파일을 다시 요청하게 만드는 값(원본 로드 실패로 남은 missing 상태도 함께 지운다).
+  // A value used to force-remount <video> when a proxy has just become ready, so it re-requests
+  // the newly served proxy file (also clears any missing state left over from an original load failure).
   const [reloadToken, setReloadToken] = useState(0);
-  // J/K/L 셔틀 상태 — 리렌더를 유발할 필요가 없는 재생 방향/배속이라 ref로만 관리한다.
-  // "stopped"는 셔틀이 관여하지 않는 평상시 재생/일시정지 상태(기존 handlePlay 등이 담당).
+  // J/K/L shuttle state — managed as a ref only, since playback direction/speed don't need to trigger a re-render.
+  // "stopped" means the shuttle isn't involved, i.e. normal playback/pause state (handled by existing logic like handlePlay).
   const shuttleDirectionRef = useRef<"stopped" | "forward" | "backward">("stopped");
   const shuttleLevelRef = useRef(1);
   const shuttleRafRef = useRef<number | null>(null);
@@ -105,31 +105,31 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     setCurrentTime(0);
   }, [segment?.clip]);
 
-  // 선택된 컷이 바뀌면 진행 중이던 크롭 편집(다른 컷 기준 draft)은 버리고, 이전 컷
-  // 기준으로 돌던 셔틀(J/K/L 배속/역재생)도 정리한다.
+  // When the selected cut changes, discard any in-progress crop edit (a draft based on a
+  // different cut), and also clean up any shuttle (J/K/L speed/reverse playback) running for the previous cut.
   useEffect(() => {
     setCropEditDraft(null);
     resetShuttle();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIndex]);
 
-  // 언마운트 시 역재생 rAF 루프가 남아있지 않게 정리한다.
+  // Clean up on unmount so no reverse-playback rAF loop is left running.
   useEffect(() => {
     return () => {
       stopShuttleRaf();
     };
   }, []);
 
-  // 선택된 클립이 프록시 생성 대기/진행 중이면 10초마다 상태를 확인해
-  // 안내를 갱신하고, 준비가 끝나면 <video>를 다시 마운트해 프록시로 전환한다.
+  // If the selected clip's proxy is pending/being generated, check status every 10 seconds to
+  // refresh the notice, and once ready, remount <video> to switch over to the proxy.
   //
-  // 레이스 주의: 마운트 직후 첫 체크가 "이미 준비 중이 아님"으로 응답하면(애초에
-  // 프록시 대기가 필요 없던 클립) reloadToken을 올리면 안 된다 — 그 시점엔 이미
-  // 원본 <video>가 자기 src를 로딩 중일 수 있고, key 변경으로 인한 리마운트가 그
-  // 진행 중이던 요청을 abort시켜 onError(missing=true)로 잘못 귀결된다(missing은
-  // segment.clip이 바뀔 때만 리셋되므로 그 뒤로도 계속 굳어버림). 그래서 실제로
-  // "준비 중 -> 준비 끝"으로 전환된 경우에만(즉 이 클립에 대해 한 번이라도
-  // stillPreparing===true를 관측한 뒤에만) reloadToken을 올린다.
+  // Race caution: if the first check right after mount already responds "not preparing" (a clip
+  // that never needed a proxy wait to begin with), reloadToken must not be bumped — at that
+  // point the original <video> may already be loading its own src, and a remount from the key
+  // change would abort that in-flight request, wrongly landing on onError (missing=true) (missing
+  // only resets when segment.clip changes, so it would stay stuck from then on). So reloadToken
+  // is only bumped when an actual "preparing -> ready" transition occurs (i.e. only after
+  // stillPreparing===true has been observed at least once for this clip).
   useEffect(() => {
     const clip = segment?.clip;
     if (!clip) {
@@ -170,15 +170,15 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     };
   }, [segment?.clip]);
 
-  // 선택된 세그먼트가 바뀔 때(같은 clip이라 <video>가 리마운트되지 않는 경우 포함)
-  // 재생 위치를 새 세그먼트의 in으로 시킹한다. in/out 값만 바뀌는 드래그 편집에는
-  // 반응하지 않도록 selectedIndex에만 의존시킨다.
+  // When the selected segment changes (including when <video> doesn't remount because it's the
+  // same clip), seek the playback position to the new segment's in. Depends only on
+  // selectedIndex so it doesn't react to drag edits that only change in/out values.
   useEffect(() => {
     const video = videoRef.current;
     const clipChanged = prevClipRef.current !== segment?.clip;
     prevClipRef.current = segment?.clip;
     if (!video || !segment || clipChanged || video.readyState < 1) {
-      // 클립이 바뀌는 경우는 <video>가 리마운트되어 loadedmetadata 흐름이 처리한다.
+      // When the clip changes, <video> remounts and the loadedmetadata flow handles it.
       return;
     }
     video.currentTime = segment.in;
@@ -255,7 +255,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     }
   };
 
-  /** 셔틀(J/K/L) 상태를 평상시(정지) 상태로 되돌린다 — 배속/음소거/역재생 루프 정리. */
+  /** Resets the shuttle (J/K/L) state back to normal (stopped) — cleans up speed/mute/reverse-playback loop. */
   const resetShuttle = () => {
     stopShuttleRaf();
     shuttleDirectionRef.current = "stopped";
@@ -292,8 +292,8 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     }
   };
 
-  /** 역재생 프레임 루프 — video는 일시정지 상태로 두고 rAF마다 currentTime을 직접 깎는다
-      (HTML video는 음수 playbackRate를 지원하지 않아 이렇게 근사한다). */
+  /** Reverse playback frame loop — keeps video paused and decrements currentTime directly on
+      every rAF (an approximation, since HTML video doesn't support negative playbackRate). */
   const reverseTick = (ts: number) => {
     const video = videoRef.current;
     if (!video || !segment || shuttleDirectionRef.current !== "backward") {
@@ -317,8 +317,8 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     shuttleRafRef.current = requestAnimationFrame(reverseTick);
   };
 
-  /** L: 정방향 재생. 연타 시 1x -> 2x -> 4x로 배속이 오른다(4x 상한). 역재생 중이면 정방향
-      1x로 전환한다. */
+  /** L: forward playback. Repeated presses raise the speed 1x -> 2x -> 4x (capped at 4x). If
+      reverse playback is active, switches to forward 1x. */
   const shuttleForward = () => {
     const video = videoRef.current;
     if (!video || !segment) {
@@ -341,8 +341,8 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     void video.play();
   };
 
-  /** J: 역방향 재생(근사). 연타 시 1x -> 2x -> 4x로 배속이 오른다(4x 상한). 오디오는
-      의미가 없으므로 음소거한다. 정방향 재생 중이면 역방향 1x로 전환한다. */
+  /** J: reverse playback (approximate). Repeated presses raise the speed 1x -> 2x -> 4x (capped
+      at 4x). Audio is meaningless here so it's muted. If forward playback is active, switches to reverse 1x. */
   const shuttleBackward = () => {
     const video = videoRef.current;
     if (!video || !segment) {
@@ -398,8 +398,9 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     if (!segment) {
       return;
     }
-    // 신규 크롭 시작값은 정사각 비율(w==h) — 소스·출력이 같은 종횡비(16:9)일 때
-    // w==h면 크롭 창도 16:9라 왜곡이 없다(CropEditOverlay가 드래그 중에도 이 불변을 유지).
+    // The starting value for a new crop uses a square ratio (w==h) — when the source and output
+    // share the same aspect ratio (16:9), w==h keeps the crop window at 16:9 too, with no
+    // distortion (CropEditOverlay maintains this invariant even while dragging).
     setCropEditDraft(segment.crop ?? { x: 0.15, y: 0.15, w: 0.7, h: 0.7 });
   };
 
@@ -415,8 +416,9 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     setCropEditDraft(null);
   };
 
-  /** 편집 모드는 유지한 채(적용/커밋 없이) draft만 전체 프레임으로 되돌린다 — 핸들 드래그로
-   * 프레임 경계까지 벌리는 게 번거로울 때 쓰는 지름길. 여기서 다시 좁혀서 적용할 수도 있다. */
+  /** Resets just the draft to the full frame while staying in edit mode (no apply/commit) — a
+   * shortcut for when dragging handles all the way out to the frame edges is tedious. You can
+   * still narrow it back down and apply from here. */
   const resetCropEditToFullFrame = () => {
     setCropEditDraft({ x: 0, y: 0, w: 1, h: 1 });
   };
@@ -426,7 +428,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     setCropEditDraft(null);
   };
 
-  // 크롭 편집 중일 때만 Esc(취소)/Enter(적용)를 가로챈다.
+  // Intercept Esc (cancel)/Enter (apply) only while crop editing is active.
   useEffect(() => {
     if (!cropEditDraft) {
       return;
@@ -524,8 +526,8 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   const pct = (t: number): number => (duration > 0 ? clamp((t / duration) * 100, 0, 100) : 0);
 
   const subtitleSummary = segment.subtitle.trim() !== "" ? segment.subtitle.trim() : "(no subtitle)";
-  // 이 컷만의 스타일 오버라이드가 있으면 전역 subtitleStyle에 병합한 결과를 오버레이에 쓴다
-  // (렌더/미리보기 모두 같은 병합 규칙 — subtitleOverlay.ts 참고).
+  // If this cut has its own style override, use the result of merging it into the global
+  // subtitleStyle for the overlay (render and preview both follow the same merge rule — see subtitleOverlay.ts).
   const effectiveSubtitleStyle = mergeSubtitleStyle(subtitleStyle, segment.styleOverride);
   const sceneInfo = matchSceneInfo(segment, moments);
   const sceneText = sceneInfo.kind === "none" ? "No scene info" : sceneInfo.memo;
@@ -659,7 +661,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
             Now {currentTime.toFixed(1)}s · In {segment.in.toFixed(1)}s · Out {segment.out.toFixed(1)}s
           </div>
 
-          {/* 재생 컨트롤 — 비디오(+스크럽)에 바로 붙는 한 행(screen-spec 3절). */}
+          {/* Playback controls — a single row attached directly below the video(+scrub) (screen-spec section 3). */}
           <div className="video-controls-row">
             <Button label="Play" variant="primary" size="sm" onClick={handlePlay} />
             <Button label="Set In here" variant="secondary" size="sm" onClick={handleSetIn} />

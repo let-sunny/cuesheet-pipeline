@@ -6,8 +6,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { scanFolder } from "../src/scan.js";
 
 /**
- * scan.ts는 실제 fs/ffprobe/ffmpeg에 직접 의존하므로, 실 임시 폴더 + 더미 영상으로
- * 통합 테스트한다(목킹 불가). 확장자 대소문자 무관 매칭 회귀 확인이 목적.
+ * scan.ts depends directly on real fs/ffprobe/ffmpeg, so this is an integration test using
+ * a real temp folder + dummy video (can't be mocked). The goal is to verify the
+ * case-insensitive extension matching regression.
  */
 
 describe("scanFolder", () => {

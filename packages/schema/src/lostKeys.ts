@@ -1,17 +1,18 @@
 /**
- * 저장 직전 "필드 유실" 가드.
+ * "field loss" guard right before saving.
  *
- * zod object 스키마는 기본적으로 정의되지 않은 키를 조용히 제거한다(strip). 서버
- * 프로세스가 재시작 전이라 스키마에 아직 없는 필드(예: crop)를 클라이언트가 보내면,
- * validateCueSheet는 성공(ok:true)하지만 result.data에서 그 필드가 사라진다 —
- * 그대로 저장하면 그 필드가 조용히 유실된다.
+ * By default, a zod object schema silently strips keys that aren't defined in it.
+ * If the server process hasn't restarted yet and a client sends a field the schema
+ * doesn't know about yet (e.g. crop), validateCueSheet still succeeds (ok:true), but
+ * that field disappears from result.data — saving it as-is would silently lose that field.
  *
- * 이 함수는 검증 "전" 원본(original)과 검증 "후" 직렬화 결과(serialized)를 재귀적으로
- * 비교해, 원본에 값이 있었는데(undefined가 아니었는데) 직렬화본에서 사라진 키 경로를
- * 모두 찾아 돌려준다. 값 자체의 변형(타입 강제·기본값 채움 등)은 유실이 아니다 — 오직
- * "키가 통째로 사라짐"만 유실로 본다.
+ * This function recursively compares the original (pre-validation) value against the
+ * serialized (post-validation) result, and returns every key path where the original
+ * had a value (i.e. was not undefined) but that key is missing from the serialized
+ * output. A change to the value itself (type coercion, default-filling, etc.) doesn't
+ * count as loss — only a key disappearing entirely counts as loss.
  *
- * 경로 표기는 validate.ts의 에러 메시지와 같은 형식(예: "segments[0].crop").
+ * Path notation matches the error messages in validate.ts (e.g. "segments[0].crop").
  */
 export function findLostFieldPaths(original: unknown, serialized: unknown): string[] {
   const lost: string[] = [];
@@ -53,6 +54,6 @@ export function findLostFieldPaths(original: unknown, serialized: unknown): stri
       }
       return;
     }
-    // 원시값(primitive)이고 ser도 정의돼 있음 — 값 자체의 변형은 유실이 아니므로 통과.
+    // orig is a primitive and ser is defined too — a change to the value itself isn't loss, so pass.
   }
 }

@@ -10,15 +10,15 @@ import { findLostFieldPaths, validateCueSheet, type CueSheet } from "@cuesheet/s
 import { buildRenderPlan, buildSrt } from "@cuesheet/render";
 
 const here = dirname(fileURLToPath(import.meta.url));
-// src -> web -> packages -> 저장소 루트
+// src -> web -> packages -> repo root
 const repoRoot = resolve(here, "../../..");
 const renderOutputPath = resolve(repoRoot, "out.mp4");
-// 4K HEVC 등 브라우저가 재생 못 하는 원본을 위한 720p H.264 미리보기 프록시 저장 위치.
+// Storage location for 720p H.264 preview proxies, for originals (e.g. 4K HEVC) the browser can't play.
 const proxyDir = resolve(repoRoot, "media/proxies");
-// 순간 팔레트: 초벌 분류 데이터와 썸네일용 프레임이 저장된 위치.
+// Moment palette: storage location for the rough classification data and thumbnail frames.
 const draftsRoot = resolve(repoRoot, "media/drafts");
 const framesRoot = resolve(draftsRoot, "frames");
-// 세그먼트 썸네일(편집 스텝 컷 리스트/미니 타임라인용) 시크 추출 결과 디스크 캐시.
+// Disk cache for segment thumbnails (seek-extraction results, used by the edit step's cut list/mini timeline).
 const thumbsDir = resolve(repoRoot, "media/.thumbs");
 
 function cuesheetPath(): string {
@@ -26,17 +26,17 @@ function cuesheetPath(): string {
 }
 
 function momentsPath(): string {
-  // 기본값은 현재 활성 데이터셋(dotmix_v4)을 가리킨다 — 다른 데이터셋으로 서버를
-  // 띄울 땐 MOMENTS_PATH로 명시적으로 지정한다.
+  // Defaults to the currently active dataset (dotmix_v4) — when starting the server with a
+  // different dataset, set MOMENTS_PATH explicitly.
   return process.env.MOMENTS_PATH ?? resolve(draftsRoot, "dotmix_v4/moments.json");
 }
 
-/** target이 root 안(root 자신 포함)에 있는지 확인 — 경로 탈출 방지. */
+/** Checks whether target is inside root (including root itself) — prevents path escape. */
 function isWithin(root: string, target: string): boolean {
   return target === root || target.startsWith(root + sep);
 }
 
-// 렌더가 진행 중일 때 동시 요청을 막기 위한 최소한의 플래그(큐잉 없음).
+// Minimal flag to block concurrent requests while a render is in progress (no queuing).
 let renderInProgress = false;
 
 interface RenderJobState {
@@ -45,12 +45,12 @@ interface RenderJobState {
   error?: string;
 }
 
-// 마지막(또는 진행 중) 렌더 잡의 상태. 잡은 한 번에 하나만 존재하므로 별도 저장소 없이
-// 모듈 스코프 변수 하나로 충분하다(이력 관리는 범위 밖).
+// State of the last (or currently running) render job. Since only one job exists at a time, a single
+// module-scope variable is enough without a separate store (history management is out of scope).
 let renderJob: RenderJobState = { state: "idle", progress: 0 };
 let renderJobCounter = 0;
 
-// ffmpeg stderr 한 줄에서 "time=HH:MM:SS.ms"를 초 단위로 파싱한다.
+// Parses "time=HH:MM:SS.ms" out of an ffmpeg stderr line, in seconds.
 function parseFfmpegTimeSeconds(text: string): number | null {
   const m = text.match(/time=(\d+):(\d+):(\d+(?:\.\d+)?)/);
   if (!m) {
@@ -61,9 +61,10 @@ function parseFfmpegTimeSeconds(text: string): number | null {
 }
 
 /**
- * 진행률 계산용 총 출력 길이(초) 근사치.
- * 세그먼트 (out-in)/speed 합만 쓰고 intro/outro는 파일 프로빙 없이 알 수 없어 무시한다
- * (진행률 표시용 근사치이므로 실제 렌더 결과 길이와는 약간 다를 수 있다).
+ * Approximate total output duration (seconds) used to compute progress.
+ * Only sums segment (out-in)/speed and ignores intro/outro since their length is unknown without
+ * probing the file (this is just an approximation for the progress display, so it may differ slightly
+ * from the actual render output length).
  */
 function estimateOutputSeconds(cue: CueSheet): number {
   return cue.segments.reduce((sum, s) => sum + (s.out - s.in) / s.speed, 0);
@@ -86,7 +87,7 @@ function runFfmpeg(args: string[]): Promise<{ code: number | null; stderr: strin
   });
 }
 
-/** ffprobe로 duration을 읽는다. 실패(파싱 불가/0 이하/프로세스 에러)하면 null. */
+/** Reads duration via ffprobe. Returns null on failure (unparseable / <= 0 / process error). */
 function probeDurationSeconds(path: string): Promise<number | null> {
   return new Promise((res) => {
     const proc = spawn(
@@ -111,11 +112,12 @@ function probeDurationSeconds(path: string): Promise<number | null> {
 }
 
 /**
- * 트랙 데이터 없이 moov만 있는 등 손상된 비디오 파일을 걸러낸다.
- * duration만 보면 통과하지만 실제로는 스트림 중간(NAL 오류 등)이 깨져 시크가
- * 안 되는 실사례가 있었다 — duration 체크에 더해 파일 뒷부분(70% 지점)을 2초
- * 시크+디코드해 exit 0이고 stderr가 비어 있는지까지 확인한다(디코드 검증).
- * 이 함수는 항상 백그라운드(generateProxies, 서버 시작을 막지 않음)에서만 호출된다.
+ * Filters out corrupted video files, e.g. ones that have only a moov with no track data.
+ * Duration alone would pass such files, but there were real cases where the middle of the stream
+ * was broken (NAL errors, etc.) and seeking failed — so on top of the duration check, this also
+ * seeks 2 seconds into the file's tail (the 70% mark) and decodes it to verify exit 0 and empty
+ * stderr (decode verification).
+ * This function is always called only in the background (generateProxies, never blocking server startup).
  */
 async function isValidVideoFile(path: string): Promise<boolean> {
   try {
@@ -130,9 +132,9 @@ async function isValidVideoFile(path: string): Promise<boolean> {
   if (duration === null) {
     return false;
   }
-  // "-v error"는 실측 결과 뒷부분이 통째로 잘려나가 디코드 결과가 0프레임인 경우에도
-  // (ffmpeg가 이를 error가 아닌 warning 레벨로만 남김 — "Output file is empty" 등)
-  // 조용히 exit 0을 반환해 손상을 놓친다. "-v warning"으로 올려야 이 경고가 stderr에 잡힌다.
+  // "-v error" was observed to silently return exit 0 (missing the corruption) even when the tail is
+  // entirely cut off and decoding yields 0 frames (ffmpeg logs this only at warning level, not error
+  // — e.g. "Output file is empty"). Raising it to "-v warning" is what makes this warning show up in stderr.
   const { code, stderr } = await runFfmpeg([
     "-v",
     "warning",
@@ -163,18 +165,19 @@ const narrationAudioMimeTypes: Record<string, string> = {
   ".wav": "audio/wav",
 };
 
-// 인트로/아웃트로 파일 업로드(/api/upload-clip)에서 받는 확장자 - clipMimeTypes 전체가 아니라
-// 이 네 가지만 (mkv 등은 브라우저 file input의 accept="video/*"로도 잘 안 잡히는 포맷이라 제외).
+// Extensions accepted for intro/outro file uploads (/api/upload-clip) - not all of clipMimeTypes,
+// just these four (mkv etc. are excluded since they're formats browser file inputs' accept="video/*"
+// often don't pick up well anyway).
 const uploadClipExtensions = new Set([".mp4", ".mov", ".m4v", ".webm"]);
-// 업로드 크기 상한 - 인트로/아웃트로는 15초 이하 통짜 클립이라 이 정도면 충분히 넉넉하다.
+// Upload size cap - intro/outro are whole clips of 15s or less, so this is plenty generous.
 const uploadClipMaxBytes = 500 * 1024 * 1024;
 
-/** clipDir 등 큐시트에 담긴 상대 경로를 저장소 루트 기준 절대 경로로 해석한다(폴더 이동에 안 깨지게). */
+/** Resolves a relative path stored in the cuesheet (e.g. clipDir) to an absolute path based on the repo root (so it doesn't break if the folder moves). */
 function resolveRepoPath(dir: string): string {
   return isAbsolute(dir) ? dir : resolve(repoRoot, dir);
 }
 
-/** 큐시트 파일에서 narration.dir을 읽어 절대 경로로 해석한다(상대 경로는 저장소 루트 기준). */
+/** Reads narration.dir from the cuesheet file and resolves it to an absolute path (relative paths are based on the repo root). */
 async function readNarrationDir(cuesheetFilePath: string): Promise<string | null> {
   try {
     const raw = await readFile(cuesheetFilePath, "utf8");
@@ -206,26 +209,26 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
-// 프록시 파일명은 원본 파일명에서 확장자만 .mp4로 통일한다.
+// A proxy's file name is the original file name with only the extension unified to .mp4.
 function proxyFileName(originalName: string): string {
   return `${basename(originalName, extname(originalName))}.mp4`;
 }
 
 interface ProxyQueueState {
-  /** 아직 처리 시작 전인 원본 클립 파일명(대기 순서대로). */
+  /** Original clip file names that haven't started processing yet (in wait order). */
   pending: string[];
-  /** 지금 프록시 생성 중인 원본 클립 파일명, 없으면 null. */
+  /** Original clip file name currently being turned into a proxy, or null if none. */
   generating: string | null;
 }
 
-// 프록시 생성 큐 상태 — GET /api/proxy-status로 노출해 편집 화면에서
-// "프록시 준비 중" 안내를 띄우는 데 쓴다.
+// State of the proxy generation queue — exposed via GET /api/proxy-status so the edit screen can
+// show a "generating proxies" notice.
 let proxyQueueState: ProxyQueueState = { pending: [], generating: null };
 
 /**
- * clipDir 안의 로컬 실물 영상 파일들에 대해 720p H.264 미리보기 프록시가
- * 없거나 원본보다 오래됐으면 순차적으로(한 번에 하나씩) 생성한다.
- * 서버 시작을 블로킹하지 않도록 호출부에서 await 없이 백그라운드로 실행한다.
+ * For local video files that physically exist in clipDir, generates a 720p H.264 preview proxy
+ * sequentially (one at a time) if it's missing or older than the original.
+ * Run in the background without awaiting at the call site, so it doesn't block server startup.
  */
 async function generateProxies(clipDir: string, log: (msg: string) => void): Promise<void> {
   await mkdir(proxyDir, { recursive: true });
@@ -249,7 +252,7 @@ async function generateProxies(clipDir: string, log: (msg: string) => void): Pro
       continue;
     }
     if (srcStat.blocks === 0) {
-      // iCloud 등 클라우드 전용 placeholder는 읽으면 무한 정지하므로 건너뛴다.
+      // Skip cloud-only placeholders (e.g. iCloud) since reading them hangs indefinitely.
       continue;
     }
 
@@ -258,12 +261,12 @@ async function generateProxies(clipDir: string, log: (msg: string) => void): Pro
     try {
       const proxyStat = await stat(proxyPath);
       if (proxyStat.mtimeMs >= srcStat.mtimeMs) {
-        // 기존 프록시도 가볍게 무결성 검사 — 이전 실행이 중간에 죽어 moov는 있는데
-        // 트랙 데이터가 없는 등 손상된 파일이면 재생성 큐에 다시 넣는다.
+        // Also do a light integrity check on an existing proxy — if a previous run died midway,
+        // leaving a corrupted file with a moov but no track data, put it back on the regen queue.
         needsGenerate = !(await isValidVideoFile(proxyPath));
       }
     } catch {
-      // 프록시가 아직 없음 -> 생성 필요
+      // Proxy doesn't exist yet -> needs generating
     }
     if (needsGenerate) {
       targets.push({ src: srcPath, proxyPath, tmpPath: `${proxyPath}.tmp` });
@@ -279,8 +282,9 @@ async function generateProxies(clipDir: string, log: (msg: string) => void): Pro
     proxyQueueState = { pending: targets.slice(i + 1).map((t) => basename(t.src)), generating: name };
     log(`Generating proxy (${i + 1}/${total}): ${name}`);
 
-    // 최대 2회 시도: 생성 후(rename 전) ffprobe로 duration을 검증해 손상 파일이면
-    // 지우고 재시도, 두 번째도 손상이면 로그만 남기고 건너뛴다(원본으로 폴백 서빙).
+    // Up to 2 attempts: after generating (before rename), verify duration via ffprobe — if the file
+    // is corrupted, delete and retry; if the second attempt is also corrupted, just log and skip
+    // (falls back to serving the original).
     for (let attempt = 1; attempt <= 2; attempt += 1) {
       const { code, stderr } = await runFfmpeg([
         "-y",
@@ -332,10 +336,10 @@ async function generateProxies(clipDir: string, log: (msg: string) => void): Pro
   proxyQueueState = { pending: [], generating: null };
 }
 
-// 같은 (클립, 시각) 썸네일 요청이 겹칠 때 ffmpeg를 중복 실행하지 않도록 하는 dedup 맵.
+// Dedup map preventing ffmpeg from running twice for overlapping requests for the same (clip, time) thumbnail.
 const thumbInFlight = new Map<string, Promise<boolean>>();
 
-// 썸네일 ffmpeg 동시 실행 최대 2개 — 초과 요청은 큐에서 직렬 대기한다.
+// Max 2 concurrent thumbnail ffmpeg runs — excess requests wait serially in a queue.
 let thumbActiveCount = 0;
 const thumbWaitQueue: (() => void)[] = [];
 
@@ -352,7 +356,7 @@ function releaseThumbSlot(): void {
   next?.();
 }
 
-/** 프록시에서 t초 지점 프레임 하나를 시크 추출해 cachePath에 저장한다. */
+/** Seeks to the t-second mark in the proxy, extracts one frame, and saves it to cachePath. */
 async function generateThumbnail(
   proxyPath: string,
   t: number,
@@ -371,7 +375,8 @@ async function generateThumbnail(
       "1",
       "-vf",
       `scale=${width}:-2`,
-      // tmpPath는 원자적 쓰기를 위해 ".tmp"가 붙어 확장자로 포맷을 못 알아채므로 명시한다.
+      // tmpPath has ".tmp" appended for atomic writes, so the format can't be inferred from the
+      // extension — specify it explicitly.
       "-f",
       "mjpeg",
       "-y",
@@ -389,7 +394,7 @@ async function generateThumbnail(
   }
 }
 
-/** key(클립스템_반올림시각_폭)로 dedup하며 캐시에 없으면 생성한다. */
+/** Dedups by key (clipStem_roundedTime_width), generating only if not already cached. */
 async function getOrGenerateThumb(
   key: string,
   proxyPath: string,
@@ -408,20 +413,19 @@ async function getOrGenerateThumb(
 }
 
 /**
- * 개발 서버에 큐시트 파일을 서빙/저장하는 미들웨어,
- * 클립을 정적 서빙하는 미들웨어, 파일 변경을 감지해 클라이언트로
- * 알리는 HMR 커스텀 이벤트를 붙인다.
+ * Attaches to the dev server: middleware that serves/saves the cuesheet file, middleware that
+ * statically serves clips, and an HMR custom event that detects file changes and notifies the client.
  */
 export function cuesheetPlugin(): Plugin {
   return {
     name: "cuesheet-plugin",
     configureServer(server) {
       const filePath = cuesheetPath();
-      // 서버가 직접 쓴 마지막 내용. fs.watch 콜백에서 이 값과 같으면
-      // 자기 저장으로 인한 이벤트이므로 클라이언트에 알리지 않는다.
+      // The last content the server itself wrote. If this matches inside the fs.watch callback,
+      // the event was caused by our own save, so don't notify the client.
       let lastWrittenContent: string | null = null;
 
-      // 서버 시작을 블로킹하지 않도록 프록시 생성은 백그라운드로 돌린다.
+      // Run proxy generation in the background so it doesn't block server startup.
       void (async () => {
         let clipDir: string;
         try {
@@ -470,12 +474,12 @@ export function cuesheetPlugin(): Plugin {
             return;
           }
 
-          // zod object는 정의되지 않은 키를 기본적으로 조용히 제거(strip)한다. 서버가
-          // 아직 구버전 스키마를 로드한 상태에서 새 필드(예: crop)가 담긴 요청을 그대로
-          // 저장하면, result.data에서는 이미 그 필드가 사라진 채로 디스크에 박제된다
-          // (조용한 데이터 유실). 저장 전 원본 body와 직렬화 결과의 키 집합을 비교해
-          // 사라진 경로가 있으면 저장을 거부한다 — 유실 = 구스키마 신호이므로 서버
-          // 재시작(스키마 갱신)을 요구하는 게 맞다.
+          // A zod object silently strips undefined keys by default. If the server is still running
+          // an old schema version and a request carrying a new field (e.g. crop) is saved as-is,
+          // that field would already be missing from result.data and get permanently baked into
+          // disk (silent data loss). Before saving, compare the key set of the original body against
+          // the serialized result, and refuse to save if any path is missing — a loss means an old
+          // schema, so requiring a server restart (schema refresh) is the right call.
           const lostPaths = findLostFieldPaths(parsed, result.data);
           if (lostPaths.length > 0) {
             sendJson(res, 400, {
@@ -500,8 +504,9 @@ export function cuesheetPlugin(): Plugin {
       });
 
       server.middlewares.use("/clips", async (req, res) => {
-        // 프록시가 밤사이 손상본 -> 재생성본으로 바뀌는 경우가 있어, 브라우저가 캐시된
-        // 손상 영상을 계속 쓰지 않도록 매 요청 재검증을 강제한다(200/206/에러 응답 전부).
+        // A proxy can go from corrupted -> regenerated overnight, so force revalidation on every
+        // request (across 200/206/error responses) so the browser doesn't keep using a cached
+        // corrupted video.
         res.setHeader("Cache-Control", "no-cache");
         const [rawPath = "", rawQuery = ""] = (req.url ?? "").split("?");
         const decoded = decodeURIComponent(rawPath.replace(/^\/+/, ""));
@@ -511,7 +516,7 @@ export function cuesheetPlugin(): Plugin {
           res.end("Invalid filename");
           return;
         }
-        // ?original=1 이면 프록시가 있어도 항상 원본을 서빙한다(렌더 검증용 escape hatch).
+        // ?original=1 always serves the original even if a proxy exists (an escape hatch for render verification).
         const forceOriginal = new URLSearchParams(rawQuery).get("original") === "1";
 
         let clipDir: string;
@@ -559,7 +564,7 @@ export function cuesheetPlugin(): Plugin {
           return;
         }
 
-        // 멀티 레인지는 지원하지 않고 첫 레인지만 처리한다.
+        // Multi-range is not supported, only the first range is handled.
         const firstRange = rangeHeader.replace(/^bytes=/, "").split(",")[0] ?? "";
         const [startStr, endStr] = firstRange.split("-");
         const start = startStr ? parseInt(startStr, 10) : 0;
@@ -579,9 +584,9 @@ export function cuesheetPlugin(): Plugin {
         createReadStream(clipPath, { start, end: safeEnd }).pipe(res);
       });
 
-      // 내레이션 오디오 파일 목록(/api/narration-files) + 미리듣기 스트리밍
-      // (/api/narration-files/<파일명>)을 같은 마운트 경로에서 처리한다. connect가
-      // 마운트 접두사를 벗겨주므로 하위 경로 유무로 두 동작을 구분한다.
+      // Handles the narration audio file list (/api/narration-files) + preview streaming
+      // (/api/narration-files/<filename>) under the same mount path. Since connect strips the mount
+      // prefix, the two behaviors are distinguished by whether there's a sub-path.
       server.middlewares.use("/api/narration-files", async (req, res) => {
         if (req.method !== "GET") {
           res.statusCode = 405;
@@ -590,9 +595,9 @@ export function cuesheetPlugin(): Plugin {
           return;
         }
 
-        // dir 쿼리가 있으면 그 값을 우선한다 — 사용자가 아직 저장하지 않고 편집
-        // 중인 폴더 경로도 목록/미리듣기에 즉시 반영되어야 하므로, 디스크에 저장된
-        // 큐시트의 narration.dir(저장 후에만 갱신됨)에만 의존하지 않는다.
+        // If a dir query is present, it takes priority — since a folder path currently being edited
+        // but not yet saved must still be reflected immediately in the list/preview, this doesn't
+        // rely solely on the on-disk cuesheet's narration.dir (which is only updated after a save).
         const [rawUrlPath = "", rawQuery = ""] = (req.url ?? "").split("?");
         const dirParam = new URLSearchParams(rawQuery).get("dir");
         const narrationDir =
@@ -604,7 +609,7 @@ export function cuesheetPlugin(): Plugin {
         const rawSub = decodeURIComponent(rawUrlPath.replace(/^\/+/, ""));
 
         if (rawSub) {
-          // 미리듣기 스트리밍: /api/narration-files/<파일명>
+          // Preview streaming: /api/narration-files/<filename>
           if (!narrationDir || rawSub !== basename(rawSub)) {
             res.statusCode = 404;
             res.setHeader("Content-Type", "text/plain; charset=utf-8");
@@ -626,7 +631,7 @@ export function cuesheetPlugin(): Plugin {
           return;
         }
 
-        // 파일 목록: /api/narration-files
+        // File listing: /api/narration-files
         if (!narrationDir) {
           sendJson(res, 200, {
             files: [],
@@ -656,8 +661,8 @@ export function cuesheetPlugin(): Plugin {
         sendJson(res, 200, { files });
       });
 
-      // 인트로/아웃트로 선택용 clipDir 안 비디오 파일 목록(+ffprobe 길이).
-      // narration-files 엔드포인트와 같은 패턴: 매 요청 디스크를 읽어 항상 최신 목록을 준다.
+      // List of video files inside clipDir (+ffprobe duration), for picking an intro/outro.
+      // Same pattern as the narration-files endpoint: reads disk on every request for an always-fresh listing.
       server.middlewares.use("/api/clip-files", async (req, res) => {
         if (req.method !== "GET") {
           res.statusCode = 405;
@@ -700,7 +705,7 @@ export function cuesheetPlugin(): Plugin {
               return { name, durationS: null };
             }
             if (s.blocks === 0) {
-              // iCloud 등 클라우드 전용 placeholder는 ffprobe를 돌리면 무한 정지하므로 건너뛴다.
+              // Skip cloud-only placeholders (e.g. iCloud) since running ffprobe on them hangs indefinitely.
               return { name, durationS: null };
             }
             return { name, durationS: await probeDurationSeconds(p) };
@@ -709,9 +714,9 @@ export function cuesheetPlugin(): Plugin {
         sendJson(res, 200, { files });
       });
 
-      // 브라우저 file input/드래그앤드롭으로 고른 로컬 파일을 clipDir에 저장한다(브라우저는
-      // 파일의 실제 디스크 경로를 노출하지 않으므로 업로드가 유일한 경로다). 저장된 파일명은
-      // 그대로 intro/outro 클립 선택(onSelectClip)에 재사용된다.
+      // Saves a local file picked via browser file input/drag-and-drop into clipDir (browsers don't
+      // expose a file's actual disk path, so uploading is the only route). The saved file name is
+      // then reused directly for intro/outro clip selection (onSelectClip).
       server.middlewares.use("/api/upload-clip", async (req, res) => {
         if (req.method !== "POST") {
           res.statusCode = 405;
@@ -804,8 +809,9 @@ export function cuesheetPlugin(): Plugin {
         sendJson(res, 200, { ok: true, filename, durationS });
       });
 
-      // intro/outro는 clipDir와 무관한 독립 파일 경로라 /clips가 아닌 별도 경로로 서빙한다.
-      // 상대 경로면 저장소 루트 기준으로 해석한다. 읽기 전용 GET만 허용.
+      // intro/outro are independent file paths unrelated to clipDir, so they're served from a
+      // separate route rather than /clips. Relative paths are resolved against the repo root.
+      // Only read-only GET is allowed.
       server.middlewares.use("/api/local-video", async (req, res) => {
         if (req.method !== "GET") {
           res.statusCode = 405;
@@ -863,7 +869,7 @@ export function cuesheetPlugin(): Plugin {
         createReadStream(targetPath, { start, end: safeEnd }).pipe(res);
       });
 
-      // 디스크에 저장된 큐시트 기준으로 SRT 자막 파일을 생성해 내려준다(유튜브 CC 트랙용).
+      // Generates and serves an SRT subtitle file based on the on-disk cuesheet (for YouTube CC tracks).
       server.middlewares.use("/api/subtitles.srt", async (req, res) => {
         if (req.method !== "GET") {
           res.statusCode = 405;
@@ -901,8 +907,8 @@ export function cuesheetPlugin(): Plugin {
         res.end(srt, "utf8");
       });
 
-      // 라우팅 순서 주의: "/api/render/status"가 "/api/render"의 접두사 매칭에 앞서
-      // 먼저 처리되도록 반드시 "/api/render"보다 먼저 등록한다.
+      // Mind the registration order: this must be registered before "/api/render" so that
+      // "/api/render/status" is handled before it gets caught by "/api/render"'s prefix match.
       server.middlewares.use("/api/render/status", (req, res) => {
         if (req.method !== "GET") {
           res.statusCode = 405;
@@ -931,7 +937,7 @@ export function cuesheetPlugin(): Plugin {
           return;
         }
 
-        // 자막 굽기 옵션(기본 true) — {"burnSubtitles": false}면 CC/SRT용 클린 영상을 만든다.
+        // Subtitle burn-in option (default true) — {"burnSubtitles": false} produces a clean video for CC/SRT use.
         let burnSubtitles = true;
         try {
           const body = await readRequestBody(req);
@@ -942,7 +948,7 @@ export function cuesheetPlugin(): Plugin {
             }
           }
         } catch {
-          // 본문이 없거나 파싱 불가하면 기본값(true)을 쓴다.
+          // Use the default (true) if the body is missing or unparseable.
         }
 
         let parsed: unknown;
@@ -963,16 +969,17 @@ export function cuesheetPlugin(): Plugin {
           return;
         }
 
-        // 검증 통과 즉시 jobId를 응답하고, ffmpeg는 백그라운드로 돌리며 진행률만
-        // renderJob에 갱신한다(응답을 기다리게 하지 않음 — 렌더 수 분 동안 블로킹 방지).
+        // Responds with jobId as soon as validation passes, and runs ffmpeg in the background,
+        // updating only the progress in renderJob (doesn't make the caller wait — prevents blocking
+        // for the several minutes a render can take).
         renderInProgress = true;
         renderJobCounter += 1;
         const jobId = String(renderJobCounter);
         const totalSeconds = estimateOutputSeconds(result.data);
         renderJob = { state: "running", progress: 0 };
 
-        // ffmpeg는 이 vite 서버의 cwd(packages/web)를 그대로 물려받아 실행되므로,
-        // clipDir이 상대 경로면 저장소 루트 기준 절대 경로로 바꿔서 넘긴다.
+        // ffmpeg runs inheriting this vite server's cwd (packages/web) as-is, so if clipDir is a
+        // relative path, convert it to an absolute path based on the repo root before passing it in.
         const cueForRender = { ...result.data, clipDir: resolveRepoPath(result.data.clipDir) };
         const plan = buildRenderPlan(cueForRender, renderOutputPath, { burnSubtitles });
         const proc = spawn("ffmpeg", plan.args, { stdio: ["ignore", "pipe", "pipe"] });
@@ -1036,7 +1043,7 @@ export function cuesheetPlugin(): Plugin {
         }
       });
 
-      // 클립별 썸네일 프레임 정적 서빙. /draft-frames/<클립폴더>/<파일명>.jpg
+      // Statically serves per-clip thumbnail frames. /draft-frames/<clip-folder>/<filename>.jpg
       server.middlewares.use("/draft-frames", async (req, res) => {
         if (req.method !== "GET") {
           res.statusCode = 405;
@@ -1064,7 +1071,7 @@ export function cuesheetPlugin(): Plugin {
         createReadStream(target).pipe(res);
       });
 
-      // 클립 폴더 안 프레임 파일 목록 — inS에 가장 가까운 프레임을 클라이언트가 고를 수 있게 한다.
+      // List of frame files inside a clip folder — lets the client pick the frame closest to inS.
       server.middlewares.use("/api/draft-frames", async (req, res) => {
         if (req.method !== "GET") {
           res.statusCode = 405;
@@ -1093,14 +1100,15 @@ export function cuesheetPlugin(): Plugin {
         sendJson(res, 200, files);
       });
 
-      // 세그먼트 썸네일: /api/thumb?clip=<원본 파일명>&t=<초>&w=<폭px, 기본 160> — 프록시에서
-      // 해당 시각 프레임을 시크 추출해 jpg로 반환한다. 프록시가 없으면 404(클라이언트가
-      // 자리비움 placeholder를 그린다). 캐시 키는 t를 0.5초 단위로 반올림해 드래그 중 미세하게
-      // 다른 t로 인한 캐시 미스/중복 생성을 줄인다. 폭도 캐시 키에 포함해(w별로 별도 파일)
-      // 같은 (클립,시각)이라도 요청 폭이 다르면 재생성한다(자막 스타일 미리보기 등 큰 썸네일용).
+      // Segment thumbnail: /api/thumb?clip=<original filename>&t=<seconds>&w=<width px, default 160>
+      // — seeks to that time in the proxy and returns the extracted frame as a jpg. 404 if there's no
+      // proxy (the client draws a placeholder). The cache key rounds t to the nearest 0.5s to reduce
+      // cache misses/duplicate generation from slightly different t values during dragging. Width is
+      // also part of the cache key (a separate file per w), so the same (clip, time) is regenerated
+      // if the requested width differs (used for larger thumbnails like the subtitle style preview).
       server.middlewares.use("/api/thumb", async (req, res) => {
-        // /clips와 동일한 이유로 재검증을 강제한다 — 썸네일도 프록시에서 시크 추출한
-        // 결과라 프록시가 재생성되면 예전 프레임을 계속 보여줄 수 있다.
+        // Force revalidation for the same reason as /clips — thumbnails are also seek-extracted from
+        // the proxy, so if the proxy is regenerated, a stale frame could keep being shown.
         res.setHeader("Cache-Control", "no-cache");
         if (req.method !== "GET") {
           res.statusCode = 405;
@@ -1182,12 +1190,12 @@ export function cuesheetPlugin(): Plugin {
         createReadStream(renderOutputPath).pipe(res);
       });
 
-      // 큐시트 파일 변경 감지 -> 클라이언트에 HMR 커스텀 이벤트로 알림.
-      // 서버 시작 시점에 파일이 아직 없을 수 있다(예: `pnpm episode`가 서버부터 띄우고
-      // /episode 파이프라인이 나중에 큐시트를 생성하는 흐름). 이 경우 파일 대신 부모
-      // 디렉토리를 감시하다가 대상 파일이 생기는 순간 파일 감시로 전환한다. 파일이
-      // 삭제됐다 다시 생기는 경우(rename 이벤트)도 같은 전환 로직으로 감시가 고아되지
-      // 않게 재부착한다.
+      // Detects cuesheet file changes -> notifies the client via an HMR custom event.
+      // The file may not exist yet at server startup (e.g. `pnpm episode` starts the server first
+      // and the /episode pipeline generates the cuesheet later). In that case, watch the parent
+      // directory instead of the file, and switch to watching the file the moment it appears. If the
+      // file gets deleted and recreated (a rename event), the same switch-over logic reattaches so
+      // the watch never ends up orphaned.
       let watcher: FSWatcher | null = null;
 
       const notifyChanged = () => {
@@ -1199,8 +1207,8 @@ export function cuesheetPlugin(): Plugin {
         watcher = watch(filePath, () => {
           void (async () => {
             if (!existsSync(filePath)) {
-              // 삭제됨(rename 이벤트) - 재생성을 기다리는 디렉토리 감시로 전환하고,
-              // 클라이언트가 다시 불러와 빈 상태 배너를 보게 알린다.
+              // Deleted (a rename event) - switch to watching the directory, waiting for it to be
+              // recreated, and notify the client so it refetches and shows the empty-state banner.
               watchDir();
               notifyChanged();
               return;
@@ -1212,7 +1220,7 @@ export function cuesheetPlugin(): Plugin {
               return;
             }
             if (current === lastWrittenContent) {
-              // 방금 이 서버가 저장한 결과이므로 외부 변경 알림을 보내지 않는다.
+              // This is exactly what this server just saved, so don't notify about an external change.
               return;
             }
             notifyChanged();
@@ -1231,7 +1239,7 @@ export function cuesheetPlugin(): Plugin {
           if (changedName !== targetName || !existsSync(filePath)) {
             return;
           }
-          // 대상 파일이 생겼다 - 파일 감시로 전환하고 클라이언트에 첫 로드를 알린다.
+          // The target file has appeared - switch to watching the file and tell the client to load it for the first time.
           watchFile();
           notifyChanged();
         });

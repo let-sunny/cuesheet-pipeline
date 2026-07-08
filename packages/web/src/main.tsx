@@ -15,10 +15,10 @@ if (!container) {
 }
 
 /**
- * 테마 모드(system/light/dark) 상태는 <Theme>를 감싸는 이 컴포넌트가 쥐고 있어야 한다 —
- * Theme의 mode prop이 바뀔 때마다 data-theme/data-astryx-theme가 <html>에 동기화되고
- * (Astryx Theme 내부 useRootThemeSync), 그 attr을 우리 CSS의 light-dark() 토큰들이
- * color-scheme을 통해 그대로 읽는다. 토글 UI 자체는 App -> HeaderBar에 내려보낸다.
+ * Theme mode (system/light/dark) state must be held by this component wrapping <Theme> —
+ * whenever Theme's mode prop changes, data-theme/data-astryx-theme get synced onto <html>
+ * (via Astryx Theme's internal useRootThemeSync), and our CSS's light-dark() tokens read
+ * that attr through color-scheme. The toggle UI itself is passed down through App -> HeaderBar.
  */
 function Root() {
   const [themeMode, setThemeMode] = useState(loadThemeMode);

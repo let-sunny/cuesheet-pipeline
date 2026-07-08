@@ -12,8 +12,8 @@ import type {
 } from "./schema.js";
 
 /**
- * 타입은 zod 스키마에서 파생한다(single source of truth).
- * `z.infer`는 검증 후 출력 타입 = speed 같은 default가 적용된 형태.
+ * Types are derived from the zod schema (single source of truth).
+ * `z.infer` is the post-validation output type — i.e. with defaults like speed applied.
  */
 export type Project = z.infer<typeof projectSchema>;
 export type Crop = z.infer<typeof cropSchema>;
@@ -25,5 +25,5 @@ export type SubtitleStyleOverride = z.infer<typeof subtitleStyleOverrideSchema>;
 export type NarrationConfig = z.infer<typeof narrationConfigSchema>;
 export type CueSheet = z.infer<typeof cueSheetSchema>;
 
-/** 검증 전 입력 타입(default 미적용). 웹앱에서 부분 입력을 다룰 때 유용. */
+/** Pre-validation input type (defaults not applied). Useful when the web app handles partial input. */
 export type CueSheetInput = z.input<typeof cueSheetSchema>;

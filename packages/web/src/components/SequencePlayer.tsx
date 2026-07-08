@@ -13,31 +13,31 @@ import {
   toCqw,
 } from "../lib/subtitleOverlay.js";
 
-/** 외부(App.tsx의 Space 단축키 등)에서 이어재생을 제어하기 위한 핸들. */
+/** Handle for controlling playthrough from outside (e.g. the Space shortcut in App.tsx). */
 export interface SequencePlayerHandle {
   togglePlay: () => void;
-  /** L: 정방향 재생/배속 셔틀(연타 시 1x -> 2x -> 4x). */
+  /** L: forward playback/speed shuttle (repeated presses go 1x -> 2x -> 4x). */
   shuttleForward: () => void;
-  /** J: 역방향 재생/배속 셔틀(근사, 연타 시 1x -> 2x -> 4x, 오디오 음소거). */
+  /** J: reverse playback/speed shuttle (approximate, repeated presses go 1x -> 2x -> 4x, audio muted). */
   shuttleBackward: () => void;
-  /** K: 셔틀 정지. */
+  /** K: stop shuttle. */
   shuttleStop: () => void;
 }
 
 interface Props {
   segments: Segment[];
-  /** 현재 재생/선택 중인 컷 인덱스(App의 selectedIndex와 공유). */
+  /** Index of the cut currently playing/selected (shared with App's selectedIndex). */
   currentIndex: number;
-  /** 초벌 비전 판독 데이터 — 현재 컷의 장면 묘사를 자막 위에 작게 표시하는 데 쓴다. */
+  /** Draft vision-analysis data — used to show a small scene description for the current cut over the subtitle. */
   moments: ClipMoments[];
   subtitleStyle: SubtitleStyle;
-  /** subtitleStyle.margin(px, 원본 해상도 기준)을 스테이지 비율(%)로 환산하는 데 쓴다. */
+  /** Used to convert subtitleStyle.margin (px, relative to source resolution) into a stage ratio (%). */
   projectHeight: number;
-  /** subtitleStyle.size/outlineWidth(px, 원본 해상도 기준)를 스테이지 폭 대비 cqw로 환산하는 데 쓴다. */
+  /** Used to convert subtitleStyle.size/outlineWidth (px, relative to source resolution) into cqw relative to stage width. */
   projectWidth: number;
-  /** 자동 전환·미니 타임라인 클릭 모두 이 콜백 하나로 App의 selectedIndex를 갱신한다. */
+  /** Both auto-advance and mini-timeline clicks update App's selectedIndex through this single callback. */
   onIndexChange: (i: number) => void;
-  /** 닫기 버튼 — 이어재생 모드 종료(부모가 스티키 플레이어 영역을 걷어낸다). */
+  /** Close button — exits playthrough mode (the parent tears down the sticky player area). */
   onExit: () => void;
 }
 
@@ -46,11 +46,11 @@ function clipUrl(clip: string): string {
 }
 
 /**
- * 메타데이터 로드 완료를 기다린다. 클립이 브라우저가 디코딩할 수 없는 포맷(예: HEVC —
- * 프록시 생성이 실패/손상된 채 남아 원본 코덱 그대로 서빙되는 경우)이면 loadedmetadata가
- * 영영 발생하지 않으므로, error 이벤트도 함께 듣고 false로 해소해 무한 대기를 막는다.
- * 이미 이 비디오 엘리먼트에서 로드가 실패한 적 있으면(video.error 존재) 이벤트가 다시
- * 발생하지 않으므로 즉시 false로 해소한다.
+ * Waits for metadata loading to complete. If the clip is in a format the browser can't decode
+ * (e.g. HEVC — proxy generation failed/left corrupted and the original codec is served as-is),
+ * loadedmetadata will never fire, so we also listen for the error event and resolve with false
+ * to avoid waiting forever. If loading has already failed on this video element before
+ * (video.error is set), the event won't fire again, so resolve with false immediately.
  */
 function waitForMetadata(video: HTMLVideoElement): Promise<boolean> {
   if (video.readyState >= 1) {
@@ -77,7 +77,7 @@ function waitForMetadata(video: HTMLVideoElement): Promise<boolean> {
   });
 }
 
-/** 세그먼트의 출력 타임라인상 재생 길이(초). speed가 빠를수록 짧아진다. */
+/** Playback length (seconds) of the segment on the output timeline. Shorter as speed increases. */
 function playbackSeconds(seg: Segment): number {
   return (seg.out - seg.in) / seg.speed;
 }
@@ -89,14 +89,15 @@ function formatClock(totalSeconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
-/** 사용자 미리보기 배속 선택지. 세그먼트 자체 speed와 곱해 적용한다. */
+/** User preview playback rate options. Applied multiplied with the segment's own speed. */
 const RATE_OPTIONS = [1, 1.5, 2] as const;
 
 /**
- * 본편 전체 이어재생. 세그먼트를 순서대로 in~out만 재생하고 컷이 끝나면
- * 다음 컷으로 자동 전환한다(같은 클립이면 시킹만, 다른 클립이면 두 개의
- * <video> 슬롯을 스왑 — 다음 클립을 미리 로드해 둔다). 렌더 결과와의 미세한
- * 타이밍 차이는 허용되는 검토용 미리보기다.
+ * Full playthrough of the entire cut. Plays segments in order (only their in~out range) and
+ * automatically switches to the next cut when one ends (just a seek if it's the same clip, or a
+ * swap between two <video> slots if it's a different clip — the next clip is preloaded ahead of
+ * time). A minor timing difference from the actual render output is acceptable for this
+ * review-purpose preview.
  */
 export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function SequencePlayer(
   { segments, currentIndex, moments, subtitleStyle, projectHeight, projectWidth, onIndexChange, onExit },
@@ -111,16 +112,16 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
   const advancingRef = useRef(false);
   const segmentsRef = useRef(segments);
   const onIndexChangeRef = useRef(onIndexChange);
-  // 사용자 미리보기 배속(1x/1.5x/2x) — 세그먼트 자체 speed와 곱해 video.playbackRate에 반영한다.
+  // User preview playback rate (1x/1.5x/2x) — applied to video.playbackRate multiplied with the segment's own speed.
   const [userRate, setUserRate] = useState<number>(1);
   const userRateRef = useRef(userRate);
-  // 진행 바 표시용 — 활성 슬롯의 현재 source 시각(초). timeupdate에서 갱신한다.
+  // For progress bar display — current source time (seconds) of the active slot. Updated on timeupdate.
   const [videoNow, setVideoNow] = useState(0);
-  // 진행 바 클릭 시킹 중 다른 세그먼트로 넘어가야 할 때, 다음 currentIndex 이펙트가
-  // seg.in 대신 사용할 source 시각을 1회성으로 전달하는 통로.
+  // A one-shot channel for passing the source time that the next currentIndex effect should use
+  // instead of seg.in, for when a progress-bar-click seek needs to jump to a different segment.
   const pendingSeekRef = useRef<{ index: number; time: number } | null>(null);
-  // J/K/L 셔틀 상태(VideoPreview와 동일한 방식) — "stopped"는 셔틀이 관여하지 않는
-  // 평상시 재생/일시정지(userRate 배속 등 기존 로직이 담당).
+  // J/K/L shuttle state (same approach as VideoPreview) — "stopped" means the shuttle isn't
+  // involved, i.e. normal playback/pause (handled by existing logic like userRate speed).
   const shuttleDirectionRef = useRef<"stopped" | "forward" | "backward">("stopped");
   const shuttleLevelRef = useRef(1);
   const shuttleRafRef = useRef<number | null>(null);
@@ -138,13 +139,13 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
   useEffect(() => {
     frontRef.current = front;
   }, [front]);
-  // 언마운트 시 역재생 rAF 루프가 남아있지 않게 정리한다.
+  // Clean up on unmount so no reverse-playback rAF loop is left running.
   useEffect(() => {
     return () => stopShuttleRaf();
   }, []);
   useEffect(() => {
     userRateRef.current = userRate;
-    // 재생 중 배속 토글 — 컷 전환을 기다리지 않고 지금 보고 있는 비디오에 바로 반영한다.
+    // Speed toggle while playing — apply it directly to the video being watched now, without waiting for a cut change.
     const video = videoRefs[frontRef.current].current;
     const seg = segmentsRef.current[currentIndex];
     if (video && seg) {
@@ -173,7 +174,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
     }
   }
 
-  /** 셔틀(J/K/L)을 평상시 상태로 되돌린다 — 배속을 seg.speed*userRate로 복원한다. */
+  /** Resets the shuttle (J/K/L) to its normal state — restores the rate to seg.speed*userRate. */
   function resetShuttle() {
     stopShuttleRaf();
     shuttleDirectionRef.current = "stopped";
@@ -197,8 +198,9 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
     setPlaying(false);
   }
 
-  /** 역재생 프레임 루프 — 활성 슬롯 video는 일시정지 상태로 두고 rAF마다 currentTime을
-      직접 깎는다(음수 playbackRate 미지원 근사). 컷 경계는 넘지 않고 0에서 멈춘다. */
+  /** Reverse playback frame loop — keeps the active slot's video paused and decrements
+      currentTime directly on every rAF (an approximation, since negative playbackRate isn't
+      supported). Doesn't cross the cut boundary; stops at 0. */
   function reverseTick(ts: number) {
     const video = videoRefs[frontRef.current].current;
     if (!video || shuttleDirectionRef.current !== "backward") {
@@ -222,8 +224,8 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
     shuttleRafRef.current = requestAnimationFrame(reverseTick);
   }
 
-  /** L: 정방향 재생. 연타 시 1x -> 2x -> 4x로 배속이 오른다(4x 상한). 역재생 중이면
-      정방향 1x로 전환한다. */
+  /** L: forward playback. Repeated presses raise the speed 1x -> 2x -> 4x (capped at 4x). If
+      reverse playback is active, switches to forward 1x. */
   function shuttleForward() {
     const video = videoRefs[frontRef.current].current;
     const seg = segmentsRef.current[currentIndex];
@@ -244,8 +246,8 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
     void video.play();
   }
 
-  /** J: 역방향 재생(근사). 연타 시 1x -> 2x -> 4x. 오디오는 의미가 없어 음소거한다.
-      정방향 재생 중이면 역방향 1x로 전환한다. */
+  /** J: reverse playback (approximate). Repeated presses go 1x -> 2x -> 4x. Audio is meaningless
+      here so it's muted. If forward playback is active, switches to reverse 1x. */
   function shuttleBackward() {
     const video = videoRefs[frontRef.current].current;
     const seg = segmentsRef.current[currentIndex];
@@ -266,12 +268,12 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
     shuttleRafRef.current = requestAnimationFrame(reverseTick);
   }
 
-  // 현재 컷(currentIndex)으로 전환 — 미니 타임라인 클릭(외부)과 자동 전환(내부)이
-  // 둘 다 onIndexChange를 거쳐 이 prop을 바꾸므로 한 경로로 처리된다.
+  // Switch to the current cut (currentIndex) — both mini-timeline clicks (external) and
+  // auto-advance (internal) change this prop via onIndexChange, so they're handled through one path.
   useEffect(() => {
     let cancelled = false;
     advancingRef.current = false;
-    // 컷이 바뀌면 이전 컷 기준으로 돌던 셔틀(J/K/L)은 정리한다(정방향 배속/역재생 루프 모두).
+    // When the cut changes, clean up any shuttle (J/K/L) that was running for the previous cut (both forward-speed and reverse-playback loops).
     resetShuttle();
 
     void (async () => {
@@ -291,18 +293,18 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
       } else {
         activeSlot = oldFront;
       }
-      // 미리 로드해 둔 슬롯이라도 loadedmetadata가 실제로 끝났다는 보장은 없다
-      // (프리로드는 fire-and-forget) — 그대로 play()를 호출하면 컷 길이가 짧을 때
-      // readyState 0 상태에서 NotSupportedError가 난다. 항상 대기한다
-      // (loadClipInto는 이미 로드된 클립이면 즉시 반환하는 멱등 함수).
+      // Even for a slot that was preloaded, there's no guarantee loadedmetadata actually finished
+      // (preload is fire-and-forget) — calling play() as-is can throw NotSupportedError at
+      // readyState 0 when the cut is short. Always wait for it
+      // (loadClipInto is an idempotent function that returns immediately if the clip is already loaded).
       const loaded = await loadClipInto(activeSlot, seg.clip);
       if (cancelled) {
         return;
       }
 
       if (!loaded) {
-        // 디코딩 자체가 불가능한 클립(코덱 미지원, 손상된 프록시 등) — loadedmetadata가
-        // 영영 안 오므로 여기서 멈추지 않고 다음 컷으로 건너뛴다(무한 정지 방지).
+        // A clip that can't be decoded at all (unsupported codec, corrupted proxy, etc.) —
+        // loadedmetadata will never fire, so instead of getting stuck here, skip to the next cut (prevents an infinite stall).
         console.warn(`[SequencePlayer] Clip can't be played, skipping: ${seg.clip}`);
         const next = segmentsRef.current[currentIndex + 1];
         if (next) {
@@ -321,7 +323,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
 
       const video = videoRefs[activeSlot].current;
       if (video) {
-        // 진행 바 클릭 시킹으로 이 컷에 도착한 경우 seg.in이 아니라 그 지정 지점부터 시작한다.
+        // If we arrived at this cut via a progress-bar-click seek, start from that specified point instead of seg.in.
         const pending = pendingSeekRef.current;
         pendingSeekRef.current = null;
         video.currentTime = pending && pending.index === currentIndex ? pending.time : seg.in;
@@ -333,7 +335,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
         }
       }
 
-      // 다음 컷을 남는 슬롯에 미리 로드(다른 클립일 때만).
+      // Preload the next cut into the idle slot (only when it's a different clip).
       const nextSeg = segmentsRef.current[currentIndex + 1];
       if (nextSeg) {
         const idleSlot = activeSlot === 0 ? 1 : 0;
@@ -349,9 +351,9 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex]);
 
-  // 재생/일시정지 토글을 현재 활성 슬롯에 반영. 마운트 직후(currentIndex 이펙트가
-  // 아직 src를 채우기 전)에는 currentSrc가 비어 있어 play()가 NotSupportedError를
-  // 던지므로, 소스가 실제로 로드된 뒤에만 반영한다.
+  // Apply the play/pause toggle to the currently active slot. Right after mount (before the
+  // currentIndex effect has filled in src), currentSrc is empty and play() would throw
+  // NotSupportedError, so only apply it once the source has actually loaded.
   useEffect(() => {
     const video = videoRefs[front].current;
     if (!video || !video.currentSrc) {
@@ -365,8 +367,8 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, front]);
 
-  // out 지점을 넘으면 다음 컷으로 — 두 슬롯 모두에 걸어두고 지금 active(front)인
-  // 쪽만 반응한다(스왑 직후에도 리스너가 끊기지 않게).
+  // Advance to the next cut once the out point is passed — attached to both slots, but only the
+  // currently active (front) one reacts (so the listener doesn't drop right after a swap).
   useEffect(() => {
     const cleanups: Array<() => void> = [];
     videoRefs.forEach((videoRef, slot) => {
@@ -413,24 +415,25 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
       shuttleBackward,
       shuttleStop,
     }),
-    // shuttle* 함수들은 segmentsRef.current[currentIndex]를 클로저로 참조하므로
-    // currentIndex가 바뀔 때마다 핸들을 다시 만들어야 최신 컷을 가리킨다(togglePlay는
-    // setPlaying 함수형 업데이트만 쓰므로 currentIndex 의존이 없어도 안전하다).
+    // The shuttle* functions reference segmentsRef.current[currentIndex] through closure, so the
+    // handle must be recreated whenever currentIndex changes to point at the latest cut
+    // (togglePlay only uses a functional setPlaying update, so it's safe without a currentIndex dependency).
     [currentIndex],
   );
 
   const currentSegment = segments[currentIndex];
   const subtitle = currentSegment?.subtitle.trim() ?? "";
-  // 이 컷만의 스타일 오버라이드가 있으면 전역 subtitleStyle에 병합한 결과를 쓴다
-  // (렌더/미리보기 모두 같은 병합 규칙 — subtitleOverlay.ts 참고).
+  // If this cut has its own style override, use the result of merging it into the global
+  // subtitleStyle (render and preview both follow the same merge rule — see subtitleOverlay.ts).
   const effectiveStyle = mergeSubtitleStyle(subtitleStyle, currentSegment?.styleOverride);
-  // 처음 보는 사람도 지금 재생 중인 컷이 무슨 장면인지 알 수 있도록 자막 위에
-  // 작게 힌트를 띄운다. 매칭 실패 컷은 조용히 숨긴다(이어재생 몰입을 방해하지 않기
-  // 위함 — "장면 정보 없음" 명시는 컷 리스트/인스펙터에서만 강제한다).
+  // Show a small hint above the subtitle so even a first-time viewer can tell what scene the
+  // currently playing cut is. Cuts with no match are hidden silently (to avoid breaking
+  // immersion during playthrough — an explicit "no scene info" is only enforced in the cut
+  // list/inspector).
   const sceneHint = currentSegment ? matchSceneInfo(currentSegment, moments) : { kind: "none" as const };
   const sceneHintText = sceneHint.kind !== "none" ? sceneHint.memo : null;
 
-  // 출력 타임라인 기준 누적 오프셋(초) — 진행 바/시간 표시/클릭 시킹 모두 이 기준을 쓴다.
+  // Cumulative offset (seconds) on the output timeline — the progress bar, time display, and click-seeking all use this basis.
   const cumulativeStart: number[] = [];
   let totalOutputSeconds = 0;
   for (const seg of segments) {
@@ -454,7 +457,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
     }
   }
 
-  // 진행 바 클릭 시킹 — 클릭 위치(출력 타임라인 비율) -> 해당 컷 index + 컷 내 source 오프셋.
+  // Progress bar click seek — click position (ratio on the output timeline) -> corresponding cut index + source offset within the cut.
   function handleProgressClick(e: MouseEvent<HTMLDivElement>) {
     if (totalOutputSeconds <= 0 || segments.length === 0) {
       return;
@@ -526,9 +529,10 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
                 toCqw(effectiveStyle.outlineWidth, projectWidth),
                 effectiveStyle.outlineColor,
               ),
-              // effectiveStyle.margin(원본 px)을 스테이지 높이 대비 %로 환산한 근사치 —
-              // 스테이지는 고정 16:9(styles.css)라 project 실제 화면비와 다를 수 있지만,
-              // top/bottom 오프셋을 CSS 고정값(24px) 대신 반영하는 데는 이 정도 근사로 충분하다.
+              // An approximation converting effectiveStyle.margin (source px) into % relative to
+              // stage height — the stage is fixed at 16:9 (styles.css) so it may differ from the
+              // project's actual aspect ratio, but this approximation is good enough for
+              // reflecting the top/bottom offset instead of a fixed CSS value (24px).
               ...subtitlePositionStyle(effectiveStyle, projectHeight),
             }}
           >

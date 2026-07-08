@@ -8,34 +8,34 @@ import { SegmentStyleOverride } from "./SegmentStyleOverride.js";
 interface Props {
   segment: Segment | undefined;
   narrationEnabled: boolean;
-  /** narration.dir 안의 오디오 파일 목록(길이 포함). */
+  /** List of audio files inside narration.dir (including duration). */
   narrationFiles: NarrationFile[];
-  /** 폴더 미설정/미존재 등 안내 메시지(파일 목록이 비어 있을 때 표시). */
+  /** Guidance message for cases like folder not set/not found (shown when the file list is empty). */
   narrationNote: string | undefined;
-  /** 미리듣기 스트리밍 URL 구성에 쓰는 현재(저장 전 포함) 내레이션 폴더 경로. */
+  /** Current (including pre-save) narration folder path, used to build the preview streaming URL. */
   narrationDir: string | undefined;
   onChange: (patch: Partial<Segment>) => void;
-  /** 이 컷 원본 클립 파일의 길이 근사치(초). 초벌 하이라이트 데이터에 없는 클립이면 undefined. */
+  /** Approximate duration (seconds) of this cut's source clip file. Undefined if the clip isn't in the draft highlight data. */
   clipDurationS: number | undefined;
-  /** 이 컷의 원본 클립 파일 전체(in/out 무시)를 인트로/아웃트로로 지정한다. */
+  /** Sets this cut's entire source clip file (ignoring in/out) as the intro/outro. */
   onSetIntro: () => void;
   onSetOutro: () => void;
-  /** 화면 조정(크롭)이 적용된 컷의 조정을 해제한다. */
+  /** Clears the reframe (crop) applied to this cut. */
   onClearCrop: () => void;
-  /** 화면 조정 편집 모드로 진입한다(미리보기 위 오버레이에서 직접 드래그 조절). */
+  /** Enters reframe edit mode (adjust directly by dragging the overlay on the preview). */
   onEditCrop: () => void;
-  /** [다음 컷과 합치기] 버튼 활성 여부와 비활성 사유. */
+  /** Whether the [Merge with next cut] button is enabled, and why not if disabled. */
   mergeEligibility: MergeEligibility;
-  /** 다음 컷과 합친다(Cmd+J와 동일 동작). */
+  /** Merges with the next cut (same action as Cmd+J). */
   onMergeNext: () => void;
-  /** 현재 재생 위치에서 분할한다(Cmd+B와 동일 동작). */
+  /** Splits at the current playback position (same action as Cmd+B). */
   onSplit: () => void;
-  /** 선택된 컷을 바로 뒤에 복제한다. */
+  /** Duplicates the selected cut right after itself. */
   onDuplicate: () => void;
-  /** 이 컷을 삭제한다(마지막 남은 컷이면 비활성). */
+  /** Deletes this cut (disabled if it's the last remaining cut). */
   onDelete: () => void;
   canDelete: boolean;
-  /** 전역 자막 스타일 — 이 컷만 자막 스타일 섹션에서 오버라이드 기본값/표시값으로 쓴다. */
+  /** Global subtitle style — used as the default/display value for the override in the per-cut subtitle style section. */
   globalSubtitleStyle: SubtitleStyle;
   onToggleStyleOverride: (enabled: boolean) => void;
   onChangeStyleOverride: (patch: Partial<SubtitleStyleOverride>) => void;
@@ -44,11 +44,13 @@ interface Props {
 }
 
 /**
- * 컷 설정(다듬기 단계 우측 필드 패널, PRD 4절 정본 명칭 - 옛 "인스펙터") - screen-spec
- * 4절 G1~G6 그룹 순서를 그대로 따른다: 구간 -> 재생 -> 자막(+이 컷만 자막 스타일) ->
- * 내레이션(사용 시에만) -> 화면 조정 -> 컷 작업. 그룹 소속이 모호했던 clip 파일명
- * 입력은 스펙에 명시가 없어 이 패널에서 유일하게 판단이 필요했던 요소인데, "구간"의
- * 대상 클립을 정하는 값이라 G1(구간) 그룹 맨 위에 배치했다.
+ * Cut settings (right-hand field panel in the touch-up step, canonical name from PRD section 4 —
+ * formerly the "Inspector") - follows screen-spec section 4's G1-G6 group order as-is: Range ->
+ * Playback -> Subtitle (+ per-cut subtitle style) -> Narration (shown only when in use) ->
+ * Reframe -> Cut actions. The clip filename field's group membership was ambiguous - the spec
+ * doesn't specify it, making it the one element in this panel that needed a judgment call, but
+ * since it determines which clip the "Range" applies to, it's placed at the top of the G1
+ * (Range) group.
  */
 export function SegmentQuickFields({
   segment,
@@ -78,7 +80,7 @@ export function SegmentQuickFields({
     return null;
   }
 
-  // 이 컷의 실제 출력 길이(배속 적용 후). 선택한 내레이션 파일이 이보다 길면 다음 컷과 겹친다.
+  // This cut's actual output length (after speed applied). If the selected narration file is longer than this, it overlaps the next cut.
   const outputDurationS = (segment.out - segment.in) / segment.speed;
   const selectedNarrationFile = segment.narration
     ? narrationFiles.find((f) => f.name === segment.narration)
@@ -101,14 +103,15 @@ export function SegmentQuickFields({
     <div className="quick-fields">
       <h2 className="qf-panel-title">Cut settings</h2>
 
-      {/* G1. 구간 */}
+      {/* G1. Range */}
       <div className="qf-group">
         <div className="qf-group-label">Range</div>
-        {/* clip 파일명은 읽기 전용 텍스트로만 표시한다(2026-07-08 개정) - 이 컷이 가리키는
-            원본 클립을 바꾸는 정식 경로는 (1) Scenes 팔레트에서 다른 장면을 고르거나 컷을
-            복제하는 것뿐이라, 자유 타이핑 입력은 오타로 존재하지 않는 파일을 가리키게 하기
-            쉬운 버그 유발 지점이었다. 그래도 복사(선택)는 가능해야 하므로 일반 텍스트로만
-            보여준다(disabled input이 아니라 span - disabled는 브라우저에 따라 선택이 막힌다). */}
+        {/* The clip filename is shown as read-only text only (revised 2026-07-08) - the only
+            proper way to change which source clip this cut points to is (1) picking a different
+            scene from the Scenes palette or duplicating a cut, so a free-text input was a bug
+            magnet: a typo could easily point at a file that doesn't exist. It still needs to be
+            copyable (selectable), so it's shown as plain text (a span, not a disabled input -
+            disabled inputs block selection in some browsers). */}
         <div className="qf-field field-full">
           <span>clip</span>
           <span className="qf-readonly-value" title={segment.clip}>
@@ -144,7 +147,7 @@ export function SegmentQuickFields({
         </div>
       </div>
 
-      {/* G2. 재생 */}
+      {/* G2. Playback */}
       <div className="qf-group">
         <div className="qf-group-label">Playback</div>
         <div className="qf-row">
@@ -183,7 +186,7 @@ export function SegmentQuickFields({
         </div>
       </div>
 
-      {/* G3. 자막 (+ 하위: 이 컷만 자막 스타일) */}
+      {/* G3. Subtitle (+ subsection: per-cut subtitle style) */}
       <div className="qf-group">
         <div className="qf-group-label">Subtitle</div>
         <label className="qf-field field-full qf-subtitle-field">
@@ -205,7 +208,7 @@ export function SegmentQuickFields({
         />
       </div>
 
-      {/* G4. 내레이션 (사용 중일 때만 표시) */}
+      {/* G4. Narration (shown only when in use) */}
       {narrationEnabled ? (
         <div className="qf-group">
           <div className="qf-group-label">Narration</div>
@@ -240,7 +243,7 @@ export function SegmentQuickFields({
         </div>
       ) : null}
 
-      {/* G5. 화면 조정(크롭) */}
+      {/* G5. Reframe (crop) */}
       <div className="qf-group">
         <div className="qf-group-label">Reframe</div>
         <div className="qf-row">
@@ -257,7 +260,7 @@ export function SegmentQuickFields({
         </div>
       </div>
 
-      {/* G6. 컷 작업 - Delete는 여기 없다(아래 별도 위험 zone 참고, screen-spec 4절 개정). */}
+      {/* G6. Cut actions - Delete is not here (see the separate danger zone below, screen-spec section 4 revision). */}
       <div className="qf-group">
         <div className="qf-group-label">Cut actions</div>
         <div className="qf-row qf-actions-row">
@@ -296,8 +299,9 @@ export function SegmentQuickFields({
         </div>
       </div>
 
-      {/* 위험 zone: 삭제만 분리(screen-spec 4절 2026-07-08 개정) - 구분선+여백으로 위의
-          컷 작업 그룹과 확실히 갈라, 다른 버튼과 나란히 눌려 실수로 삭제되는 걸 막는다. */}
+      {/* Danger zone: Delete is separated out (screen-spec section 4, revised 2026-07-08) - a
+          divider + spacing clearly separates it from the cut actions group above, to prevent
+          accidental deletion from being pressed alongside other buttons. */}
       <div className="qf-danger-zone">
         <Button
           label="Delete"

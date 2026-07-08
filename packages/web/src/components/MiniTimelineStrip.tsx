@@ -3,22 +3,22 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import type { Segment } from "@cuesheet/schema";
 import { SegmentThumb } from "./SegmentThumb.js";
 
-/** 이 폭(px) 미만인 블록은 썸네일을 넣지 않고 색만 유지한다(너무 좁아 알아볼 수 없음). */
+/** Blocks narrower than this width (px) skip the thumbnail and just keep the color (too narrow to make out anyway). */
 const MIN_THUMB_BLOCK_PX = 24;
 
-/** 줌 배율 하한/상한. 1 = 전체 보기(폭에 맞춤). */
+/** Zoom factor lower/upper bound. 1 = fit view (matches width). */
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 8;
-/** 휠(Ctrl/Cmd+휠) 한 스텝당 배율 변화량. */
+/** Zoom factor change per wheel step (Ctrl/Cmd+wheel). */
 const WHEEL_ZOOM_FACTOR = 1.2;
-/** +/- 버튼 한 번 클릭당 배율 변화량. */
+/** Zoom factor change per +/- button click. */
 const BUTTON_ZOOM_FACTOR = 1.5;
 
 function clampZoom(z: number): number {
   return Math.min(Math.max(z, MIN_ZOOM), MAX_ZOOM);
 }
 
-/** 세그먼트의 출력 타임라인상 재생 길이(초). speed가 빠를수록 짧아진다. */
+/** A segment's playback duration (seconds) on the output timeline. Shorter the faster the speed. */
 function playbackSeconds(seg: Segment): number {
   return (seg.out - seg.in) / seg.speed;
 }
@@ -33,17 +33,18 @@ interface Props {
   segments: Segment[];
   selectedIndex: number;
   onSelect: (i: number) => void;
-  /** 블록 더블클릭 시 호출 — 편집 단계로 전환하고 그 컷을 선택한다. */
+  /** Called on double-clicking a block — switches to the Edit step and selects that cut. */
   onGoToEdit: (i: number) => void;
 }
 
 /**
- * 항상 표시되는 얇은 타임라인 스트립. 세그먼트 블록만(BGM 제외) 출력 길이 순수
- * 비례로 보여주고, 클릭으로 선택, 더블클릭으로 편집 단계 이동, 우측에 총 길이를
- * 표시한다. Ctrl/Cmd+휠 또는 +/- 버튼으로 확대(가로 스크롤)할 수 있고, 확대 시
- * 블록 폭이 24px 이상이면 썸네일이 다시 보인다. Shift+Z 또는 블록이 아닌 배경
- * 더블클릭으로 전체 보기(줌 1배)로 복귀한다.
- * TimelineView(풀버전, 마무리 단계 전용)와는 별개의 얇은 전용 컴포넌트.
+ * The always-visible thin timeline strip. Shows only segment blocks (excluding BGM), sized
+ * purely proportionally to output duration; click to select, double-click to jump to the Edit
+ * step, and shows the total duration on the right. Can be zoomed in (with horizontal scroll)
+ * via Ctrl/Cmd+wheel or the +/- buttons, and once zoomed in, thumbnails reappear if the block
+ * width is 24px or more. Shift+Z or double-clicking the background (not a block) returns to
+ * fit view (1x zoom).
+ * A separate, dedicated thin component from TimelineView (the full version, finishing-step only).
  */
 export function MiniTimelineStrip({ segments, selectedIndex, onSelect, onGoToEdit }: Props) {
   const total = segments.reduce((sum, s) => sum + playbackSeconds(s), 0);
@@ -67,9 +68,9 @@ export function MiniTimelineStrip({ segments, selectedIndex, onSelect, onGoToEdi
     return () => observer.disconnect();
   }, []);
 
-  // Ctrl/Cmd+휠로 확대/축소 — 브라우저 페이지 확대(pinch-zoom)를 가로채야 하므로
-  // React의 합성 이벤트(passive 리스너라 preventDefault가 막힘)가 아니라 네이티브
-  // non-passive 리스너로 직접 붙인다.
+  // Zoom in/out via Ctrl/Cmd+wheel — since browser page zoom (pinch-zoom) needs to be
+  // intercepted, we attach a native non-passive listener directly instead of using React's
+  // synthetic event (which is a passive listener, so preventDefault is blocked).
   useEffect(() => {
     const el = viewportRef.current;
     if (!el) {
@@ -86,7 +87,7 @@ export function MiniTimelineStrip({ segments, selectedIndex, onSelect, onGoToEdi
     return () => el.removeEventListener("wheel", handler);
   }, []);
 
-  // Shift+Z로 전체 보기 복귀(입력 필드 타이핑 중에는 무시).
+  // Return to fit view via Shift+Z (ignored while typing in an input field).
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -103,8 +104,8 @@ export function MiniTimelineStrip({ segments, selectedIndex, onSelect, onGoToEdi
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // 블록이 아닌 배경(트랙 사이 여백 등) 더블클릭 시 전체 보기로 복귀한다 — 블록
-  // 자체의 더블클릭(onGoToEdit)은 각 버튼에서 stopPropagation으로 여기까지 오지 않는다.
+  // Double-clicking the background (not a block, e.g. the gap between tracks) returns to fit
+  // view — a block's own double-click (onGoToEdit) never reaches here since each button calls stopPropagation.
   const handleBackgroundDoubleClick = (e: ReactMouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
       setZoom(1);
@@ -122,8 +123,8 @@ export function MiniTimelineStrip({ segments, selectedIndex, onSelect, onGoToEdi
         >
           {segments.map((seg, i) => {
             const play = playbackSeconds(seg);
-            // 블록이 텍스트를 담기엔 너무 좁아 라벨을 렌더하지 않으므로, 판단에 필요한
-            // 내용(자막 전문 포함)은 title 툴팁으로 전달한다.
+            // The block is too narrow to hold text so no label is rendered; the content needed
+            // for judgment (including the full subtitle text) is conveyed via the title tooltip instead.
             const label = seg.subtitle.trim() !== "" ? seg.subtitle.trim() : seg.clip || "(no filename)";
             const blockWidthPx = total > 0 ? (play / total) * contentWidth : 0;
             const prevClip = segments[i - 1]?.clip;

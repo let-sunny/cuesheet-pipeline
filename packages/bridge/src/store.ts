@@ -2,15 +2,15 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { findLostFieldPaths, validateCueSheet } from "@cuesheet/schema";
 import type { ValidationResult } from "@cuesheet/schema";
 
-/** 큐시트 파일을 원본 그대로 읽는다(검증 전). 없으면 null. */
+/** Reads the cuesheet file as-is (before validation). Returns null if missing. */
 export function readRaw(path: string): unknown {
   if (!existsSync(path)) return null;
   return JSON.parse(readFileSync(path, "utf-8"));
 }
 
 /**
- * 현재 큐시트를 검증해 반환한다.
- * 파일이 없거나 깨졌으면 ok:false + 이유.
+ * Validates and returns the current cuesheet.
+ * If the file is missing or malformed, returns ok:false with a reason.
  */
 export function getCuesheet(path: string): ValidationResult {
   let raw: unknown;
@@ -26,10 +26,11 @@ export function getCuesheet(path: string): ValidationResult {
 }
 
 /**
- * 큐시트 전체를 새 값으로 교체한다.
- * 스키마 검증을 통과해야만 저장한다(default가 적용된 canonical 형태로 기록).
- * 이 함수가 "자유도"의 핵심: Claude Code가 어떤 편집이든 새 큐시트를 통째로
- * 계산해 넘기면, 여기서 검증 후 안전하게 반영한다.
+ * Replaces the entire cuesheet with a new value.
+ * Only saves if schema validation passes (recorded in canonical form with
+ * defaults applied). This function is the core of the "freedom" this bridge
+ * provides: whatever edit Claude Code wants to make, it computes the whole
+ * new cuesheet and passes it here, where it's validated and safely applied.
  */
 export function updateCuesheet(path: string, next: unknown): ValidationResult {
   const result = validateCueSheet(next);
@@ -37,10 +38,11 @@ export function updateCuesheet(path: string, next: unknown): ValidationResult {
     return result;
   }
 
-  // web의 /api/cuesheet와 동일한 리스크: zod object는 정의되지 않은 키를 조용히
-  // 제거(strip)한다. 서버가 구버전 스키마를 로드한 상태면 새 필드(예: crop)가
-  // 조용히 유실된 채로 저장될 수 있다 — 저장 전 원본(next)과 직렬화 결과(result.data)의
-  // 키 집합을 비교해 사라진 경로가 있으면 저장을 거부한다.
+  // Same risk as web's /api/cuesheet: a zod object silently strips undefined
+  // keys. If the server has an older schema loaded, a new field (e.g. crop)
+  // could be silently lost on save — before saving, compare the key sets of
+  // the original (next) and the serialized result (result.data), and refuse
+  // to save if any paths have disappeared.
   const lostPaths = findLostFieldPaths(next, result.data);
   if (lostPaths.length > 0) {
     return {

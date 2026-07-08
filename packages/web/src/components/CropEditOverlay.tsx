@@ -2,7 +2,7 @@ import { useRef } from "react";
 import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 import type { Crop } from "@cuesheet/schema";
 
-/** crop.w/crop.h는 schema상 0.1보다 커야 하므로(gt, 이상 아님) 살짝 여유를 둔 하한. */
+/** Lower bound with a bit of margin, since crop.w/crop.h must be greater than 0.1 in the schema (gt, not gte). */
 const MIN_SIZE = 0.11;
 
 type HandleId = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
@@ -11,7 +11,7 @@ const HANDLE_IDS: HandleId[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 
 interface Props {
   crop: Crop;
-  /** crop 오버레이가 그려질 컨테이너(비디오를 감싼 프레임) — 픽셀↔비율 환산 기준. */
+  /** The container the crop overlay is drawn on (the frame wrapping the video) — the basis for pixel<->ratio conversion. */
   frameRef: RefObject<HTMLDivElement | null>;
   onChange: (crop: Crop) => void;
 }
@@ -21,13 +21,13 @@ function clamp(v: number, min: number, max: number): number {
 }
 
 /**
- * 리사이즈 핸들 드래그를 항상 w==h(정사각 비율 좌표)를 유지하도록 변환한다.
- * 소스·출력 종횡비가 같으면(이 프로젝트 기준 16:9) w==h인 크롭은 왜곡이 없다.
+ * Transforms resize-handle drag deltas so w==h (square ratio coordinates) is always maintained.
+ * When the source and output aspect ratios match (16:9 for this project), a w==h crop has no distortion.
  *
- * - 모서리 핸들(nw/ne/se/sw): 반대쪽 모서리를 앵커로 고정하고, 두 드래그 축의
- *   평균(대각 방향 이동량)으로 정사각 한 변의 길이를 계산한다.
- * - 변 핸들(n/e/s/w): 앵커(반대쪽 변)를 고정한 채 한 축만으로 크기를 정하고,
- *   반대 축은 중심을 유지하며 같은 크기로 동기화한다.
+ * - Corner handles (nw/ne/se/sw): anchor the opposite corner and compute the square's side
+ *   length from the average of the two drag axes (diagonal movement amount).
+ * - Edge handles (n/e/s/w): fix the anchor (the opposite edge) and size from a single axis,
+ *   then sync the cross axis to the same size while keeping its center.
  */
 function resizeSquare(s: Crop, handle: HandleId, dx: number, dy: number): Crop {
   switch (handle) {
@@ -75,11 +75,13 @@ function resizeSquare(s: Crop, handle: HandleId, dx: number, dy: number): Crop {
 }
 
 /**
- * 변 핸들 드래그로 정해진 크기(size, 드래그 축 자체 앵커로만 결정됨)를, 반대 축에서는
- * 크기를 줄이지 않고 "가능한 한 현재 중심 유지, 프레임을 벗어나면 안쪽으로 밀어 넣기"로
- * 배치한다. size는 항상 <=1이므로(드래그 축 앵커가 이미 그 한도를 보장) 이 배치는 항상
- * 성립한다 — 예전엔 반대 축 중심 기준으로 size 자체를 깎아버려서(다른 핸들로 이미 프레임
- * 경계에 닿은 크롭을 한 변만 당겨도 확장이 막히는 버그가 있었다), 그 버그를 없앤 버전.
+ * Places the size determined by an edge-handle drag (size, decided solely by the drag axis's
+ * own anchor) on the cross axis without shrinking it, using "keep the current center as much as
+ * possible, and push inward if it goes outside the frame." Since size is always <=1 (the drag
+ * axis's anchor already guarantees that bound), this placement always holds — previously the
+ * size itself would get shaved down based on the cross-axis center (causing a bug where a crop
+ * already touching the frame boundary via another handle couldn't be expanded just by pulling
+ * one edge); this version removes that bug.
  */
 function fitCrossAxis(size: number, otherAxisPos: number, otherAxisLen: number): number {
   const center = otherAxisPos + otherAxisLen / 2;
@@ -87,10 +89,11 @@ function fitCrossAxis(size: number, otherAxisPos: number, otherAxisLen: number):
 }
 
 /**
- * 크롭 편집 모드에서 비디오 위에 얹히는 오버레이: box-shadow 트릭으로 크롭 밖을
- * 어둡게 덮고, 밝은 사각형(현재 크롭 영역)을 드래그(이동)·8방향 핸들(리사이즈)로
- * 조절한다. 좌표는 전부 0~1 비율(frameRef 크기 기준)로 계산해 onChange로 즉시
- * 부모(VideoPreview)에 알린다 — 적용/취소 커밋은 부모가 관리한다.
+ * The overlay laid over the video in crop-edit mode: uses a box-shadow trick to darken
+ * everything outside the crop, and lets the bright rectangle (the current crop area) be
+ * adjusted by dragging (move) and 8-directional handles (resize). Coordinates are all
+ * computed as 0-1 ratios (relative to frameRef's size) and reported to the parent
+ * (VideoPreview) immediately via onChange — the parent manages the apply/cancel commit.
  */
 export function CropEditOverlay({ crop, frameRef, onChange }: Props) {
   const dragStart = useRef<{
@@ -119,7 +122,7 @@ export function CropEditOverlay({ crop, frameRef, onChange }: Props) {
     const s = start.crop;
 
     if (start.handle === "move") {
-      // 이동은 w/h를 안 건드리므로 정사각(w==h) 불변이 자동으로 유지된다.
+      // Moving doesn't touch w/h, so the square (w==h) invariant is preserved automatically.
       onChange({
         x: clamp(s.x + dx, 0, 1 - s.w),
         y: clamp(s.y + dy, 0, 1 - s.h),

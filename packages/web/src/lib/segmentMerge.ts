@@ -1,10 +1,10 @@
 import type { CueSheet } from "@cuesheet/schema";
 
-/** [다음 컷과 합치기]가 가능한지와, 안 되면 그 사유(비활성 버튼 title에 노출)를 반환한다.
-    같은 클립이고 시간상 인접(다음 컷 in - 현재 out < 2초)해야 한다. */
+/** Returns whether [Merge with next cut] is possible, and if not, the reason (shown in the disabled
+    button's title). Requires the same clip and time adjacency (next cut's in - current out < 2s). */
 export type MergeEligibility = { eligible: true } | { eligible: false; reason: string };
 
-/** 인접 컷 병합 시 두 컷의 in/out 간격을 얼마까지 "인접"으로 볼지(초). */
+/** How close (seconds) the gap between two cuts' in/out has to be to count as "adjacent" when merging. */
 export const MERGE_ADJACENCY_GAP_S = 2;
 
 export function computeMergeEligibility(draft: CueSheet | null, index: number): MergeEligibility {

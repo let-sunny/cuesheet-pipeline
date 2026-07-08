@@ -9,9 +9,9 @@ import type { Manifest } from "./scan.js";
 import { momentsFileSchema } from "./types.js";
 
 /**
- * CLI: cuesheet-draft scan <원본폴더> --out <작업폴더>
- *      cuesheet-draft assemble --manifest <경로> --moments <경로> --clip-dir <원본폴더>
- *                               --project-name <이름> --out <큐시트경로>
+ * CLI: cuesheet-draft scan <source-folder> --out <work-folder>
+ *      cuesheet-draft assemble --manifest <path> --moments <path> --clip-dir <source-folder>
+ *                               --project-name <name> --out <cuesheet-path>
  *                               [--fps N] [--width N] [--height N] [--boundary-pad N]
  */
 
@@ -41,7 +41,7 @@ function parseArgs(argv: string[]): ParsedArgs {
   return { positional, flags };
 }
 
-/** zod issue path(예: [0,"moments",0,"quality"])를 "[0].moments[0].quality" 형태로 변환 */
+/** Converts a zod issue path (e.g. [0,"moments",0,"quality"]) to the form "[0].moments[0].quality" */
 function pathToString(path: ReadonlyArray<PropertyKey>): string {
   let out = "";
   for (const key of path) {
@@ -92,8 +92,9 @@ function runAssemble(rest: string[]): void {
     process.exit(1);
   }
 
-  // manifest.json은 scan 단계에서 실제 스캔된 클립 목록/프레임 정보를 담고 있다.
-  // 클립별 durS를 뽑아 경계 패딩이 클립 끝을 넘지 않게 클램프하는 데 쓴다.
+  // manifest.json holds the list of actually scanned clips/frame info from the scan stage.
+  // Extract per-clip durS and use it to clamp boundary padding so it doesn't extend past
+  // the clip's end.
   const manifest = JSON.parse(readFileSync(manifestPath, "utf-8")) as Manifest;
   const clipDurations = Object.fromEntries(manifest.clips.map((c) => [c.name, c.durS]));
 

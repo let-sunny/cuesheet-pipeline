@@ -21,10 +21,11 @@ const SHORTCUTS: Array<[string, string]> = [
 ];
 
 /**
- * 화면 구석에 뜨는 단축키 안내 패널. 여는/닫는 진입점은 헤더의 [?] 버튼과 ? 키
- * (App.tsx의 전역 단축키)이고, 이 컴포넌트는 패널 자체와 패널 안 [닫기]만 담당한다
- * (예전엔 이 컴포넌트가 자체 토글 버튼도 항상 떠 있게 그렸는데, 헤더에 [?]가 생기며
- * 같은 기능의 진입점이 두 곳이라 하나로 정리했다).
+ * The keyboard shortcuts help panel that appears in a corner of the screen. The open/close
+ * entry points are the header's [?] button and the ? key (a global shortcut in App.tsx); this
+ * component is only responsible for the panel itself and the [Close] button inside it (this
+ * component used to always render its own toggle button too, but once [?] was added to the
+ * header, having two entry points for the same feature was consolidated into one).
  */
 export function KeyboardHelp({ visible, onToggle }: Props) {
   if (!visible) {

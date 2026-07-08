@@ -5,12 +5,14 @@ import { z } from "zod";
 import { getCuesheet, updateCuesheet } from "./store.js";
 
 /**
- * Claude Code가 붙는 MCP 브리지.
- * 사용자가 자기 Claude Code에서 자연어로 명령하면, Claude Code가 이 툴들로
- * 큐시트를 편집한다. 별도 Claude API 호출 없음(추가 비용 없음).
+ * MCP bridge that Claude Code connects to.
+ * When the user gives natural-language commands in their own Claude Code,
+ * Claude Code edits the cuesheet using these tools. No separate Claude API
+ * call is made (no extra cost).
  *
- * 편집 대상 큐시트 파일은 CUESHEET_PATH 환경변수로 지정(기본 ./project.cuesheet.json).
- * 웹앱은 이 파일을 감시해 미리보기를 갱신한다.
+ * The cuesheet file to edit is specified via the CUESHEET_PATH env var
+ * (default ./project.cuesheet.json). The web app watches this file to
+ * refresh its preview.
  */
 const CUESHEET_PATH = process.env.CUESHEET_PATH ?? "./project.cuesheet.json";
 

@@ -1,11 +1,12 @@
 import { z } from "zod";
 
 /**
- * moments.json 스키마 (zod). scan 단계 산출물(manifest.json)의 프레임을 Claude가
- * 직접 보고 작성하는 파일 — 이 프로젝트에서 유일한 비전 판단 단계.
+ * moments.json schema (zod). The file Claude writes by directly looking at the frames
+ * from the scan stage's output (manifest.json) — the only vision-judgment step in this
+ * project.
  *
- * 단위는 초(second). shotType 어휘는 사용자 편집 문법 실측(손 클로즈업/오브젝트/고양이/
- * 형태변화·리빌/착용샷)에서 가져왔다.
+ * Units are in seconds. The shotType vocabulary comes from observing the user's editing
+ * grammar (hand closeup / object / cat / change / reveal / wearing shot).
  */
 
 export const shotTypeSchema = z.enum([
@@ -31,8 +32,9 @@ export const monotonousRangeSchema = z.object({
   endS: z.number(),
   desc: z.string(),
   /**
-   * 이 구간(배속 커넥터 후보)에 얼굴 노출 위험이 있는지. 비전 판독자가 명시하지 않으면
-   * assemble이 desc 텍스트 휴리스틱으로 폴백한다(권장: 항상 명시).
+   * Whether this range (a timelapse-connector candidate) carries face-exposure risk. If
+   * the vision judge doesn't specify it, assemble falls back to a desc-text heuristic
+   * (recommended: always specify this explicitly).
    */
   faceExposed: z.boolean().optional(),
 });

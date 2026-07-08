@@ -46,12 +46,12 @@ import { SubtitleStyleSettings, NarrationSettings } from "./components/Finishing
 import { ProjectMetaFields } from "./components/ProjectMetaFields.js";
 import { RenderSettingsDialog } from "./components/RenderSettingsDialog.js";
 
-/** ← / → 1회 이동량(1프레임, 30fps 기준). Shift+← / →는 1초. */
+/** Distance moved per ← / → press (1 frame, based on 30fps). Shift+← / → moves 1 second. */
 const FRAME_SECONDS = 1 / 30;
 
-// 오버라이드 해제 시 styleOverride 키 자체를 제거한다(값을 null로 두지 않는다) —
-// null도 "오버라이드 없음"으로 스키마상 유효하지만(nullable), 저장 파일에 불필요한
-// "styleOverride": null이 남는 걸 피하려고 생략(undefined)으로 통일한다.
+// When clearing an override, drop the styleOverride key entirely (don't leave the value as null) —
+// null is also schema-valid as "no override" (nullable), but this standardizes on omission
+// (undefined) to avoid leaving an unnecessary "styleOverride": null in the saved file.
 function withoutStyleOverride(segment: Segment): Segment {
   const { styleOverride: _styleOverride, ...rest } = segment;
   return rest;
@@ -69,7 +69,7 @@ type RenderState =
   | { status: "success"; path: string }
   | { status: "error"; error: string };
 
-/** 렌더 진행률 폴링 주기(ms). */
+/** Render progress polling interval (ms). */
 const RENDER_POLL_INTERVAL_MS = 1500;
 
 const newBgmCue = (): BgmCue => ({
@@ -80,10 +80,10 @@ const newBgmCue = (): BgmCue => ({
 });
 
 
-/** 언두 히스토리에 보관하는 과거 스냅샷 최대 개수. */
+/** Max number of past snapshots kept in the undo history. */
 const HISTORY_LIMIT = 50;
 
-/** 연속 편집(자막 타이핑, 트림 핸들 드래그 등)을 한 묶음으로 합치는 디바운스 간격(ms). */
+/** Debounce interval (ms) for merging continuous edits (subtitle typing, trim handle dragging, etc.) into one batch. */
 const BURST_DEBOUNCE_MS = 500;
 
 interface HistoryEntry {
@@ -91,7 +91,7 @@ interface HistoryEntry {
   selectedIndex: number;
 }
 
-/** "자막 굽지 않기(CC용 클린 영상)" 체크박스 상태를 기억하는 localStorage 키. */
+/** localStorage key remembering the "don't burn subtitles (clean video for CC)" checkbox state. */
 const NO_BURN_SUBTITLES_KEY = "cuesheet-render-no-burn-subtitles";
 
 function loadNoBurnSubtitles(): boolean {
@@ -102,7 +102,7 @@ function loadNoBurnSubtitles(): boolean {
   }
 }
 
-/** 미저장 편집 임시 스냅샷을 localStorage에 두는 키. 큐시트(프로젝트명)별로 분리한다. */
+/** localStorage key holding a temporary snapshot of unsaved edits. Separated per cuesheet (project name). */
 const DRAFT_SNAPSHOT_PREFIX = "cuesheet-draft-snapshot:";
 
 function draftSnapshotKey(projectName: string): string {
@@ -126,7 +126,7 @@ function loadDraftSnapshot(projectName: string): DraftSnapshot | null {
   }
 }
 
-/** "3분 전"처럼 사람이 읽는 경과 시간 - 복원 배너 문구에 쓴다. */
+/** Human-readable elapsed time like "3 min ago" - used in the restore banner text. */
 function minutesAgoLabel(savedAt: number): string {
   const minutes = Math.max(0, Math.round((Date.now() - savedAt) / 60000));
   if (minutes === 0) {
@@ -139,7 +139,7 @@ function clearDraftSnapshot(projectName: string): void {
   try {
     localStorage.removeItem(draftSnapshotKey(projectName));
   } catch {
-    // localStorage 접근 불가 시 조용히 무시한다(best-effort 기능).
+    // Silently ignore if localStorage is inaccessible (best-effort feature).
   }
 }
 
@@ -164,14 +164,15 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [sequenceMode, setSequenceMode] = useState(false);
   const [noBurnSubtitles, setNoBurnSubtitles] = useState(loadNoBurnSubtitles);
-  // 클립별 길이 근사치(초) — 인트로/아웃트로 지정 버튼(팔레트/인스펙터)의 15초 상한
-  // 판정에 쓴다. 실패해도 편집 자체는 막지 않고 빈 맵(전부 "알 수 없음" 취급)으로 둔다.
+  // Approximate duration per clip (seconds) — used to judge the 15s cap for the intro/outro assign
+  // buttons (palette/inspector). If this fails, editing still isn't blocked; it's just left as an
+  // empty map (everything treated as "unknown").
   const [clipDurations, setClipDurations] = useState<Record<string, number>>({});
-  // 초벌 비전 판독 원본 데이터 — 컷 리스트/인스펙터/이어재생에서 "이 컷이 무슨
-  // 장면인지" 매칭해 보여주는 데 쓴다(clipDurations와 같은 fetchMoments 호출 결과 공유).
+  // Raw rough vision-reading data — used to show "what scene is this cut" by matching it in the cut
+  // list/inspector/sequence playback (shares the same fetchMoments call result as clipDurations).
   const [moments, setMoments] = useState<ClipMoments[]>([]);
-  // narration.dir 안의 오디오 파일 목록(내레이션 사용 중일 때만 갱신). note는
-  // 폴더 미설정/미존재 등 안내 메시지.
+  // List of audio files inside narration.dir (only refreshed while narration is in use). note is an
+  // info message for e.g. an unset/nonexistent folder.
   const [narrationFiles, setNarrationFiles] = useState<NarrationFile[]>([]);
   const [narrationNote, setNarrationNote] = useState<string | undefined>(undefined);
   const videoPreviewRef = useRef<VideoPreviewHandle>(null);
@@ -179,8 +180,8 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
   const renderPollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toast = useToast();
 
-  // 언두/리두 히스토리: 과거/미래 스냅샷 스택(세션 메모리만, 새로고침 시 사라짐 —
-  // localStorage 이탈 가드 스냅샷과는 별개다).
+  // Undo/redo history: past/future snapshot stacks (session memory only, cleared on refresh —
+  // separate from the localStorage exit-guard snapshot).
   const [past, setPast] = useState<HistoryEntry[]>([]);
   const [future, setFuture] = useState<HistoryEntry[]>([]);
   const burstActiveRef = useRef(false);
@@ -212,9 +213,9 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     setFuture([]);
   }, [draft, selectedIndex]);
 
-  // 구조적 변경(컷 추가/삭제/이동/분할, BGM 추가/삭제 등): 매번 즉시 1개 히스토리로
-  // 기록하고, 진행 중이던 연속 편집 묶음(burst)은 끊어서 다음 편집이 새 묶음으로
-  // 시작하게 한다.
+  // Structural changes (add/remove/move/split a cut, add/remove BGM, etc.): record one history
+  // entry immediately every time, and cut off any in-progress continuous-edit burst so the next
+  // edit starts a fresh burst.
   const recordDiscreteChange = useCallback(() => {
     if (burstTimerRef.current) {
       clearTimeout(burstTimerRef.current);
@@ -224,9 +225,9 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     pushHistorySnapshot();
   }, [pushHistorySnapshot]);
 
-  // 연속 편집(자막 타이핑, 트림 핸들 드래그, 슬라이더 등): 묶음이 비어 있을 때만
-  // 편집 시작 시점 상태를 1회 기록하고, 이어지는 변경은 디바운스 타이머만 리셋한다.
-  // 타이머가 만료되면(입력이 멈추면) 묶음이 닫히고 다음 변경이 새 묶음을 연다.
+  // Continuous edits (subtitle typing, trim handle dragging, sliders, etc.): only when the burst is
+  // empty does this record the state once at the start of editing; subsequent changes just reset
+  // the debounce timer. When the timer expires (input stops), the burst closes and the next change opens a new one.
   const recordContinuousChange = useCallback(() => {
     if (!burstActiveRef.current) {
       pushHistorySnapshot();
@@ -285,9 +286,9 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     setSelectedIndex(next.selectedIndex);
   }, [draft, future, selectedIndex]);
 
-  // 인접 컷 합치기(Cmd+J / 인스펙터 버튼) — 같은 클립·시간상 인접(computeMergeEligibility)일
-  // 때만 실행된다. 병합 결과는 in=현재 in, out=다음 out, 자막은 현재 컷 것을 유지한다.
-  // 다음 컷 자막이 다르고 비어있지 않으면 그걸 버린다는 확인을 받는다.
+  // Merge adjacent cuts (Cmd+J / inspector button) — only runs when the same clip and time-adjacent
+  // (computeMergeEligibility). The merge result has in=current in, out=next out, keeping the current
+  // cut's subtitle. If the next cut's subtitle differs and isn't empty, confirms it will be discarded.
   const mergeSegmentWithNext = useCallback((i: number) => {
     if (!draft) {
       return;
@@ -331,8 +332,8 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     return JSON.stringify(draft) !== JSON.stringify(serverCuesheet);
   }, [draft, serverCuesheet]);
 
-  // 렌더 설정 다이얼로그 요약용 출력 길이 근사치 — intro/outro는 파일 프로빙 없이
-  // 알 수 없어 서버의 estimateOutputSeconds와 동일하게 세그먼트 합만 쓴다.
+  // Approximate output duration for the render settings dialog summary — intro/outro are unknown
+  // without probing the file, so this just sums segments, the same as the server's estimateOutputSeconds.
   const outputSecondsEstimate = useMemo(() => {
     if (!draft) {
       return 0;
@@ -354,7 +355,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         setRestoreSnapshot(snapshot);
       } else {
         if (snapshot) {
-          // 서버 데이터와 같은 스냅샷은 이미 반영된 것이므로 정리한다.
+          // A snapshot identical to the server data has already been applied, so clean it up.
           clearDraftSnapshot(cs.project.name);
         }
         setRestoreSnapshot(null);
@@ -379,13 +380,13 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         setMoments(data);
         setClipDurations(computeClipDurations(data));
       } catch {
-        // 순간 데이터가 없어도 편집 자체는 계속되고, 인트로/아웃트로 지정 버튼만
-        // "길이를 알 수 없음"으로 비활성 처리되며, 장면 표시는 전부 "정보 없음"이 된다.
+        // Editing continues even without moment data — only the intro/outro assign buttons get
+        // disabled as "duration unknown", and scene displays all become "no info".
       }
     })();
   }, []);
 
-  // 내레이션 사용 중일 때만 폴더 안 파일 목록을 갱신한다(dir이 바뀌어도 재조회).
+  // Only refreshes the file listing inside the folder while narration is in use (also refetches if dir changes).
   useEffect(() => {
     if (!draft?.narration?.enabled) {
       setNarrationFiles([]);
@@ -413,7 +414,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     };
   }, [draft?.narration?.enabled, draft?.narration?.dir]);
 
-  // dirty일 때 새로고침/탭 닫기 시 브라우저 기본 확인 대화상자를 띄운다.
+  // Shows the browser's default confirmation dialog on refresh/tab close while dirty.
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
       if (dirty) {
@@ -425,8 +426,8 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     return () => window.removeEventListener("beforeunload", handler);
   }, [dirty]);
 
-  // dirty 상태의 draft를 디바운스(1초)로 localStorage에 임시 저장해 두어,
-  // 저장 없이 새로고침/탭 닫기로 편집이 증발해도 복원할 수 있게 한다.
+  // Debounced (1s) temp save of a dirty draft to localStorage, so edits can be restored even if
+  // they'd otherwise vanish from an unsaved refresh/tab close.
   useEffect(() => {
     if (!draft || !dirty) {
       return;
@@ -436,7 +437,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         const snapshot: DraftSnapshot = { cuesheet: draft, savedAt: Date.now() };
         localStorage.setItem(draftSnapshotKey(draft.project.name), JSON.stringify(snapshot));
       } catch {
-        // 용량 초과 등은 무시한다(best-effort 기능).
+        // Ignore things like quota exceeded (best-effort feature).
       }
     }, 1000);
     return () => clearTimeout(timer);
@@ -488,19 +489,19 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     });
   }, [draft]);
 
-  // 공통 단축키: 입력 필드(input/textarea)에 포커스된 동안은 무시한다(Tab을 이용한
-  // 몰아쓰기 모드 내 이동은 SubtitleWriteMode가 각 textarea에서 자체 처리).
-  // I/O·재생·분할은 VideoPreview가 실제로 떠 있는 ②편집 단계에서만 의미가 있다.
+  // Common shortcuts: ignored while an input field (input/textarea) is focused (Tab-based
+  // navigation inside batch subtitle-writing mode is handled by SubtitleWriteMode itself in each
+  // textarea). I/O, playback, and split only make sense in the ② edit step, where VideoPreview is actually mounted.
   useEffect(() => {
     const isVideoStep = step === "edit";
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const isTyping = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA";
-      // Cmd+Z/Cmd+Shift+Z는 isTyping 가드보다 먼저 처리한다: input/textarea에 포커스가
-      // 있어도(예: 자막 입력 후 Tab으로 다음 필드로 이동한 상태) 우리 앱의 통합
-      // 언두/리두가 항상 적용돼야 한다. 여기서 걸러내지 않으면 브라우저 네이티브
-      // per-field 실행취소가 대신 발동해 리액트 상태와 동기화되지 않는 텍스트만
-      // 조용히 되돌리는(토스트도 안 뜨고, 저장 시엔 원래 상태가 남는) 불일치가 생긴다.
+      // Cmd+Z/Cmd+Shift+Z is handled before the isTyping guard: our app's unified undo/redo must
+      // always apply even while an input/textarea is focused (e.g. after typing a subtitle and
+      // tabbing to the next field). Without filtering this out here, the browser's native per-field
+      // undo would fire instead, silently reverting only text that's out of sync with React state
+      // (no toast, and the original state lingers at save time) — an inconsistency.
       if ((e.metaKey || e.ctrlKey) && (e.key === "z" || e.key === "Z")) {
         e.preventDefault();
         if (e.shiftKey) {
@@ -682,9 +683,9 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     void load();
   }, [load]);
 
-  // 렌더 시작 후 완료/실패까지 폴링한다. 렌더가 도는 동안에도 편집은 계속 가능하다 —
-  // 렌더는 시작 시점에 디스크에 저장돼 있던 큐시트 기준으로 진행되므로 폴링 중 편집·저장은
-  // 이번 렌더 결과에 영향을 주지 않는다.
+  // Polls from render start until completion/failure. Editing can continue while a render is
+  // running — since the render proceeds based on the cuesheet that was on disk when it started,
+  // editing/saving during polling doesn't affect this render's result.
   const pollRenderStatus = useCallback(() => {
     const tick = async () => {
       try {
@@ -701,7 +702,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
           toast({ type: "error", body: `Export failed: ${message}` });
         }
       } catch {
-        // 네트워크 일시 오류는 폴링을 이어간다.
+        // Keep polling through transient network errors.
         renderPollTimer.current = setTimeout(() => void tick(), RENDER_POLL_INTERVAL_MS);
       }
     };
@@ -713,7 +714,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     try {
       localStorage.setItem(NO_BURN_SUBTITLES_KEY, checked ? "1" : "0");
     } catch {
-      // localStorage 접근 불가 시 조용히 무시한다(best-effort 기능).
+      // Silently ignore if localStorage is inaccessible (best-effort feature).
     }
   }, []);
 
@@ -742,9 +743,9 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     setDraft((prev) => (prev ? { ...prev, project: { ...prev.project, ...patch } } : prev));
   }, [draft, recordContinuousChange]);
 
-  // 렌더 설정 다이얼로그의 해상도 프리셋 전환 — subtitleStyle/styleOverride의 절대 px 값을
-  // height 비율로 함께 스케일해야 하는 구조적 편집이라(단순 project 필드 패치가 아님)
-  // updateProject 대신 별도 핸들러로 recordDiscreteChange(언두 1스텝)만 남긴다.
+  // Resolution preset switching in the render settings dialog — since subtitleStyle/styleOverride's
+  // absolute px values must also be scaled by the height ratio, this is a structural edit (not a
+  // simple project field patch), so it uses a separate handler and just leaves one recordDiscreteChange (1 undo step) instead of updateProject.
   const handleChangeResolution = useCallback((width: number, height: number) => {
     if (!draft) {
       return;
@@ -792,9 +793,9 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     setDraft((prev) => (prev ? { ...prev, ...patch } : prev));
   }, [draft, recordContinuousChange]);
 
-  // 팔레트 카드/편집 인스펙터의 "인트로로"/"아웃트로로" 버튼 — 클릭 한 번의 개별 편집이므로
-  // (직접 입력 타이핑과 달리) recordDiscreteChange로 즉시 1개 언두 항목을 남긴다.
-  // intro/outro는 in/out 구간 지정이 안 되는 통짜 클립이라 클립 파일 전체가 지정된다.
+  // The "Set as intro"/"Set as outro" buttons on palette cards/edit inspector — since this is a
+  // single-click discrete edit (unlike direct text typing), it leaves one undo entry immediately
+  // via recordDiscreteChange. intro/outro are whole clips with no in/out range, so the entire clip file gets assigned.
   const setIntroOutroFromClip = useCallback((role: "intro" | "outro", clipFileName: string) => {
     if (!draft) {
       return;
@@ -836,12 +837,14 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     });
   }, [draft, recordContinuousChange]);
 
-  // "세그먼트 추가" 버튼 — 빈 컷을 맨 뒤에 붙이던 이전 동작은 "누른 다음에 뭘 해야 할지
-  // 모르겠다"는 사용자 신고의 원인이었다(클립 없는 빈 컷이 인스펙터에 "클립 없음"으로만
-  // 뜨고, 파일명을 직접 타이핑해야 함). 대신 선택된 컷을 그 바로 뒤에 복제한다 — 같은
-  // 클립의 다른 구간을 나눠 쓰는(예: 같은 롱테이크에서 두 순간을 따로 컷으로 쓰기) 가장
-  // 흔한 실사용 패턴에 바로 대응되고, 복제본은 clip/in/out/crop이 이미 채워진 채로
-  // 시작해 곧장 트림만 하면 된다(자막은 새로 써야 함을 표시하려고 비운다).
+  // The "Add segment" button — the previous behavior of appending an empty cut at the end was the
+  // cause of user complaints about "not knowing what to do after clicking" (a clip-less empty cut
+  // showed only "no clip" in the inspector, requiring the file name to be typed in manually).
+  // Instead, this duplicates the selected cut right after it — this directly matches the most
+  // common real-world pattern of splitting a different range of the same clip into another cut
+  // (e.g. using two moments from the same long take as separate cuts), and the duplicate starts
+  // with clip/in/out/crop already filled in, needing only a trim (the subtitle is left empty to
+  // signal that it needs to be rewritten).
   const addSegment = useCallback(() => {
     if (!draft) {
       return;
@@ -943,7 +946,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       if (!prev) {
         return prev;
       }
-      // 어디서 담든 (clip 파일명, in) 기준 시간순 위치에 삽입 — 순서가 절대 안 흐트러지게.
+      // Wherever it's added from, insert at the time-ordered position keyed on (clip file name, in) — so the order never gets scrambled.
       const idx = prev.segments.findIndex(
         (s) => s.clip > seg.clip || (s.clip === seg.clip && s.in > seg.in),
       );
@@ -955,8 +958,8 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     });
   }, [draft, recordDiscreteChange]);
 
-  // 팔레트 카드의 "빼기" — 같은 clip에서 카드 구간과 겹치는 세그먼트를 담긴 목록에서 제거한다
-  // (MomentPalette의 "사용 중" 판정과 동일한 겹침 기준을 쓴다).
+  // "Remove" on a palette card — removes segments from the added list that overlap the card's
+  // range within the same clip (uses the same overlap criterion as MomentPalette's "in use" check).
   const removeMatchingSegments = useCallback((clip: string, inS: number, outS: number) => {
     if (!draft) {
       return;
@@ -982,7 +985,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     });
   }, [draft, recordDiscreteChange]);
 
-  // 미니 타임라인 블록 더블클릭 — 편집 단계(다듬기 뷰)로 전환하고 그 컷을 선택한다.
+  // Double-clicking a mini timeline block — switches to the edit step (trim view) and selects that cut.
   const goToEdit = useCallback((i: number) => {
     setSequenceMode(false);
     setStep("edit");
@@ -1025,9 +1028,10 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     });
   }, [draft, recordDiscreteChange]);
 
-  // "이 컷만 스타일" 토글 — 켜면 전역 subtitleStyle을 그대로 복사한 오버라이드로 시작해서
-  // (편집 즉시 눈에 보이는 값이 바뀌지 않게) 사용자가 거기서부터 값을 조정하게 한다.
-  // 끄면(=오버라이드 해제) styleOverride 키를 제거한다. 토글 자체는 개별 편집.
+  // "Style for this cut only" toggle — turning it on starts the override as a straight copy of the
+  // global subtitleStyle (so the visible value doesn't change the instant it's toggled), letting
+  // the user adjust values from there. Turning it off (= clearing the override) removes the
+  // styleOverride key. The toggle itself is a discrete edit.
   const toggleSegmentStyleOverride = useCallback((i: number, enabled: boolean) => {
     if (!draft) {
       return;
@@ -1074,9 +1078,9 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     });
   }, [draft, recordDiscreteChange]);
 
-  // "전역 스타일로 승격" — 이 컷의 오버라이드를 전역 subtitleStyle에 병합하고, 이 컷의
-  // 오버라이드는 제거한다(다른 컷에 영향을 주는 확정적 편집이라 확인을 받는다).
-  // 두 필드(subtitleStyle, segments[i].styleOverride) 변경을 히스토리 1개로 묶는다.
+  // "Promote to global style" — merges this cut's override into the global subtitleStyle and
+  // removes this cut's override (this is a confirmed edit since it affects other cuts too).
+  // Bundles the two field changes (subtitleStyle, segments[i].styleOverride) into one history entry.
   const promoteSegmentStyleOverride = useCallback((i: number) => {
     if (!draft) {
       return;
@@ -1145,9 +1149,9 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         saving={saveState.status === "saving"}
         rendering={renderState.status === "rendering"}
         renderProgress={renderState.status === "rendering" ? renderState.progress : null}
-        // dirty여도 다이얼로그는 열 수 있게 한다 — RenderSettingsDialog 자체가 dirty를
-        // 보고 경고 문구를 보여주고 [렌더 시작]만 비활성화한다(아래 render-cta 버튼과
-        // 동일 규약). 여기서도 dirty로 막으면 그 경고를 사용자가 볼 방법이 없어진다.
+        // Lets the dialog open even while dirty — RenderSettingsDialog itself sees dirty and shows
+        // a warning, disabling only [Start render] (same convention as the render-cta button below).
+        // If this were blocked by dirty too, the user would have no way to see that warning.
         renderDisabled={renderState.status === "rendering"}
         canUndo={canUndo}
         canRedo={canRedo}
@@ -1170,11 +1174,11 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       {restoreSnapshot ? (
         <div className="banner">
           You have unsaved edits from the last session (last edited {minutesAgoLabel(restoreSnapshot.savedAt)}).
-          {/* screen-spec 6절: 그룹 안 primary는 하나만 - 이어서 편집하는 쪽이 기본 추천
-              동작이라 primary, 되돌리는 쪽은 secondary(2026-07-08 개정). 버튼 두 개는
-              한 액션 그룹으로 묶어(.banner-actions) 텍스트와 분리, 오른쪽 정렬한다 -
-              예전엔 이 div가 3개 flex 아이템(텍스트+버튼+버튼)이라 space-between이
-              버튼을 서로 떨어뜨려 놓아 "따로 노는" 배치였다. */}
+          {/* screen-spec section 6: only one primary per group - "continue editing" is the
+              recommended default action so it's primary, and reverting is secondary (revised
+              2026-07-08). The two buttons are grouped into one action group (.banner-actions),
+              separated from the text, and right-aligned - previously this div had 3 flex items
+              (text + button + button), so space-between spread the buttons apart into a "disjointed" layout. */}
           <div className="banner-actions">
             <Button label="Continue editing" variant="primary" size="sm" onClick={handleRestoreSnapshot} />
             <Button label="Discard and use saved" variant="secondary" size="sm" onClick={handleDiscardSnapshot} />
@@ -1184,9 +1188,9 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
 
       <StepNav
         step={step}
-        // 이어재생 중에도 단계를 오가며 팔레트/컷 리스트/인스펙터를 만질 수 있어야 하므로
-        // (개편 1 — 재생과 편집 공존) 여기서 sequenceMode를 끄지 않는다. 재생 종료는
-        // SequencePlayer의 "닫기" 버튼으로만 한다.
+        // Since users need to be able to move between steps and touch the palette/cut list/inspector
+        // even during sequence playback (redesign 1 — playback and editing coexist), sequenceMode is
+        // not turned off here. Playback only ends via SequencePlayer's "Close" button.
         onChange={setStep}
         segmentCount={draft.segments.length}
         subtitleFilled={subtitleFilled}
@@ -1303,9 +1307,10 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
 
         {step === "finish" ? (
           <div className="finish-layout">
-            {/* 섹션 순서(screen-spec 5절): 프로젝트 -> 자막 스타일(전역) -> 인트로/아웃트로
-                -> 배경음악(BGM) -> 내레이션 -> 출력. 프로젝트 메타는 예전엔 헤더 "설정"
-                다이얼로그에 숨어 있었는데, 출력 준비의 자연스러운 첫 단계로 여기 편입했다. */}
+            {/* Section order (screen-spec section 5): project -> subtitle style (global) ->
+                intro/outro -> background music (BGM) -> narration -> output. Project meta used to
+                be hidden inside the header's "Settings" dialog; it was folded in here as the
+                natural first step of preparing output. */}
             <ProjectMetaFields project={draft.project} onChange={updateProject} />
 
             <SubtitleStyleSettings
@@ -1347,8 +1352,8 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
                 }
                 variant="primary"
                 size="lg"
-                // dirty여도 다이얼로그를 열 수 있게 한다 — 위 HeaderBar renderDisabled와 동일 규약
-                // (RenderSettingsDialog 안의 dirty 경고+[내보내기 시작] 비활성화가 실제 최종 게이트).
+                // Lets the dialog open even while dirty — same convention as HeaderBar renderDisabled
+                // above (the dirty warning + [Start export] disabling inside RenderSettingsDialog is the actual final gate).
                 isDisabled={renderState.status === "rendering"}
                 onClick={() => setRenderDialogOpen(true)}
               />

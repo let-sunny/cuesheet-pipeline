@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 /**
- * pnpm episode <원본폴더> [--scan-only] [--no-open] [--rescan]
+ * pnpm episode <source-folder> [--scan-only] [--no-open] [--rescan]
  *
- * 에피소드 시작의 "기계 부분"을 한 줄로 처리한다:
- *   1) 원본 폴더 검증(존재/영상 파일/iCloud 미다운로드 개수 보고)
- *   2) cuesheet-draft scan 실행 -> media/drafts/<슬러그>/manifest.json
- *   3) 웹 에디터 서버 보장(이미 떠 있으면 유지 안내만) + 브라우저 오픈
- *   4) 다음 단계 안내: Claude Code에서 /episode <원본폴더>
+ * Handles the "mechanical part" of starting an episode in one shot:
+ *   1) validate the raw footage folder (existence/video files/report iCloud not-downloaded count)
+ *   2) run cuesheet-draft scan -> media/drafts/<slug>/manifest.json
+ *   3) ensure the web editor server is up (if already up, just note it) + open the browser
+ *   4) print the next step: run /episode <source-folder> in Claude Code
  *
- * 비전 판독(moments.json 작성)/조립/자막 작성은 Claude Code(/episode 커스텀 커맨드)의 몫이다.
- * 이 스크립트는 그 앞뒤의 기계적 작업만 한다.
+ * Vision judgment (writing moments.json)/assemble/subtitle writing are the job of
+ * Claude Code (the /episode custom command). This script only handles the
+ * mechanical work before and after that.
  */
 import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { spawnSync, spawn } from "node:child_process";
@@ -34,7 +35,7 @@ function parseArgs(argv) {
   return { positional, flags };
 }
 
-/** 폴더명을 파일시스템/URL에 안전한 슬러그로 변환한다(한글은 유지). */
+/** Converts a folder name into a filesystem/URL-safe slug (keeps Korean characters as-is). */
 function slugify(name) {
   const slug = name
     .trim()
@@ -45,9 +46,10 @@ function slugify(name) {
 
 function isPortOpen(port) {
   return new Promise((res) => {
-    // host는 "localhost"로 둔다 - Vite 기본 바인딩이 이 머신에서 IPv6([::1])로만
-    // 잡히는 경우가 있어("127.0.0.1"로 고정하면 그 연결은 항상 실패), OS 리졸버가
-    // 실제 바인딩과 같은 주소를 고르게 맡긴다.
+    // Keep host as "localhost" - on this machine Vite's default binding sometimes
+    // only listens on IPv6 ([::1]) (hardcoding "127.0.0.1" would make that
+    // connection always fail), so let the OS resolver pick an address that
+    // matches the actual binding.
     const socket = createConnection({ port, host: "localhost" });
     const done = (result) => {
       socket.destroy();

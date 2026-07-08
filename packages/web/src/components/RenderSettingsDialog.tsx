@@ -4,7 +4,7 @@ import { Button } from "@astryxdesign/core/Button";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import type { Project } from "@cuesheet/schema";
 
-/** 다이얼로그에서 고른 해상도 프리셋을 기억해 두는 localStorage 키(다음에 열 때 참고용). */
+/** localStorage key that remembers the resolution preset picked in the dialog (referenced next time it opens). */
 const LAST_RESOLUTION_KEY = "cuesheet-render-last-resolution";
 
 const RESOLUTION_PRESETS = [
@@ -24,11 +24,11 @@ interface Props {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   project: Project;
-  /** 저장 안 된 편집이 있으면 렌더 시작을 막고 안내한다(기존 렌더 버튼과 동일한 규약). */
+  /** Blocks the render from starting and shows guidance if there are unsaved edits (same convention as the old render button). */
   dirty: boolean;
   rendering: boolean;
   segmentCount: number;
-  /** 세그먼트 (out-in)/speed 합 근사치(초) — intro/outro는 파일 프로빙 없이 알 수 없어 제외. */
+  /** Approximate sum of segment (out-in)/speed in seconds — intro/outro are excluded since they're unknown without file probing. */
   outputSeconds: number;
   noBurnSubtitles: boolean;
   onToggleNoBurnSubtitles: (checked: boolean) => void;
@@ -37,9 +37,10 @@ interface Props {
 }
 
 /**
- * 내보내기(옛 "렌더") 버튼 클릭 시 뜨는 설정 다이얼로그 — 해상도 프리셋
- * (project.width/height 반영), 자막 굽기 여부, 요약(컷 수·출력 길이·프로젝트명)을
- * 확인하고 [내보내기 시작]으로 실제 내보내기를 건다. 기존 원클릭 발사를 대체한다.
+ * Settings dialog that opens when the Export (formerly "Render") button is clicked — lets you
+ * check the resolution preset (reflected into project.width/height), whether to burn in
+ * subtitles, and a summary (cut count/output length/project name), then kicks off the actual
+ * export with [Start export]. Replaces the old one-click trigger.
  */
 export function RenderSettingsDialog({
   isOpen,
@@ -61,7 +62,7 @@ export function RenderSettingsDialog({
     try {
       localStorage.setItem(LAST_RESOLUTION_KEY, `${width}x${height}`);
     } catch {
-      // localStorage 접근 불가 시 조용히 무시한다(best-effort 기능).
+      // Silently ignore if localStorage isn't accessible (best-effort feature).
     }
   }
 

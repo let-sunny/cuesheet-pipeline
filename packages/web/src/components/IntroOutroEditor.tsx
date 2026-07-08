@@ -8,11 +8,11 @@ interface Props {
   intro: string | null;
   outro: string | null;
   clipDir: string;
-  /** 경로 직접 입력(텍스트 필드) — 타이핑 중 연속 편집으로 묶인다. */
+  /** Direct path input (text field) — coalesced into a single undo entry while typing. */
   onChangeText: (patch: { intro?: string | null; outro?: string | null }) => void;
-  /** clipDir 안 파일을 셀렉트에서 골랐을 때 — 즉시 1개 언두 항목으로 기록되는 개별 편집이다. */
+  /** When picking a file within clipDir from the select — a discrete edit recorded as a single undo entry immediately. */
   onSelectClip: (role: "intro" | "outro", clipFileName: string) => void;
-  /** [해제] 버튼 — 즉시 1개 언두 항목으로 기록되는 개별 편집이다. */
+  /** The [Clear] button — a discrete edit recorded as a single undo entry immediately. */
   onClear: (role: "intro" | "outro") => void;
 }
 
@@ -20,13 +20,13 @@ function localVideoUrl(path: string): string {
   return `/api/local-video?path=${encodeURIComponent(path)}`;
 }
 
-/** clipDir 밑의 클립이면 파일명만 "어느 클립인지" 라벨로 보여주고, 아니면 경로를 그대로 쓴다. */
+/** If it's a clip under clipDir, show just the filename as the "which clip" label; otherwise use the path as-is. */
 function clipLabel(path: string, clipDir: string): string {
   const normalizedDir = clipDir.replace(/\/+$/, "");
   return path.startsWith(`${normalizedDir}/`) ? baseName(path) : path;
 }
 
-/** intro/outro 경로가 clipDir 안의 파일 목록에 있는 파일과 일치하면 그 파일명을, 아니면 undefined를 반환한다. */
+/** Returns the filename if the intro/outro path matches a file in clipDir's file list, otherwise undefined. */
 function matchedFileName(path: string | null, clipDir: string, files: ClipFile[]): string | undefined {
   if (!path) {
     return undefined;
@@ -44,11 +44,12 @@ function optionLabel(f: ClipFile): string {
 }
 
 /**
- * intro/outro 지정 UI. clipDir 안 비디오 파일 목록을 서버(/api/clip-files)에서 받아
- * 셀렉트로 고르게 하고(15초 넘는 파일은 선택 불가로 비활성), clipDir 밖 경로나 특수
- * 케이스를 위한 직접 경로 입력은 접이식 섹션으로 유지한다. 선택/입력된 경로가 있으면
- * 인라인 video 미리보기 + 어느 클립인지 라벨 + [해제] 버튼도 보여준다.
- * intro/outro는 clipDir와 무관한 독립 파일 경로(schema 주석 참고).
+ * The intro/outro assignment UI. Fetches the list of video files in clipDir from the server
+ * (/api/clip-files) and lets the user pick one via a select (files over 15s are disabled and
+ * unselectable), while keeping a direct path input in a collapsible section for paths outside
+ * clipDir or special cases. If a path is selected/entered, it also shows an inline video
+ * preview + a "which clip" label + a [Clear] button.
+ * intro/outro are independent file paths unrelated to clipDir (see the schema comment).
  */
 interface UploadState {
   uploading: boolean;
@@ -63,9 +64,9 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
   const [outroError, setOutroError] = useState(false);
   const [files, setFiles] = useState<ClipFile[]>([]);
   const [filesNote, setFilesNote] = useState<string | undefined>(undefined);
-  // clipDir 파일 목록은 파일마다 ffprobe로 길이를 재는 요청이라(수십 개면 1~2초+)
-  // 응답 전엔 "파일 없음"과 구분되는 로딩 상태를 보여준다 — 안 그러면 잠깐이지만
-  // clipDir이 실제로 비어있는 것처럼 보여 사용자가 오인할 수 있다.
+  // The clipDir file list request runs ffprobe on every file to measure its duration (1-2s+ for
+  // dozens of files), so before the response arrives we show a loading state distinct from "no
+  // files" — otherwise clipDir would briefly look like it's actually empty, which could mislead the user.
   const [filesLoading, setFilesLoading] = useState(true);
 
   const [introUpload, setIntroUpload] = useState<UploadState>(initialUploadState);
@@ -87,9 +88,9 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
     void refreshFiles();
   }, [clipDir, refreshFiles]);
 
-  // 파일 업로드 -> clipDir에 저장. 15초 상한을 넘으면(그리고 길이를 알 수 없지 않으면)
-  // 배정하지 않고 에러만 보여준다 — 파일 자체는 clipDir에 남으므로 셀렉트 목록에는 뜨지만
-  // (그 목록도 15초 초과면 선택 불가로 비활성화되므로) 안전하다.
+  // File upload -> saved to clipDir. If it exceeds the 15s cap (and its duration is known),
+  // don't assign it, just show an error — the file itself stays in clipDir so it still shows up
+  // in the select list (which is safe since that list also disables selection past 15s).
   const handleFile = useCallback(
     async (role: "intro" | "outro", file: File) => {
       const setUpload = role === "intro" ? setIntroUpload : setOutroUpload;
@@ -116,8 +117,8 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
     [onSelectClip, refreshFiles],
   );
 
-  // 경로가 바뀌면(직접 수정이든 새로 로드든) 이전 에러 상태를 지운다 -
-  // VideoPreview의 missing 패턴과 동일.
+  // Clear the previous error state whenever the path changes (whether from direct edits or a
+  // fresh load) - same pattern as VideoPreview's missing state.
   useEffect(() => {
     setIntroError(false);
   }, [intro]);

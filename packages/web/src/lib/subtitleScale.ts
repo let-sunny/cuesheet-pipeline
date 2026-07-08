@@ -1,8 +1,8 @@
 import type { CueSheet, SubtitleStyle, SubtitleStyleOverride } from "@cuesheet/schema";
 
 /**
- * schema.ts의 subtitleStyleSchema/subtitleBackgroundSchema 상한과 반드시 일치시켜야
- * 한다(스키마 쪽 상한을 바꾸면 여기도 같이 바꿀 것) — 4K 프리셋 전환 스케일 시 클램프 상한.
+ * Must be kept in sync with the caps in schema.ts's subtitleStyleSchema/subtitleBackgroundSchema
+ * (if the schema-side cap changes, change this too) — clamp caps used when scaling for a 4K preset switch.
  */
 const MARGIN_MIN = 8;
 const MARGIN_MAX = 600;
@@ -17,8 +17,8 @@ function clamp(value: number, min: number, max?: number): number {
   return max !== undefined ? Math.min(max, withMin) : withMin;
 }
 
-/** subtitleStyle(전역)의 절대 px 필드(size/outlineWidth/margin/background.padding)를
- * height 비율(scale)만큼 비례 스케일하고 스키마 범위로 클램프한다. */
+/** Proportionally scales subtitleStyle's (global) absolute px fields
+ * (size/outlineWidth/margin/background.padding) by the height ratio (scale) and clamps to the schema range. */
 function scaleSubtitleStyle(style: SubtitleStyle, scale: number): SubtitleStyle {
   return {
     ...style,
@@ -31,7 +31,7 @@ function scaleSubtitleStyle(style: SubtitleStyle, scale: number): SubtitleStyle 
   };
 }
 
-/** styleOverride는 partial이라 지정된 필드만 스케일한다(생략된 필드는 여전히 전역 값을 따름). */
+/** styleOverride is partial, so only the fields that are set are scaled (omitted fields still follow the global value). */
 function scaleStyleOverride(override: SubtitleStyleOverride, scale: number): SubtitleStyleOverride {
   const scaled: SubtitleStyleOverride = { ...override };
   if (override.size !== undefined) {
@@ -53,11 +53,12 @@ function scaleStyleOverride(override: SubtitleStyleOverride, scale: number): Sub
 }
 
 /**
- * 렌더 설정 다이얼로그의 해상도 프리셋 전환(720/1080/4K) 시 호출한다. project.width/height만
- * 바꾸면 subtitleStyle/styleOverride의 절대 px 값(size/margin/outlineWidth/background.padding)이
- * 그대로 남아 화면 대비 자막이 비율적으로 작아지므로(cqw·margin% 기반 미리보기/렌더 모두
- * 절대 px 기준), height 비율만큼 전역 스타일과 모든 세그먼트의 styleOverride를 함께
- * 비례 스케일해 화면상 크기감을 유지한다.
+ * Called when switching resolution presets (720/1080/4K) in the render settings dialog. If only
+ * project.width/height were changed, the absolute px values of subtitleStyle/styleOverride
+ * (size/margin/outlineWidth/background.padding) would stay as-is, making the subtitle shrink
+ * proportionally relative to the screen (both cqw/margin%-based preview and render are based on
+ * absolute px) — so this scales the global style and every segment's styleOverride proportionally
+ * by the height ratio to preserve the perceived on-screen size.
  */
 export function scaleCueSheetForResolution(
   cuesheet: CueSheet,

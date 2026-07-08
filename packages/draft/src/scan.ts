@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 
 /**
- * scan 단계: 원본 폴더 인벤토리 + 비전 판단용 프레임 추출.
- * 산출물(manifest.json)을 Claude가 프레임을 직접 보고 moments.json으로 옮긴다.
+ * scan stage: inventories the raw source folder + extracts frames for vision judgment.
+ * The output (manifest.json) is what Claude looks at directly to produce moments.json.
  */
 
 const execFileAsync = promisify(execFile);
@@ -31,7 +31,7 @@ export interface Manifest {
   evicted: string[];
 }
 
-/** 클립 길이(초)에 따른 프레임 추출 간격(초). 길수록 성기게. */
+/** Frame-extraction interval (seconds) based on clip length (seconds). Longer clips get sparser sampling. */
 export function intervalFor(durS: number): number {
   if (durS < 15) return 2;
   if (durS < 60) return 5;
@@ -40,8 +40,9 @@ export function intervalFor(durS: number): number {
 }
 
 /**
- * iCloud 미다운로드(placeholder) 파일 여부. blocks===0이면 로컬 실물이 없는
- * 상태라 읽으면 다운로드를 기다리며 무한 정지한다 — 반드시 먼저 확인하고 건너뛴다.
+ * Whether the file is an iCloud not-downloaded (placeholder) file. blocks===0 means there's
+ * no local copy yet, so reading it would hang indefinitely waiting for the download —
+ * always check this first and skip.
  */
 function isEvicted(path: string): boolean {
   return statSync(path).blocks === 0;
@@ -56,7 +57,7 @@ async function probeDuration(path: string): Promise<number> {
   return Number.parseFloat(stdout.trim());
 }
 
-/** t=0부터 interval 간격, 마지막은 영상 끝 1초 전으로 보정한 타임스탬프 목록. */
+/** List of timestamps at `interval` spacing starting from t=0, with the last one adjusted to 1 second before the clip ends. */
 function timestampsFor(durS: number, interval: number): number[] {
   const ts: number[] = [];
   for (let t = 0; t < durS - 1; t += interval) ts.push(t);
@@ -66,7 +67,7 @@ function timestampsFor(durS: number, interval: number): number[] {
   return ts;
 }
 
-/** ffmpeg 시크 기반(-ss를 -i 앞에) 640px 프레임 1장 추출. 실패/빈 파일이면 null. */
+/** Extracts a single 640px frame via ffmpeg seek-based (-ss before -i). Returns null on failure or an empty file. */
 async function extractFrame(clipPath: string, t: number, outDir: string): Promise<string | null> {
   const filename = `t${String(Math.round(t)).padStart(5, "0")}.jpg`;
   const outPath = join(outDir, filename);
@@ -88,8 +89,8 @@ async function extractFrame(clipPath: string, t: number, outDir: string): Promis
 }
 
 /**
- * 원본 폴더를 스캔한다: iCloud 미다운로드 클립은 건너뛰고, 로컬 실물만
- * ffprobe로 길이를 구한 뒤 길이별 간격으로 프레임을 추출한다.
+ * Scans the raw source folder: skips iCloud not-downloaded clips, and for local clips
+ * only, probes duration with ffprobe and then extracts frames at a length-based interval.
  */
 export async function scanFolder(srcDir: string, workDir: string): Promise<Manifest> {
   const names = readdirSync(srcDir)

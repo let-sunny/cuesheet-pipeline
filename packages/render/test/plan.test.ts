@@ -34,7 +34,7 @@ describe("buildRenderPlan", () => {
     expect(p.filterComplex).toContain("[v0][a0][v1][a1]concat=n=2:v=1:a=1[vout][amain]");
     expect(p.filterComplex).toContain("scale=1920:1080");
     expect(p.filterComplex).toContain("fps=30");
-    // 세그먼트 b: -ss 2 -t 4 (out-in)
+    // Segment b: -ss 2 -t 4 (out-in)
     expect(p.args.join(" ")).toContain("-ss 2 -t 4 -i /clips/b.mp4");
     expect(p.args.join(" ")).toContain("-ss 0 -t 5 -i /clips/a.mp4");
   });
@@ -56,13 +56,13 @@ describe("buildRenderPlan", () => {
   it("자막이 있으면 drawtext, 없으면 넣지 않는다", () => {
     const p = buildRenderPlan(make(), "out.mp4");
     expect(p.filterComplex).toContain("drawtext=text='안녕'");
-    // 첫 세그먼트는 빈 자막 → drawtext 하나만 존재
+    // The first segment has an empty subtitle -> only one drawtext exists
     expect(p.filterComplex.match(/drawtext/g)?.length).toBe(1);
   });
 
   it("범위 밖 배속은 atempo 체인으로 분해한다", () => {
     const p = buildRenderPlan(make({ segments: [{ clip: "x.mp4", in: 0, out: 4, speed: 4, volume: 1, subtitle: "" }] }), "o.mp4");
-    // 4배속 → atempo=2,atempo=2
+    // 4x speed -> atempo=2,atempo=2
     expect(p.filterComplex).toContain("atempo=2,atempo=2");
   });
 
@@ -119,7 +119,7 @@ describe("buildRenderPlan", () => {
       }),
       "out.mp4",
     );
-    // 세그먼트 a(0~5초, speed 1)가 먼저 끝나므로 세그먼트 b의 출력 시작 시각은 5초 = 5000ms
+    // Segment a (0-5s, speed 1) finishes first, so segment b's output start time is 5s = 5000ms
     expect(p.filterComplex).toContain("adelay=5000|5000,volume=0.9[nar");
     expect(p.args.join(" ")).toContain("-i /narration/n1.mp3");
     expect(p.filterComplex).toContain("amix=inputs=2:duration=first[aout]");
@@ -131,9 +131,9 @@ describe("buildRenderPlan", () => {
       make({
         narration: { enabled: true, dir: "/narration", volume: 1 },
         segments: [
-          // (out-in)/speed = (6-2)/2 = 2초
+          // (out-in)/speed = (6-2)/2 = 2s
           { clip: "a.mp4", in: 2, out: 6, speed: 2, volume: 1, subtitle: "" },
-          // (out-in)/speed = (9-3)/1.5 = 4초 → 누적 2+4 = 6초 지점에서 시작
+          // (out-in)/speed = (9-3)/1.5 = 4s -> cumulative 2+4 = starts at the 6s mark
           { clip: "b.mp4", in: 3, out: 9, speed: 1.5, volume: 1, subtitle: "" },
           { clip: "c.mp4", in: 0, out: 1, speed: 1, volume: 1, subtitle: "", narration: "n2.mp3" },
         ],
@@ -194,11 +194,11 @@ describe("buildRenderPlan", () => {
     expect(clean.filterComplex).toContain("scale=1920:1080");
     expect(clean.filterComplex).toContain("atempo=1.5");
     expect(clean.filterComplex).toContain("volume=0.3");
-    // drawtext 필터 하나만 빠지고 나머지 필터 그래프는 동일해야 한다.
+    // Only the drawtext filter should be missing; the rest of the filter graph should be identical.
     expect(clean.filterComplex).toEqual(
       withSubs.filterComplex.replace(",drawtext=text='안녕':fontsize=48:fontcolor=#ffffff:borderw=3:bordercolor=#000000:font='Pretendard':x=(w-text_w)/2:y=h-text_h-40", ""),
     );
-    // -i 입력 인자(트림/파일 경로)는 자막 유무와 무관하게 동일하다.
+    // -i input arguments (trim/file path) are identical regardless of subtitle presence.
     expect(clean.args.join(" ")).toContain("-ss 0 -t 5 -i /clips/a.mp4");
     expect(clean.args.join(" ")).toContain("-ss 2 -t 4 -i /clips/b.mp4");
   });
@@ -292,7 +292,7 @@ describe("buildRenderPlan", () => {
       }),
       "out.mp4",
     );
-    // size/color는 오버라이드 값, outlineColor/outlineWidth/font/position/margin은 전역 그대로.
+    // size/color are the override values; outlineColor/outlineWidth/font/position/margin stay global.
     expect(p.filterComplex).toContain(
       "drawtext=text='이 컷만 다르게':fontsize=60:fontcolor=#ffff00" +
         ":borderw=3:bordercolor=#000000:font='Pretendard':x=(w-text_w)/2:y=h-text_h-40",
@@ -325,7 +325,7 @@ describe("buildRenderPlan", () => {
       }),
       "out.mp4",
     );
-    // 전역 opacity(0.75)/padding(10)이 남지 않고 오버라이드 background로 완전히 교체된다.
+    // The global opacity(0.75)/padding(10) don't leak through; they're fully replaced by the override background.
     expect(p.filterComplex).toContain("box=1:boxcolor=#ff0000@0.4:boxborderw=8");
     expect(p.filterComplex).not.toContain("@0.75");
   });

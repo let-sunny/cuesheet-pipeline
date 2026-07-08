@@ -6,11 +6,11 @@ import { buildRenderPlan } from "./plan.js";
 import { buildSrt } from "./srt.js";
 
 /**
- * CLI: 큐시트 파일을 읽어 검증하고, ffmpeg로 본편을 렌더한다.
- * 사용법: cuesheet-render [큐시트.json] [출력.mp4] [--no-subtitles] [--srt <경로>]
- * 기본값: project.cuesheet.json → out.mp4, 자막 굽기 켜짐
- * --no-subtitles: drawtext를 생략한 클린 영상을 만든다(CC/SRT 트랙과 조합용).
- * --srt <경로>: 같은 큐시트로 SRT 파일도 함께 써낸다(web의 /api/subtitles.srt와 동일 로직).
+ * CLI: reads a cuesheet file, validates it, and renders the final video with ffmpeg.
+ * Usage: cuesheet-render [cuesheet.json] [output.mp4] [--no-subtitles] [--srt <path>]
+ * Defaults: project.cuesheet.json -> out.mp4, subtitle burn-in on
+ * --no-subtitles: produces a clean video without drawtext (for combining with a CC/SRT track).
+ * --srt <path>: also writes an SRT file from the same cuesheet (same logic as web's /api/subtitles.srt).
  */
 const args = process.argv.slice(2);
 const srtFlagIndex = args.indexOf("--srt");

@@ -1,6 +1,6 @@
 import type { CueSheet } from "@cuesheet/schema";
 
-/** 아직 초안(큐시트 파일)이 생성되지 않은 빈 상태 - PRD 8절 "초안 없음(빈 상태)" 카탈로그. */
+/** Empty state where no draft (cuesheet file) has been generated yet - PRD section 8 "No draft (empty state)" catalog. */
 export class CueSheetNotFoundError extends Error {}
 
 export async function fetchCueSheet(): Promise<CueSheet> {
@@ -19,9 +19,9 @@ export type SaveResult =
   | { ok: true; data: CueSheet }
   | { ok: false; errors: string[] };
 
-/** 저장 직전 방어선 — segment.styleOverride가 null/undefined면 키 자체를 제거한다.
- * App.tsx의 편집 경로가 이미 키를 생략하도록 고쳐졌지만(2026-07-08), 여기서도
- * 한 번 더 정규화해 "styleOverride": null이 저장 파일에 남는 걸 막는다. */
+/** Last line of defense right before saving — if segment.styleOverride is null/undefined, drop the key
+ * entirely. App.tsx's edit path was already fixed (2026-07-08) to omit the key, but this normalizes it
+ * once more here to prevent "styleOverride": null from lingering in the saved file. */
 function normalizeCueSheetForSave(cuesheet: CueSheet): CueSheet {
   return {
     ...cuesheet,
@@ -46,8 +46,8 @@ export async function saveCueSheet(cuesheet: CueSheet): Promise<SaveResult> {
 
 export type RenderStartResult = { ok: true; jobId: string } | { ok: false; error: string };
 
-/** 렌더를 시작만 시키고 즉시 반환한다. 실제 진행은 fetchRenderStatus로 폴링한다.
- * burnSubtitles: false면 drawtext 없이 CC/SRT 트랙과 조합할 클린 영상을 만든다(기본 true). */
+/** Only kicks off the render and returns immediately. Actual progress is polled via fetchRenderStatus.
+ * burnSubtitles: false produces a clean video (no drawtext) meant to be paired with a CC/SRT track (default true). */
 export async function startRender(burnSubtitles = true): Promise<RenderStartResult> {
   const res = await fetch("/api/render", {
     method: "POST",
@@ -70,9 +70,9 @@ export async function fetchRenderStatus(): Promise<RenderStatus> {
 }
 
 export interface ProxyStatus {
-  /** 아직 처리 시작 전인 원본 클립 파일명(대기 순서대로). */
+  /** Original clip file names that haven't started processing yet (in wait order). */
   pending: string[];
-  /** 지금 프록시 생성 중인 원본 클립 파일명, 없으면 null. */
+  /** Original clip file name currently being turned into a proxy, or null if none. */
   generating: string | null;
 }
 
@@ -112,7 +112,7 @@ export async function fetchMoments(): Promise<ClipMoments[]> {
   return (await res.json()) as ClipMoments[];
 }
 
-/** 클립 폴더 안 프레임 파일명 목록. 없으면 빈 배열. */
+/** List of frame file names inside a clip folder. Empty array if none. */
 export async function fetchDraftFrames(clipFolder: string): Promise<string[]> {
   const res = await fetch(`/api/draft-frames/${encodeURIComponent(clipFolder)}`);
   if (!res.ok) {
@@ -123,20 +123,20 @@ export async function fetchDraftFrames(clipFolder: string): Promise<string[]> {
 
 export interface NarrationFile {
   name: string;
-  /** ffprobe로 읽은 길이(초). 프로빙 실패 시 null. */
+  /** Duration (seconds) read via ffprobe. null if probing failed. */
   durationS: number | null;
 }
 
 export interface NarrationFilesResult {
   files: NarrationFile[];
-  /** 폴더 미설정/미존재 등 안내 메시지. 정상 목록이면 없음. */
+  /** Info message for e.g. an unset/nonexistent folder. Absent if the listing is normal. */
   note?: string;
 }
 
 /**
- * dir 안의 오디오 파일 목록(길이 포함)을 가져온다. dir을 넘기면 그 값을 그대로
- * 쓴다(저장 전 편집 중인 폴더 경로도 즉시 반영하기 위함) — 생략하면 서버가
- * 디스크에 저장된 큐시트의 narration.dir로 대체한다.
+ * Fetches the list of audio files in dir (with duration). If dir is passed, it's used as-is (so an
+ * unsaved, currently-being-edited folder path is reflected immediately) — if omitted, the server falls
+ * back to the on-disk cuesheet's narration.dir.
  */
 export async function fetchNarrationFiles(dir?: string): Promise<NarrationFilesResult> {
   const query = dir ? `?dir=${encodeURIComponent(dir)}` : "";
@@ -144,7 +144,7 @@ export async function fetchNarrationFiles(dir?: string): Promise<NarrationFilesR
   return (await res.json()) as NarrationFilesResult;
 }
 
-/** 내레이션 파일 미리듣기 스트리밍 URL. dir은 fetchNarrationFiles와 동일한 의미. */
+/** Streaming URL for previewing a narration file. dir has the same meaning as in fetchNarrationFiles. */
 export function narrationFileUrl(name: string, dir?: string): string {
   const query = dir ? `?dir=${encodeURIComponent(dir)}` : "";
   return `/api/narration-files/${encodeURIComponent(name)}${query}`;
@@ -152,17 +152,17 @@ export function narrationFileUrl(name: string, dir?: string): string {
 
 export interface ClipFile {
   name: string;
-  /** ffprobe로 읽은 길이(초). iCloud 미다운로드 등으로 알 수 없으면 null. */
+  /** Duration (seconds) read via ffprobe. null if unknown, e.g. an undownloaded iCloud file. */
   durationS: number | null;
 }
 
 export interface ClipFilesResult {
   files: ClipFile[];
-  /** clipDir 미설정/접근 불가 등 안내 메시지. 정상 목록이면 없음. */
+  /** Info message for e.g. clipDir being unset/inaccessible. Absent if the listing is normal. */
   note?: string;
 }
 
-/** 디스크에 저장된 큐시트의 clipDir 안 비디오 파일 목록(길이 포함) — 인트로/아웃트로 선택용. */
+/** List of video files (with duration) inside the on-disk cuesheet's clipDir — for picking an intro/outro. */
 export async function fetchClipFiles(): Promise<ClipFilesResult> {
   const res = await fetch("/api/clip-files");
   if (!res.ok) {
@@ -176,11 +176,11 @@ export type UploadClipResult =
   | { ok: false; error: string };
 
 /**
- * 로컬 파일(file input/드래그앤드롭으로 고른 File)을 clipDir에 업로드한다.
- * 브라우저는 파일의 실제 디스크 경로를 노출하지 않으므로, "디스크에서 파일 고르기"는
- * 경로 입력이 아니라 서버로 파일 자체를 올리는 방식으로만 구현할 수 있다.
- * onProgress는 업로드 진행률(0~100)을 알려준다 — XMLHttpRequest만 업로드 progress
- * 이벤트를 제공해(fetch는 없음) 여기서만 XHR을 쓴다.
+ * Uploads a local file (a File picked via file input/drag-and-drop) to clipDir.
+ * Since browsers don't expose a file's actual disk path, "pick a file from disk" can only be
+ * implemented by uploading the file itself to the server, not by entering a path.
+ * onProgress reports upload progress (0-100) — only XMLHttpRequest provides upload progress events
+ * (fetch doesn't), so XHR is used here specifically for that.
  */
 export function uploadClip(file: File, onProgress?: (pct: number) => void): Promise<UploadClipResult> {
   return new Promise((resolvePromise) => {

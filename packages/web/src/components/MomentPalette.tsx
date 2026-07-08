@@ -29,14 +29,14 @@ interface MomentCard {
   outS: number;
   category: Category;
   memo: string;
-  /** moments 항목만 값이 있음(monotonousRanges엔 품질 점수 개념이 없음). */
+  /** Only set for moments entries (monotonousRanges has no notion of a quality score). */
   quality: number | null;
 }
 
-/** 비전 판독자가 memo/desc에 남기는 얼굴 노출 위험 태그. 화면 표시에선 배지로
- * 대체하고 원문 텍스트는 제거한다(자막으로도 새 나가지 않게).
- * 이 태그는 생성된(한국어) 데이터 안에 실제로 박혀 있는 문자열이라 번역하지 않는다 —
- * UI 라벨이 아니라 콘텐츠 매칭 마커다. */
+/** The face-exposure risk tag the vision reader leaves in memo/desc. Replaced with a badge in
+ * the display and the raw text is stripped out (so it doesn't leak into subtitles either).
+ * This tag is not translated because it's a string literally embedded in the generated
+ * (Korean) data — it's a content-matching marker, not a UI label. */
 const FACE_TAG = "[얼굴노출]";
 
 function hasFaceTag(memo: string): boolean {
@@ -57,11 +57,12 @@ const SHOT_TYPE_CATEGORY: Record<ShotType, Category> = {
   other: "other",
 };
 
-/** 카테고리 -> Badge variant. 기존 styles.css category-tag 색 의도를 그대로
- * 보존해 매핑(knit-range=teal, knitting=blue, cat=purple, materials=green, mistake=red,
- * wearing=pink, change=cyan, other=gray는 기존 커스텀 태그와 1:1). reveal/outing은 기존에
- * category-tag 전용 커스텀 색(각각 tag-reveal, tag-outing 변수)이었는데 Badge
- * 팔레트엔 그 두 색이 없어 남는 orange/yellow로 접었다. */
+/** Category -> Badge variant. Mapped to preserve the original styles.css category-tag color
+ * intent as-is (knit-range=teal, knitting=blue, cat=purple, materials=green, mistake=red,
+ * wearing=pink, change=cyan, other=gray are 1:1 with the old custom tags). reveal/outing used
+ * to have their own custom category-tag colors (the tag-reveal and tag-outing variables,
+ * respectively), but the Badge palette doesn't have those two colors, so they were folded into
+ * the leftover orange/yellow. */
 const CATEGORY_META: Record<Category, { label: string; badgeVariant: BadgeVariant }> = {
   "knit-range": { label: "Knit range", badgeVariant: "teal" },
   "knitting": { label: "Knitting", badgeVariant: "blue" },
@@ -72,14 +73,14 @@ const CATEGORY_META: Record<Category, { label: string; badgeVariant: BadgeVarian
   "mistake": { label: "Mistake", badgeVariant: "red" },
   "wearing": { label: "Wearing", badgeVariant: "pink" },
   "change": { label: "Change", badgeVariant: "cyan" },
-  // BadgeVariantMap에는 gray가 없어(neutral/info/success/warning/error/blue/cyan/
-  // green/orange/pink/purple/red/teal/yellow만 존재) 가장 가까운 neutral로 대체.
+  // BadgeVariantMap has no gray (only neutral/info/success/warning/error/blue/cyan/
+  // green/orange/pink/purple/red/teal/yellow exist), so substitute the closest one, neutral.
   "other": { label: "Other", badgeVariant: "neutral" },
 };
 
 type StatusFilter = "all" | "in-use" | "excluded";
 
-/* 화면에 보이는 문구(PRD 4절 용어 사전, "[All / In use only / Excluded only]"). */
+/* On-screen copy (PRD section 4 glossary, "[All / In use only / Excluded only]"). */
 const STATUS_FILTER_LABEL: Record<StatusFilter, string> = {
   "all": "All",
   "in-use": "In use only",
@@ -112,7 +113,7 @@ function categoryFor(shotType: ShotType, memo: string): Category {
   return SHOT_TYPE_CATEGORY[shotType];
 }
 
-/** inS에 가장 가까운 tNNNNN.jpg 프레임 파일명을 고른다. */
+/** Picks the tNNNNN.jpg frame filename closest to inS. */
 function nearestFrame(frames: string[], inS: number): string | null {
   let best: string | null = null;
   let bestDiff = Infinity;
@@ -179,17 +180,17 @@ interface Props {
   introPath: string | null;
   outroPath: string | null;
   onAddSegment: (seg: Segment) => void;
-  /** 이미 담긴("사용 중") 카드의 "빼기" — 겹치는 세그먼트를 draft에서 제거한다. */
+  /** "Remove" for an already-added ("in use") card — removes the overlapping segment from the draft. */
   onRemoveSegment: (clip: string, inS: number, outS: number) => void;
-  /** 이 클립 파일 전체를 인트로/아웃트로로 지정한다(구간 무시, 통짜 클립). */
+  /** Sets this whole clip file as the intro/outro (ignoring the range, the entire clip as one piece). */
   onSetIntro: (clipFileName: string) => void;
   onSetOutro: (clipFileName: string) => void;
 }
 
 /**
- * 초벌 분류된 "순간" 카드들을 카테고리별로 진열해 놓고 클릭 한 번으로
- * 담게 하는 팔레트. 담긴 세그먼트는 놓는 위치와 상관없이 (clip, in) 기준
- * 시간순으로 자동 삽입된다(호출자인 App.tsx가 그 순서를 보장).
+ * A palette that displays rough-classified "moment" cards by category and lets you add them
+ * with a single click. Added segments are auto-inserted in chronological order by (clip, in)
+ * regardless of where they're added (the caller, App.tsx, guarantees that ordering).
  */
 export function MomentPalette({
   segments,
@@ -221,7 +222,7 @@ export function MomentPalette({
 
   const cards = useMemo(() => (moments ? buildCards(moments) : []), [moments]);
 
-  // 클립별 길이 근사치(초) — 인트로/아웃트로 지정 버튼의 15초 상한 판정에 쓴다.
+  // Approximate duration per clip (seconds) — used to decide the 15s cap for the intro/outro assignment buttons.
   const clipDurations = useMemo(() => (moments ? computeClipDurations(moments) : {}), [moments]);
 
   useEffect(() => {
@@ -235,7 +236,7 @@ export function MomentPalette({
       );
       setFrameMap(Object.fromEntries(entries));
     })();
-    // moments가 로드된 뒤 한 번만 프레임 목록을 채운다.
+    // Populate the frame list only once, after moments has loaded.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moments]);
 
@@ -247,8 +248,8 @@ export function MomentPalette({
     return m;
   }, [cards]);
 
-  // 카드가 "사용 중"인지 + 그렇다면 몇 번 컷(타임라인 세그먼트 순번, 1부터)에
-  // 담겼는지. 구성↔편집 단계 간 같은 컷을 같은 번호로 추적할 수 있게 한다.
+  // Whether a card is "in use", and if so, which cut number (timeline segment order, 1-based)
+  // it was added as. Lets the same cut be tracked with the same number between the Compose and Edit steps.
   const inUseCutNumber = useMemo(() => {
     const map = new Map<string, number>();
     for (const c of cards) {
@@ -273,8 +274,8 @@ export function MomentPalette({
     if (statusFilter === "in-use") {
       return inUse;
     }
-    // excluded: 자동 조립에서 채택되지 않았고(inUse 아님), 품질 미달이거나 얼굴 노출로
-    // 걸러진 카드만.
+    // excluded: only cards that weren't adopted by auto-assembly (not inUse) and were
+    // filtered out for falling short on quality or for face exposure.
     if (inUse) {
       return false;
     }
@@ -364,12 +365,12 @@ export function MomentPalette({
               const faceRejected = !inUse && hasFaceTag(card.memo);
               const qualityRejected = !inUse && !faceRejected && card.quality !== null && card.quality < 3;
               const displayMemo = hasFaceTag(card.memo) ? stripFaceTag(card.memo) : card.memo;
-              // 카드 자체엔 축약된 클립명·시각만 보이고, 판단에 필요한 전체 정보
-              // (원본 파일명·구간·카테고리·메모)는 title 툴팁으로 전달한다.
+              // The card itself only shows an abbreviated clip name and timestamp; the full
+              // information needed for judgment (original filename, range, category, memo) is conveyed via the title tooltip.
               const fullInfo = `${card.clipFileName} · ${card.inS.toFixed(1)}s~${card.outS.toFixed(1)}s · ${meta.label} · ${displayMemo}`;
 
-              // 인트로/아웃트로는 in/out 구간 지정이 안 되는 통짜 클립 삽입이라
-              // 이 카드가 속한 클립 파일 전체 길이(근사치)가 상한을 넘으면 지정을 막는다.
+              // Intro/outro insert the whole clip as one piece with no in/out range, so
+              // assignment is blocked if this card's clip file's total length (approximate) exceeds the cap.
               const clipDurationS = clipDurations[card.clipFileName];
               const tooLongForIntroOutro =
                 clipDurationS === undefined || clipDurationS > INTRO_OUTRO_MAX_DURATION_S;
@@ -390,17 +391,18 @@ export function MomentPalette({
                   ? "Auto-excluded: low quality"
                   : null;
               return (
-                // Card(BaseProps)는 title을 명시적으로 omit하므로(footgun 목록) 카드
-                // 전체 정보 툴팁은 이 플레인 래퍼 div가 대신 맡는다.
+                // Card(BaseProps) explicitly omits title (it's on the footgun list), so this
+                // plain wrapper div takes over the card's full-info tooltip instead.
                 <div className="moment-card-wrap" key={card.key} title={fullInfo}>
                   <Card
                     padding={0}
                     className={`moment-card${inUse ? " in-use" : ""}${statusClass}`}
                   >
-                    {/* 자동 제외 사유는 카드 맨 위 전폭 배너로 - 썸네일 위 작은 코너 배지보다
-                        훨씬 눈에 띄어 "흐린 게 뭐고 찐한 게 뭐냐"는 오독을 없앤다(피드백
-                        2026-07-08). 담기 버튼은 이 상태에서도 계속 활성 - 자동 제외는
-                        "금지"가 아니라 "자동이 거른 것"이라 언제든 되살릴 수 있음을 보여준다. */}
+                    {/* The auto-exclusion reason is a full-width banner at the top of the card - much
+                        more noticeable than a small corner badge over the thumbnail, removing the
+                        "what's faded vs. what's solid" misreading (feedback 2026-07-08). The Add
+                        button stays active even in this state - auto-exclusion isn't a "ban," it's
+                        just "what auto-assembly filtered out," so it can always be brought back. */}
                     {rejectedLabel ? (
                       <div className={`moment-status-banner${faceRejected ? " face" : " quality"}`}>
                         {rejectedLabel}
@@ -415,12 +417,14 @@ export function MomentPalette({
                       ) : (
                         <div className="moment-thumb-empty" />
                       )}
-                      {/* Thumbnail(Astryx)은 정사각형 고정+오버레이 슬롯이 없어(children prop
-                          자체가 없음) 이 오버레이(번호칩·상태배지·이미지) 합성엔 안 맞아
-                          커스텀 유지 — 상태 배지 자체는 Badge로 교체. 번호칩+배지는 같은
-                          flex-wrap 행에 넣어(.moment-thumb-overlay) 클립명이 길 때 배지가
-                          겹치거나(둘 다 절대배치라 코너 충돌) 텍스트가 잘리는 대신 배지가
-                          다음 줄로 내려가게 한다(2026-07-08 피드백 - 잘림/겹침보다 줄바꿈). */}
+                      {/* Thumbnail (Astryx) is fixed-square with no overlay slot (no children prop
+                          at all), so it doesn't fit this overlay composition (number chip + status
+                          badge + image) — kept custom, but the status badge itself was swapped for
+                          Badge. The number chip and badge go in the same flex-wrap row
+                          (.moment-thumb-overlay) so that when the clip name is long, the badge wraps
+                          to the next line instead of overlapping the chip (both are absolutely
+                          positioned, so they'd collide at the corner) or getting its text truncated
+                          (2026-07-08 feedback - wrap over truncation/overlap). */}
                       <div className="moment-thumb-overlay">
                         <span className="moment-number">
                           {card.clipFolder} · {card.inS.toFixed(1)}s
@@ -434,12 +438,13 @@ export function MomentPalette({
                         ) : null}
                       </div>
                     </div>
-                    {/* 카드 위계(screen-spec 2절): 썸네일 -> 상태 배지(위, 썸네일 오버레이) ->
-                        장면 설명(전문, 줄바꿈 허용) -> 메타(샷유형·길이·품질) -> 액션. 이
-                        화면은 장면을 "읽고 고르는" 화면이라 설명 클램프는 제거했다
-                        (maxLines={0} = 무클램프). 카드 내부 간격 규칙(screen-spec 0-1/0-2):
-                        일관 패딩 12px + 그룹(설명/메타/액션) 간 명확한 gap을
-                        .moment-card-body가 전담한다. */}
+                    {/* Card hierarchy (screen-spec section 2): thumbnail -> status badge (top,
+                        thumbnail overlay) -> scene description (full text, wrapping allowed) ->
+                        meta (shot type/duration/quality) -> actions. Since this screen is for
+                        "reading and picking" scenes, the description clamp was removed
+                        (maxLines={0} = no clamp). Card-internal spacing rules (screen-spec 0-1/0-2):
+                        consistent 12px padding plus a clear gap between groups (description/meta/
+                        actions) are handled entirely by .moment-card-body. */}
                     <div className="moment-card-body">
                       <div className="moment-memo-wrap">
                         <Text type="supporting" maxLines={0}>
@@ -462,8 +467,8 @@ export function MomentPalette({
                             isDisabled={inUse}
                             onClick={() => handleAdd(card)}
                           />
-                          {/* 사용 안 중일 땐 빼기를 숨기되(자리는 그대로 차지해 카드 높이가
-                              담기/빼기 유무와 무관하게 일정하게 유지된다). */}
+                          {/* Hide Remove while not in use (but keep its space so card height
+                              stays consistent regardless of whether Add/Remove is shown). */}
                           <Button
                             label="Remove"
                             variant="destructive"
