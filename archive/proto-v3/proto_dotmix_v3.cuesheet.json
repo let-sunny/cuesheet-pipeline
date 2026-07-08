@@ -5,7 +5,7 @@
     "width": 1280,
     "height": 720
   },
-  "clipDir": "<repo>/media/dotmix_src",
+  "clipDir": "media/dotmix_src",
   "intro": null,
   "outro": null,
   "segments": [

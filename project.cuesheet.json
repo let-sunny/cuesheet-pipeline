@@ -5,7 +5,7 @@
     "width": 1920,
     "height": 1080
   },
-  "clipDir": "<repo>/media/clips",
+  "clipDir": "media/clips",
   "intro": null,
   "outro": null,
   "segments": [

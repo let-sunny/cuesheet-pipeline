@@ -162,6 +162,11 @@ const narrationAudioMimeTypes: Record<string, string> = {
   ".wav": "audio/wav",
 };
 
+/** clipDir 등 큐시트에 담긴 상대 경로를 저장소 루트 기준 절대 경로로 해석한다(폴더 이동에 안 깨지게). */
+function resolveRepoPath(dir: string): string {
+  return isAbsolute(dir) ? dir : resolve(repoRoot, dir);
+}
+
 /** 큐시트 파일에서 narration.dir을 읽어 절대 경로로 해석한다(상대 경로는 저장소 루트 기준). */
 async function readNarrationDir(cuesheetFilePath: string): Promise<string | null> {
   try {
@@ -418,7 +423,7 @@ export function cuesheetPlugin(): Plugin {
           if (typeof cuesheet.clipDir !== "string" || cuesheet.clipDir.length === 0) {
             return;
           }
-          clipDir = cuesheet.clipDir;
+          clipDir = resolveRepoPath(cuesheet.clipDir);
         } catch {
           return;
         }
@@ -509,7 +514,7 @@ export function cuesheetPlugin(): Plugin {
           if (typeof cuesheet.clipDir !== "string" || cuesheet.clipDir.length === 0) {
             throw new Error("clipDir 없음");
           }
-          clipDir = cuesheet.clipDir;
+          clipDir = resolveRepoPath(cuesheet.clipDir);
         } catch {
           res.statusCode = 404;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
@@ -660,7 +665,7 @@ export function cuesheetPlugin(): Plugin {
           if (typeof cuesheet.clipDir !== "string" || cuesheet.clipDir.length === 0) {
             throw new Error("clipDir 없음");
           }
-          clipDir = cuesheet.clipDir;
+          clipDir = resolveRepoPath(cuesheet.clipDir);
         } catch {
           sendJson(res, 200, { files: [], note: "clipDir이 설정되지 않았습니다" });
           return;
@@ -864,7 +869,10 @@ export function cuesheetPlugin(): Plugin {
         const totalSeconds = estimateOutputSeconds(result.data);
         renderJob = { state: "running", progress: 0 };
 
-        const plan = buildRenderPlan(result.data, renderOutputPath, { burnSubtitles });
+        // ffmpeg는 이 vite 서버의 cwd(packages/web)를 그대로 물려받아 실행되므로,
+        // clipDir이 상대 경로면 저장소 루트 기준 절대 경로로 바꿔서 넘긴다.
+        const cueForRender = { ...result.data, clipDir: resolveRepoPath(result.data.clipDir) };
+        const plan = buildRenderPlan(cueForRender, renderOutputPath, { burnSubtitles });
         const proc = spawn("ffmpeg", plan.args, { stdio: ["ignore", "pipe", "pipe"] });
         let stderr = "";
         proc.stdout?.on("data", () => {});

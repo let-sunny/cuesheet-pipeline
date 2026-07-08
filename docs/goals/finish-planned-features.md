@@ -31,7 +31,7 @@ Excluded:
 - validation messages use the `field path: reason` format, both web and render use validateCueSheet
 
 ## Assumptions
-- clipDir `<home>/videos/clips` does not actually exist -> change to repo-local `media/clips`.
+- clipDir `<repo>/media/clips` (originally an outside videos folder) does not actually exist -> change to repo-local `media/clips`.
   Once real clips exist, only clipDir needs to change (as the schema was designed to allow).
 - Sample clips are generated with ffmpeg testsrc/sine (no copyright/size concerns).
 - The Pretendard subtitle font may not be installed -> render verification allows falling back to a system font, with the font-specification approach revisited if it fails.

@@ -5,8 +5,8 @@
     "width": 1920,
     "height": 1080
   },
-  "clipDir": "<home>/videos/ep01/clips",
-  "intro": "<home>/videos/ep01/intro.mp4",
+  "clipDir": "media/ep01/clips",
+  "intro": "media/ep01/intro.mp4",
   "outro": null,
   "segments": [
     {
@@ -33,7 +33,7 @@
   ],
   "bgm": [
     {
-      "file": "<home>/videos/bgm/lofi.mp3",
+      "file": "media/bgm/lofi.mp3",
       "start": 0.0,
       "end": 20.0,
       "volume": 0.3
