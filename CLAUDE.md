@@ -160,6 +160,11 @@ If the same tweak appears twice, that is the signal to promote it to a wrapper.
 Domain-custom areas (timeline, crop overlay, palette cards, video stage) keep their
 own CSS via explicit classes only.
 
+Internal component anatomy follows Astryx's shape, scaled down: one folder per
+significant component — `Component.tsx` (role header at top) + co-located
+`Component.test.tsx` + `index.ts` export gate. `.doc.mjs` is omitted until we ship
+public components. SYNC comments only where real cross-file chains exist.
+
 ## Testability as the size limit (user rule, 2026-07-09)
 
 A file must always be small enough to write test code for. If a module is too big or
