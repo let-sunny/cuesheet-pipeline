@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { findLostFieldPaths, validateCueSheet } from "@cuesheet/schema";
+import { cueSheetSchema, findLostFieldPaths, validateCueSheet } from "@cuesheet/schema";
 import type { ValidationResult } from "@cuesheet/schema";
+import { z } from "zod";
 
 /**
  * Validates and returns the current cuesheet.
@@ -27,7 +28,7 @@ export function getCuesheet(path: string): ValidationResult {
  * new cuesheet and passes it here, where it's validated and safely applied.
  */
 export function updateCuesheet(path: string, next: unknown): ValidationResult {
-  const result = validateCueSheet(next);
+  const result = validateCuesheet(next);
   if (!result.ok) {
     return result;
   }
@@ -47,6 +48,24 @@ export function updateCuesheet(path: string, next: unknown): ValidationResult {
 
   writeFileSync(path, `${JSON.stringify(result.data, null, 2)}\n`, "utf-8");
   return result;
+}
+
+/**
+ * Dry-run validation: same check `updateCuesheet` runs before saving, but never
+ * touches disk. Used by the `validate_cuesheet` bridge tool so a caller can check
+ * whether a candidate edit would pass before committing it with `update_cuesheet`.
+ */
+export function validateCuesheet(candidate: unknown): ValidationResult {
+  return validateCueSheet(candidate);
+}
+
+/**
+ * The cuesheet format as a JSON Schema (draft 2020-12), derived directly from the same
+ * zod schema `validateCueSheet` runs against — so it can never drift from the actual
+ * validation rules. Used by the `get_schema` bridge tool.
+ */
+export function getCuesheetJsonSchema(): Record<string, unknown> {
+  return z.toJSONSchema(cueSheetSchema) as Record<string, unknown>;
 }
 
 /** Reads the cuesheet file as-is (before validation). Returns null if missing. */
