@@ -29,3 +29,4 @@ episodes/
 proto_*.cuesheet.json
 archive/proto-v3/*.cuesheet.json
 project.cuesheet.json
+archive/
