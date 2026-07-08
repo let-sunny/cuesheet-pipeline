@@ -15,7 +15,9 @@ import { buildSrt } from "./srt.js";
 const args = process.argv.slice(2);
 const srtFlagIndex = args.indexOf("--srt");
 const srtOutPath = srtFlagIndex === -1 ? null : (args[srtFlagIndex + 1] ?? null);
-const positional = args.filter((a, i) => !a.startsWith("--") && i !== srtFlagIndex + 1);
+const positional = args.filter(
+  (a, i) => !a.startsWith("--") && (srtFlagIndex === -1 || i !== srtFlagIndex + 1),
+);
 const burnSubtitles = !args.includes("--no-subtitles");
 const cuePath = positional[0] ?? process.env.CUESHEET_PATH ?? "project.cuesheet.json";
 const outPath = positional[1] ?? "out.mp4";
