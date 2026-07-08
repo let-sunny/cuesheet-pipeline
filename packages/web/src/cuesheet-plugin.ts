@@ -1,5 +1,5 @@
 import { readFile, writeFile, stat, mkdir, rename, readdir, rm } from "node:fs/promises";
-import { createReadStream, existsSync, watch, type FSWatcher } from "node:fs";
+import { createReadStream, existsSync, mkdirSync, watch, type FSWatcher } from "node:fs";
 import { spawn } from "node:child_process";
 import { basename, dirname, extname, isAbsolute, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -434,7 +434,7 @@ export function cuesheetPlugin(): Plugin {
           } catch {
             res.statusCode = 404;
             res.setHeader("Content-Type", "text/plain; charset=utf-8");
-            res.end(`큐시트 파일을 찾을 수 없습니다: ${filePath}`);
+            res.end("아직 초안이 없어요 - pnpm episode로 원본 폴더를 넣어 자동 생성해 보세요.");
           }
           return;
         }
@@ -1072,10 +1072,29 @@ export function cuesheetPlugin(): Plugin {
         createReadStream(renderOutputPath).pipe(res);
       });
 
+      // 큐시트 파일 변경 감지 -> 클라이언트에 HMR 커스텀 이벤트로 알림.
+      // 서버 시작 시점에 파일이 아직 없을 수 있다(예: `pnpm episode`가 서버부터 띄우고
+      // /episode 파이프라인이 나중에 큐시트를 생성하는 흐름). 이 경우 파일 대신 부모
+      // 디렉토리를 감시하다가 대상 파일이 생기는 순간 파일 감시로 전환한다. 파일이
+      // 삭제됐다 다시 생기는 경우(rename 이벤트)도 같은 전환 로직으로 감시가 고아되지
+      // 않게 재부착한다.
       let watcher: FSWatcher | null = null;
-      if (existsSync(filePath)) {
+
+      const notifyChanged = () => {
+        server.ws.send({ type: "custom", event: "cuesheet:changed" });
+      };
+
+      const watchFile = () => {
+        watcher?.close();
         watcher = watch(filePath, () => {
           void (async () => {
+            if (!existsSync(filePath)) {
+              // 삭제됨(rename 이벤트) - 재생성을 기다리는 디렉토리 감시로 전환하고,
+              // 클라이언트가 다시 불러와 빈 상태 배너를 보게 알린다.
+              watchDir();
+              notifyChanged();
+              return;
+            }
             let current: string;
             try {
               current = await readFile(filePath, "utf8");
@@ -1086,11 +1105,34 @@ export function cuesheetPlugin(): Plugin {
               // 방금 이 서버가 저장한 결과이므로 외부 변경 알림을 보내지 않는다.
               return;
             }
-            server.ws.send({ type: "custom", event: "cuesheet:changed" });
+            notifyChanged();
           })();
         });
-        server.httpServer?.once("close", () => watcher?.close());
+      };
+
+      const watchDir = () => {
+        watcher?.close();
+        const dir = dirname(filePath);
+        if (!existsSync(dir)) {
+          mkdirSync(dir, { recursive: true });
+        }
+        const targetName = basename(filePath);
+        watcher = watch(dir, (_eventType, changedName) => {
+          if (changedName !== targetName || !existsSync(filePath)) {
+            return;
+          }
+          // 대상 파일이 생겼다 - 파일 감시로 전환하고 클라이언트에 첫 로드를 알린다.
+          watchFile();
+          notifyChanged();
+        });
+      };
+
+      if (existsSync(filePath)) {
+        watchFile();
+      } else {
+        watchDir();
       }
+      server.httpServer?.once("close", () => watcher?.close());
     },
   };
 }

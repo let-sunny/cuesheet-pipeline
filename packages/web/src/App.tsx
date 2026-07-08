@@ -13,6 +13,7 @@ import { useToast } from "@astryxdesign/core/Toast";
 import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { Button } from "@astryxdesign/core/Button";
 import {
+  CueSheetNotFoundError,
   fetchCueSheet,
   fetchMoments,
   fetchNarrationFiles,
@@ -142,7 +143,9 @@ interface AppProps {
 export function App({ themeMode, onThemeModeChange }: AppProps) {
   const [serverCuesheet, setServerCuesheet] = useState<CueSheet | null>(null);
   const [draft, setDraft] = useState<CueSheet | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<
+    { kind: "not-found"; message: string } | { kind: "error"; message: string } | null
+  >(null);
   const [saveState, setSaveState] = useState<SaveState>({ status: "idle" });
   const [renderState, setRenderState] = useState<RenderState>({ status: "idle" });
   const [externalChangePending, setExternalChangePending] = useState(false);
@@ -349,7 +352,11 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         setRestoreSnapshot(null);
       }
     } catch (e) {
-      setLoadError(e instanceof Error ? e.message : String(e));
+      if (e instanceof CueSheetNotFoundError) {
+        setLoadError({ kind: "not-found", message: e.message });
+      } else {
+        setLoadError({ kind: "error", message: e instanceof Error ? e.message : String(e) });
+      }
     }
   }, []);
 
@@ -1110,7 +1117,10 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
   }, [draft, recordDiscreteChange]);
 
   if (loadError) {
-    return <div className="status">불러오기 실패: {loadError}</div>;
+    if (loadError.kind === "not-found") {
+      return <div className="status empty-state">{loadError.message}</div>;
+    }
+    return <div className="status">불러오기 실패: {loadError.message}</div>;
   }
   if (!draft) {
     return <div className="status">큐시트를 불러오는 중…</div>;

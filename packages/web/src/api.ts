@@ -1,9 +1,16 @@
 import type { CueSheet } from "@cuesheet/schema";
 
+/** 아직 초안(큐시트 파일)이 생성되지 않은 빈 상태 - PRD 8절 "초안 없음(빈 상태)" 카탈로그. */
+export class CueSheetNotFoundError extends Error {}
+
 export async function fetchCueSheet(): Promise<CueSheet> {
   const res = await fetch("/api/cuesheet");
   if (!res.ok) {
-    throw new Error(await res.text());
+    const text = await res.text();
+    if (res.status === 404) {
+      throw new CueSheetNotFoundError(text);
+    }
+    throw new Error(text);
   }
   return (await res.json()) as CueSheet;
 }
