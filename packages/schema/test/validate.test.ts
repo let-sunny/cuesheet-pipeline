@@ -32,6 +32,18 @@ describe("validateCueSheet - pass cases", () => {
     }
   });
 
+  it("allows speed up to 16", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      segments: [{ clip: "a.mp4", in: 0, out: 1, speed: 16, subtitle: "" }],
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.segments[0]?.speed).toBe(16);
+    }
+  });
+
   it("an existing cuesheet without a narration field remains valid", () => {
     const result = validateCueSheet(sample);
     expect(result.ok).toBe(true);
@@ -212,6 +224,19 @@ describe("validateCueSheet - failure cases", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.errors.some((e) => e.includes("at least 1"))).toBe(true);
+    }
+  });
+
+  it("fails when speed is over 16", () => {
+    const bad = {
+      ...(sample as Record<string, unknown>),
+      segments: [{ clip: "a.mp4", in: 0, out: 1, speed: 16.1, subtitle: "" }],
+    };
+    const result = validateCueSheet(bad);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.includes("segments[0].speed"))).toBe(true);
+      expect(result.errors.some((e) => e.includes("speed must be <= 16"))).toBe(true);
     }
   });
 

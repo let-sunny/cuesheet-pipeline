@@ -19,10 +19,53 @@ import { CropEditOverlay } from "./CropEditOverlay.js";
 /** Polling interval (ms) for proxy readiness status. */
 const PROXY_STATUS_POLL_INTERVAL_MS = 10000;
 
+/** Browsers throw a NotSupportedError setting HTMLMediaElement.playbackRate above 16 - the schema
+ * also caps segment.speed at 16, but this is a defensive clamp for old/hand-edited data (e.g. via
+ * the bridge) and the J/K/L shuttle, which multiplies speed further (up to 4x). */
+const MAX_PLAYBACK_RATE = 16;
+
 /** Minimum gap (seconds) between in/out when dragging a handle. */
 const MIN_GAP = 0.05;
 /** Minimum gap (seconds) from the in/out boundary when splitting. */
 const SPLIT_MARGIN = 0.2;
+
+/** Two-level trim (screen-spec section 3) - the detail bar's default zoom window is the cut's
+ * in/out range padded by this fraction of the range's own length on each side. */
+const TRIM_WINDOW_PADDING_RATIO = 0.3;
+/** The detail bar's zoom window is never narrower than this (seconds) unless the whole clip is
+ * shorter, in which case the window is just the whole clip - "min 20s window" from the spec, and
+ * "on a short clip, window = whole clip" for clips under that. */
+const TRIM_WINDOW_MIN_S = 20;
+
+/**
+ * Default zoom window (seconds) for the detail trim bar: the cut's in/out range padded by 30% of
+ * its own length on each side, widened to at least TRIM_WINDOW_MIN_S (or the whole clip, if
+ * shorter than that), then clamped into [0, durationS] while preserving width where possible.
+ */
+function computeDefaultTrimWindow(inS: number, outS: number, durationS: number): { start: number; end: number } {
+  if (durationS <= 0) {
+    return { start: 0, end: 0 };
+  }
+  const range = Math.max(0, outS - inS);
+  const padding = range * TRIM_WINDOW_PADDING_RATIO;
+  let start = inS - padding;
+  let end = outS + padding;
+  const minWidth = Math.min(TRIM_WINDOW_MIN_S, durationS);
+  if (end - start < minWidth) {
+    const center = (inS + outS) / 2;
+    start = center - minWidth / 2;
+    end = center + minWidth / 2;
+  }
+  if (start < 0) {
+    end -= start;
+    start = 0;
+  }
+  if (end > durationS) {
+    start -= end - durationS;
+    end = durationS;
+  }
+  return { start: Math.max(0, start), end: Math.min(durationS, end) };
+}
 
 type PlayMode = "loop" | "free";
 
@@ -70,7 +113,10 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   ref,
 ) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  // The detail (zoomed-in) trim bar - the one with draggable In/Out handles.
   const timelineRef = useRef<HTMLDivElement | null>(null);
+  // The overview bar (full clip) - shows/moves the detail bar's zoom window.
+  const overviewTimelineRef = useRef<HTMLDivElement | null>(null);
   const cropFrameRef = useRef<HTMLDivElement | null>(null);
   const [missing, setMissing] = useState(false);
   // null = not in crop edit mode. A value means an in-progress draft crop (not yet committed to the segment).
@@ -80,6 +126,14 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
+  // The detail bar's zoom window (seconds, [start,end] within [0,duration]) - two-level trim
+  // (screen-spec section 3): on a long clip, mapping the full duration to the trim bar's width
+  // gives sub-pixel handles for a short in/out range (undraggable). Reset to a default centered on
+  // the cut's current in/out whenever the selected cut or the clip's duration changes (a fresh
+  // clip's metadata just loaded), but intentionally NOT on every in/out change - within one
+  // edit session the window should hold still while dragging the detail handles; only the overview
+  // bar (a deliberate, separate action) repositions it.
+  const [trimWindow, setTrimWindow] = useState<{ start: number; end: number }>({ start: 0, end: 0 });
   const [playMode, setPlayMode] = useState<PlayMode>("loop");
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -105,6 +159,18 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     setDuration(0);
     setCurrentTime(0);
   }, [segment?.clip]);
+
+  // Resets the detail bar's zoom window to a default centered on the selected cut - fires on cut
+  // change (selectedIndex) and whenever duration updates (a new clip's metadata just loaded; for a
+  // cut on an already-loaded clip, duration is unchanged so this is a no-op re-run). Deliberately
+  // excludes segment.in/out from the deps so dragging the detail handles doesn't fight itself by
+  // resetting the very window it's being dragged within.
+  useEffect(() => {
+    if (segment) {
+      setTrimWindow(computeDefaultTrimWindow(segment.in, segment.out, duration));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedIndex, duration]);
 
   // When the selected cut changes, discard any in-progress crop edit (a draft based on a
   // different cut), and also clean up any shuttle (J/K/L speed/reverse playback) running for the previous cut.
@@ -185,7 +251,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     video.currentTime = segment.in;
     setCurrentTime(segment.in);
     if (autoPlayRef.current) {
-      video.playbackRate = segment.speed;
+      video.playbackRate = Math.min(segment.speed, MAX_PLAYBACK_RATE);
       video.volume = segment.volume;
       void video.play();
     }
@@ -209,7 +275,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
       setDuration(video.duration);
       setNaturalSize({ width: video.videoWidth, height: video.videoHeight });
       video.currentTime = segment.in;
-      video.playbackRate = segment.speed;
+      video.playbackRate = Math.min(segment.speed, MAX_PLAYBACK_RATE);
       video.volume = segment.volume;
       setCurrentTime(segment.in);
       if (autoPlayRef.current) {
@@ -224,7 +290,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     };
     video.addEventListener("loadedmetadata", handleLoadedMetadata);
     video.addEventListener("timeupdate", handleTimeUpdate);
-    video.playbackRate = segment.speed;
+    video.playbackRate = Math.min(segment.speed, MAX_PLAYBACK_RATE);
     video.volume = segment.volume;
     return () => {
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
@@ -281,7 +347,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
       video.currentTime = segment.in;
       setCurrentTime(segment.in);
     }
-    video.playbackRate = segment.speed;
+    video.playbackRate = Math.min(segment.speed, MAX_PLAYBACK_RATE);
     video.volume = segment.volume;
     void video.play();
   };
@@ -338,7 +404,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
         setCurrentTime(segment.in);
       }
     }
-    video.playbackRate = segment.speed * shuttleLevelRef.current;
+    video.playbackRate = Math.min(segment.speed * shuttleLevelRef.current, MAX_PLAYBACK_RATE);
     video.volume = segment.volume;
     void video.play();
   };
@@ -505,29 +571,37 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     return <div className="video-preview empty">Select a cut</div>;
   }
 
-  const timeAtClientX = (clientX: number): number => {
+  // Detail bar - maps [trimWindow.start, trimWindow.end] to its own width, giving real pixel room
+  // to In/Out handles even when that range is a tiny fraction of a long clip's full duration.
+  const detailTimeAtClientX = (clientX: number): number => {
     const el = timelineRef.current;
-    if (!el || duration <= 0) {
-      return 0;
+    const windowWidth = trimWindow.end - trimWindow.start;
+    if (!el || windowWidth <= 0) {
+      return trimWindow.start;
     }
     const rect = el.getBoundingClientRect();
     const fraction = clamp((clientX - rect.left) / rect.width, 0, 1);
-    return fraction * duration;
+    return trimWindow.start + fraction * windowWidth;
+  };
+
+  const detailPct = (t: number): number => {
+    const windowWidth = trimWindow.end - trimWindow.start;
+    return windowWidth > 0 ? clamp(((t - trimWindow.start) / windowWidth) * 100, 0, 100) : 0;
   };
 
   const handleTimelinePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (duration <= 0) {
+    if (trimWindow.end - trimWindow.start <= 0) {
       return;
     }
     e.currentTarget.setPointerCapture(e.pointerId);
-    seekTo(timeAtClientX(e.clientX));
+    seekTo(detailTimeAtClientX(e.clientX));
   };
 
   const handleTimelinePointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (e.buttons === 0 || duration <= 0) {
+    if (e.buttons === 0 || trimWindow.end - trimWindow.start <= 0) {
       return;
     }
-    seekTo(timeAtClientX(e.clientX));
+    seekTo(detailTimeAtClientX(e.clientX));
   };
 
   const startHandleDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -536,11 +610,11 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   };
 
   const dragHandle = (which: "in" | "out") => (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (e.buttons === 0 || duration <= 0) {
+    if (e.buttons === 0 || trimWindow.end - trimWindow.start <= 0) {
       return;
     }
     e.stopPropagation();
-    const t = timeAtClientX(e.clientX);
+    const t = detailTimeAtClientX(e.clientX);
     if (which === "in") {
       onChange({ in: clamp(t, 0, segment.out - MIN_GAP) });
     } else {
@@ -548,7 +622,50 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     }
   };
 
-  const pct = (t: number): number => (duration > 0 ? clamp((t / duration) * 100, 0, 100) : 0);
+  // Overview bar - the full clip, [0, duration]. Click/drag anywhere on it re-centers the detail
+  // bar's zoom window on that point (clamped to stay inside the clip) - the window's width itself
+  // doesn't change here, only its position.
+  const overviewTimeAtClientX = (clientX: number): number => {
+    const el = overviewTimelineRef.current;
+    if (!el || duration <= 0) {
+      return 0;
+    }
+    const rect = el.getBoundingClientRect();
+    const fraction = clamp((clientX - rect.left) / rect.width, 0, 1);
+    return fraction * duration;
+  };
+
+  const overviewPct = (t: number): number => (duration > 0 ? clamp((t / duration) * 100, 0, 100) : 0);
+
+  const moveTrimWindowTo = (centerT: number) => {
+    const width = trimWindow.end - trimWindow.start;
+    let start = centerT - width / 2;
+    let end = start + width;
+    if (start < 0) {
+      end -= start;
+      start = 0;
+    }
+    if (end > duration) {
+      start -= end - duration;
+      end = duration;
+    }
+    setTrimWindow({ start: Math.max(0, start), end: Math.min(duration, end) });
+  };
+
+  const handleOverviewPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (duration <= 0) {
+      return;
+    }
+    e.currentTarget.setPointerCapture(e.pointerId);
+    moveTrimWindowTo(overviewTimeAtClientX(e.clientX));
+  };
+
+  const handleOverviewPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.buttons === 0 || duration <= 0) {
+      return;
+    }
+    moveTrimWindowTo(overviewTimeAtClientX(e.clientX));
+  };
 
   const subtitleSummary = segment.subtitle.trim() !== "" ? segment.subtitle.trim() : "(no subtitle)";
   // If this cut has its own style override, use the result of merging it into the global
@@ -661,6 +778,39 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
             ) : null}
           </div>
 
+          {/* Two-level trim (screen-spec section 3): the overview bar is the full clip and shows/
+              moves the detail bar's zoom window; the detail bar is where In/Out are actually
+              dragged, with real pixel room regardless of how long the source clip is. */}
+          <div className="trim-timeline-label">
+            Overview (full clip {duration.toFixed(1)}s) — click/drag to move the zoomed-in window below
+          </div>
+          <div
+            className="trim-overview"
+            ref={overviewTimelineRef}
+            onPointerDown={handleOverviewPointerDown}
+            onPointerMove={handleOverviewPointerMove}
+          >
+            <div className="scrub-track" />
+            <div
+              className="scrub-range"
+              style={{
+                left: `${overviewPct(segment.in)}%`,
+                width: `${Math.max(0, overviewPct(segment.out) - overviewPct(segment.in))}%`,
+              }}
+            />
+            <div
+              className="trim-overview-window"
+              style={{
+                left: `${overviewPct(trimWindow.start)}%`,
+                width: `${Math.max(0, overviewPct(trimWindow.end) - overviewPct(trimWindow.start))}%`,
+              }}
+            />
+            <div className="scrub-playhead" style={{ left: `${overviewPct(currentTime)}%` }} />
+          </div>
+
+          <div className="trim-timeline-label">
+            Zoomed in ({trimWindow.start.toFixed(1)}s–{trimWindow.end.toFixed(1)}s) — drag the handles below
+          </div>
           <div
             className="scrub-timeline"
             ref={timelineRef}
@@ -670,21 +820,21 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
             <div className="scrub-track" />
             <div
               className="scrub-range"
-              style={{ left: `${pct(segment.in)}%`, width: `${Math.max(0, pct(segment.out) - pct(segment.in))}%` }}
+              style={{ left: `${detailPct(segment.in)}%`, width: `${Math.max(0, detailPct(segment.out) - detailPct(segment.in))}%` }}
             />
             <div
               className="scrub-handle in"
-              style={{ left: `${pct(segment.in)}%` }}
+              style={{ left: `${detailPct(segment.in)}%` }}
               onPointerDown={startHandleDrag}
               onPointerMove={dragHandle("in")}
             />
             <div
               className="scrub-handle out"
-              style={{ left: `${pct(segment.out)}%` }}
+              style={{ left: `${detailPct(segment.out)}%` }}
               onPointerDown={startHandleDrag}
               onPointerMove={dragHandle("out")}
             />
-            <div className="scrub-playhead" style={{ left: `${pct(currentTime)}%` }} />
+            <div className="scrub-playhead" style={{ left: `${detailPct(currentTime)}%` }} />
           </div>
 
           <div className="time-readout">

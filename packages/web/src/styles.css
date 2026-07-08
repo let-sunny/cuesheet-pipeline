@@ -892,6 +892,40 @@ body {
   pointer-events: none;
 }
 
+/* Two-level trim (screen-spec section 3) - the overview bar reuses .scrub-track/.scrub-range/
+   .scrub-playhead as-is (same visual language as the detail bar below it), just without handles;
+   .trim-overview-window is the only new visual, a translucent highlight over the part of the full
+   clip the detail bar is currently zoomed into. */
+.trim-timeline-label {
+  margin: 6px 0 2px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.trim-overview {
+  position: relative;
+  height: 20px;
+  margin: 2px 0;
+  cursor: pointer;
+  touch-action: none;
+}
+
+.trim-overview-window {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  background: var(--surface-3);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+/* .scrub-playhead's height (28px) matches .scrub-timeline, which is taller than .trim-overview
+   (20px) - shrink it here so it doesn't overflow above/below the shorter overview bar. */
+.trim-overview .scrub-playhead {
+  height: 20px;
+}
+
 .time-readout {
   font-size: 13px;
   color: var(--text-tertiary);
@@ -1751,6 +1785,13 @@ body {
 .qf-readonly {
   font-size: 13px;
   color: var(--text-tertiary);
+}
+
+/* Guidance text below a qf-row (e.g. the speed-cap note) - same treatment as .settings-note. */
+.qf-note {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--warning-text);
 }
 
 /* clip file name (read-only) - sits in the same place as other qf-field values, but is

@@ -160,10 +160,16 @@ export function SegmentQuickFields({
               className="plain-field"
               value={segment.speed}
               min={0.1}
+              max={16}
               step={0.1}
+              title="Speed is capped at 16x - browsers can't play video faster than that"
               onChange={(e) => {
                 const v = e.target.valueAsNumber;
-                onChange({ speed: Number.isNaN(v) ? 1 : v });
+                if (Number.isNaN(v)) {
+                  onChange({ speed: 1 });
+                  return;
+                }
+                onChange({ speed: Math.min(16, Math.max(0.1, v)) });
               }}
             />
             <span className="qf-suffix">x</span>
@@ -188,6 +194,9 @@ export function SegmentQuickFields({
             <span className="qf-suffix">%</span>
           </label>
         </div>
+        {segment.speed >= 16 ? (
+          <p className="qf-note">Speed is capped at 16x - browsers can't play video faster than that.</p>
+        ) : null}
       </div>
 
       {/* G3. Subtitle (+ subsection: per-cut subtitle style) */}

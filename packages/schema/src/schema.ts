@@ -110,7 +110,10 @@ export const segmentSchema = z
     clip: z.string().min(1, "clip filename must not be empty"),
     in: z.number().nonnegative("in must be >= 0"),
     out: z.number().positive("out must be positive"),
-    speed: z.number().positive("speed must be > 0").default(1.0),
+    // Capped at 16 - browsers throw a NotSupportedError setting HTMLMediaElement.playbackRate
+    // above 16, which would otherwise make the Edit-step preview (VideoPreview/SequencePlayer)
+    // crash on a segment with a higher speed.
+    speed: z.number().positive("speed must be > 0").max(16, "speed must be <= 16").default(1.0),
     volume: z
       .number()
       .min(0, "volume must be >= 0.0")

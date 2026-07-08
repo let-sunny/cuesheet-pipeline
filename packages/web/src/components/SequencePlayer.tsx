@@ -99,7 +99,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
     const video = videoRefs[frontRef.current].current;
     const seg = segmentsRef.current[currentIndex];
     if (video && seg) {
-      video.playbackRate = seg.speed * userRate;
+      video.playbackRate = Math.min(seg.speed * userRate, MAX_PLAYBACK_RATE);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userRate]);
@@ -134,7 +134,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
     if (video) {
       video.muted = false;
       if (seg) {
-        video.playbackRate = seg.speed * userRateRef.current;
+        video.playbackRate = Math.min(seg.speed * userRateRef.current, MAX_PLAYBACK_RATE);
       }
     }
   }
@@ -190,7 +190,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
       shuttleLevelRef.current = 1;
       video.muted = false;
     }
-    video.playbackRate = seg.speed * shuttleLevelRef.current;
+    video.playbackRate = Math.min(seg.speed * shuttleLevelRef.current, MAX_PLAYBACK_RATE);
     video.volume = seg.volume;
     setPlaying(true);
     void video.play();
@@ -277,7 +277,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
         const pending = pendingSeekRef.current;
         pendingSeekRef.current = null;
         video.currentTime = pending && pending.index === currentIndex ? pending.time : seg.in;
-        video.playbackRate = seg.speed * userRateRef.current;
+        video.playbackRate = Math.min(seg.speed * userRateRef.current, MAX_PLAYBACK_RATE);
         video.volume = seg.volume;
         setVideoNow(video.currentTime);
         if (playingRef.current) {
@@ -598,3 +598,8 @@ function waitForMetadata(video: HTMLVideoElement): Promise<boolean> {
 
 /** User preview playback rate options. Applied multiplied with the segment's own speed. */
 const RATE_OPTIONS = [1, 1.5, 2] as const;
+
+/** Browsers throw a NotSupportedError setting HTMLMediaElement.playbackRate above 16 - the schema
+ * also caps segment.speed at 16, but the user rate/shuttle multipliers above can still push the
+ * product past that, so every assignment clamps defensively. */
+const MAX_PLAYBACK_RATE = 16;
