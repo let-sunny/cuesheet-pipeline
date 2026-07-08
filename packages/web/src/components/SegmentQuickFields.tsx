@@ -123,6 +123,7 @@ export function SegmentQuickFields({
             <span>In</span>
             <input
               type="number"
+              className="plain-field"
               value={segment.in}
               min={0}
               onChange={(e) => {
@@ -135,6 +136,7 @@ export function SegmentQuickFields({
             <span>Out</span>
             <input
               type="number"
+              className="plain-field"
               value={segment.out}
               min={0}
               onChange={(e) => {
@@ -155,6 +157,7 @@ export function SegmentQuickFields({
             <span>Speed</span>
             <input
               type="number"
+              className="plain-field"
               value={segment.speed}
               min={0.1}
               step={0.1}
@@ -169,6 +172,7 @@ export function SegmentQuickFields({
             <span>Volume</span>
             <input
               type="number"
+              className="plain-field"
               value={Math.round(segment.volume * 100)}
               min={0}
               max={100}
@@ -191,6 +195,7 @@ export function SegmentQuickFields({
         <div className="qf-group-label">Subtitle</div>
         <label className="qf-field field-full qf-subtitle-field">
           <textarea
+            className="plain-field plain-field-textarea"
             value={segment.subtitle}
             rows={2}
             placeholder="Enter subtitle"
@@ -215,6 +220,7 @@ export function SegmentQuickFields({
           <label className="qf-field field-medium">
             <span>File</span>
             <select
+              className="plain-field"
               value={segment.narration ?? ""}
               onChange={(e) =>
                 onChange({ narration: e.target.value === "" ? null : e.target.value })

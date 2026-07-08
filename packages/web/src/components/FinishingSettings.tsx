@@ -36,6 +36,7 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
         <span>Font</span>
         <input
           type="text"
+          className="plain-field"
           value={subtitleStyle.font}
           onChange={(e) => onSubtitleStyleChange({ font: e.target.value })}
         />
@@ -44,6 +45,7 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
         <span>Size</span>
         <input
           type="number"
+          className="plain-field"
           value={subtitleStyle.size}
           min={1}
           onChange={(e) => {
@@ -64,6 +66,7 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
           />
           <input
             type="text"
+            className="plain-field"
             value={subtitleStyle.color}
             onChange={(e) => onSubtitleStyleChange({ color: e.target.value })}
           />
@@ -82,6 +85,7 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
           />
           <input
             type="text"
+            className="plain-field"
             value={subtitleStyle.outlineColor}
             onChange={(e) => onSubtitleStyleChange({ outlineColor: e.target.value })}
           />
@@ -91,6 +95,7 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
         <span>Outline width</span>
         <input
           type="number"
+          className="plain-field"
           value={subtitleStyle.outlineWidth}
           min={0}
           onChange={(e) => {
@@ -116,6 +121,7 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
               />
               <input
                 type="text"
+                className="plain-field"
                 value={background.color}
                 onChange={(e) => patchBackground({ color: e.target.value })}
               />
@@ -134,6 +140,7 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
             <span>Background padding (px)</span>
             <input
               type="number"
+              className="plain-field"
               min={0}
               max={120}
               value={background.padding}
@@ -151,6 +158,7 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
         <label className="qf-field field-medium">
           <span>Position</span>
           <select
+            className="plain-field"
             value={subtitleStyle.position}
             onChange={(e) =>
               onSubtitleStyleChange({
@@ -205,6 +213,7 @@ export function NarrationSettings({ narration, onNarrationChange }: NarrationPro
             <span>Folder</span>
             <input
               type="text"
+              className="plain-field"
               value={narration.dir}
               placeholder="media/narration"
               onChange={(e) => onNarrationChange({ dir: e.target.value })}

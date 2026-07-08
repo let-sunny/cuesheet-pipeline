@@ -243,7 +243,19 @@ body {
   color: var(--text-secondary);
 }
 
-button {
+/*
+ * Scoped to raw (non-Astryx) buttons only, via the .plain-button marker class — NOT a bare
+ * `button` element selector. Astryx's own <Button> also renders a plain <button> element, and
+ * its variant styling (primary/secondary/ghost/destructive) lives inside StyleX's `@layer
+ * astryx-base` (see @astryxdesign/build's layer wrapping). Per the CSS cascade-layers spec,
+ * *any* unlayered rule always beats *every* layered rule for the same property, regardless of
+ * specificity — so a bare `button {}` here would silently flatten every Astryx Button variant to
+ * this single background, which is exactly what happened before this rule was scoped (see
+ * screen-spec.md section 0, rule 8). Every remaining raw <button> in the codebase carries
+ * className="plain-button" explicitly for this reason — do not remove it, and give any new raw
+ * <button> the same class instead of relying on the bare tag.
+ */
+.plain-button {
   font: inherit;
   color: inherit;
   background: var(--surface-button);
@@ -253,19 +265,24 @@ button {
   cursor: pointer;
 }
 
-button:hover:not(:disabled) {
+.plain-button:hover:not(:disabled) {
   background: var(--surface-button-hover);
 }
 
-button:disabled {
+.plain-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-input[type="text"],
-input[type="number"],
-select,
-textarea {
+/*
+ * Scoped to raw (non-Astryx) text/number inputs, selects, and textareas only, via the
+ * .plain-field marker class — see the .plain-button comment above for why a bare element
+ * selector here would be unsafe (currently no Astryx Field/Input/Select equivalent is used in
+ * this codebase, so this isn't clobbering anything today, but it's scoped the same way as
+ * .plain-button on principle — see screen-spec.md section 0 rule 8). input[type="color"] and
+ * input[type="file"] are deliberately left unstyled (native chrome is fine for those).
+ */
+.plain-field {
   font: inherit;
   color: inherit;
   background: var(--surface-1);
@@ -274,7 +291,12 @@ textarea {
   padding: 4px 8px;
 }
 
-textarea {
+/*
+ * A second single-class selector (not textarea.plain-field) on purpose: combining the element
+ * and the class would raise specificity above single-class overrides like
+ * .compact-list-subtitle-input declared further down, and silently win a fight it used to lose.
+ */
+.plain-field-textarea {
   padding: 6px 8px;
 }
 
@@ -699,11 +721,6 @@ textarea {
 .crop-edit-actions {
   display: flex;
   gap: 6px;
-}
-
-.crop-edit-actions button {
-  font-size: 12px;
-  padding: 3px 10px;
 }
 
 /* Crop edit mode — overlay on the video (dark outside + bright crop rectangle + handles).
@@ -1232,35 +1249,9 @@ textarea {
   gap: 6px;
 }
 
-.moment-card-actions button {
-  flex: 1;
-  min-width: 0;
-  padding: 6px 4px;
-}
-
 .moment-io-actions {
   display: flex;
   gap: 6px;
-}
-
-.moment-io-button {
-  flex: 1;
-  min-width: 0;
-  padding: 4px 4px;
-  font-size: 12px;
-  border-color: var(--border-dashed);
-  color: var(--text-tertiary);
-  background: transparent;
-}
-
-.moment-io-button.active {
-  border-color: var(--tag-blue-border);
-  color: var(--tag-blue-text);
-  background: var(--tag-blue-bg);
-}
-
-.moment-io-button:disabled {
-  opacity: 0.4;
 }
 
 .keyboard-help {

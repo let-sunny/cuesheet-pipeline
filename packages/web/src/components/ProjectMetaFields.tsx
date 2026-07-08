@@ -13,6 +13,7 @@ export function ProjectMetaFields({ project, onChange }: Props) {
         <span>Name</span>
         <input
           type="text"
+          className="plain-field"
           value={project.name}
           onChange={(e) => onChange({ name: e.target.value })}
         />
@@ -21,6 +22,7 @@ export function ProjectMetaFields({ project, onChange }: Props) {
         <span>FPS</span>
         <input
           type="number"
+          className="plain-field"
           value={project.fps}
           min={1}
           onChange={(e) => {
@@ -33,6 +35,7 @@ export function ProjectMetaFields({ project, onChange }: Props) {
         <span>Width</span>
         <input
           type="number"
+          className="plain-field"
           value={project.width}
           min={1}
           step={1}
@@ -46,6 +49,7 @@ export function ProjectMetaFields({ project, onChange }: Props) {
         <span>Height</span>
         <input
           type="number"
+          className="plain-field"
           value={project.height}
           min={1}
           step={1}

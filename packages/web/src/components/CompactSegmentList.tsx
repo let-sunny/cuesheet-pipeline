@@ -106,7 +106,7 @@ export function CompactSegmentList({
                   rowRefs.current[i] = el;
                   autoResize(el);
                 }}
-                className="compact-list-subtitle-input"
+                className="plain-field plain-field-textarea compact-list-subtitle-input"
                 value={seg.subtitle}
                 rows={1}
                 placeholder={seg.clip || "(no filename)"}
@@ -148,6 +148,7 @@ export function CompactSegmentList({
             <div className="compact-list-actions">
               <button
                 type="button"
+                className="plain-button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onMove(i, -1);
@@ -159,6 +160,7 @@ export function CompactSegmentList({
               </button>
               <button
                 type="button"
+                className="plain-button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onMove(i, 1);
@@ -170,6 +172,7 @@ export function CompactSegmentList({
               </button>
               <button
                 type="button"
+                className="plain-button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onRemove(i);
@@ -185,7 +188,7 @@ export function CompactSegmentList({
       })}
       <button
         type="button"
-        className="add-button"
+        className="plain-button add-button"
         onClick={onAdd}
         title="Duplicates the selected cut right after it (useful for splitting a long clip into separate cuts)"
       >

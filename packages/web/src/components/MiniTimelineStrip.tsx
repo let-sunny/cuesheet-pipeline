@@ -109,7 +109,7 @@ export function MiniTimelineStrip({ segments, selectedIndex, onSelect, onGoToEdi
               <button
                 type="button"
                 key={i}
-                className={`mini-strip-block${i === selectedIndex ? " selected" : ""}${
+                className={`plain-button mini-strip-block${i === selectedIndex ? " selected" : ""}${
                   isClipBoundary ? " clip-boundary" : ""
                 }`}
                 style={{ flexGrow: play, flexBasis: 0 }}
@@ -129,13 +129,13 @@ export function MiniTimelineStrip({ segments, selectedIndex, onSelect, onGoToEdi
         </div>
       </div>
       <div className="mini-strip-zoom-controls">
-        <button type="button" onClick={() => setZoom((z) => clampZoom(z / BUTTON_ZOOM_FACTOR))} title="Zoom out">
+        <button type="button" className="plain-button" onClick={() => setZoom((z) => clampZoom(z / BUTTON_ZOOM_FACTOR))} title="Zoom out">
           −
         </button>
-        <button type="button" onClick={() => setZoom(1)} title="Fit to width (Shift+Z)">
+        <button type="button" className="plain-button" onClick={() => setZoom(1)} title="Fit to width (Shift+Z)">
           Fit to width
         </button>
-        <button type="button" onClick={() => setZoom((z) => clampZoom(z * BUTTON_ZOOM_FACTOR))} title="Zoom in">
+        <button type="button" className="plain-button" onClick={() => setZoom((z) => clampZoom(z * BUTTON_ZOOM_FACTOR))} title="Zoom in">
           +
         </button>
       </div>

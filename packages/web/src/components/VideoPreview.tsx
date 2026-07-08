@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "re
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { Button } from "@astryxdesign/core/Button";
 import type { Crop, Segment, SubtitleStyle } from "@cuesheet/schema";
+import { CompactButton } from "./ui/CompactButton/index.js";
 import { fetchProxyStatus, type ClipMoments, type ProxyStatus } from "../api.js";
 import { clamp } from "../lib/clamp.js";
 import { cropPreviewStyle } from "../lib/cropPreview.js";
@@ -600,11 +601,11 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
                 {" "}· w {(cropEditDraft.w * 100).toFixed(0)}% · h {(cropEditDraft.h * 100).toFixed(0)}%
               </span>
               <div className="crop-edit-actions">
-                <Button label="Full frame" variant="ghost" size="sm" onClick={resetCropEditToFullFrame} />
-                <Button label="Apply" variant="primary" size="sm" onClick={applyCropEdit} />
-                <Button label="Cancel" variant="ghost" size="sm" onClick={cancelCropEdit} />
+                <CompactButton label="Full frame" variant="ghost" size="sm" onClick={resetCropEditToFullFrame} />
+                <CompactButton label="Apply" variant="primary" size="sm" onClick={applyCropEdit} />
+                <CompactButton label="Cancel" variant="ghost" size="sm" onClick={cancelCropEdit} />
                 {segment.crop ? (
-                  <Button label="Clear" variant="ghost" size="sm" onClick={clearCropEdit} />
+                  <CompactButton label="Clear" variant="ghost" size="sm" onClick={clearCropEdit} />
                 ) : null}
               </div>
             </div>
@@ -701,14 +702,14 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
           <div className="playmode-toggle">
             <button
               type="button"
-              className={playMode === "loop" ? "active" : ""}
+              className={`plain-button${playMode === "loop" ? " active" : ""}`}
               onClick={() => setPlayMode("loop")}
             >
               Loop range
             </button>
             <button
               type="button"
-              className={playMode === "free" ? "active" : ""}
+              className={`plain-button${playMode === "free" ? " active" : ""}`}
               onClick={() => setPlayMode("free")}
             >
               Full clip

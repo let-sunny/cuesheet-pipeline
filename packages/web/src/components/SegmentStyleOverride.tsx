@@ -49,6 +49,7 @@ export function SegmentStyleOverride({
               <span>Size</span>
               <input
                 type="number"
+                className="plain-field"
                 min={1}
                 value={override.size ?? globalStyle.size}
                 onChange={(e) => {
@@ -70,6 +71,7 @@ export function SegmentStyleOverride({
                 />
                 <input
                   type="text"
+                  className="plain-field"
                   value={override.color ?? globalStyle.color}
                   onChange={(e) => onChangeOverride({ color: e.target.value })}
                 />
@@ -89,6 +91,7 @@ export function SegmentStyleOverride({
                 />
                 <input
                   type="text"
+                  className="plain-field"
                   value={override.outlineColor ?? globalStyle.outlineColor}
                   onChange={(e) => onChangeOverride({ outlineColor: e.target.value })}
                 />
@@ -120,6 +123,7 @@ export function SegmentStyleOverride({
                     />
                     <input
                       type="text"
+                      className="plain-field"
                       value={override.background.color}
                       onChange={(e) =>
                         onChangeOverride({ background: { ...override.background!, color: e.target.value } })

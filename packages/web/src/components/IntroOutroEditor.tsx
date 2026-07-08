@@ -114,6 +114,7 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
         <label className="settings-field wide-input">
           <span>Choose file</span>
           <select
+            className="plain-field"
             value={matchedIntroFile ?? ""}
             onChange={(e) => {
               if (e.target.value !== "") {
@@ -179,6 +180,7 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
             <span>Path</span>
             <input
               type="text"
+              className="plain-field"
               value={intro ?? ""}
               placeholder="Leave empty for none"
               onChange={(e) => onChangeText({ intro: e.target.value === "" ? null : e.target.value })}
@@ -210,6 +212,7 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
         <label className="settings-field wide-input">
           <span>Choose file</span>
           <select
+            className="plain-field"
             value={matchedOutroFile ?? ""}
             onChange={(e) => {
               if (e.target.value !== "") {
@@ -275,6 +278,7 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
             <span>Path</span>
             <input
               type="text"
+              className="plain-field"
               value={outro ?? ""}
               placeholder="Leave empty for none"
               onChange={(e) => onChangeText({ outro: e.target.value === "" ? null : e.target.value })}

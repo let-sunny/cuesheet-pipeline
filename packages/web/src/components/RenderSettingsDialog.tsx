@@ -70,9 +70,9 @@ export function RenderSettingsDialog({
                     <button
                       type="button"
                       key={preset.label}
-                      className={
-                        project.width === preset.width && project.height === preset.height ? "active" : ""
-                      }
+                      className={`plain-button${
+                        project.width === preset.width && project.height === preset.height ? " active" : ""
+                      }`}
                       onClick={() => handlePickResolution(preset.width, preset.height)}
                     >
                       {preset.label}

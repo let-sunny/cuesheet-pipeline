@@ -541,7 +541,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
             <button
               key={rate}
               type="button"
-              className={userRate === rate ? "active" : ""}
+              className={`plain-button${userRate === rate ? " active" : ""}`}
               onClick={() => setUserRate(rate)}
             >
               {rate}x

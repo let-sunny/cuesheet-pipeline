@@ -122,7 +122,7 @@ export function TimelineView({
               <button
                 type="button"
                 key={i}
-                className={`timeline-block${i === selectedIndex ? " selected" : ""}`}
+                className={`plain-button timeline-block${i === selectedIndex ? " selected" : ""}`}
                 style={{ flexGrow: play, flexBasis: 0, minWidth: `${MIN_BLOCK_PX}px` }}
                 onClick={() => onSelectSegment(i)}
                 title={`${label} · ${seg.clip || "(no filename)"} · ${seg.in.toFixed(1)}s~${seg.out.toFixed(1)}s · ${seg.speed}x speed`}

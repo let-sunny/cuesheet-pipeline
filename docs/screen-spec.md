@@ -24,6 +24,22 @@
    domain-specific parts (timeline, crop overlay, palette card, video stage).
 7. Unify units and formats: time as `12.3s`, ratios as `%`, colors shown as color picker +
    hex side by side.
+8. **Never style raw element selectors globally** (e.g. a bare `button {}`, `input {}` rule in
+   styles.css), and never reach into an Astryx component's rendered markup via a custom CSS class
+   or a descendant selector either. Astryx components render plain HTML elements too (Astryx's
+   `<Button>` is a plain `<button>`), and their variant styling lives inside a StyleX `@layer` —
+   per the CSS cascade-layers spec, any unlayered rule always wins over every layered rule for the
+   same property regardless of specificity, so any of our own CSS touching that element (however
+   it's targeted) silently overrides the variant look. Astryx's own sanctioned customization path
+   is component props: `variant`/`size` for the built-in options, `xstyle` (a `stylex.create()`
+   value — compiles into our own `product` StyleX layer, which reliably wins over the library
+   layer) for anything cheap and static, `style` (inline `CSSProperties`) as the escape hatch for
+   anything dynamic/conditional. Never repeat the same `xstyle`/`style` tweak at 2+ call sites —
+   promote it to a named wrapper component instead (`packages/web/src/components/ui/`, one folder
+   per component; see `CompactButton`/`CardActionButton`/`IoAssignButton` for examples). Raw
+   (non-Astryx) elements that still exist for the 4 domain-custom areas (rule 6) get an explicit
+   marker class instead (e.g. `.plain-button`, `.plain-field`) and are styled via that class, never
+   via the bare tag.
 
 ## 1. Header (global, fixed)
 
@@ -166,6 +182,20 @@ Buttons that belong to one group render inside one container (not spread across 
 stay visually together, and action groups in banners/dialog footers are right-aligned.
 
 ## Changelog
+- 2026-07-09 — added rule 8 (never style raw element selectors globally, and never reach into
+  Astryx components via CSS at all — props only). Root cause of a reported "button hierarchy
+  invisible" bug: styles.css's unlayered `button {}` / `button:hover:not(:disabled)` /
+  `button:disabled` (and `input`/`select`/`textarea`) rules always beat Astryx Button's layered
+  per-variant background (unlayered beats layered regardless of specificity), flattening every
+  primary/secondary/ghost/destructive button to the same look. Also found (same mechanism, smaller
+  blast radius): `.crop-edit-actions button`, `.moment-card-actions button`, and `.moment-io-button`
+  were reaching into Astryx Buttons via descendant/class selectors to tweak size/color. Fixed by:
+  (1) scoping the global rules to `.plain-button`/`.plain-field` marker classes, added to every
+  remaining raw `<button>`/`<input>`/`<select>`/`<textarea>`; (2) replacing the 3 CSS-reaches-into-
+  Astryx cases with named wrapper components (`CompactButton`, `CardActionButton`,
+  `IoAssignButton` under `packages/web/src/components/ui/`) that apply the tweak via `xstyle`
+  instead; (3) moving the one-off `.add-button` margin tweak on BgmEditor's Button to inline
+  `style`.
 - 2026-07-08 first draft — established the fix baseline for the hierarchy collapse (In/Out
   split apart, oversized Speed field, unclear ownership of style overrides).
 - 2026-07-08 revision — card-internal spacing rule and excluded-card state representation

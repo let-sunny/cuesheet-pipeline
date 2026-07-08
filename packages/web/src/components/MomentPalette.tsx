@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { Badge } from "@astryxdesign/core/Badge";
 import type { BadgeVariant } from "@astryxdesign/core/Badge";
 import { Text } from "@astryxdesign/core/Text";
 import type { Segment } from "@cuesheet/schema";
+import { CardActionButton } from "./ui/CardActionButton/index.js";
+import { IoAssignButton } from "./ui/IoAssignButton/index.js";
 import { fetchDraftFrames, fetchMoments } from "../api.js";
 import type { ClipMoments, ShotType } from "../api.js";
 import { INTRO_OUTRO_MAX_DURATION_S, baseName, buildClipPath, computeClipDurations, stem } from "../clipPaths.js";
@@ -172,7 +173,7 @@ export function MomentPalette({
     <div className="moment-palette">
       <div className="moment-palette-header">
         <span>Scene candidates ({cards.length})</span>
-        <button type="button" onClick={() => setCollapsed((v) => !v)}>
+        <button type="button" className="plain-button" onClick={() => setCollapsed((v) => !v)}>
           {collapsed ? "Expand" : "Collapse"}
         </button>
       </div>
@@ -186,7 +187,7 @@ export function MomentPalette({
           <div className="moment-filters">
             <button
               type="button"
-              className={selectedCategory === "all" ? "active" : ""}
+              className={`plain-button${selectedCategory === "all" ? " active" : ""}`}
               onClick={() => setSelectedCategory("all")}
             >
               All ({cards.length})
@@ -195,7 +196,7 @@ export function MomentPalette({
               <button
                 type="button"
                 key={cat}
-                className={selectedCategory === cat ? "active" : ""}
+                className={`plain-button${selectedCategory === cat ? " active" : ""}`}
                 onClick={() => setSelectedCategory(cat)}
               >
                 {CATEGORY_META[cat].label} ({counts.get(cat) ?? 0})
@@ -208,7 +209,7 @@ export function MomentPalette({
               <button
                 type="button"
                 key={f}
-                className={statusFilter === f ? "active" : ""}
+                className={`plain-button${statusFilter === f ? " active" : ""}`}
                 onClick={() => setStatusFilter(f)}
               >
                 {STATUS_FILTER_LABEL[f]}
@@ -321,7 +322,7 @@ export function MomentPalette({
                       </div>
                       <div className="moment-actions-group">
                         <div className="moment-card-actions">
-                          <Button
+                          <CardActionButton
                             label={inUse ? "Added" : "Add"}
                             variant="primary"
                             size="sm"
@@ -330,7 +331,7 @@ export function MomentPalette({
                           />
                           {/* Hide Remove while not in use (but keep its space so card height
                               stays consistent regardless of whether Add/Remove is shown). */}
-                          <Button
+                          <CardActionButton
                             label="Remove"
                             variant="destructive"
                             size="sm"
@@ -340,11 +341,10 @@ export function MomentPalette({
                           />
                         </div>
                         <div className="moment-io-actions">
-                          <Button
+                          <IoAssignButton
                             label={isIntro ? "Intro set" : "Set as intro"}
-                            variant="ghost"
                             size="sm"
-                            className={`moment-io-button${isIntro ? " active" : ""}`}
+                            active={isIntro}
                             isDisabled={tooLongForIntroOutro}
                             tooltip={
                               introOutroDisabledTitle ??
@@ -352,11 +352,10 @@ export function MomentPalette({
                             }
                             onClick={() => onSetIntro(card.clipFileName)}
                           />
-                          <Button
+                          <IoAssignButton
                             label={isOutro ? "Outro set" : "Set as outro"}
-                            variant="ghost"
                             size="sm"
-                            className={`moment-io-button${isOutro ? " active" : ""}`}
+                            active={isOutro}
                             isDisabled={tooLongForIntroOutro}
                             tooltip={
                               introOutroDisabledTitle ??

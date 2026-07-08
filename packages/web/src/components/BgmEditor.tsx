@@ -21,6 +21,7 @@ export function BgmEditor({ bgm, onChange, onAdd, onRemove }: Props) {
                 <span>file</span>
                 <input
                   type="text"
+                  className="plain-field"
                   value={cue.file}
                   onChange={(e) => onChange(i, { file: e.target.value })}
                 />
@@ -29,6 +30,7 @@ export function BgmEditor({ bgm, onChange, onAdd, onRemove }: Props) {
                 <span>start</span>
                 <input
                   type="number"
+                  className="plain-field"
                   value={cue.start}
                   min={0}
                   onChange={(e) => {
@@ -41,6 +43,7 @@ export function BgmEditor({ bgm, onChange, onAdd, onRemove }: Props) {
                 <span>end</span>
                 <input
                   type="number"
+                  className="plain-field"
                   value={cue.end}
                   min={0}
                   onChange={(e) => {
@@ -53,6 +56,7 @@ export function BgmEditor({ bgm, onChange, onAdd, onRemove }: Props) {
                 <span>volume</span>
                 <input
                   type="number"
+                  className="plain-field"
                   value={cue.volume}
                   min={0}
                   max={1}
@@ -70,7 +74,13 @@ export function BgmEditor({ bgm, onChange, onAdd, onRemove }: Props) {
           ))}
         </div>
       )}
-      <Button label="Add background music (BGM)" variant="secondary" size="sm" className="add-button" onClick={onAdd} />
+      <Button
+        label="Add background music (BGM)"
+        variant="secondary"
+        size="sm"
+        style={{ marginTop: 10 }}
+        onClick={onAdd}
+      />
     </div>
   );
 }

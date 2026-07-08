@@ -102,7 +102,7 @@ function ThemeModeToggle({
         <button
           type="button"
           key={option.value}
-          className={option.value === themeMode ? "active" : ""}
+          className={`plain-button${option.value === themeMode ? " active" : ""}`}
           onClick={() => onThemeModeChange(option.value)}
           title={option.label}
         >
