@@ -162,8 +162,11 @@ own CSS via explicit classes only.
 
 Internal component anatomy follows Astryx's shape, scaled down: one folder per
 significant component — `Component.tsx` (role header at top) + co-located
-`Component.css` (its styles only; the global stylesheet keeps tokens/base/shared
-`.plain-*` rules exclusively) + `Component.test.tsx` + `index.ts` export gate.
+`Component.styles.ts` (co-located `stylex.create` — StyleX compilation is already
+wired in the web build; custom DOM is styled the same way Astryx styles itself, so
+cascade conflicts are structurally impossible) + `Component.test.tsx` + `index.ts`
+export gate. Plain CSS survives only as a small tokens/base file (color variables,
+reset); no per-component CSS files.
 Reusable stateful logic is extracted into custom hooks (`src/hooks/`), each small
 enough to unit-test on its own. `.doc.mjs` is omitted until we ship
 public components. SYNC comments only where real cross-file chains exist.
