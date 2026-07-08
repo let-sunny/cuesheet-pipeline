@@ -1,120 +1,149 @@
-# 사용 가이드 — 내 전용 Vrew
+# User Guide — My Own Vrew
 
-> 대상: 이 도구의 주인(뜨개 유튜버). 에디터를 열었을 때 "뭘 어떻게 하지"에 답하는 문서.
-> 새 에피소드 시작: `pnpm episode "<원본 폴더>"` (스캔+에디터 기동까지 자동) — 아래 1절 참고.
-> 에디터만 다시 열 때: 레포에서 `pnpm --filter @cuesheet/web dev` 후 `localhost:5173`
-> (편집 대상은 서버 실행 시 `CUESHEET_PATH`로 지정 — 기본은 `project.cuesheet.json`).
+> Audience: the owner of this tool (a knitting YouTuber). Answers "what do I do" when you open
+> the editor.
+> Starting a new episode: `pnpm episode "<raw footage folder>"` (scans and launches the editor
+> automatically) — see section 1 below.
+> Reopening just the editor: from the repo root, `pnpm --filter @cuesheet/web dev`, then open
+> `localhost:5173`
+> (the file being edited is set via `CUESHEET_PATH` when starting the server — defaults to
+> `project.cuesheet.json`).
 
 ---
 
-## 1. 전체 흐름 (촬영부터 업로드까지)
+## 1. Full flow (from footage to upload)
 
 ```
-촬영분 폴더 ──▶ 초벌 생성(자동) ──▶ 에디터에서 다듬기(나) ──▶ 최종 뽑기
-              scan + 비전 판독         ①장면 고르기 ②다듬기 ③내보내기        자막판 mp4
-              + 조립 + 자막 초안                                   클린판 mp4 + SRT
+footage folder ──▶ rough cut generated (automatic) ──▶ polish in the editor (you) ──▶ final export
+              scan + vision judgment      ① Scenes ② Edit ③ Export        subtitled mp4
+              + assembly + draft subtitles                            clean mp4 + SRT
 ```
 
-에피소드 시작은 한 줄이다:
+Starting an episode is one line:
 
 ```bash
-pnpm episode "<원본 폴더 경로>"
+pnpm episode "<raw footage folder path>"
 ```
 
-기계적인 부분(원본 폴더 검증·iCloud 미다운로드 개수 확인·`scan` 실행·에디터 서버
-기동·브라우저 오픈)을 이 명령이 처리하고, 마지막에 다음 단계를 안내한다. 안내대로
-Claude Code에서 이어서 실행한다:
+This command handles the mechanical parts (validating the folder, checking the iCloud
+not-yet-downloaded count, running `scan`, launching the editor server, opening the browser),
+and tells you the next step at the end. Follow it by running this in Claude Code:
 
 ```
-/episode <원본 폴더 경로>
+/episode <raw footage folder path>
 ```
 
-이 커스텀 커맨드가 비전 판독(순간 탐지) → 조립 → 내 말투 자막 → 얼굴 크롭 제안 →
-검증까지 끝까지 진행하고, 완성되면 에디터가 이미 그 큐시트를 보고 있는 상태로
-넘겨준다. 렌더는 자동 실행하지 않는다 — 에디터에서 다듬는 것부터가 내 일.
+This custom command runs vision judgment (moment detection) -> assembly -> subtitles in your
+voice -> face-crop suggestions -> validation, start to finish, and hands off with the editor
+already looking at the resulting cuesheet. It does not render automatically — polishing in the
+editor from there is your job.
 
-(참고) `/episode` 없이 그때그때 자연어로 시켜도 된다 — "이 폴더로 초벌 만들어줘"처럼
-말하면 Claude Code가 같은 절차를 알아서 밟는다. `/episode`는 그 절차를 매번 같은
-방식으로 반복하기 위해 굳혀둔 지시서일 뿐이다.
+(Note) You don't need `/episode` — you can just ask in natural language any time, e.g. "make a
+rough cut from this folder," and Claude Code will run the same procedure on its own.
+`/episode` just codifies that procedure so it repeats the same way every time.
 
-## 2. 에디터에서 다듬기 (수정 플로우)
+## 2. Polishing in the editor (the edit flow)
 
-### ① 장면 고르기 — 재료 고르기
-- **장면 후보**: 자동 판독된 "쓸만한 장면" 카드들 (클립·시각·화면 묘사·품질). 시간순 정렬.
-- 카드 **[담기]** = 타임라인에 컷 추가 (촬영 순서 유지). [빼기]로 제거.
-- 카드에서 **[인트로로] [아웃트로로]** 한 클릭 지정 (15초 초과 클립은 자동 비활성).
+### ① Scenes — picking material
+- **Scene candidates**: cards for automatically detected "usable scenes" (clip, thumbnail,
+  scene description, quality). Sorted chronologically.
+- **[Add]** on a card = add the cut to the timeline (keeps shooting order). **[Remove]** takes
+  it out.
+- **[Set as intro] [Set as outro]** on a card, one click (clips over 15s are auto-disabled).
 
-### ② 다듬기 — 컷 수정
-- 컷 리스트(썸네일)에서 컷 선택 → 오른쪽 **컷 설정**에서 수정:
-  - **구간**: IN/OUT 핸들 드래그 또는 숫자 입력 (미리보기에 즉시 반영)
-  - **자막**: 텍스트 수정 (아래 "말투" 절 참고)
-  - **배속/볼륨/내레이션/화면 조정(크롭)**
-- **전체 재생**: 상단 재생 버튼 → 컷들이 이어서 재생 (자막 오버레이 포함).
-  재생 중에도 아래에서 편집 가능 — 컷 리스트 클릭하면 그 컷부터 이어 재생.
-  컨트롤: 이전/다음 컷, 배속 1x/1.5x/2x, 진행 바 클릭 점프.
-- **단축키**: Space 재생/정지 · I/O 인/아웃 지정 · 화살표 이동 · Cmd+B 컷 분할 ·
-  **Cmd+Z / Cmd+Shift+Z 실행 취소/다시 실행** · ? 도움말 · Tab 자막 흐름 이동
-- 저장 전 이탈해도 "저장하지 않은 편집" 배너로 되살릴 수 있다 — [이어서 편집]을 누르고, 마음에 들면 저장으로 확정.
+### ② Edit — adjusting cuts
+- Select a cut in the cut list (thumbnails) -> adjust it in **Cut settings** on the right:
+  - **Range**: drag the In/Out handles or type numbers (updates the preview instantly)
+  - **Subtitle**: edit the text (see the "Voice" section below)
+  - **Speed/Volume/Narration/Reframe**
+- **Play all**: the play button up top -> cuts play back to back (with subtitle overlay).
+  You can keep editing below while it plays — click a cut in the list to play from there.
+  Controls: previous/next cut, speed 1x/1.5x/2x, click the progress bar to jump.
+- **Shortcuts**: Space play/pause · I/O set in/out · arrow keys to move ·
+  Cmd+B split cut · **Cmd+Z / Cmd+Shift+Z undo/redo** · ? help · Tab move through subtitles
+- Leaving before saving still lets you recover via the "Unsaved edits" banner — click
+  [Continue editing], and save once you're happy with it.
 
-### ③ 내보내기 — 스타일과 출력
-- **자막 스타일**: 컬러피커 + 배경 박스(색/투명도/여백 — 유튜브 기본 자막 느낌) +
-  가장자리 여백 슬라이더. 미리보기는 ② 다듬기의 비디오에서 실시간 확인.
-- **인트로/아웃트로** 확인·해제, **BGM**, **내레이션**(아래 4절).
-- **내보내기**: 저장 후 내보내기 버튼 → 해상도(720p/1080p/4K)·자막 굽기 선택 (진행률 % 표시, 완료 시 다운로드).
-  - **"자막 없는 영상(CC용)" 체크** = 유튜브 CC 업로드용
-  - **"자막 다운로드 (.srt)"** = 자막 별도 파일 (CC 업로드용)
-- 업로드 조합: **자막 없는 영상 + SRT를 CC로** 또는 자막 있는 영상 단독.
+### ③ Export — style and output
+- **Subtitle style**: color picker + background box (color/opacity/margin — a YouTube-default
+  subtitle look) + edge margin slider. Preview updates live in the ② Edit video.
+- Review/clear **intro/outro**, **BGM**, **narration** (see section 4 below).
+- **Export**: save, then hit the export button -> pick resolution (720p/1080p/4K) and whether
+  to burn in subtitles (shows progress %, downloads when done).
+  - **Check "Without subtitles (for CC)"** = for uploading as YouTube CC
+  - **"Download subtitles (.srt)"** = a separate subtitle file (for CC upload)
+- Upload combos: **clean video + SRT as CC**, or a subtitled video on its own.
 
-### 저장이 뭘 의미하나
-- **저장 = 파일에 확정.** 내보내기·SRT·Claude 연동은 전부 저장된 파일 기준.
-- 헤더의 **● 저장 안 됨** = 화면과 저장본이 다름 → 저장 필요.
-- 편집 중엔 자동 임시 백업이 돌아서, 탭이 닫혀도 다음에 "저장하지 않은 편집" 배너로
-  되살릴 수 있다. 배너에서 [이어서 편집] 후 저장하면 확정, [버리면] 저장본으로 시작.
+### What "save" means
+- **Save = commits to the file.** Export, SRT, and Claude integration all work off the saved
+  file.
+- The header's **● Unsaved** = the screen differs from the saved file -> needs saving.
+- An automatic temp backup runs while you edit, so even if the tab closes, you can recover it
+  next time via the "Unsaved edits" banner. Click [Continue editing] then save to commit it,
+  or [Discard] to start from the saved file.
 
-## 3. 말투 (자막이 마음에 안 들 때)
+## 3. Voice (when you don't like the subtitles)
 
-자막은 `docs/voice-guide.md`(내 자막 8편에서 증류한 말투 규칙)를 근거로 자동 작성된다.
-원칙: **내용은 화면에서, 말투만 가이드에서.** 화면에 없는 얘기가 자막에 있으면 버그다.
+Subtitles are auto-written based on `docs/voice-guide.md` (voice rules distilled from 8 of my
+own past subtitle sets). Principle: **content comes from the screen, only the tone comes from
+the guide.** A subtitle saying something not on screen is a bug.
 
-- **한두 개 고치기**: 에디터에서 직접 수정이 제일 빠름 (Cmd+Z 됨).
-- **여러 개/전체 톤 조정**: Claude Code에 시키기 — 예: "자막 전체에서 ~한 톤 줄여줘",
-  "이 컷들 자막을 화면 기준으로 다시 써줘". voice-guide를 자동으로 따른다.
-- **말투 자체를 바꾸고 싶으면**: `docs/voice-guide.md`를 직접 고치거나 나한테
-  "가이드에 ~규칙 추가해줘". 이후 모든 자막 작성에 반영된다.
-- 규칙 요약: 어미 변형은 절반만(~여/~져), 고앵이(고양이 금지), 25자 목표(3초 리듬),
-  줄바꿈 금지, 이모지 금지, 완성 컷은 "짜잔", 마지막 컷은 "안녕~~".
+- **Fixing one or two**: editing directly in the editor is fastest (Cmd+Z works).
+- **Several / an overall tone pass**: ask Claude Code — e.g. "tone down the ~ across all the
+  subtitles," "rewrite these cuts' subtitles based on what's on screen." It follows voice-guide
+  automatically.
+- **Changing the voice itself**: edit `docs/voice-guide.md` directly, or tell me "add a ~ rule
+  to the guide." Every subtitle written after that follows it.
+- Rule summary: only half the sentence-endings get the softened variant (~여/~져), "고앵이"
+  (never "고양이"), aim for 25 characters (matches the 3-second rhythm), no line breaks, no
+  emoji, finished-object cuts get "짜잔," the last cut gets "안녕~~."
 
-## 4. 내레이션 사용법
+## 4. Using narration
 
-구조: **음성 파일을 폴더에 넣고 → 컷에 연결하면 → 렌더가 그 컷 시작 시각에 믹싱.**
+Structure: **drop an audio file in the folder -> link it to a cut -> render mixes it in at that
+cut's start time.**
 
-1. ③ 내보내기에서 **"내레이션 사용"** 켜고 폴더 지정 (기본 제안: `media/narration`)
-2. 그 폴더에 음성 파일(mp3/m4a/wav)을 넣는다 — 목록 자동 갱신
-3. ② 다듬기에서 컷 선택 → 컷 설정 **"내레이션" 셀렉트**에서 파일 선택 (길이 표시)
-4. 그 자리에서 **미리듣기** 가능. 파일이 컷보다 길면 "N초 김 — 다음 컷과 겹침" 경고
-5. 렌더 시 자동 믹싱 (전체 내레이션 볼륨은 내보내기에서 조절)
+1. In ③ Export, turn on **"Use narration"** and point it at a folder (default suggestion:
+   `media/narration`)
+2. Drop audio files (mp3/m4a/wav) into that folder — the list refreshes automatically
+3. In ② Edit, select a cut -> pick a file from the **"Narration" select** in cut settings
+   (shows its length)
+4. **Preview** it right there. If the file is longer than the cut, you get a "N seconds long —
+   overlaps the next cut" warning
+5. Mixed in automatically at render time (adjust overall narration volume in Export)
 
-### 음성 파일은 어떻게 만드나 (ElevenLabs 목소리 클로닝)
-1. elevenlabs.io 가입 → **Starter 플랜($5/월)** — 무료 티어는 상업용 불가라 금지
-2. Voices → Instant Voice Cloning → 내 목소리 샘플 1~2분 업로드 (조용한 방, 평소 말투)
-3. Text to Speech에서 내 보이스 선택 → 자막 문장 입력 → 생성 → mp3 다운로드
-4. 받은 파일을 내레이션 폴더에 넣고 위 3번부터 진행
-- 대량 생성(에피소드 전체)은 나한테 시키면 SRT 기반으로 문장별 생성 스크립트를 돌려줄
-  수 있다 (API 키 필요).
+### How to make the audio files (ElevenLabs voice cloning)
+1. Sign up at elevenlabs.io -> **Starter plan ($5/month)** — the free tier bans commercial use,
+   so it's a no
+2. Voices -> Instant Voice Cloning -> upload 1-2 minutes of your voice sample (quiet room,
+   normal speaking voice)
+3. In Text to Speech, pick your voice -> type the subtitle sentence -> generate -> download the
+   mp3
+4. Drop the file into the narration folder and continue from step 3 above
+- For bulk generation (a whole episode), ask me — I can run an SRT-based per-sentence
+  generation script (needs an API key).
 
-## 5. 자동화 파이프라인 (참고)
+## 5. Automation pipeline (reference)
 
-- **scan**: 원본 폴더 → 길이별 간격 프레임 추출 (`cuesheet-draft scan <폴더> --out <작업폴더>`)
-- **비전 판독**: Claude가 프레임을 보고 장면/단조구간/얼굴노출 기록 (moments.json)
-- **풀기 서사 감지**: 5분+ 롱테이크는 인접 프레임 쌍 비교로 실수/풀기 순간 추출 (progress.json)
-- **assemble**: 품질 3+ 채택, 컷 리듬 평균 2.8~3.0초 수렴, 빨리감기 컷 삽입, 검증 후 저장
-- **얼굴 정책**: 얼굴(본인+가족)은 **턱끝까지만** — 판독 단계에서 플래그, 위반 컷은
-  자동 세로 크롭(에디터에서 해제 가능)
-- 상세 수치·검증 기록은 `docs/STATUS.md`
+- **scan**: raw folder -> frame extraction at a length-keyed interval
+  (`cuesheet-draft scan <folder> --out <workdir>`)
+- **Vision judgment**: Claude looks at the frames and records scene/monotonous-range/face-
+  exposure info (moments.json)
+- **Frogging detection**: 5+ minute long takes get compared frame-pair by frame-pair to extract
+  mistake/frogging moments (progress.json)
+- **assemble**: adopts quality 3+, converges cut rhythm to a 2.8-3.0s average, inserts
+  timelapse cuts, validates and saves
+- **Face policy**: faces (yours + family's) show **chin-line and above only** — flagged at the
+  judgment stage, violating cuts get auto-cropped to vertical (removable in the editor)
+- Detailed figures and verification records live in `docs/STATUS.md`
 
-## 6. 문제가 생기면
+## 6. If something goes wrong
 
-- **영상이 검게 나옴**: 하드 리프레시(Cmd+Shift+R). 그래도 안 되면 프록시 재생성 필요 — 나한테.
-- **저장이 400 "필드 유실 감지"**: 서버가 낡은 코드로 도는 것 — dev 서버 재시작.
-- **내보내기 실패**: 에러 배너의 ffmpeg 메시지 확인, 대부분 클립 경로/코덱 문제 — 나한테.
-- 뭐든 애매하면: Claude Code에 상황 그대로 말하기. 큐시트는 git에 있어서 언제든 되돌릴 수 있다.
+- **Video shows black**: hard refresh (Cmd+Shift+R). If that doesn't fix it, the proxy may need
+  regenerating — ask me.
+- **Save fails with 400 "field loss detected"**: the server is running stale code — restart the
+  dev server.
+- **Export fails**: check the ffmpeg message in the error banner, usually a clip path/codec
+  issue — ask me.
+- Whenever anything's unclear: just tell Claude Code what's happening. The cuesheet lives in
+  git, so you can always roll back.

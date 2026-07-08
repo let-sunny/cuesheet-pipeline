@@ -1,152 +1,200 @@
-# STATUS — 살아있는 현황 문서
+# STATUS — Living Status Document
 
-> 이 문서는 "지금 무엇이 어디까지 왔고, 무엇이 무엇을 위해 존재하는지"의 단일 창구다.
-> 규칙: 마일스톤마다 이 문서를 갱신하고 git 커밋한다. 상세 설계·결정 근거는 각 링크 문서에,
-> 여기엔 지도만 둔다. (최종 갱신: 2026-07-08)
+> This document is the single entry point for "where things stand right now, and what exists
+> for what purpose." Rule: update this document at every milestone and commit it to git.
+> Detailed design rationale and decisions live in the linked documents; this one holds only
+> the map. (Last updated: 2026-07-08)
 
-## 북극성
+## North Star
 
-**"내 전용 Vrew"** — 원본 영상들을 던지면 (1) 초벌 편집본이 자동 생성되고, (2) 브라우저에서
-비디오 에디터급 UX로 다듬고, (3) 바로 렌더되는 개인 특화 에디터. 차별점: 대사 없는 영상에서
-작동(시각 기반), 사용자의 편집 문법 내장. 상세는 CLAUDE.md "프로젝트" 섹션.
+**"My own Vrew"** — a personal editor: throw in raw footage and (1) a rough cut is generated
+automatically, (2) polish it in the browser with video-editor-grade UX, (3) it renders right
+there. What sets it apart: it works on footage with no dialogue (vision-based), and it bakes
+in the user's own editing grammar. See the "Project" section of CLAUDE.md for details.
 
-## 컴포넌트 지도 (무엇이 무엇을 위해 존재하나)
+## Component map (what exists for what purpose)
 
-| 위치 | 역할 | 상태 |
+| Location | Role | Status |
 |---|---|---|
-| `packages/schema` | 큐시트 타입+검증 (계약의 중심, zod) | 안정. 테스트 7개 |
-| `packages/bridge` | Claude Code 연결 MCP 서버 (자연어 편집) | 안정. 테스트 4개 |
-| `packages/render` | 큐시트 → ffmpeg 렌더 (CLI + buildRenderPlan) | 안정. 테스트 8개, 실렌더 검증 |
-| `packages/web` | 터치업 에디터: 세그먼트 편집, 타임라인 트리밍(스크럽/핸들/분할), 전체 타임라인+BGM 드래그, 프록시 재생, 렌더 버튼 | 활발히 진화 중 |
-| `packages/draft` | **코어**: 원본 폴더 → 초벌 큐시트 자동 생성 (CLI `cuesheet-draft`: scan으로 인벤토리+프레임 추출 → assemble로 조립; 비전 판단은 Claude가 담당) | 정식 패키지 승격 완료. 테스트 7개, 실 원본 폴더로 scan/assemble E2E 검증 |
-| `media/proxies/` | 웹 미리보기용 720p H.264 프록시 (자동 생성, git 제외) | 자동 |
-| `media/dotmix_src` | 사용자 원본 폴더로의 심링크 (git 제외) | — |
-| `proto_dotmix.cuesheet.json` | v1 자동 초벌본 샘플 (닷믹스 로컬 12클립 기반) | 검증 완료 |
-| `docs/goals/` | 골 단위 스펙(계약)과 완료 검증 기록 | — |
-| `docs/ideas/claude-real-video.md` | crv 검토→미채택 근거 + 실측 데이터 + 자체 파이프라인 설계 확정 과정 | 종결 |
+| `packages/schema` | Cuesheet types + validation (contract's center, zod) | Stable. 7 tests |
+| `packages/bridge` | MCP server for Claude Code connection (natural-language editing) | Stable. 4 tests |
+| `packages/render` | Cuesheet -> ffmpeg render (CLI + buildRenderPlan) | Stable. 8 tests, verified with a real render |
+| `packages/web` | Touch-up editor: cut editing, timeline trimming (scrub/handles/split), full timeline + BGM drag, proxy playback, export button | Actively evolving |
+| `packages/draft` | **Core**: raw footage folder -> automatic rough-cut cuesheet generation (CLI `cuesheet-draft`: scan for inventory + frame extraction -> assemble for assembly; vision judgment handled by Claude) | Promoted to a proper package. 7 tests, scan/assemble E2E verified against a real footage folder |
+| `media/proxies/` | 720p H.264 proxies for web preview (auto-generated, git-ignored) | Automatic |
+| `media/dotmix_src` | Symlink to the user's raw footage folder (git-ignored) | — |
+| `proto_dotmix.cuesheet.json` | v1 auto-generated rough-cut sample (based on 12 local dotmix clips) | Verified |
+| `docs/goals/` | Per-goal specs (contracts) and completion verification records | — |
+| `docs/ideas/claude-real-video.md` | crv evaluation -> not adopted, rationale + measurements + own pipeline design decision process | Closed |
 
-## 핵심 결정 기록 (왜 이렇게 만들었나)
+## Key decision log (why things were built this way)
 
-- **씬 감지 배제, 비전이 유일 신호**: 두 에피소드 실측(scene 최대 0.09) — `docs/ideas/claude-real-video.md`
-- **영상-먼저 흐름**: 초벌본을 먼저 만들고 자막은 나중에(사용자 결정) — 대본 정렬은 추후 옵션
-- **사용자 편집 문법 상수**: 컷 평균 2.9초, 완성본 4:30~5:30, 커버리지 ~90%, 샷 어휘(손 클로즈업/오브젝트/고양이/리빌/착용) — 실편집 2편 역산
-- **프록시 재생**: 원본 4K HEVC는 브라우저 재생 불가 → 720p H.264 프록시로 미리보기, 렌더는 원본
-- **iCloud 규약**: 원본 읽기 전 `stat blocks=0` 확인 필수(placeholder는 읽기 무한 정지), `brctl download/evict`로 공간 관리
+- **Scene detection excluded, vision is the only signal**: measured on two real episodes (scene score maxed at 0.09) — see `docs/ideas/claude-real-video.md`
+- **Video-first flow**: build the rough cut first, subtitles later (user's decision) — script alignment is a future option
+- **User editing grammar constants**: cut average 2.9s, finished length 4:30-5:30, coverage ~90%, shot vocabulary (hand closeup/object/cat/reveal/wearing) — reverse-engineered from 2 real edits
+- **Proxy playback**: original 4K HEVC can't play in-browser -> 720p H.264 proxy for preview, render uses the original
+- **iCloud rule**: must check `stat blocks=0` before reading source footage (reading a placeholder hangs forever), manage space with `brctl download/evict`
 
-## 2026-07-08 대개편 (PRD 수립 + 위계 재정렬 + 파이프라인 확장, 자율 루프)
+## 2026-07-08 major overhaul (PRD established + hierarchy realigned + pipeline expanded, autonomous loop)
 
-**정본 문서 수립**: `docs/PRD.md`(기능 전체 목록·용어 사전·상태 모델·성공 기준·오류
-카탈로그·스키마 호환 원칙) + `docs/screen-spec.md`(위계 규칙: 그룹핑/정렬 그리드/
-중요도=크기, 인스펙터 6그룹 고정). 이후 모든 기능은 문서에 자리 먼저.
+**Canonical docs established**: `docs/PRD.md` (full feature list, terminology dictionary, state
+model, success criteria, error catalog, schema compatibility principle) + `docs/screen-spec.md`
+(layout rules: grouping/alignment grid, importance=size, 6 fixed inspector groups). From now on
+every feature gets a place in the docs first.
 
-- **UI 대개편(6커밋)**: 전 화면을 screen-spec 기준 재정렬 + Astryx 원컴포넌트
-  마이그레이션(Button/CheckboxInput/Collapsible/Slider; Selector·SegmentedControl은
-  다음 라운드) + **용어 정본화** — 스텝명 "장면 고르기/다듬기/내보내기", 세그먼트→컷,
-  인스펙터→컷 설정, 렌더→내보내기 등(PRD 4절이 정본, 금지 용어 grep 0 확인). 상태
-  문구는 "상황+다음 행동" 원칙으로 재작성(복원 배너 등).
-- **크롭 비율 잠금(무왜곡)**: 렌더가 크롭 영역을 16:9로 스트레치해 세로 크롭이 찌그러지던
-  결함 수정 — 크롭 창 w==h 잠금(비율 좌표계에서 비율 유지와 동치), 확장 버그 수정+"전체
-  프레임" 버튼, v4 크롭 7컷 마이그레이션(컷별 실프레임 얼굴/콘텐츠 재검증), 최종 세트
-  재렌더(부감샷 컵이 정원으로 나오는 것 확인). 자막 외곽선도 text-shadow 근사→진짜
-  스트로크로 교체(갈라짐 해소), 미리보기 자막 크기 하드코딩 제거(비례 반영).
-- **4K 내보내기**: 해상도 프리셋 720p/1080p/4K + 전환 시 자막 메트릭 비례 스케일
-  (스키마 상한 4K 대응).
-- **에피소드 원커맨드**: `pnpm episode "<폴더>"`(검증+스캔+서버+브라우저) +
-  `/episode`(비전 판독→조립→말투 자막→크롭 제안→검증 전 과정 지시서).
-- **풀기 서사 감지 (자발, 백로그 1위)**: 시간축 인접 프레임 쌍 비교(`packages/draft`
-  progress.ts) — v4 실측에서 정답 풀기 지점(033 t200~203) 브래킷 성공, 대조군 오탐 0,
-  미기록 2차 풀기(t720) 추가 발견. /episode (2.5)단계로 정식 통합. 테스트 35/35.
-- **모노레포 정리**: 죽은 CSS 9종/중복 로직 제거, README 5종 현행화(bridge 신설),
-  proto v1/v2/v5 삭제·v3 계보 archive/ 이동. SRT 로직 @cuesheet/render로 이동(+CLI
-  --srt, 바이트 동일 검증) 진행.
-- **문서 체계**: docs=공개/리서치·wiki=실험 리포트·영어 원칙 확정(CLAUDE.md), 위키
-  5페이지 영어 전환 완료(H1 중복 제거), USER-GUIDE 용어 동기화+저장 멘탈모델,
-  `docs/research/oss-landscape.md`(경쟁 지형: draft 공개 가치 높음 판정) +
-  `docs/release-candidates.md`(공개 후보 분류, 논의 대기).
-- astryx 3호: 이슈 #3658 + PR #3660 Ready for review 전환(CI 그린, 리뷰 대기).
+- **UI overhaul (6 commits)**: rearranged every screen per screen-spec + migrated to Astryx
+  one-off components (Button/CheckboxInput/Collapsible/Slider; Selector/SegmentedControl next
+  round) + **terminology canonicalized** — step names "Scenes/Edit/Export", segment -> cut,
+  inspector -> cut settings, render -> export, etc. (PRD section 4 is canonical, confirmed 0
+  hits for banned terms via grep). Status copy rewritten per the "situation + next action"
+  principle (restore banner, etc.).
+- **Crop aspect-ratio lock (no distortion)**: fixed a defect where render stretched the crop
+  area to 16:9, squashing vertical crops — locked the crop window's w==h (equivalent to
+  preserving aspect ratio in the ratio coordinate space), fixed an expansion bug + added a
+  "full frame" button, migrated v4 crops across 7 cuts (re-verified face/content against real
+  frames per cut), re-rendered the final set (confirmed the overhead-shot cup now renders as a
+  true circle). Also replaced the subtitle outline's text-shadow approximation with a real
+  stroke (fixed the splitting artifact), removed hardcoded preview subtitle size (now scales
+  proportionally).
+- **4K export**: added resolution presets 720p/1080p/4K + proportional subtitle-metric scaling
+  on switch (supports the schema's 4K ceiling).
+- **One-command episode**: `pnpm episode "<folder>"` (validate + scan + server + browser) +
+  `/episode` (instructions covering vision judgment -> assembly -> voice-styled subtitles ->
+  crop suggestions -> validation, start to finish).
+- **Frogging narrative detection (self-initiated, #1 backlog item)**: compares adjacent frame
+  pairs across the timeline (`packages/draft` progress.ts) — in v4 measurement, successfully
+  bracketed the known frogging point (clip 033, t200-203), zero false positives in the control
+  set, and discovered an unlogged second frogging event (t720). Formally integrated as
+  `/episode` step (2.5). 35/35 tests.
+- **Monorepo cleanup**: removed 9 dead CSS rules/duplicate logic, refreshed 5 READMEs (added
+  bridge's), deleted proto v1/v2/v5, moved the v3 lineage to archive/. Moving SRT logic into
+  `@cuesheet/render` (+ CLI `--srt`, byte-identical verification) in progress.
+- **Doc system**: confirmed docs=public/research vs. wiki=experiment reports vs. English-only
+  policy (CLAUDE.md), finished converting 5 wiki pages to English (removed duplicate H1s),
+  synced USER-GUIDE terminology + save mental model, added
+  `docs/research/oss-landscape.md` (competitive landscape: draft judged high-value for public
+  release) + `docs/release-candidates.md` (public-release candidate triage, pending discussion).
+- astryx #3: issue #3658 + PR #3660 moved to Ready for review (CI green, awaiting review).
 
-## 밤 작업 총정리 (2026-07-06 밤 ~ 07-07 새벽, 자율 루프)
+## Overnight work wrap-up (2026-07-06 night ~ 07-07 early morning, autonomous loop)
 
-- 에디터 신기능 6: 렌더 비동기화+진행률, 본편 이어재생(더블버퍼+자막 오버레이), 언두/리두(50스택),
-  인트로/아웃트로 한 클릭 지정, 컷/타임라인 썸네일(디스크 캐시), 프록시 준비 안내
-- 통합 워크스루 수정 4: 이어재생 레이스/무한정지, Cmd+Z 필드 언두 충돌, 컷 리스트 폭
-- 파이프라인 2: 컷 리듬 평균 2.8~3.0 수렴, 확장자 대소문자 회귀 테스트
-- 인프라: 프록시 무결성 검사(손상 18개 감지·재생성, 97번 착용 컷 복구)
-- 완성본(업로드 가능판, 07-07 오전): proto_final_dotmix.mp4 97컷/5:31 - 말투 가이드 자막
-  재생성(37건) + 얼굴 정책(턱끝 기준) 크롭 17컷 + 착용 피날레(뒷모습, 안전 확인) + SRT 97큐.
-  얼굴 감사 97컷 전수(위반 11 크롭 구제, 애매 6 크롭, 감독님 개그 유지 판정).
-  렌더 회귀: 크롭 concat SAR 불일치 발견-수정(setsar=1)
-- 외부: astryx PR 2건 리뷰 대기, 근본 원인(회귀 커밋) 발굴·프레임 반영
+- 6 new editor features: async render + progress, main-playthrough continuous playback
+  (double-buffer + subtitle overlay), undo/redo (50-deep stack), one-click intro/outro
+  assignment, cut/timeline thumbnails (disk-cached), proxy-readiness notice
+- 4 integration-walkthrough fixes: playthrough race/hang, Cmd+Z field-undo conflict, cut list
+  width
+- 2 pipeline items: cut rhythm average converged to 2.8-3.0s, extension-case regression test
+- Infra: proxy integrity check (detected & regenerated 18 corrupted proxies, recovered cut 97's
+  wearing shot)
+- Finished cut (upload-ready, morning of 07-07): proto_final_dotmix.mp4, 97 cuts/5:31 -
+  regenerated 37 subtitles in the voice guide's tone + face policy (chin-line rule) crop on
+  17 cuts + wearing finale (back view, safety-checked) + 97-cue SRT. Full face audit across
+  all 97 cuts (11 violations fixed via crop, 6 borderline cropped, kept the cat "director" gag
+  by judgment call).
+  Render regression: found and fixed an SAR mismatch across cropped concat segments (setsar=1)
+- External: 2 astryx PRs awaiting review, root cause (a regressing commit) found and folded
+  back into the frame
 
-## v4 풀 사이클 (2026-07-07 오전, 정식 파이프라인 첫 완주)
+## v4 full cycle (morning of 2026-07-07, first full run of the formal pipeline)
 
-- 흐름: scan CLI(51클립/462프레임, 3분) -> 비전 워크플로우(51 에이전트, 순간 113/얼굴플래그 22, ~15분)
-  -> assemble CLI(90컷/4:37) -> 자막 말투 패스(90/90) -> 감독 시사(위반 9건 발견·처방) -> 최종 세트
-- 실증: 정속 평균 컷 3.00s(리듬 수렴 정확 작동, v3 3.41), 얼굴 정책 사전 예방(위반 순간 0 채택),
-  시사에서 커넥터 구멍 발견 -> assemble 얼굴 가드 추가(faceExposed+desc 휴리스틱)
-- 채점: 회수율 80.0% (v3 70.8 대비 +9.2, 순수 자동 기준) - 언박싱/외출/진행/완성 91~100%,
-  **실수/풀기 서사 5.6%(1/18)가 최대 공백 = 백로그 1순위** (시간축 비교 감지 필요), 고양이 과잉은 취향 영역
-- 산출물: proto_final_dotmix_v4.mp4(4:34)/_nosub.mp4/닷믹스베스트_v4.srt(90큐), 서버 v4 전환
-- 도구 신뢰성: 저장 필드 유실 가드(schema findLostFieldPaths), 내레이션 플로우 UI, 자막 스타일
-  (배경 박스/컬러피커/비례 미리보기/여백), 사용 가이드 docs/USER-GUIDE.md
+- Flow: scan CLI (51 clips/462 frames, 3 min) -> vision workflow (51 agents, 113 moments/22
+  face flags, ~15 min) -> assemble CLI (90 cuts/4:37) -> subtitle voice pass (90/90) ->
+  director's review (9 violations found and prescribed) -> final set
+- Findings: steady-cut average 3.00s (rhythm convergence working correctly, vs. v3's 3.41),
+  face policy prevented issues proactively (zero adopted moments violated it), review found a
+  connector gap -> added a face guard to assemble (faceExposed + description heuristic)
+- Scoring: recall rate 80.0% (up +9.2 from v3's 70.8, on a pure-automation basis) -
+  unboxing/outing/progress/finished shots 91-100%, **mistake/frogging narratives at 5.6%
+  (1/18) is the biggest remaining gap = #1 backlog item** (needs timeline comparison
+  detection), excess cat shots is a matter of taste
+- Output: proto_final_dotmix_v4.mp4 (4:34)/_nosub.mp4/dotmixbest_v4.srt (90 cues), server
+  switched to v4
+- Tooling reliability: saved-field-loss guard (schema's findLostFieldPaths), narration flow UI,
+  subtitle styling (background box/color picker/proportional preview/margin), user guide
+  docs/USER-GUIDE.md
 
-## 자동/수동 감사 & 에디터 마감 폴리싱 (07-07 저녁)
+## Automated/manual audit & editor finishing polish (evening of 07-07)
 
-- 원칙 확립: **자동이 기본값, 모든 자동 결정엔 수정 손잡이.** 감사 결과 컷/자막/배속/스타일은
-  기존 충족, 크롭·탈락 순간이 구멍 -> 당일 보강 완료
-- 크롭 드래그 편집 UI(오버레이+8핸들+적용/취소/해제+언두), 팔레트 채택/탈락 배지
-  (채택 97/얼굴 17/품질 9)+필터+구제 흐름(얼굴은 확인 문구)
-- 편집 화면 컷별 장면 묘사(배지+메모, 90/90 매칭) - 비디오 헤더 최상단/인스펙터/리스트/재생 힌트
-- UX 감사: 말줄임(중요 정보 전문 표시)·크기(정보성 13px+)·위계(장면이 첫 시선)
-- assemble 얼굴 가드 검증(v5 재조립): 위험 커넥터 2건 자동 제외 실증, 휴리스틱 부위어휘 확장,
-  비전 계약 faceExposed 필수화(다음 런부터). 운영본은 검증 완료된 v4 유지
-- 남은 한계 기록: desc 무언급 구간은 휴리스틱 밖(faceExposed 계약으로 해소 예정),
-  부감샷 얼굴 자동측정 불완전 -> 수동 크롭 UI가 최종 방어선
+- Established the principle: **automatic is the default, every automatic decision gets a
+  manual override.** Audit found cut/subtitle/speed/style already solid, crop and dropped
+  moments were the gaps -> filled same day
+- Crop drag-edit UI (overlay + 8 handles + apply/cancel/release + undo), palette
+  adopted/rejected badges (adopted 97/face 17/quality 9) + filter + rescue flow (face shows a
+  confirmation prompt)
+- Per-cut scene description in the edit screen (badge + note, matched on 90/90) - video header
+  top / cut settings / list / playback hint
+- UX audit: truncation (show full text for important info), size (info text 13px+), hierarchy
+  (scene is the first thing seen)
+- Verified assemble's face guard (v5 reassembly): confirmed 2 risky connectors auto-excluded,
+  expanded the heuristic's body-part vocabulary, made faceExposed mandatory in the vision
+  contract (from the next run on). The production copy stays on the already-verified v4.
+- Logged remaining limitations: ranges with no description are outside the heuristic's reach
+  (to be resolved by the faceExposed contract), overhead-shot face auto-measurement is
+  incomplete -> the manual crop UI is the last line of defense
 
-## 에디터 마감 체인 (07-07 저녁 완료) - "거의 완성" 단계 마감
+## Editor finishing chain (completed evening of 07-07) - closing out the "nearly done" stage
 
-- 라운드 A: J/K/L 셔틀, 인접 컷 합치기(Cmd+J), 단일 컷 재생/정지 레이스 근본 수정, 다듬기 sticky
-- 라운드 B: 다듬기+몰아쓰기 모드 통합(인라인 자막+Tab 흐름+즉시 오버레이), 컷별 자막 스타일
-  (styleOverride UI+전역 승격), 미니 타임라인 줌(썸네일 소생), 렌더 설정 다이얼로그(해상도/자막),
-  인트로/아웃트로 파일 셀렉트
-- 라이트 테마 + 3단 토글 (light-dark() 변수화, Astryx 레이어 충돌 우회)
-- 최종 사용성 검토(사용자 페르소나, 실 Chrome): 동선 실측(자막 10개 Tab 흐름에 손 이탈 0회),
-  수정 5건(렌더 버튼 화면 밖/dirty 모순/자막칸 폭 등), 얼굴 잔존 위반 3컷 발굴-처방-재렌더 검증
-- UX 벤치마크 리서치 4편(docs/research/) 반영: 자막=컷 1:1 구조 업계 검증, 시간 도둑 자동화 확인
-- 산출물 갱신: proto_final_dotmix_v4.mp4/_nosub/_v4.srt (얼굴 정책 완전 통과판)
-- astryx 기여 후보 2건 검증 완료(color-scheme 레이어 버그=업스트림 확정, gothic 프리뷰 표시 공백)
-  - 게시는 사용자 승인 대기
+- Round A: J/K/L shuttle, merge adjacent cuts (Cmd+J), fixed a root-cause single-cut
+  play/pause race, sticky Edit-screen layout
+- Round B: unified trim + rapid-entry modes (inline subtitles + Tab flow + instant overlay),
+  per-cut subtitle style (styleOverride UI + promote-to-global), mini-timeline zoom (thumbnails
+  revived), render settings dialog (resolution/subtitles), intro/outro file picker
+- Light theme + 3-way toggle (light-dark() variables, worked around an Astryx layer conflict)
+- Final usability review (user persona, real Chrome): measured navigation flow (0 hand
+  departures across a 10-subtitle Tab flow), 5 fixes (export button off-screen / dirty-state
+  contradiction / subtitle field width, etc.), found-fixed-re-rendered 3 remaining face-policy
+  violations
+- Folded in 4 UX benchmark research pieces (docs/research/): industry-verified the
+  subtitle=cut 1:1 structure, confirmed the time-thief automation
+- Refreshed outputs: proto_final_dotmix_v4.mp4/_nosub/_v4.srt (fully face-policy-compliant cut)
+- Verified 2 astryx contribution candidates (color-scheme layer bug = confirmed upstream,
+  gothic preview display gap)
+  - Publishing is pending user approval
 
-## 진행 중 / 대기
+## In progress / pending
 
-- pnpm 정책 해제 후 정식 install 재검증 완료(2026-07-06): 수동 lockfile 배선과 정식 해석 일치, 전 패키지 그린
-- 에디터: 3스텝 플로우(구성-편집-마무리, Astryx Stone) 완성 — 시나리오 QA 5라운드 + 실전 제작 런 통과
-- **실전 제작 런 완료(2026-07-06 밤)**: 편집자 페르소나가 에디터만 사용해 v3 초안 119컷을
-  96컷/5:27 완성본으로 편집(자막 전량을 사용자 말투로 재작성, 아웃트로/BGM 포함) 후 실렌더
-  — 산출물 proto_final_dotmix.mp4(5:36). "원본 3.6시간 -> 완성본"의 전 과정이 도구 안에서 완결됨을 증명
-- 외부 기여: facebook/astryx 이슈 #3622 + PR #3624 (Stone 테마 다크 토큰 알파 누락 수정, 리뷰 대기)
+- Re-verified formal install after the pnpm policy lifted (2026-07-06): manual lockfile wiring
+  matched the formal resolution, all packages green
+- Editor: the 3-step flow (Compose-Edit-Finish, Astryx Stone) complete — passed 5 rounds of
+  scenario QA + a real production run
+- **Real production run complete (night of 2026-07-06)**: an editor persona used only the
+  editor to turn v3's 119-cut draft into a 96-cut/5:27 finished cut (rewrote every subtitle in
+  the user's voice, including outro/BGM), then rendered it for real — output
+  proto_final_dotmix.mp4 (5:36). Proved the full "raw 3.6-hour footage -> finished cut" path
+  completes entirely inside the tool
+- External contribution: facebook/astryx issue #3622 + PR #3624 (fixed a missing dark-token
+  alpha value in the Stone theme, awaiting review)
 
-## 다음 후보 (착수 전)
+## Next candidates (not yet started)
 
-- 전체 이어재생 (렌더 비동기화는 2026-07-06 완료 — 진행률/프록시 안내 포함)
-- 세그먼트별 줌/크롭 스키마 확장 (#10) — "뷰사이즈" 의미 사용자 확인 대기
-- 로우키 에피소드로 3차 학습/검증 (원본은 iCloud로 되돌려둠 — 필요 시 재다운로드)
+- Full playthrough (async render was completed 2026-07-06 — includes progress/proxy notice)
+- Per-segment zoom/crop schema extension (#10) — waiting to confirm what "viewport size"
+  should mean with the user
+- Third training/verification pass with the lowkey episode (source footage moved back to
+  iCloud — re-download if needed)
 
-## 검증된 수치 (2026-07-05)
+## Verified figures (2026-07-05)
 
-- **제작 런 채점(2026-07-06 밤)**: 96컷 판정 일치 13.5%/유사 82.3%/오매칭 4.2%(역대 최저),
-  정답지 30장 회수 23개(76.7%), 자막 중첩 61/100, 기승전결 구조 동형. 지속 갭: 평균 컷
-  3.41s(실제 2.95s보다 12~17% 김 — 파이프라인 기본 리듬 조정 필요), 착용 리빌 미회수
-  (원인: 클립 060의 착용 구간 미선택 — 소재 문제 아님), 자막 톤 잔재 4건+고앵이 표기 불일치.
-  창작 요소: 고양이 "감독님" 개그 9회(원본에 없음, 사용자 판정 대기).
+- **Production-run scoring (night of 2026-07-06)**: 96-cut judgment: exact match 13.5%/similar
+  82.3%/mismatch 4.2% (lowest yet), recovered 23 of 30 answer-key shots (76.7%), subtitle
+  overlap 61/100, matching narrative-arc structure. Remaining gap: average cut 3.41s (12-17%
+  longer than the real 2.95s — pipeline's default rhythm needs adjusting), missed the wearing
+  reveal (cause: clip 060's wearing segment wasn't selected — not a footage problem), 4
+  leftover subtitle-tone issues + a "고앵이" spelling inconsistency. Creative liberties: the cat
+  "director" gag appeared 9 times (not in the original footage, awaiting user's judgment call).
 
-- v1 (12클립): 22컷/76초, 실편집 장면 회수율 43.8%(7/16), 전부 정속
-- v2 (20클립): 48컷/163초(정속 42+배속 6), **회수율 77.8%(14/18)**, 자막 의미 겹침 23쌍,
-  자기검증이 메모 오류 4건 출고 전 교정, 롱테이크 in 지점 초 단위 정밀화 확인
-- **v3 완전판 (49클립 전체, 2026-07-06)**: 119컷/6:37(정속 113 + 배속 6), **뜨는 손 47.8%**
-  (사용자 피드백 "뜨는 장면 다 잘렸다" 반영 성공), 고양이 컷 8, 자기검증 통과 110/메모교정 8/제거 0,
-  정답지 커버 가능 24/30(80%) 중 회수 17개(70.8%), **자막 의미 겹침 60/100**(v2 23 대비 급상승).
-  미발견 6개 중 2개(착용샷)는 원본 존재 여부 자체가 불확실. 인트로/아웃트로 후보 자동 표기.
-- 산출물: 레포 루트 proto_draft_dotmix_v3.mp4(6:37, 최종) + proto_dotmix_v3.cuesheet.json,
-  진열대 데이터 media/drafts/dotmix.moments.json(49클립 전체, 순간 111+뜨개구간 50)
-- 남은 개선 아이디어: 배속 구간 내 하이라이트 재탐색, 스캔 단계에서 사용자 카테고리(실수/외출) 직접 분류
+- v1 (12 clips): 22 cuts/76s, real-edit recall rate 43.8% (7/16), all steady speed
+- v2 (20 clips): 48 cuts/163s (steady 42 + timelapse 6), **recall rate 77.8% (14/18)**,
+  subtitle semantic overlap 23 pairs, self-verification caught 4 memo errors before output,
+  confirmed second-level precision on long-take in-points
+- **v3 complete pass (all 49 clips, 2026-07-06)**: 119 cuts/6:37 (steady 113 + timelapse 6),
+  **knitting-in-progress shots at 47.8%** (successfully addressed the user's feedback "all the
+  knitting shots got cut"), 8 cat cuts, self-verification passed 110/memo-corrected 8/removed
+  0, recovered 17 of 24 recoverable answer-key shots (out of a possible 80%, 70.8% overall),
+  **subtitle semantic overlap 60/100** (sharp rise from v2's 23). Of the 6 missed, 2 (wearing
+  shots) even have uncertain source footage existence. Intro/outro candidates auto-flagged.
+- Output: repo-root proto_draft_dotmix_v3.mp4 (6:37, final) + proto_dotmix_v3.cuesheet.json,
+  showcase data media/drafts/dotmix.moments.json (all 49 clips, 111 moments + 50 knitting
+  ranges)
+- Remaining improvement ideas: re-search for highlights inside timelapse ranges, have the scan
+  stage directly classify user categories (mistakes/outings)
