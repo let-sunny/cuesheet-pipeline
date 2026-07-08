@@ -6,6 +6,7 @@ import { CompactButton } from "./ui/CompactButton/index.js";
 import { fetchProxyStatus, type ClipMoments, type ProxyStatus } from "../api.js";
 import { clamp } from "../lib/clamp.js";
 import { cropPreviewStyle } from "../lib/cropPreview.js";
+import { useBlockingOverlay } from "../lib/modalStack.js";
 import { matchSceneInfo, shotTypeLabel } from "../lib/sceneInfo.js";
 import {
   mergeSubtitleStyle,
@@ -518,6 +519,12 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     onChange({ crop: null });
     setCropEditDraft(null);
   };
+
+  // Registers crop edit mode as a "blocking overlay" (lib/modalStack.ts) - without this, App's
+  // global keydown handler (also on window) would still see the same keydown events crop editing
+  // cares about (arrows/space/o/etc, e.g. from the general playback shortcuts) and act on the
+  // segment/video underneath while the user is mid-drag on the crop rectangle.
+  useBlockingOverlay(cropEditDraft !== null);
 
   // Intercept Esc (cancel)/Enter (apply) only while crop editing is active.
   useEffect(() => {

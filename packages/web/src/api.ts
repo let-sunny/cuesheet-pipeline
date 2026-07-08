@@ -60,7 +60,10 @@ export async function startRender(burnSubtitles = true): Promise<RenderStartResu
 export interface RenderStatus {
   state: "idle" | "running" | "done" | "error";
   progress: number;
+  /** Short, extracted summary of the failure (e.g. the last meaningful ffmpeg stderr line) - meant for the toast/banner. */
   error?: string;
+  /** Full raw ffmpeg stderr dump, for a collapsible "show details" section. Only present alongside a ffmpeg-exit failure. */
+  errorDetail?: string;
   outputReady: boolean;
 }
 

@@ -27,6 +27,7 @@ import {
 import { buildClipPath, computeClipDurations } from "./clipPaths.js";
 import { bgmCutRange, cumulativeCutStarts, cutRangeToSeconds } from "./lib/bgmCutMapping.js";
 import { computeMergeEligibility } from "./lib/segmentMerge.js";
+import { isBlockingOverlayOpen, useBlockingOverlay } from "./lib/modalStack.js";
 import { scaleCueSheetForResolution } from "./lib/subtitleScale.js";
 import { VideoPreview } from "./components/VideoPreview.js";
 import type { VideoPreviewHandle } from "./components/VideoPreview.js";
@@ -62,7 +63,9 @@ type RenderState =
   | { status: "idle" }
   | { status: "rendering"; progress: number }
   | { status: "success"; path: string }
-  | { status: "error"; error: string };
+  // errorDetail (the full raw ffmpeg dump) is optional and shown separately, in a collapsible -
+  // error itself is always the short extracted summary, so it never needs to duplicate the dump.
+  | { status: "error"; error: string; errorDetail?: string };
 
 interface HistoryEntry {
   cuesheet: CueSheet;
@@ -176,6 +179,12 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       burstTimerRef.current = null;
     }, BURST_DEBOUNCE_MS);
   }, [pushHistorySnapshot]);
+
+  // Registers the render settings dialog as a "blocking overlay" - see lib/modalStack.ts. This
+  // makes the global keydown handler below ignore every key while the dialog is open, so e.g.
+  // pressing o/Space/arrows to adjust the render dialog's own fields doesn't leak through and
+  // mutate the cut/video underneath it.
+  useBlockingOverlay(renderDialogOpen);
 
   const canUndo = past.length > 0;
   const canRedo = future.length > 0;
@@ -443,6 +452,12 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
   useEffect(() => {
     const isVideoStep = step === "edit";
     const handler = (e: KeyboardEvent) => {
+      // Checked first, before anything else (including undo/redo and the isTyping guard below):
+      // while a dialog (or another registered blocking overlay, e.g. crop edit mode) is open, no
+      // global shortcut should act on the cut list/video preview underneath it. See lib/modalStack.ts.
+      if (isBlockingOverlayOpen()) {
+        return;
+      }
       const target = e.target as HTMLElement | null;
       const isTyping = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA";
       // Cmd+Z/Cmd+Shift+Z is handled before the isTyping guard: our app's unified undo/redo must
@@ -646,7 +661,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
           toast({ type: "info", body: "Export complete." });
         } else if (status.state === "error") {
           const message = status.error ?? "Unknown error";
-          setRenderState({ status: "error", error: message });
+          setRenderState({ status: "error", error: message, errorDetail: status.errorDetail });
           toast({ type: "error", body: `Export failed: ${message}` });
         }
       } catch {
@@ -1298,6 +1313,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
                       onDelete={() => removeSegment(selectedIndex)}
                       canDelete={draft.segments.length > 1}
                       globalSubtitleStyle={draft.subtitleStyle}
+                      projectWidth={draft.project.width}
                       onToggleStyleOverride={(enabled) => toggleSegmentStyleOverride(selectedIndex, enabled)}
                       onChangeStyleOverride={(patch) => updateSegmentStyleOverride(selectedIndex, patch)}
                       onPromoteStyleOverride={() => promoteSegmentStyleOverride(selectedIndex)}
@@ -1365,7 +1381,15 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
                 </a>
               ) : null}
               {renderState.status === "error" ? (
-                <span className="render-note render-note-error">Export failed: {renderState.error}</span>
+                <div className="render-error-block">
+                  <span className="render-note render-note-error">Export failed: {renderState.error}</span>
+                  {renderState.errorDetail ? (
+                    <details className="render-error-detail">
+                      <summary>Show full ffmpeg output</summary>
+                      <pre>{renderState.errorDetail}</pre>
+                    </details>
+                  ) : null}
+                </div>
               ) : null}
               <span className="render-note">
                 Export runs against the cuesheet that was saved when it started — edits/saves made while exporting won't be included in this export.
