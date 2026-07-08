@@ -18,7 +18,21 @@ import {
 } from "./shared.js";
 import type { CuesheetWatcher } from "./watch.js";
 
-const renderOutputPath = resolve(repoRoot, "out.mp4");
+const renderOutputDir = resolve(repoRoot, "out");
+
+/** Replaces filesystem-unsafe characters so a project name is always a valid single file name, on any platform. */
+function sanitizeFileName(name: string): string {
+  const cleaned = name
+    .trim()
+    .replace(/[\\/:*?"<>|]/g, "_")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned.length > 0 ? cleaned : "export";
+}
+
+function renderOutputPathFor(projectName: string): string {
+  return resolve(renderOutputDir, `${sanitizeFileName(projectName)}.mp4`);
+}
 
 // Extensions accepted for intro/outro file uploads (/api/upload-clip) - not all of clipMimeTypes,
 // just these four (mkv etc. are excluded since they're formats browser file inputs' accept="video/*"
@@ -38,11 +52,12 @@ export interface RegisterRoutesOptions {
 // Minimal flag to block concurrent requests while a render is in progress (no queuing).
 let renderInProgress = false;
 
-// Remembers the project name + subtitle-burn option of the last successfully completed render,
-// so /out.mp4 can name the download after the project (mirrors /api/subtitles.srt) instead of a
-// generic "out.mp4".
+// Remembers the project name + subtitle-burn option + output path of the last successfully
+// completed render, so /out.mp4 can name the download after the project (mirrors
+// /api/subtitles.srt) instead of a generic "out.mp4", and can find the right file under out/.
 let lastRenderName: string | null = null;
 let lastRenderBurnSubtitles = true;
+let lastRenderOutputPath: string | null = null;
 
 interface RenderJobState {
   state: "idle" | "running" | "done" | "error";
@@ -588,7 +603,7 @@ export function registerRoutes(
       progress: renderJob.progress,
       error: renderJob.error,
       errorDetail: renderJob.errorDetail,
-      outputReady: renderJob.state === "done" && existsSync(renderOutputPath),
+      outputReady: renderJob.state === "done" && lastRenderOutputPath !== null && existsSync(lastRenderOutputPath),
     });
   });
 
@@ -649,7 +664,9 @@ export function registerRoutes(
     // ffmpeg runs inheriting this vite server's cwd (packages/web) as-is, so if clipDir is a
     // relative path, convert it to an absolute path based on the repo root before passing it in.
     const cueForRender = { ...result.data, clipDir: resolveRepoPath(result.data.clipDir) };
-    const plan = buildRenderPlan(cueForRender, renderOutputPath, { burnSubtitles });
+    const outputPath = renderOutputPathFor(result.data.project.name);
+    await mkdir(renderOutputDir, { recursive: true });
+    const plan = buildRenderPlan(cueForRender, outputPath, { burnSubtitles });
     for (const warning of plan.warnings) {
       server.config.logger.warn(`[render] ${warning}`);
     }
@@ -679,6 +696,7 @@ export function registerRoutes(
         renderJob = { state: "done", progress: 100 };
         lastRenderName = result.data.project.name;
         lastRenderBurnSubtitles = burnSubtitles;
+        lastRenderOutputPath = outputPath;
       } else {
         renderJob = {
           state: "error",
@@ -700,7 +718,7 @@ export function registerRoutes(
       return;
     }
 
-    if (!existsSync(renderOutputPath)) {
+    if (!lastRenderOutputPath || !existsSync(lastRenderOutputPath)) {
       res.statusCode = 404;
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.end("Render output not found");
@@ -711,6 +729,6 @@ export function registerRoutes(
     const fileName = lastRenderBurnSubtitles ? `${baseName}.mp4` : `${baseName} (no subtitles).mp4`;
     res.setHeader("Content-Type", "video/mp4");
     res.setHeader("Content-Disposition", contentDispositionHeader("export.mp4", fileName));
-    createReadStream(renderOutputPath).pipe(res);
+    createReadStream(lastRenderOutputPath).pipe(res);
   });
 }

@@ -12,6 +12,7 @@ media/proxies/
 media/.thumbs/
 media/out.mp4
 out.mp4
+out/
 proto_draft_*.mp4
 nohup.out
 .claude/scheduled_tasks.lock

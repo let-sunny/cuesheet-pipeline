@@ -44,7 +44,8 @@ web app is guaranteed to pass render too (same schema).
 
 The render button in the Finishing step calls `POST /api/render`. It reads the cuesheet saved
 on disk, reuses `@cuesheet/render`'s `buildRenderPlan` as-is to run ffmpeg, and produces
-`out.mp4` at the repo root (downloadable via `GET /out.mp4`). The button is disabled while
+`out/<sanitized-project-name>.mp4` at the repo root (downloadable via `GET /out.mp4`, which
+always serves the last completed render regardless of project name). The button is disabled while
 there are unsaved (dirty) changes, and a concurrent request while a render is in progress is
 rejected with 409 (a module-scope flag, no queuing). Progress is polled via `GET /api/render/status`.
 

@@ -308,8 +308,9 @@ Validated by schema, so only ever-valid cuesheets get saved.
   in-out range back via `<video>`. `fs.watch` detects external changes (bridge or direct edits) and
   auto-refreshes via an HMR event.
   **Render-execution button** added: `POST /api/render` reads the cuesheet saved on disk and reuses
-  `@cuesheet/render`'s `buildRenderPlan` as-is to run ffmpeg synchronously (produces `out.mp4` at the
-  repo root), downloadable via `GET /out.mp4`. The button is disabled while dirty (unsaved), a
+  `@cuesheet/render`'s `buildRenderPlan` as-is to run ffmpeg synchronously (produces
+  `out/<sanitized-project-name>.mp4` at the repo root), downloadable via `GET /out.mp4` (kept as a
+  stable alias for the last completed render regardless of project name). The button is disabled while dirty (unsaved), a
   concurrent request during an in-progress render is rejected with 409 (a module-scoped flag, no
   queueing), and on failure an ffmpeg stderr summary surfaces in the error banner (cuesheet
   validation failures and ffmpeg failures are both unified as `{ok:false, error:string}`).
