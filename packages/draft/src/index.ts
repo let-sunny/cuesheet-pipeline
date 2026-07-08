@@ -12,3 +12,18 @@ export {
   momentsFileSchema,
 } from "./types.js";
 export type { ShotType, Moment, MonotonousRange, ClipMoments } from "./types.js";
+
+export {
+  buildPairSchedule,
+  progressVerdictSchema,
+  progressJudgmentSchema,
+  progressFileSchema,
+  extractNarrativeEvents,
+} from "./progress.js";
+export type {
+  FramePair,
+  ProgressVerdict,
+  ProgressJudgment,
+  NarrativeEvent,
+  NarrativeEventType,
+} from "./progress.js";
