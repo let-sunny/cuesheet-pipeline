@@ -39,6 +39,12 @@ function isWithin(root: string, target: string): boolean {
 // Minimal flag to block concurrent requests while a render is in progress (no queuing).
 let renderInProgress = false;
 
+// Remembers the project name + subtitle-burn option of the last successfully completed render,
+// so /out.mp4 can name the download after the project (mirrors /api/subtitles.srt) instead of a
+// generic "out.mp4".
+let lastRenderName: string | null = null;
+let lastRenderBurnSubtitles = true;
+
 interface RenderJobState {
   state: "idle" | "running" | "done" | "error";
   progress: number;
@@ -1006,6 +1012,8 @@ export function cuesheetPlugin(): Plugin {
           renderInProgress = false;
           if (code === 0) {
             renderJob = { state: "done", progress: 100 };
+            lastRenderName = result.data.project.name;
+            lastRenderBurnSubtitles = burnSubtitles;
           } else {
             renderJob = { state: "error", progress: renderJob.progress, error: stderr.slice(-2000) };
           }
@@ -1185,8 +1193,13 @@ export function cuesheetPlugin(): Plugin {
           return;
         }
 
+        const baseName = lastRenderName ?? "export";
+        const fileName = lastRenderBurnSubtitles ? `${baseName}.mp4` : `${baseName} (no subtitles).mp4`;
         res.setHeader("Content-Type", "video/mp4");
-        res.setHeader("Content-Disposition", "attachment; filename=out.mp4");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="export.mp4"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+        );
         createReadStream(renderOutputPath).pipe(res);
       });
 
