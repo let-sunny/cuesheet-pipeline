@@ -234,7 +234,7 @@ export function assembleDraft(clipsMoments: ClipMoments[], options: AssembleOpti
     for (const r of cm.monotonousRanges) {
       if (speedupCount >= config.timelapseConnector.capPerEpisode) break;
       if (isMonotonousRangeRisky(r, config.faceHeuristic)) {
-        console.log(`[assemble] ${cm.clip} ${r.startS}-${r.endS}s: 얼굴 노출 위험으로 배속 커넥터 건너뜀`);
+        console.log(`[assemble] ${cm.clip} ${r.startS}-${r.endS}s: skipping timelapse connector, face-exposure risk`);
         continue;
       }
       const fullDur = r.endS - r.startS;
