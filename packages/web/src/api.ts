@@ -170,3 +170,37 @@ export async function fetchClipFiles(): Promise<ClipFilesResult> {
   }
   return (await res.json()) as ClipFilesResult;
 }
+
+export type UploadClipResult =
+  | { ok: true; filename: string; durationS: number | null }
+  | { ok: false; error: string };
+
+/**
+ * 로컬 파일(file input/드래그앤드롭으로 고른 File)을 clipDir에 업로드한다.
+ * 브라우저는 파일의 실제 디스크 경로를 노출하지 않으므로, "디스크에서 파일 고르기"는
+ * 경로 입력이 아니라 서버로 파일 자체를 올리는 방식으로만 구현할 수 있다.
+ * onProgress는 업로드 진행률(0~100)을 알려준다 — XMLHttpRequest만 업로드 progress
+ * 이벤트를 제공해(fetch는 없음) 여기서만 XHR을 쓴다.
+ */
+export function uploadClip(file: File, onProgress?: (pct: number) => void): Promise<UploadClipResult> {
+  return new Promise((resolvePromise) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `/api/upload-clip?filename=${encodeURIComponent(file.name)}`);
+    xhr.upload.onprogress = (e) => {
+      if (onProgress && e.lengthComputable) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    };
+    xhr.onload = () => {
+      try {
+        resolvePromise(JSON.parse(xhr.responseText) as UploadClipResult);
+      } catch {
+        resolvePromise({ ok: false, error: "Upload failed: invalid server response" });
+      }
+    };
+    xhr.onerror = () => {
+      resolvePromise({ ok: false, error: "Upload failed: network error" });
+    };
+    xhr.send(file);
+  });
+}

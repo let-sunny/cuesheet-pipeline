@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { Button } from "@astryxdesign/core/Button";
 import { baseName, INTRO_OUTRO_MAX_DURATION_S } from "../clipPaths.js";
-import { fetchClipFiles, type ClipFile } from "../api.js";
+import { fetchClipFiles, uploadClip, type ClipFile } from "../api.js";
 
 interface Props {
   intro: string | null;
@@ -50,6 +50,14 @@ function optionLabel(f: ClipFile): string {
  * 인라인 video 미리보기 + 어느 클립인지 라벨 + [해제] 버튼도 보여준다.
  * intro/outro는 clipDir와 무관한 독립 파일 경로(schema 주석 참고).
  */
+interface UploadState {
+  uploading: boolean;
+  progress: number;
+  error: string | null;
+}
+
+const initialUploadState: UploadState = { uploading: false, progress: 0, error: null };
+
 export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelectClip, onClear }: Props) {
   const [introError, setIntroError] = useState(false);
   const [outroError, setOutroError] = useState(false);
@@ -60,15 +68,53 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
   // clipDir이 실제로 비어있는 것처럼 보여 사용자가 오인할 수 있다.
   const [filesLoading, setFilesLoading] = useState(true);
 
+  const [introUpload, setIntroUpload] = useState<UploadState>(initialUploadState);
+  const [outroUpload, setOutroUpload] = useState<UploadState>(initialUploadState);
+  const [introDragOver, setIntroDragOver] = useState(false);
+  const [outroDragOver, setOutroDragOver] = useState(false);
+  const introFileInputRef = useRef<HTMLInputElement>(null);
+  const outroFileInputRef = useRef<HTMLInputElement>(null);
+
+  const refreshFiles = useCallback(async () => {
+    const result = await fetchClipFiles();
+    setFiles(result.files);
+    setFilesNote(result.note);
+    setFilesLoading(false);
+  }, []);
+
   useEffect(() => {
     setFilesLoading(true);
-    void (async () => {
-      const result = await fetchClipFiles();
-      setFiles(result.files);
-      setFilesNote(result.note);
-      setFilesLoading(false);
-    })();
-  }, [clipDir]);
+    void refreshFiles();
+  }, [clipDir, refreshFiles]);
+
+  // 파일 업로드 -> clipDir에 저장. 15초 상한을 넘으면(그리고 길이를 알 수 없지 않으면)
+  // 배정하지 않고 에러만 보여준다 — 파일 자체는 clipDir에 남으므로 셀렉트 목록에는 뜨지만
+  // (그 목록도 15초 초과면 선택 불가로 비활성화되므로) 안전하다.
+  const handleFile = useCallback(
+    async (role: "intro" | "outro", file: File) => {
+      const setUpload = role === "intro" ? setIntroUpload : setOutroUpload;
+      setUpload({ uploading: true, progress: 0, error: null });
+      const result = await uploadClip(file, (pct) => {
+        setUpload((prev) => ({ ...prev, progress: pct }));
+      });
+      if (!result.ok) {
+        setUpload({ uploading: false, progress: 0, error: result.error });
+        return;
+      }
+      await refreshFiles();
+      if (result.durationS != null && result.durationS > INTRO_OUTRO_MAX_DURATION_S) {
+        setUpload({
+          uploading: false,
+          progress: 0,
+          error: `Uploaded file "${result.filename}" is ${result.durationS.toFixed(1)}s, over the ${INTRO_OUTRO_MAX_DURATION_S}s intro/outro limit - it was saved but not assigned. Pick a shorter file.`,
+        });
+        return;
+      }
+      setUpload({ uploading: false, progress: 0, error: null });
+      onSelectClip(role, result.filename);
+    },
+    [onSelectClip, refreshFiles],
+  );
 
   // 경로가 바뀌면(직접 수정이든 새로 로드든) 이전 에러 상태를 지운다 -
   // VideoPreview의 missing 패턴과 동일.
@@ -116,6 +162,46 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
         {!filesLoading && files.length === 0 && filesNote ? (
           <p className="narration-empty-note">{filesNote}</p>
         ) : null}
+        <div
+          className={`intro-outro-dropzone${introDragOver ? " intro-outro-dropzone-active" : ""}`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIntroDragOver(true);
+          }}
+          onDragLeave={() => setIntroDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIntroDragOver(false);
+            const file = e.dataTransfer.files[0];
+            if (file) {
+              void handleFile("intro", file);
+            }
+          }}
+        >
+          <input
+            ref={introFileInputRef}
+            type="file"
+            accept="video/*"
+            className="intro-outro-file-input"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) {
+                void handleFile("intro", file);
+              }
+            }}
+          />
+          <Button
+            label={introUpload.uploading ? `Uploading… ${introUpload.progress}%` : "Upload file"}
+            variant="secondary"
+            size="sm"
+            isDisabled={introUpload.uploading}
+            isLoading={introUpload.uploading}
+            onClick={() => introFileInputRef.current?.click()}
+          />
+          <span className="intro-outro-dropzone-hint">or drag and drop a video file here</span>
+          {introUpload.error ? <p className="intro-outro-upload-error">{introUpload.error}</p> : null}
+        </div>
         <Collapsible trigger="Enter path manually" defaultIsOpen={!matchedIntroFile && intro != null}>
           <label className="settings-field wide-input">
             <span>Path</span>
@@ -172,6 +258,46 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
         {!filesLoading && files.length === 0 && filesNote ? (
           <p className="narration-empty-note">{filesNote}</p>
         ) : null}
+        <div
+          className={`intro-outro-dropzone${outroDragOver ? " intro-outro-dropzone-active" : ""}`}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setOutroDragOver(true);
+          }}
+          onDragLeave={() => setOutroDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setOutroDragOver(false);
+            const file = e.dataTransfer.files[0];
+            if (file) {
+              void handleFile("outro", file);
+            }
+          }}
+        >
+          <input
+            ref={outroFileInputRef}
+            type="file"
+            accept="video/*"
+            className="intro-outro-file-input"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) {
+                void handleFile("outro", file);
+              }
+            }}
+          />
+          <Button
+            label={outroUpload.uploading ? `Uploading… ${outroUpload.progress}%` : "Upload file"}
+            variant="secondary"
+            size="sm"
+            isDisabled={outroUpload.uploading}
+            isLoading={outroUpload.uploading}
+            onClick={() => outroFileInputRef.current?.click()}
+          />
+          <span className="intro-outro-dropzone-hint">or drag and drop a video file here</span>
+          {outroUpload.error ? <p className="intro-outro-upload-error">{outroUpload.error}</p> : null}
+        </div>
         <Collapsible trigger="Enter path manually" defaultIsOpen={!matchedOutroFile && outro != null}>
           <label className="settings-field wide-input">
             <span>Path</span>

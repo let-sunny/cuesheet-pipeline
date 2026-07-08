@@ -1,6 +1,7 @@
 import { readFile, writeFile, stat, mkdir, rename, readdir, rm } from "node:fs/promises";
-import { createReadStream, existsSync, mkdirSync, watch, type FSWatcher } from "node:fs";
+import { createReadStream, createWriteStream, existsSync, mkdirSync, watch, type FSWatcher } from "node:fs";
 import { spawn } from "node:child_process";
+import { pipeline } from "node:stream/promises";
 import { basename, dirname, extname, isAbsolute, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { IncomingMessage, ServerResponse } from "node:http";
@@ -161,6 +162,12 @@ const narrationAudioMimeTypes: Record<string, string> = {
   ".m4a": "audio/mp4",
   ".wav": "audio/wav",
 };
+
+// 인트로/아웃트로 파일 업로드(/api/upload-clip)에서 받는 확장자 - clipMimeTypes 전체가 아니라
+// 이 네 가지만 (mkv 등은 브라우저 file input의 accept="video/*"로도 잘 안 잡히는 포맷이라 제외).
+const uploadClipExtensions = new Set([".mp4", ".mov", ".m4v", ".webm"]);
+// 업로드 크기 상한 - 인트로/아웃트로는 15초 이하 통짜 클립이라 이 정도면 충분히 넉넉하다.
+const uploadClipMaxBytes = 500 * 1024 * 1024;
 
 /** clipDir 등 큐시트에 담긴 상대 경로를 저장소 루트 기준 절대 경로로 해석한다(폴더 이동에 안 깨지게). */
 function resolveRepoPath(dir: string): string {
@@ -700,6 +707,101 @@ export function cuesheetPlugin(): Plugin {
           }),
         );
         sendJson(res, 200, { files });
+      });
+
+      // 브라우저 file input/드래그앤드롭으로 고른 로컬 파일을 clipDir에 저장한다(브라우저는
+      // 파일의 실제 디스크 경로를 노출하지 않으므로 업로드가 유일한 경로다). 저장된 파일명은
+      // 그대로 intro/outro 클립 선택(onSelectClip)에 재사용된다.
+      server.middlewares.use("/api/upload-clip", async (req, res) => {
+        if (req.method !== "POST") {
+          res.statusCode = 405;
+          res.setHeader("Content-Type", "text/plain; charset=utf-8");
+          res.end("Method not allowed");
+          return;
+        }
+
+        const rawQuery = (req.url ?? "").split("?")[1] ?? "";
+        const filenameParam = new URLSearchParams(rawQuery).get("filename") ?? "";
+        const filename = basename(filenameParam);
+        if (!filenameParam || filename !== filenameParam || filename === "." || filename === "..") {
+          sendJson(res, 400, {
+            ok: false,
+            error: "filename query parameter is required and must be a plain file name (no path separators)",
+          });
+          return;
+        }
+        if (!uploadClipExtensions.has(extname(filename).toLowerCase())) {
+          sendJson(res, 400, {
+            ok: false,
+            error: `Unsupported file type: ${filename} - only .mp4, .mov, .m4v, .webm are accepted, pick a different file`,
+          });
+          return;
+        }
+
+        let clipDir: string;
+        try {
+          const raw = await readFile(filePath, "utf8");
+          const cuesheet = JSON.parse(raw) as { clipDir?: unknown };
+          if (typeof cuesheet.clipDir !== "string" || cuesheet.clipDir.length === 0) {
+            throw new Error("clipDir missing");
+          }
+          clipDir = resolveRepoPath(cuesheet.clipDir);
+        } catch {
+          sendJson(res, 400, {
+            ok: false,
+            error: "clipDir is not set - set a clip folder in project settings first, then try uploading again",
+          });
+          return;
+        }
+
+        const targetPath = resolve(clipDir, filename);
+        if (!isWithin(clipDir, targetPath)) {
+          sendJson(res, 400, { ok: false, error: "Invalid filename" });
+          return;
+        }
+        if (existsSync(targetPath)) {
+          sendJson(res, 409, {
+            ok: false,
+            error: `A file named "${filename}" already exists in clipDir - rename the file and try uploading again`,
+          });
+          return;
+        }
+
+        await mkdir(clipDir, { recursive: true });
+        const tmpPath = `${targetPath}.upload.tmp`;
+        let totalBytes = 0;
+        req.on("data", (chunk: Buffer) => {
+          totalBytes += chunk.length;
+          if (totalBytes > uploadClipMaxBytes) {
+            req.destroy(new Error("payload too large"));
+          }
+        });
+
+        try {
+          await pipeline(req, createWriteStream(tmpPath));
+        } catch (e) {
+          await rm(tmpPath, { force: true }).catch(() => {});
+          if (totalBytes > uploadClipMaxBytes) {
+            sendJson(res, 413, {
+              ok: false,
+              error: "File is too large - the upload limit is 500MB, pick a smaller file",
+            });
+          } else {
+            sendJson(res, 500, { ok: false, error: `Upload failed: ${(e as Error).message}` });
+          }
+          return;
+        }
+
+        try {
+          await rename(tmpPath, targetPath);
+        } catch (e) {
+          await rm(tmpPath, { force: true }).catch(() => {});
+          sendJson(res, 500, { ok: false, error: `Upload failed: ${(e as Error).message}` });
+          return;
+        }
+
+        const durationS = await probeDurationSeconds(targetPath);
+        sendJson(res, 200, { ok: true, filename, durationS });
       });
 
       // intro/outro는 clipDir와 무관한 독립 파일 경로라 /clips가 아닌 별도 경로로 서빙한다.
