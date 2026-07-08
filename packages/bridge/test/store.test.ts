@@ -30,7 +30,7 @@ afterEach(() => {
 });
 
 describe("updateCuesheet", () => {
-  it("검증 통과 시 저장하고, get으로 다시 읽힌다", () => {
+  it("saves on validation pass and reads back via get", () => {
     const r = updateCuesheet(TMP, sample());
     expect(r.ok).toBe(true);
     expect(existsSync(TMP)).toBe(true);
@@ -40,7 +40,7 @@ describe("updateCuesheet", () => {
     if (got.ok) expect(got.data.segments[0]?.volume).toBe(1);
   });
 
-  it('"음성 30%" 편집: 모든 segment volume을 0.3으로 바꿔 저장', () => {
+  it('"lower volume to 30%" edit: rewrites every segment volume to 0.3 and saves', () => {
     updateCuesheet(TMP, sample());
     const cur = getCuesheet(TMP);
     expect(cur.ok).toBe(true);
@@ -57,7 +57,7 @@ describe("updateCuesheet", () => {
     expect(saved.segments[0].volume).toBe(0.3);
   });
 
-  it("검증 실패 시 저장하지 않고 에러를 준다", () => {
+  it("does not save and gives an error on validation failure", () => {
     const bad = sample();
     bad.segments[0].out = -1; // in >= out
     const r = updateCuesheet(TMP, bad);
@@ -65,7 +65,7 @@ describe("updateCuesheet", () => {
     expect(existsSync(TMP)).toBe(false);
   });
 
-  it("스키마가 모르는 필드가 섞여 있으면(zod strip으로 유실) 저장을 거부한다", () => {
+  it("refuses to save when a field unknown to the schema is mixed in (lost via zod strip)", () => {
     const withUnknown = {
       ...sample(),
       segments: [
@@ -83,7 +83,7 @@ describe("updateCuesheet", () => {
 });
 
 describe("getCuesheet", () => {
-  it("파일이 없으면 ok:false", () => {
+  it("gives ok:false when the file does not exist", () => {
     const r = getCuesheet(TMP);
     expect(r.ok).toBe(false);
   });

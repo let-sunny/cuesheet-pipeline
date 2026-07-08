@@ -10,8 +10,8 @@ const sample = JSON.parse(
   ),
 ) as unknown;
 
-describe("validateCueSheet - 통과 케이스", () => {
-  it("예제 큐시트는 검증을 통과한다", () => {
+describe("validateCueSheet - pass cases", () => {
+  it("the example cuesheet passes validation", () => {
     const result = validateCueSheet(sample);
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -20,7 +20,7 @@ describe("validateCueSheet - 통과 케이스", () => {
     }
   });
 
-  it("speed 미지정 시 기본값 1.0이 적용된다", () => {
+  it("defaults speed to 1.0 when unspecified", () => {
     const input = {
       ...(sample as Record<string, unknown>),
       segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "" }],
@@ -32,7 +32,7 @@ describe("validateCueSheet - 통과 케이스", () => {
     }
   });
 
-  it("narration 필드가 없는 기존 큐시트도 그대로 유효하다", () => {
+  it("an existing cuesheet without a narration field remains valid", () => {
     const result = validateCueSheet(sample);
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -41,7 +41,7 @@ describe("validateCueSheet - 통과 케이스", () => {
     }
   });
 
-  it("narration enabled+파일명이 있으면 유효하다", () => {
+  it("is valid when narration is enabled and a filename is present", () => {
     const input = {
       ...(sample as Record<string, unknown>),
       narration: { enabled: true, dir: "/narration", volume: 0.8 },
@@ -57,7 +57,7 @@ describe("validateCueSheet - 통과 케이스", () => {
     }
   });
 
-  it("crop이 유효하면(project 비율과 w===h로 일치) 통과하고 그대로 반영된다", () => {
+  it("passes and echoes back a valid crop (w===h matching project ratio)", () => {
     const input = {
       ...(sample as Record<string, unknown>),
       segments: [
@@ -71,7 +71,7 @@ describe("validateCueSheet - 통과 케이스", () => {
     }
   });
 
-  it("crop.w와 crop.h가 어긋나면(w!==h, project 비율과 불일치) 실패한다", () => {
+  it("fails when crop.w and crop.h mismatch (w!==h, not matching project ratio)", () => {
     const input = {
       ...(sample as Record<string, unknown>),
       segments: [
@@ -85,7 +85,7 @@ describe("validateCueSheet - 통과 케이스", () => {
     }
   });
 
-  it("crop이 없으면(생략) 기존 큐시트도 그대로 유효하다", () => {
+  it("an existing cuesheet without crop (omitted) remains valid", () => {
     const result = validateCueSheet(sample);
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -93,7 +93,7 @@ describe("validateCueSheet - 통과 케이스", () => {
     }
   });
 
-  it("segment.styleOverride가 없으면(생략) 기존 큐시트도 그대로 유효하다", () => {
+  it("an existing cuesheet without segment.styleOverride (omitted) remains valid", () => {
     const result = validateCueSheet(sample);
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -101,7 +101,7 @@ describe("validateCueSheet - 통과 케이스", () => {
     }
   });
 
-  it("segment.styleOverride가 전체 필드를 채우면 유효하다", () => {
+  it("is valid when segment.styleOverride fills every field", () => {
     const input = {
       ...(sample as Record<string, unknown>),
       segments: [
@@ -131,7 +131,7 @@ describe("validateCueSheet - 통과 케이스", () => {
     }
   });
 
-  it("segment.styleOverride가 부분(size만)이면 그 필드만 담긴다", () => {
+  it("holds only the given field when segment.styleOverride is partial (size only)", () => {
     const input = {
       ...(sample as Record<string, unknown>),
       segments: [
@@ -145,7 +145,7 @@ describe("validateCueSheet - 통과 케이스", () => {
     }
   });
 
-  it("segment.styleOverride가 null이면 유효하다(오버라이드 없음과 동일 취급)", () => {
+  it("is valid when segment.styleOverride is null (treated as no override)", () => {
     const input = {
       ...(sample as Record<string, unknown>),
       segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", styleOverride: null }],
@@ -157,7 +157,7 @@ describe("validateCueSheet - 통과 케이스", () => {
     }
   });
 
-  it("4K 프리셋 스케일 크기의 margin/background.padding도 유효하다(상한 완화: margin<=600, padding<=120)", () => {
+  it("4K-preset-scaled margin/background.padding are valid too (relaxed caps: margin<=600, padding<=120)", () => {
     const input = {
       ...(sample as Record<string, unknown>),
       subtitleStyle: {
@@ -179,7 +179,7 @@ describe("validateCueSheet - 통과 케이스", () => {
     }
   });
 
-  it("narration.volume 미지정 시 기본값 1.0이 적용된다", () => {
+  it("defaults narration.volume to 1.0 when unspecified", () => {
     const input = {
       ...(sample as Record<string, unknown>),
       narration: { enabled: true, dir: "/narration" },
@@ -192,8 +192,8 @@ describe("validateCueSheet - 통과 케이스", () => {
   });
 });
 
-describe("validateCueSheet - 실패 케이스", () => {
-  it("in >= out이면 명확한 에러를 낸다", () => {
+describe("validateCueSheet - failure cases", () => {
+  it("gives a clear error when in >= out", () => {
     const bad = {
       ...(sample as Record<string, unknown>),
       segments: [{ clip: "a.mp4", in: 5, out: 3, speed: 1, subtitle: "" }],
@@ -206,7 +206,7 @@ describe("validateCueSheet - 실패 케이스", () => {
     }
   });
 
-  it("segments가 비어 있으면 실패한다", () => {
+  it("fails when segments is empty", () => {
     const bad = { ...(sample as Record<string, unknown>), segments: [] };
     const result = validateCueSheet(bad);
     expect(result.ok).toBe(false);
@@ -215,7 +215,7 @@ describe("validateCueSheet - 실패 케이스", () => {
     }
   });
 
-  it("volume이 범위를 벗어나면 실패한다", () => {
+  it("fails when volume is out of range", () => {
     const bad = {
       ...(sample as Record<string, unknown>),
       bgm: [{ file: "b.mp3", start: 0, end: 10, volume: 1.5 }],
@@ -227,7 +227,7 @@ describe("validateCueSheet - 실패 케이스", () => {
     }
   });
 
-  it("fps가 음수면 실패한다", () => {
+  it("fails when fps is negative", () => {
     const bad = {
       ...(sample as Record<string, unknown>),
       project: { name: "x", fps: -30, width: 1920, height: 1080 },
@@ -239,7 +239,7 @@ describe("validateCueSheet - 실패 케이스", () => {
     }
   });
 
-  it("narration.volume이 범위를 벗어나면 실패한다", () => {
+  it("fails when narration.volume is out of range", () => {
     const bad = {
       ...(sample as Record<string, unknown>),
       narration: { enabled: true, dir: "/narration", volume: 1.5 },
@@ -251,7 +251,7 @@ describe("validateCueSheet - 실패 케이스", () => {
     }
   });
 
-  it("crop이 범위를 벗어나면(x+w>1) 실패한다", () => {
+  it("fails when crop is out of range (x+w>1)", () => {
     const bad = {
       ...(sample as Record<string, unknown>),
       segments: [
@@ -265,7 +265,7 @@ describe("validateCueSheet - 실패 케이스", () => {
     }
   });
 
-  it("segment.styleOverride에 잘못된 색상이 있으면 실패한다", () => {
+  it("fails when segment.styleOverride has an invalid color", () => {
     const bad = {
       ...(sample as Record<string, unknown>),
       segments: [
@@ -281,7 +281,7 @@ describe("validateCueSheet - 실패 케이스", () => {
     }
   });
 
-  it("segment.narration이 빈 문자열이면 실패한다", () => {
+  it("fails when segment.narration is an empty string", () => {
     const bad = {
       ...(sample as Record<string, unknown>),
       segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", narration: "" }],
@@ -293,7 +293,7 @@ describe("validateCueSheet - 실패 케이스", () => {
     }
   });
 
-  it("여러 필드가 동시에 틀리면 에러도 여러 개 나온다", () => {
+  it("gives multiple errors when multiple fields are wrong at once", () => {
     const bad = {
       project: { name: "", fps: 0, width: -1, height: 0 },
       clipDir: "",
@@ -317,7 +317,7 @@ describe("validateCueSheet - 실패 케이스", () => {
     }
   });
 
-  it("margin이 상한(600)을 넘으면 실패한다", () => {
+  it("fails when margin exceeds the cap (600)", () => {
     const input = {
       ...(sample as Record<string, unknown>),
       subtitleStyle: {
@@ -337,7 +337,7 @@ describe("validateCueSheet - 실패 케이스", () => {
     }
   });
 
-  it("background.padding이 상한(120)을 넘으면 실패한다", () => {
+  it("fails when background.padding exceeds the cap (120)", () => {
     const input = {
       ...(sample as Record<string, unknown>),
       subtitleStyle: {

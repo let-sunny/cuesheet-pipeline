@@ -36,7 +36,7 @@ describe("scanFolder", () => {
     rmSync(workDir, { recursive: true, force: true });
   });
 
-  it("소문자(.mp4)와 대문자(.MP4) 확장자를 모두 스캔 대상에 포함한다", async () => {
+  it("includes both lowercase (.mp4) and uppercase (.MP4) extensions in the scan", async () => {
     const manifest = await scanFolder(srcDir, workDir);
     const names = manifest.clips.map((c) => c.name).sort();
     expect(names).toEqual(["UPPER.MP4", "lower.mp4"]);

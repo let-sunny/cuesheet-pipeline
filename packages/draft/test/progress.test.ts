@@ -12,7 +12,7 @@ function manifest(overrides: Partial<Manifest> = {}): Manifest {
 }
 
 describe("buildPairSchedule", () => {
-  it("5분(300초) 미만 클립은 제외한다", () => {
+  it("excludes clips under 5 minutes (300s)", () => {
     const m = manifest({
       clips: [
         {
@@ -29,7 +29,7 @@ describe("buildPairSchedule", () => {
     expect(buildPairSchedule(m)).toEqual([]);
   });
 
-  it("5분 이상 클립에서 인접 프레임 쌍(n-1개)을 만든다", () => {
+  it("builds adjacent frame pairs (n-1) for a clip of 5 minutes or more", () => {
     const m = manifest({
       clips: [
         {
@@ -51,7 +51,7 @@ describe("buildPairSchedule", () => {
     ]);
   });
 
-  it("frames가 시간순이 아니어도 정렬 후 쌍을 만든다", () => {
+  it("sorts frames before pairing even if they are not in time order", () => {
     const m = manifest({
       clips: [
         {
@@ -73,7 +73,7 @@ describe("buildPairSchedule", () => {
     ]);
   });
 
-  it("minDurS를 커스텀하면 그 기준으로 필터링한다", () => {
+  it("filters by a custom minDurS when given", () => {
     const m = manifest({
       clips: [
         {
@@ -91,7 +91,7 @@ describe("buildPairSchedule", () => {
     expect(buildPairSchedule(m, 100)).toHaveLength(1);
   });
 
-  it("프레임이 1장 이하인 클립은 쌍이 없다", () => {
+  it("has no pairs for a clip with one frame or fewer", () => {
     const m = manifest({
       clips: [{ name: "one-frame.mp4", durS: 600, interval: 60, frames: [{ t: 0, path: "a" }] }],
     });
@@ -112,7 +112,7 @@ describe("extractNarrativeEvents", () => {
     };
   }
 
-  it("grew -> shrank(고신뢰) -> grew 순서에서 발견/재개 이벤트를 각각 하나씩 낸다", () => {
+  it("emits one discovery event and one resume event for a grew -> shrank(high confidence) -> grew sequence", () => {
     const judgments = [
       judgment({ tA: 0, tB: 60, verdict: "grew", note: "자라는 중" }),
       judgment({ tA: 60, tB: 120, verdict: "shrank", confidence: 4, note: "실수 발견, 풀기 시작" }),
@@ -126,7 +126,7 @@ describe("extractNarrativeEvents", () => {
     ]);
   });
 
-  it("shrank라도 confidence가 minConfidence 미만이면 발견 이벤트로 치지 않는다", () => {
+  it("does not count a shrank as a discovery event if confidence is below minConfidence", () => {
     const judgments = [
       judgment({ tA: 0, tB: 60, verdict: "grew" }),
       judgment({ tA: 60, tB: 120, verdict: "shrank", confidence: 2, note: "애매함" }),
@@ -134,7 +134,7 @@ describe("extractNarrativeEvents", () => {
     expect(extractNarrativeEvents(judgments)).toEqual([]);
   });
 
-  it("여러 클립은 독립적으로 처리한다", () => {
+  it("processes multiple clips independently", () => {
     const judgments = [
       judgment({ clip: "a.mp4", tA: 0, tB: 60, verdict: "grew" }),
       judgment({ clip: "a.mp4", tA: 60, tB: 120, verdict: "shrank", confidence: 5, note: "a 풀기" }),
@@ -145,7 +145,7 @@ describe("extractNarrativeEvents", () => {
     expect(events).toEqual([{ clip: "a.mp4", type: "mistake_discovered", atS: 60, note: "a 풀기" }]);
   });
 
-  it("입력 순서가 뒤섞여도 tA 오름차순으로 정렬 후 판단한다", () => {
+  it("sorts by ascending tA before judging even if the input order is shuffled", () => {
     const judgments = [
       judgment({ tA: 180, tB: 240, verdict: "grew", note: "재개" }),
       judgment({ tA: 60, tB: 120, verdict: "shrank", confidence: 4, note: "발견" }),
@@ -159,7 +159,7 @@ describe("extractNarrativeEvents", () => {
     ]);
   });
 
-  it("same이 사이에 껴도(grew -> same... -> shrank) 발견 이벤트를 낸다 - 실측 완화 케이스", () => {
+  it("emits a discovery event even with same in between (grew -> same... -> shrank) - relaxed case from real measurements", () => {
     const events = extractNarrativeEvents([
       judgment({ tA: 0, tB: 60, verdict: "grew" }),
       judgment({ tA: 60, tB: 120, verdict: "same" }),
@@ -169,7 +169,7 @@ describe("extractNarrativeEvents", () => {
     expect(events).toEqual([{ clip: "a.mp4", type: "mistake_discovered", atS: 180, note: "풀기" }]);
   });
 
-  it("shrank -> same... -> grew도 재개 이벤트를 낸다", () => {
+  it("shrank -> same... -> grew also emits a resume event", () => {
     const events = extractNarrativeEvents([
       judgment({ tA: 0, tB: 60, verdict: "shrank", confidence: 5, note: "풀기" }),
       judgment({ tA: 60, tB: 120, verdict: "same" }),
@@ -181,7 +181,7 @@ describe("extractNarrativeEvents", () => {
     ]);
   });
 
-  it("선행 grew 없이 첫 유효 판정이 shrank여도 발견 이벤트를 낸다", () => {
+  it("emits a discovery event even when the first valid verdict is shrank with no preceding grew", () => {
     const events = extractNarrativeEvents([
       judgment({ tA: 0, tB: 60, verdict: "same" }),
       judgment({ tA: 60, tB: 120, verdict: "shrank", confidence: 4, note: "풀기" }),
@@ -189,7 +189,7 @@ describe("extractNarrativeEvents", () => {
     expect(events).toEqual([{ clip: "a.mp4", type: "mistake_discovered", atS: 60, note: "풀기" }]);
   });
 
-  it("계속 같은 상태(same/unclear)만 있으면 이벤트가 없다", () => {
+  it("has no events when every verdict stays the same state (same/unclear)", () => {
     const judgments = [
       judgment({ tA: 0, tB: 60, verdict: "same" }),
       judgment({ tA: 60, tB: 120, verdict: "unclear" }),
@@ -199,19 +199,19 @@ describe("extractNarrativeEvents", () => {
 });
 
 describe("progressFileSchema", () => {
-  it("유효한 판정 배열을 통과시킨다", () => {
+  it("passes a valid array of judgments", () => {
     const data = [
       { clip: "a.mp4", tA: 0, tB: 60, verdict: "grew", confidence: 4, note: "손이 편물을 계속 늘림" },
     ];
     expect(progressFileSchema.safeParse(data).success).toBe(true);
   });
 
-  it("잘못된 verdict 값은 거부한다", () => {
+  it("rejects an invalid verdict value", () => {
     const data = [{ clip: "a.mp4", tA: 0, tB: 60, verdict: "bigger", confidence: 4, note: "" }];
     expect(progressFileSchema.safeParse(data).success).toBe(false);
   });
 
-  it("confidence가 1~5 범위를 벗어나면 거부한다", () => {
+  it("rejects confidence outside the 1-5 range", () => {
     const data = [{ clip: "a.mp4", tA: 0, tB: 60, verdict: "shrank", confidence: 6, note: "" }];
     expect(progressFileSchema.safeParse(data).success).toBe(false);
   });

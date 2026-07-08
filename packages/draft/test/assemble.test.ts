@@ -8,7 +8,7 @@ function opts(overrides: Partial<{ clipDir: string; projectName: string }> = {})
 }
 
 describe("assembleDraft", () => {
-  it("quality 3 미만은 채택하지 않는다", () => {
+  it("does not adopt quality below 3", () => {
     const moments: ClipMoments[] = [
       {
         clip: "a.mp4",
@@ -26,7 +26,7 @@ describe("assembleDraft", () => {
     expect(cue.segments?.[0]?.subtitle).toBe("채택");
   });
 
-  it("클립 파일명순 -> in 오름차순으로 정렬한다(재배열 금지)", () => {
+  it("sorts by clip filename then ascending in (no reordering)", () => {
     const moments: ClipMoments[] = [
       {
         clip: "b.mp4",
@@ -48,7 +48,7 @@ describe("assembleDraft", () => {
     expect(cue.segments?.map((s) => s.subtitle)).toEqual(["a-early", "a-late", "b-late"]);
   });
 
-  it("monotonousRange가 30~60초면 배속 커넥터를 삽입하고 출력 길이가 2~5초가 되게 배속을 정한다", () => {
+  it("inserts a timelapse connector for a 30-60s monotonousRange and picks a speed that yields a 2-5s output length", () => {
     const moments: ClipMoments[] = [
       {
         clip: "a.mp4",
@@ -68,7 +68,7 @@ describe("assembleDraft", () => {
     expect(outputLen).toBeLessThanOrEqual(5);
   });
 
-  it("60초를 넘는 monotonousRange는 60초로 슬라이스를 잘라 쓰고, 30초 미만은 커넥터로 쓰지 않는다", () => {
+  it("slices a monotonousRange over 60s down to 60s, and does not use one under 30s as a connector", () => {
     const moments: ClipMoments[] = [
       {
         clip: "a.mp4",
@@ -87,7 +87,7 @@ describe("assembleDraft", () => {
     expect(seg?.out).toBe(60); // 90s range, but the slice is capped at 60s
   });
 
-  it("배속 커넥터는 에피소드당 8개 상한을 넘지 않는다", () => {
+  it("timelapse connectors do not exceed the 8-per-episode cap", () => {
     const monotonousRanges = Array.from({ length: 12 }, (_, i) => ({
       startS: i * 100,
       endS: i * 100 + 40,
@@ -100,7 +100,7 @@ describe("assembleDraft", () => {
     expect(cue.segments).toHaveLength(8);
   });
 
-  it("검증 실패 케이스: 채택할 세그먼트가 없으면 validateCueSheet가 실패하고 필드경로:이유 형식을 준다", () => {
+  it("failure case: validateCueSheet fails with a field-path:reason format when no segments are adopted", () => {
     const moments: ClipMoments[] = [
       {
         clip: "a.mp4",
@@ -117,7 +117,7 @@ describe("assembleDraft", () => {
     }
   });
 
-  it("패딩 포함 길이가 3.5초를 넘으면 양끝을 대칭으로 줄여 3.5초로 클램프한다", () => {
+  it("clamps to 3.5s by trimming both ends symmetrically when the padded length exceeds 3.5s", () => {
     // Add a second (short) cut too, to keep the overall average under 3.1s — this prevents
     // the average-convergence pass from kicking in and further trimming this case's clamp
     // value (verified separately in another test).
@@ -140,7 +140,7 @@ describe("assembleDraft", () => {
     expect(seg?.out).toBeCloseTo(4.95, 10);
   });
 
-  it("긴 moments 입력 -> 정속 컷 전체 평균 길이가 2.8~3.0초로 수렴한다", () => {
+  it("with a long moments input, the overall average length of normal-speed cuts converges to 2.8-3.0s", () => {
     const moments: ClipMoments[] = [
       {
         clip: "a.mp4",
@@ -166,7 +166,7 @@ describe("assembleDraft", () => {
     }
   });
 
-  it("faceExposed: true인 monotonousRange는 배속 커넥터로 뽑지 않는다", () => {
+  it("does not pick a monotonousRange with faceExposed: true as a timelapse connector", () => {
     const moments: ClipMoments[] = [
       {
         clip: "a.mp4",
@@ -181,7 +181,7 @@ describe("assembleDraft", () => {
     expect(cue.segments).toHaveLength(0);
   });
 
-  it("faceExposed가 false면 desc에 위험 단어가 있어도 안전으로 간주해 커넥터를 뽑는다", () => {
+  it("when faceExposed is false, treats it as safe and picks a connector even if desc has a risk word", () => {
     const moments: ClipMoments[] = [
       {
         clip: "a.mp4",
@@ -196,7 +196,7 @@ describe("assembleDraft", () => {
     expect(cue.segments).toHaveLength(1);
   });
 
-  it("faceExposed 생략 + desc에 '얼굴'과 '노출' 동시 포함 -> 휴리스틱으로 위험 판정해 건너뛴다", () => {
+  it("when faceExposed is omitted and desc contains both '얼굴'(face) and '노출'(exposure), the heuristic judges it risky and skips it", () => {
     const moments: ClipMoments[] = [
       {
         clip: "a.mp4",
@@ -211,7 +211,7 @@ describe("assembleDraft", () => {
     expect(cue.segments).toHaveLength(0);
   });
 
-  it("faceExposed 생략 + desc에 위험 키워드가 없으면 기존대로 커넥터를 뽑는다(회귀)", () => {
+  it("when faceExposed is omitted and desc has no risk keyword, picks a connector as before (regression)", () => {
     const moments: ClipMoments[] = [
       {
         clip: "a.mp4",
@@ -225,7 +225,7 @@ describe("assembleDraft", () => {
     expect(cue.segments?.[0]?.subtitle).toBe("(빨리감기) 손으로 계속 뜨는 중");
   });
 
-  it("같은 클립에 안전한 단조구간이 없으면 그 클립엔 커넥터를 넣지 않고, 다른 클립의 안전 구간은 정상 채택한다", () => {
+  it("skips the connector for a clip with no safe monotonous range, while still adopting another clip's safe range", () => {
     const moments: ClipMoments[] = [
       {
         clip: "a.mp4",
@@ -245,7 +245,7 @@ describe("assembleDraft", () => {
     expect(cue.segments?.[0]?.clip).toBe("b.mp4");
   });
 
-  it("기본 패딩(0.4초)이 정속 하이라이트 양끝에 적용된다", () => {
+  it("applies the default padding (0.4s) to both ends of a normal-speed highlight", () => {
     const moments: ClipMoments[] = [
       {
         clip: "a.mp4",
@@ -260,7 +260,7 @@ describe("assembleDraft", () => {
     expect(seg?.out).toBeCloseTo(7.4, 10);
   });
 
-  it("boundaryPadS: 0이면 패딩 없이 기존 동작대로 moment 원본 경계를 그대로 쓴다", () => {
+  it("boundaryPadS: 0 uses the moment's original boundaries as-is, with no padding (previous behavior)", () => {
     const moments: ClipMoments[] = [
       {
         clip: "a.mp4",
@@ -275,7 +275,7 @@ describe("assembleDraft", () => {
     expect(seg?.out).toBe(7);
   });
 
-  it("클립 경계(clipDurations)를 넘는 패딩은 클립 길이에서 클램프한다", () => {
+  it("clamps padding that exceeds the clip boundary (clipDurations) to the clip length", () => {
     // Compose a short moment so the padded length doesn't exceed MAX_CUT_S (3.5s), keeping
     // the clamp/average-convergence passes from mixing in — so only the boundary
     // (clipDurations) clamp is observed in isolation.
@@ -294,7 +294,7 @@ describe("assembleDraft", () => {
     expect(seg?.out).toBe(2);
   });
 
-  it("같은 클립 내 인접 컷의 패딩이 겹치면 겹치지 않는 만큼만 남기고 되돌린다", () => {
+  it("when padding of adjacent cuts in the same clip overlaps, rolls back to leave only the non-overlapping amount", () => {
     const moments: ClipMoments[] = [
       {
         clip: "a.mp4",
@@ -316,7 +316,7 @@ describe("assembleDraft", () => {
     expect(front?.out ?? 0).toBeLessThanOrEqual(back?.in ?? 0);
   });
 
-  it("config.qualityThreshold를 5로 올리면 quality 3~4는 채택하지 않는다", () => {
+  it("raising config.qualityThreshold to 5 excludes quality 3-4", () => {
     const moments: ClipMoments[] = [
       {
         clip: "a.mp4",
@@ -334,7 +334,7 @@ describe("assembleDraft", () => {
     expect(cue.segments?.[0]?.subtitle).toBe("quality5");
   });
 
-  it("config.timelapseConnector.capPerEpisode를 낮추면 그 상한까지만 배속 커넥터를 뽑는다", () => {
+  it("lowering config.timelapseConnector.capPerEpisode picks timelapse connectors only up to that cap", () => {
     const monotonousRanges = Array.from({ length: 5 }, (_, i) => ({
       startS: i * 100,
       endS: i * 100 + 40,
@@ -350,7 +350,7 @@ describe("assembleDraft", () => {
     expect(cue.segments).toHaveLength(2);
   });
 
-  it("정속 세그먼트는 speed 1, volume 1로 채운다", () => {
+  it("fills normal-speed segments with speed 1, volume 1", () => {
     const moments: ClipMoments[] = [
       {
         clip: "a.mp4",

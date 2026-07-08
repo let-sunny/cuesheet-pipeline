@@ -29,7 +29,7 @@ function make(overrides: Record<string, unknown> = {}): CueSheet {
 }
 
 describe("buildRenderPlan", () => {
-  it("세그먼트 수만큼 concat 하고, 트림/스케일/fps를 넣는다", () => {
+  it("concats one input per segment, adding trim/scale/fps", () => {
     const p = buildRenderPlan(make(), "out.mp4");
     expect(p.filterComplex).toContain("[v0][a0][v1][a1]concat=n=2:v=1:a=1[vout][amain]");
     expect(p.filterComplex).toContain("scale=1920:1080");
@@ -39,34 +39,34 @@ describe("buildRenderPlan", () => {
     expect(p.args.join(" ")).toContain("-ss 0 -t 5 -i /clips/a.mp4");
   });
 
-  it("concat 입력은 세그먼트별 [v][a]가 번갈아 나온다(타입별로 묶이지 않는다)", () => {
+  it("concat inputs alternate [v][a] per segment (not grouped by type)", () => {
     const p = buildRenderPlan(make({ intro: "/i.mp4", outro: "/o.mp4" }), "out.mp4");
     expect(p.filterComplex).toContain(
       "[v0][a0][v1][a1][v2][a2][v3][a3]concat=n=4:v=1:a=1[vout][amain]",
     );
   });
 
-  it("volume 0.3과 speed 1.5(atempo)를 적용한다", () => {
+  it("applies volume 0.3 and speed 1.5 (atempo)", () => {
     const p = buildRenderPlan(make(), "out.mp4");
     expect(p.filterComplex).toContain("volume=0.3");
     expect(p.filterComplex).toContain("atempo=1.5");
     expect(p.filterComplex).toContain("setpts=PTS/1.5");
   });
 
-  it("자막이 있으면 drawtext, 없으면 넣지 않는다", () => {
+  it("adds drawtext when a subtitle is present, omits it otherwise", () => {
     const p = buildRenderPlan(make(), "out.mp4");
     expect(p.filterComplex).toContain("drawtext=text='안녕'");
     // The first segment has an empty subtitle -> only one drawtext exists
     expect(p.filterComplex.match(/drawtext/g)?.length).toBe(1);
   });
 
-  it("범위 밖 배속은 atempo 체인으로 분해한다", () => {
+  it("decomposes an out-of-range speed into an atempo chain", () => {
     const p = buildRenderPlan(make({ segments: [{ clip: "x.mp4", in: 0, out: 4, speed: 4, volume: 1, subtitle: "" }] }), "o.mp4");
     // 4x speed -> atempo=2,atempo=2
     expect(p.filterComplex).toContain("atempo=2,atempo=2");
   });
 
-  it("intro/outro를 앞뒤로 붙여 concat 개수가 늘어난다", () => {
+  it("attaches intro/outro front and back, increasing the concat count", () => {
     const p = buildRenderPlan(make({ intro: "/i.mp4", outro: "/o.mp4" }), "out.mp4");
     // intro + 2 segments + outro = 4
     expect(p.filterComplex).toContain("concat=n=4:v=1:a=1");
@@ -74,7 +74,7 @@ describe("buildRenderPlan", () => {
     expect(p.args.join(" ")).toContain("-i /o.mp4");
   });
 
-  it("bgm이 있으면 end-start만큼 atrim 후 adelay+volume, amix로 섞는다", () => {
+  it("when bgm is present, atrims by end-start then adelay+volume and mixes via amix", () => {
     const p = buildRenderPlan(
       make({ bgm: [{ file: "/bgm.mp3", start: 1, end: 10, volume: 0.4 }] }),
       "out.mp4",
@@ -84,7 +84,7 @@ describe("buildRenderPlan", () => {
     expect(p.args.join(" ")).toContain("-map [aout]");
   });
 
-  it("narration이 없으면(필드 자체 없음) 기존과 완전히 동일한 명령이 나온다", () => {
+  it("produces an identical command when narration is absent (field not present at all)", () => {
     const withNarration = buildRenderPlan(make(), "out.mp4");
     const withoutField = buildRenderPlan(make(), "out.mp4");
     expect(withNarration.args).toEqual(withoutField.args);
@@ -92,7 +92,7 @@ describe("buildRenderPlan", () => {
     expect(withNarration.filterComplex).not.toContain("nar");
   });
 
-  it("narration.enabled가 false면 세그먼트에 파일명이 있어도 기존과 동일하다", () => {
+  it("is identical to the baseline when narration.enabled is false, even with a segment filename present", () => {
     const base = buildRenderPlan(make(), "out.mp4");
     const disabled = buildRenderPlan(
       make({
@@ -108,7 +108,7 @@ describe("buildRenderPlan", () => {
     expect(disabled.filterComplex).toEqual(base.filterComplex);
   });
 
-  it("narration이 켜져 있고 세그먼트 2개 중 1개만 파일이 있으면 그 하나만 지연시각으로 amix에 포함된다", () => {
+  it("when narration is on and only 1 of 2 segments has a file, only that one is included in amix with its delay time", () => {
     const p = buildRenderPlan(
       make({
         narration: { enabled: true, dir: "/narration", volume: 0.9 },
@@ -126,7 +126,7 @@ describe("buildRenderPlan", () => {
     expect(p.args.join(" ")).toContain("-map [aout]");
   });
 
-  it("배속 세그먼트가 앞에 있으면 출력 시작 시각이 (out-in)/speed 누적으로 계산된다", () => {
+  it("when a sped-up segment comes first, the output start time is computed as a cumulative sum of (out-in)/speed", () => {
     const p = buildRenderPlan(
       make({
         narration: { enabled: true, dir: "/narration", volume: 1 },
@@ -143,7 +143,7 @@ describe("buildRenderPlan", () => {
     expect(p.filterComplex).toContain("adelay=6000|6000");
   });
 
-  it("bgm과 narration이 동시에 있으면 amix에 셋 다 포함된다", () => {
+  it("includes all three in amix when bgm and narration are both present", () => {
     const p = buildRenderPlan(
       make({
         bgm: [{ file: "/bgm.mp3", start: 0, end: 10, volume: 0.4 }],
@@ -158,14 +158,14 @@ describe("buildRenderPlan", () => {
     expect(p.filterComplex).toContain("amix=inputs=3:duration=first[aout]");
   });
 
-  it("crop이 없으면 기존과 완전히 동일한 필터가 나온다(crop 필터 없음)", () => {
+  it("produces an identical filter chain when crop is absent (no crop filter)", () => {
     const withCropField = buildRenderPlan(make(), "out.mp4");
     const withoutCropField = buildRenderPlan(make(), "out.mp4");
     expect(withCropField.filterComplex).toEqual(withoutCropField.filterComplex);
     expect(withCropField.filterComplex).not.toContain("crop=");
   });
 
-  it("crop이 있는 세그먼트는 트림 직후 스케일 전에 crop 필터가 들어간다", () => {
+  it("inserts the crop filter right after trim and before scale for a segment with crop", () => {
     const p = buildRenderPlan(
       make({
         segments: [
@@ -187,7 +187,7 @@ describe("buildRenderPlan", () => {
     );
   });
 
-  it("sourceDimensions이 주어지고 실제 소스 비율이 project 비율과 일치하면 통과한다", () => {
+  it("passes when sourceDimensions is given and the actual source ratio matches the project ratio", () => {
     const cue = make({
       segments: [
         {
@@ -208,7 +208,7 @@ describe("buildRenderPlan", () => {
     ).not.toThrow();
   });
 
-  it("sourceDimensions의 실제 비율이 project 비율과 1%를 넘게 어긋나면 필드경로를 담아 실패한다", () => {
+  it("fails with a field path when sourceDimensions' actual ratio deviates from the project ratio by more than 1%", () => {
     const cue = make({
       segments: [
         {
@@ -229,7 +229,7 @@ describe("buildRenderPlan", () => {
     ).toThrowError(/segments\[0\]\.crop: clip "a\.mp4"/);
   });
 
-  it("sourceDimensions에 해당 클립 항목이 없으면 검사를 건너뛴다(옵션이므로 실패하지 않음)", () => {
+  it("skips the check when sourceDimensions has no entry for the clip (optional, so it does not fail)", () => {
     const cue = make({
       segments: [
         {
@@ -246,7 +246,7 @@ describe("buildRenderPlan", () => {
     expect(() => buildRenderPlan(cue, "out.mp4", { sourceDimensions: {} })).not.toThrow();
   });
 
-  it("burnSubtitles: false면 drawtext를 생략하고 나머지 필터는 동일하다(CC/SRT용 클린 영상)", () => {
+  it("burnSubtitles: false omits drawtext while keeping the rest of the filters identical (clean video for CC/SRT)", () => {
     const withSubs = buildRenderPlan(make(), "out.mp4");
     const clean = buildRenderPlan(make(), "out.mp4", { burnSubtitles: false });
     expect(clean.filterComplex).not.toContain("drawtext");
@@ -262,7 +262,7 @@ describe("buildRenderPlan", () => {
     expect(clean.args.join(" ")).toContain("-ss 2 -t 4 -i /clips/b.mp4");
   });
 
-  it("burnSubtitles 옵션을 생략하면 기존과 완전히 동일한 렌더 명령이 나온다(회귀)", () => {
+  it("produces an identical render command to the baseline when burnSubtitles is omitted (regression)", () => {
     const withoutOpts = buildRenderPlan(make(), "out.mp4");
     const withDefaultOpts = buildRenderPlan(make(), "out.mp4", {});
     const withExplicitTrue = buildRenderPlan(make(), "out.mp4", { burnSubtitles: true });
@@ -270,12 +270,12 @@ describe("buildRenderPlan", () => {
     expect(withExplicitTrue).toEqual(withoutOpts);
   });
 
-  it("subtitleStyle.background가 없으면 기존과 완전히 동일하다(회귀, box 필터 없음)", () => {
+  it("is identical to the baseline when subtitleStyle.background is absent (regression, no box filter)", () => {
     const p = buildRenderPlan(make(), "out.mp4");
     expect(p.filterComplex).not.toContain("box=1");
   });
 
-  it("subtitleStyle.background가 있으면 drawtext에 box/boxcolor/boxborderw를 추가한다", () => {
+  it("adds box/boxcolor/boxborderw to drawtext when subtitleStyle.background is present", () => {
     const p = buildRenderPlan(
       make({
         subtitleStyle: {
@@ -293,7 +293,7 @@ describe("buildRenderPlan", () => {
     expect(p.filterComplex).toContain("box=1:boxcolor=#000000@0.75:boxborderw=10");
   });
 
-  it("styleOverride가 없으면(생략) 기존과 완전히 동일한 drawtext가 나온다(회귀)", () => {
+  it("produces an identical drawtext to the baseline when styleOverride is absent (omitted) (regression)", () => {
     const withField = buildRenderPlan(
       make({
         segments: [
@@ -314,7 +314,7 @@ describe("buildRenderPlan", () => {
     );
   });
 
-  it("styleOverride가 null이면 전역 스타일 그대로 적용된다(오버라이드 없음과 동일)", () => {
+  it("applies the global style unchanged when styleOverride is null (same as no override)", () => {
     const p = buildRenderPlan(
       make({
         segments: [
@@ -334,7 +334,7 @@ describe("buildRenderPlan", () => {
     expect(p.filterComplex).toContain("fontsize=48:fontcolor=#ffffff");
   });
 
-  it("styleOverride로 지정한 필드만 전역 스타일 위에 덮어써 drawtext에 반영된다(부분 병합)", () => {
+  it("overlays only the fields given in styleOverride on top of the global style in drawtext (partial merge)", () => {
     const p = buildRenderPlan(
       make({
         segments: [
@@ -358,7 +358,7 @@ describe("buildRenderPlan", () => {
     );
   });
 
-  it("styleOverride.background가 있으면 전역 background를 부분 병합이 아니라 통짜 교체한다", () => {
+  it("fully replaces (not merges) the global background when styleOverride.background is present", () => {
     const p = buildRenderPlan(
       make({
         subtitleStyle: {
@@ -389,7 +389,7 @@ describe("buildRenderPlan", () => {
     expect(p.filterComplex).not.toContain("@0.75");
   });
 
-  it("styleOverride가 있어도 다른 세그먼트는 전역 스타일 그대로 유지된다", () => {
+  it("keeps other segments on the global style even when one segment has styleOverride", () => {
     const p = buildRenderPlan(
       make({
         segments: [
@@ -411,7 +411,7 @@ describe("buildRenderPlan", () => {
     expect(p.filterComplex).toContain("drawtext=text='오버라이드':fontsize=72");
   });
 
-  it("출력 인자에 코덱과 fps가 들어간다", () => {
+  it("includes codec and fps in the output arguments", () => {
     const p = buildRenderPlan(make(), "final.mp4");
     const s = p.args.join(" ");
     expect(s).toContain("-map [vout]");

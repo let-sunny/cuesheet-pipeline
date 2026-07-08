@@ -11,14 +11,14 @@ const sample = JSON.parse(
 ) as unknown;
 
 describe("findLostFieldPaths", () => {
-  it("정상 저장(유실 없음)이면 빈 배열을 준다", () => {
+  it("gives an empty array on a normal save (no loss)", () => {
     const result = validateCueSheet(sample);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(findLostFieldPaths(sample, result.data)).toEqual([]);
   });
 
-  it("스키마가 모르는 최상위 키는 유실로 감지된다(zod strip)", () => {
+  it("detects a top-level key unknown to the schema as lost (zod strip)", () => {
     const withUnknown = { ...(sample as Record<string, unknown>), notInSchema: "x" };
     const result = validateCueSheet(withUnknown);
     expect(result.ok).toBe(true);
@@ -27,7 +27,7 @@ describe("findLostFieldPaths", () => {
     expect(lost).toContain("notInSchema");
   });
 
-  it("스키마가 모르는 세그먼트 안 키는 경로와 함께 유실로 감지된다(zod strip)", () => {
+  it("detects a key inside a segment unknown to the schema as lost, with its path (zod strip)", () => {
     const withUnknown = {
       ...(sample as Record<string, unknown>),
       segments: [
@@ -41,11 +41,11 @@ describe("findLostFieldPaths", () => {
     expect(lost).toContain("segments[0].totallyUnknownField");
   });
 
-  it("undefined였던 값은 유실로 치지 않는다", () => {
+  it("does not treat a value that was undefined as lost", () => {
     expect(findLostFieldPaths({ a: undefined }, {})).toEqual([]);
   });
 
-  it("값이 바뀌어도(타입 강제·기본값 채움) 키가 남아있으면 유실이 아니다", () => {
+  it("is not lost if the key remains even when its value changed (type coercion/default fill)", () => {
     expect(findLostFieldPaths({ a: 1 }, { a: 2, b: 3 })).toEqual([]);
   });
 });
