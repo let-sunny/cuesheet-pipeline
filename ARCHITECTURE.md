@@ -1,9 +1,9 @@
 # Architecture
 
 > Snapshot of the system as of 2026-07-08. This is a map, not a novel — for the product
-> requirements see [PRD.md](./PRD.md), for screen layout rules see
-> [screen-spec.md](./screen-spec.md), for the live "what's done / what's next" ledger see
-> [STATUS.md](./STATUS.md) (Korean, internal working doc).
+> requirements see [PRD.md](docs/PRD.md), for screen layout rules see
+> [screen-spec.md](docs/screen-spec.md), for the live "what's done / what's next" ledger see
+> [STATUS.md](docs/STATUS.md) (Korean, internal working doc).
 
 ## 1. System overview
 
