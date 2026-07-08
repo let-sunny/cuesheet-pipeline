@@ -20,8 +20,18 @@ const hexColor = z
 export const projectSchema = z.object({
   name: z.string().min(1, "project.name must not be empty"),
   fps: z.number().positive("fps must be positive"),
-  width: z.number().int("width must be an integer").positive("width must be positive"),
-  height: z.number().int("height must be an integer").positive("height must be positive"),
+  // Odd width/height breaks libx264 encoding (yuv420p requires even dimensions) - ffmpeg fails
+  // the render outright with an opaque error, so this is caught here instead, at save time.
+  width: z
+    .number()
+    .int("width must be an integer")
+    .positive("width must be positive")
+    .refine((w) => w % 2 === 0, { error: "must be even for video encoding" }),
+  height: z
+    .number()
+    .int("height must be an integer")
+    .positive("height must be positive")
+    .refine((h) => h % 2 === 0, { error: "must be even for video encoding" }),
 });
 
 /**
