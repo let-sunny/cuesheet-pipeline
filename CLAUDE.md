@@ -148,6 +148,35 @@ edits handled grows, schema expands along with it.
   out`).
 - **No emoji** (in code, comments, commits, or subtitle text examples — anywhere).
 
+## Code layout
+
+Within each source file, order top to bottom by importance (2026-07-08 convention, applied
+repo-wide in a dedicated refactor pass):
+
+1. **Exported types + the file's public surface** — props/option interfaces, exported type
+   aliases, re-exports.
+2. **The protagonist** — the main exported function/component the file exists for.
+3. **Internal helpers** — private functions the protagonist (or its helpers) call.
+4. **Trailing constants/micro-utils** — module-level constants and tiny utility values, placed
+   last since they're implementation detail, not the point of the file.
+
+React components: the main component goes above its private subcomponents/hooks/helpers.
+
+This is a pure-reordering convention (zero behavior change; imports/exports stay semantically
+untouched) — module-level `function` declarations are hoisted and `const`s are only read inside
+function bodies invoked later, so moving a helper or constant below its caller is safe. Two
+deliberate exceptions, both left as-is:
+- **CLI/entry-point scripts with no exported surface** (e.g. `packages/draft/src/cli.ts`,
+  `packages/bridge/src/index.ts`, `scripts/episode.mjs`) — the whole file's top-level flow *is*
+  the protagonist, so "helper defined above its point of use, `main()` invoked at the bottom" is
+  already the natural reading order; forcing the convention here would just churn without adding
+  clarity.
+- **`packages/web/src/cuesheet-plugin.ts`** — dominated by one large exported factory
+  (`cuesheetPlugin`) whose ~20 helpers/state variables are only used inside the middleware
+  closures it returns. Reordering it is mechanically safe but touches ~450 lines of a live
+  dev-server plugin; treat as a separate, isolated follow-up (server stopped) rather than bundling
+  it into a repo-wide sweep.
+
 ## Commands
 
 From the root:
