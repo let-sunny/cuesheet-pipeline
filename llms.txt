@@ -14,7 +14,7 @@ of truth every step reads from or writes to.
 - [README](./README.md): quickstart, what it does, why it exists.
 - [AGENTS.md](./AGENTS.md): onboarding for an agent operating this tool on a user's behalf —
   exact CLI invocations, the MCP bridge tool surface, file/path conventions, typical workflows.
-- [ARCHITECTURE.md](./ARCHITECTURE.md): package map, data flow, dependency graph, key design
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md): package map, data flow, dependency graph, key design
   decisions, for anyone developing the repo itself (paired with CLAUDE.md).
 - [docs/PRD.md](./docs/PRD.md): product requirements — north star, user scenario, feature list.
 - [docs/screen-spec.md](./docs/screen-spec.md): canonical screen layout for the web editor.

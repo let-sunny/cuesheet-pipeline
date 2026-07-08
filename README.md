@@ -29,7 +29,7 @@ footage folder (no dialogue, visual-only)
 
 The cuesheet is the single source of truth: the web editor and Claude Code both read and
 write the same validated JSON, so hand edits and natural-language commands never conflict.
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full package/data-flow map.
+See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full package/data-flow map.
 
 ## Quickstart
 
@@ -69,7 +69,7 @@ pnpm -r test       # tests
 
 ## Docs
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md) — package map, data flow, dependency graph, key design decisions.
+- [ARCHITECTURE.md](docs/ARCHITECTURE.md) — package map, data flow, dependency graph, key design decisions.
 - [docs/PRD.md](./docs/PRD.md) — product requirements: north star, user scenario, full feature list.
 - [docs/screen-spec.md](./docs/screen-spec.md) — canonical screen layout for the editor.
 - [GitHub wiki](https://github.com/let-sunny/cuesheet-pipeline/wiki) — experiment reports: editing-grammar
