@@ -1,44 +1,77 @@
 # cuesheet-pipeline
 
-A video editing pipeline that automatically assembles dialogue-free footage clips based on a cuesheet (JSON).
+Vision-first rough-cut generation for dialogue-free footage — a cuesheet JSON contract, local
+ffmpeg render, and natural-language editing via MCP.
 
-## Monorepo structure
+## What it does
 
-```
-packages/
-  schema/   Cuesheet type definitions + runtime validation (single source of truth)  [implemented]
-  web/      Web app for editing/previewing the cuesheet (produces the cuesheet)      [planned]
-  render/   Takes a cuesheet and renders the final video, via ffmpeg etc. (consumes the cuesheet)  [planned]
-```
+Point it at a folder of raw footage and it takes you through three steps:
 
-### Data flow (who produces it, who consumes it)
-
-```
-  web  ──(cuesheet JSON)──▶  render  ──▶  final video.mp4
- edit/preview               render
-```
-
-The cuesheet is fully edited in the web app, and the resulting JSON is handed to the renderer to produce the final cut.
-
-### Dependency direction (who imports whom)
+1. **Scenes** — a vision model (Claude) looks at extracted frames and proposes moment
+   candidates: which parts of the footage are worth using, and why.
+2. **Edit** — refine the auto-generated rough cut in a browser editor (cut list, mini
+   timeline, live preview) or by telling your own Claude Code session what to change
+   (it edits the same cuesheet file through an MCP bridge — no extra API cost).
+3. **Export** — render straight to a final `.mp4` (and `.srt`) with local ffmpeg, no
+   upload, no cloud step.
 
 ```
-  web  ──▶  schema  ◀──  render
+footage folder (no dialogue, visual-only)
+      |
+      v
+  scan -> vision judgment -> assemble -> validated cuesheet (JSON)
+      |
+      +--> web editor (Scenes -> Edit -> Export)
+      +--> MCP bridge (natural-language edits from Claude Code)
+      v
+  render (ffmpeg) --> final .mp4 + .srt
 ```
 
-- `schema` is the **contract** that both web and render import.
-  Types and the zod schema are defined in one place so both sides share **the same rules**.
-- The web app validates with `validateCueSheet` before saving, and the renderer validates again right before rendering.
-  (Since it's the same schema, any cuesheet the web app passes is guaranteed to pass the renderer too.)
-- `schema` doesn't depend on web/render → no cycles, the contract always stays at the center.
-- Time units are in **seconds**. Frame conversion is handled by the render module via `fps`.
-- Clip paths store **filename only**, with the folder kept separate as `clipDir` → moving the folder doesn't break things.
+The cuesheet is the single source of truth: the web editor and Claude Code both read and
+write the same validated JSON, so hand edits and natural-language commands never conflict.
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for the full package/data-flow map.
+
+## Quickstart
+
+```bash
+pnpm install
+pnpm episode "<raw footage folder>"   # scan + vision draft, then launches the editor
+```
+
+Or from Claude Code, run `/episode <raw footage folder>` to generate the rough cut, then
+open the editor at `localhost:5173` to polish and export.
+
+## Why this exists
+
+Most transcript-driven editors (Descript and similar tools) assume a spoken transcript to
+align against. This tool is built for footage that has **no dialogue** — think a knitting
+vlog, where the script is written separately and matching a script line to a clip is a
+visual judgment ("does this look like what the line describes"), not an audio-alignment
+problem. Two things follow from that:
+
+- **Face-safe by design** — the vision pass judges face exposure per clip against a
+  fixed policy (chin-line and above stays out of frame) and flags or crops accordingly,
+  rather than leaving it to a human to catch on review.
+- **Personal editing grammar as config** — cut rhythm, shot vocabulary, and narrative
+  structure are reverse-engineered from the user's own past edits and encoded as
+  overridable defaults in the assembly step, not a one-size-fits-all template.
+
+It deliberately does not chase general-purpose NLE features (multitrack, effects,
+template marketplaces) — the scope is draft automation plus a touch-up editor.
 
 ## Development
 
 ```bash
-pnpm install
 pnpm -r build      # build everything
 pnpm -r typecheck  # type check
 pnpm -r test       # tests
 ```
+
+## Docs
+
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — package map, data flow, dependency graph, key design decisions.
+- [docs/PRD.md](./docs/PRD.md) — product requirements: north star, user scenario, full feature list.
+- [docs/screen-spec.md](./docs/screen-spec.md) — canonical screen layout for the editor.
+- [GitHub wiki](https://github.com/let-sunny/cuesheet-pipeline/wiki) — experiment reports: editing-grammar
+  reverse-engineering, scene-detection measurement (and why it was rejected), rough-cut pipeline
+  iterations.
