@@ -145,7 +145,9 @@ quality>=3, converges on cut rhythm (average 2.8-3.0s), applies timelapse
 connectors on monotonous ranges (speed 14, 30-60s slices, max 8 per episode,
 automatically excluding ranges with face-exposure risk), and finishes with
 `validateCueSheet` before saving. If it fails, the CLI prints the cause to stderr
-in `field-path: reason` format and exits 1 - fix moments.json and retry.
+in `field-path: reason` format and exits 1 - fix moments.json and retry. To
+override any of these editing-grammar defaults, pass `--config <path.json>`
+(a partial AssembleGrammarConfig, deep-merged onto the defaults above).
 
 ### (4) Subtitle voice pass
 

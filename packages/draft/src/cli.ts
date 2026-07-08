@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { z } from "zod";
 import { validateCueSheet } from "@cuesheet/schema";
 import { assembleDraft } from "./assemble.js";
+import type { AssembleGrammarConfigOverride } from "./assemble.js";
 import { scanFolder } from "./scan.js";
 import type { Manifest } from "./scan.js";
 import { momentsFileSchema } from "./types.js";
@@ -13,6 +14,11 @@ import { momentsFileSchema } from "./types.js";
  *      cuesheet-draft assemble --manifest <path> --moments <path> --clip-dir <source-folder>
  *                               --project-name <name> --out <cuesheet-path>
  *                               [--fps N] [--width N] [--height N] [--boundary-pad N]
+ *                               [--config <path>]
+ *
+ * --config <path>: JSON file with a partial AssembleGrammarConfig override (cut rhythm,
+ * quality threshold, timelapse-connector rules, face-heuristic word lists, boundary pad).
+ * Deep-merged onto DEFAULT_ASSEMBLE_CONFIG (the user's grammar) — omit for existing behavior.
  */
 
 interface ParsedArgs {
@@ -63,7 +69,7 @@ async function runScan(rest: string[]): Promise<void> {
   const srcDir = positional[0];
   const outDir = flags.out;
   if (!srcDir || !outDir) {
-    console.error("사용법: cuesheet-draft scan <원본폴더> --out <작업폴더>");
+    console.error("Usage: cuesheet-draft scan <source-folder> --out <work-folder>");
     process.exit(1);
   }
 
@@ -73,7 +79,7 @@ async function runScan(rest: string[]): Promise<void> {
 
   const totalFrames = manifest.clips.reduce((n, c) => n + c.frames.length, 0);
   console.error(
-    `스캔 완료: 로컬 ${manifest.clips.length}개 / 미다운로드 ${manifest.evicted.length}개, 프레임 ${totalFrames}장 -> ${join(outDir, "manifest.json")}`,
+    `Scan complete: ${manifest.clips.length} local / ${manifest.evicted.length} not downloaded, ${totalFrames} frames -> ${join(outDir, "manifest.json")}`,
   );
 }
 
@@ -87,7 +93,7 @@ function runAssemble(rest: string[]): void {
 
   if (!manifestPath || !momentsPath || !clipDir || !projectName || !outPath) {
     console.error(
-      "사용법: cuesheet-draft assemble --manifest <경로> --moments <경로> --clip-dir <원본폴더> --project-name <이름> --out <큐시트경로>",
+      "Usage: cuesheet-draft assemble --manifest <path> --moments <path> --clip-dir <source-folder> --project-name <name> --out <cuesheet-path>",
     );
     process.exit(1);
   }
@@ -101,9 +107,13 @@ function runAssemble(rest: string[]): void {
   const momentsRaw = JSON.parse(readFileSync(momentsPath, "utf-8"));
   const momentsResult = momentsFileSchema.safeParse(momentsRaw);
   if (!momentsResult.success) {
-    console.error(`moments.json 검증 실패:\n${momentsResult.error.issues.map(formatIssue).join("\n")}`);
+    console.error(`moments.json validation failed:\n${momentsResult.error.issues.map(formatIssue).join("\n")}`);
     process.exit(1);
   }
+
+  const config: AssembleGrammarConfigOverride | undefined = flags.config
+    ? (JSON.parse(readFileSync(flags.config, "utf-8")) as AssembleGrammarConfigOverride)
+    : undefined;
 
   const cueInput = assembleDraft(momentsResult.data, {
     clipDir,
@@ -113,16 +123,17 @@ function runAssemble(rest: string[]): void {
     height: flags.height ? Number(flags.height) : undefined,
     boundaryPadS: flags["boundary-pad"] ? Number(flags["boundary-pad"]) : undefined,
     clipDurations,
+    config,
   });
 
   const validated = validateCueSheet(cueInput);
   if (!validated.ok) {
-    console.error(`큐시트 검증 실패:\n${validated.errors.join("\n")}`);
+    console.error(`Cuesheet validation failed:\n${validated.errors.join("\n")}`);
     process.exit(1);
   }
 
   writeFileSync(outPath, JSON.stringify(validated.data, null, 2));
-  console.error(`조립 완료: 세그먼트 ${validated.data.segments.length}개 -> ${outPath}`);
+  console.error(`Assembly complete: ${validated.data.segments.length} segments -> ${outPath}`);
 }
 
 async function main(): Promise<void> {
@@ -132,7 +143,7 @@ async function main(): Promise<void> {
   } else if (sub === "assemble") {
     runAssemble(rest);
   } else {
-    console.error("사용법: cuesheet-draft <scan|assemble> ...");
+    console.error("Usage: cuesheet-draft <scan|assemble> ...");
     process.exit(1);
   }
 }

@@ -11,31 +11,101 @@ const DEFAULT_FPS = 30;
 const DEFAULT_WIDTH = 1280;
 const DEFAULT_HEIGHT = 720;
 
-/** Minimum quality to accept as a steady-speed highlight. */
-const MIN_QUALITY = 3;
-
-/** Individual steady-cut length range (seconds) — based on the user's measured rhythm (avg 2.95s). */
-const MIN_CUT_S = 2;
-const MAX_CUT_S = 3.5;
-/** If the overall average exceeds this value, run the convergence pass. */
-const AVG_TRIGGER_S = 3.1;
-/** Convergence target upper bound (lower bound is 2.8 — since the trim step is small, it usually lands within this range). */
-const AVG_HIGH_S = 3.0;
-const TRIM_STEP_S = 0.25;
-
-/** Timelapse connector speed (midpoint of the 12-16 range — compresses a 30-60s slice into 2.1-4.3s of output). */
-const SPEEDUP_SPEED = 14;
-const SPEEDUP_MIN_SLICE_S = 30;
-const SPEEDUP_MAX_SLICE_S = 60;
-/** Cap on timelapse connectors per episode (to prevent overuse). */
-const SPEEDUP_CAP = 8;
-
 /**
- * Default padding (seconds) added to steady-highlight cut boundaries. Prevents a motion
- * (knitting hand gesture) from being cut off before it completes — see Vrew's "doesn't
- * respect breathing room" complaint and Descript's 'Avoid harsh cuts' reference.
+ * The editing-grammar constants below (cut rhythm, quality threshold, timelapse-connector
+ * rules, face heuristic word lists, boundary pad) encode the user's own editing style, reverse
+ * engineered from real edited episodes (see docs/STATUS.md). They're grouped into
+ * AssembleGrammarConfig so a different user/style can override them without touching this
+ * file — defaults below are exactly the previously-hardcoded values, so omitting `config`
+ * reproduces prior behavior byte-for-byte.
  */
-const DEFAULT_BOUNDARY_PAD_S = 0.4;
+export interface AssembleGrammarConfig {
+  /** Minimum vision-judged quality (moment.quality) to accept as a steady-speed highlight. */
+  qualityThreshold: number;
+  /** Individual steady-cut length range (seconds) and average-convergence target. */
+  cutRhythm: {
+    /** Lower bound a cut may be trimmed down to. */
+    minCutS: number;
+    /** Upper bound a single (padded) cut may reach before symmetric clamping. */
+    maxCutS: number;
+    /** If the overall steady-cut average exceeds this value, run the convergence pass. */
+    avgTriggerS: number;
+    /** Convergence target upper bound (lower bound is 2.8 — since the trim step is small, it usually lands within this range). */
+    avgHighS: number;
+    /** Per-iteration trim amount (seconds) taken off the longest steady cut during convergence. */
+    trimStepS: number;
+  };
+  /** Timelapse (speed-up) connector rules for monotonousRanges. */
+  timelapseConnector: {
+    /** Playback speed (midpoint of the 12-16 range — compresses a 30-60s slice into 2.1-4.3s of output). */
+    speed: number;
+    minSliceS: number;
+    maxSliceS: number;
+    /** Cap on timelapse connectors per episode (to prevent overuse). */
+    capPerEpisode: number;
+  };
+  /**
+   * Face-exposure heuristic fallback, used only when a monotonousRange's `faceExposed` is
+   * omitted: risky if any partWords entry and riskWord both appear in `desc`.
+   */
+  faceHeuristic: {
+    partWords: string[];
+    riskWord: string;
+  };
+  /**
+   * Default padding (seconds) added to steady-highlight cut boundaries when
+   * AssembleOptions.boundaryPadS is not given. Prevents a motion (knitting hand gesture) from
+   * being cut off before it completes — see Vrew's "doesn't respect breathing room" complaint
+   * and Descript's 'Avoid harsh cuts' reference.
+   */
+  boundaryPadS: number;
+}
+
+export const DEFAULT_ASSEMBLE_CONFIG: AssembleGrammarConfig = {
+  qualityThreshold: 3,
+  cutRhythm: {
+    minCutS: 2,
+    maxCutS: 3.5,
+    avgTriggerS: 3.1,
+    avgHighS: 3.0,
+    trimStepS: 0.25,
+  },
+  timelapseConnector: {
+    speed: 14,
+    minSliceS: 30,
+    maxSliceS: 60,
+    capPerEpisode: 8,
+  },
+  faceHeuristic: {
+    partWords: ["얼굴", "입술", "눈~입", "이목구비"],
+    riskWord: "노출",
+  },
+  boundaryPadS: 0.4,
+};
+
+/** A deep-partial override of AssembleGrammarConfig — every field (including nested groups) is optional. */
+export type AssembleGrammarConfigOverride = {
+  [K in keyof AssembleGrammarConfig]?: AssembleGrammarConfig[K] extends object
+    ? Partial<AssembleGrammarConfig[K]>
+    : AssembleGrammarConfig[K];
+};
+
+/** Deep-merges a partial override onto DEFAULT_ASSEMBLE_CONFIG (shallow merge within each group). */
+export function resolveAssembleConfig(
+  overrides?: AssembleGrammarConfigOverride,
+): AssembleGrammarConfig {
+  if (!overrides) return DEFAULT_ASSEMBLE_CONFIG;
+  return {
+    qualityThreshold: overrides.qualityThreshold ?? DEFAULT_ASSEMBLE_CONFIG.qualityThreshold,
+    cutRhythm: { ...DEFAULT_ASSEMBLE_CONFIG.cutRhythm, ...overrides.cutRhythm },
+    timelapseConnector: {
+      ...DEFAULT_ASSEMBLE_CONFIG.timelapseConnector,
+      ...overrides.timelapseConnector,
+    },
+    faceHeuristic: { ...DEFAULT_ASSEMBLE_CONFIG.faceHeuristic, ...overrides.faceHeuristic },
+    boundaryPadS: overrides.boundaryPadS ?? DEFAULT_ASSEMBLE_CONFIG.boundaryPadS,
+  };
+}
 
 export interface AssembleOptions {
   clipDir: string;
@@ -43,24 +113,29 @@ export interface AssembleOptions {
   fps?: number;
   width?: number;
   height?: number;
-  /** Steady-highlight cut boundary padding (seconds). Default 0.4 — pass 0 to assemble without padding. */
+  /** Steady-highlight cut boundary padding (seconds). Default: config.boundaryPadS (0.4) — pass 0 to assemble without padding. */
   boundaryPadS?: number;
   /** Actual per-clip duration (seconds, durS from manifest.json) — used to clamp boundary padding so it doesn't extend past the clip's end. Clips without an entry skip clamping. */
   clipDurations?: Record<string, number>;
+  /** Editing-grammar overrides (cut rhythm/quality/timelapse-connector/face-heuristic/boundary-pad). Omit to use DEFAULT_ASSEMBLE_CONFIG (the user's grammar). */
+  config?: AssembleGrammarConfigOverride;
 }
 
 /**
  * Whether a timelapse-connector candidate range carries face-exposure risk. If faceExposed
  * is explicitly set, follow it as-is; otherwise fall back to a desc-text heuristic (risky if
- * a face-part word and "exposed" both appear — conservatively, treat ambiguous cases as risky.
- * Observed in practice: vision judgments sometimes phrase this using only a part name without
- * the word "face" itself, e.g. "lips are almost always exposed", so part-name vocabulary is
- * checked too).
+ * a face-part word and the risk word both appear — conservatively, treat ambiguous cases as
+ * risky. Observed in practice: vision judgments sometimes phrase this using only a part name
+ * without the word "face" itself, e.g. "lips are almost always exposed", so part-name
+ * vocabulary is checked too).
  */
-function isMonotonousRangeRisky(r: MonotonousRange): boolean {
+function isMonotonousRangeRisky(
+  r: MonotonousRange,
+  faceHeuristic: AssembleGrammarConfig["faceHeuristic"],
+): boolean {
   if (typeof r.faceExposed === "boolean") return r.faceExposed;
-  const facePart = ["얼굴", "입술", "눈~입", "이목구비"].some((w) => r.desc.includes(w));
-  return facePart && r.desc.includes("노출");
+  const facePart = faceHeuristic.partWords.some((w) => r.desc.includes(w));
+  return facePart && r.desc.includes(faceHeuristic.riskWord);
 }
 
 interface Candidate {
@@ -81,23 +156,26 @@ type DraftSegment = { clip: string; in: number; out: number; speed: number; volu
  * motion-centered framing gained from boundary padding isn't rendered meaningless by trimming
  * from only one side.
  */
-function convergeSteadyCutAverage(segments: DraftSegment[]): void {
+function convergeSteadyCutAverage(
+  segments: DraftSegment[],
+  cutRhythm: AssembleGrammarConfig["cutRhythm"],
+): void {
   const steady = segments.filter((s) => s.speed === 1);
   if (steady.length === 0) return;
 
   const average = () => steady.reduce((sum, s) => sum + (s.out - s.in), 0) / steady.length;
 
-  if (average() <= AVG_TRIGGER_S) return;
+  if (average() <= cutRhythm.avgTriggerS) return;
 
   let guard = steady.length * 100; // Infinite-loop guard — trimming should never need to go beyond this.
-  while (average() > AVG_HIGH_S && guard-- > 0) {
+  while (average() > cutRhythm.avgHighS && guard-- > 0) {
     let longest = steady[0] as DraftSegment;
     for (const s of steady) {
       if (s.out - s.in > longest.out - longest.in) longest = s;
     }
     const curLen = longest.out - longest.in;
-    if (curLen <= MIN_CUT_S) break; // No more room to trim.
-    const newLen = Math.max(MIN_CUT_S, curLen - TRIM_STEP_S);
+    if (curLen <= cutRhythm.minCutS) break; // No more room to trim.
+    const newLen = Math.max(cutRhythm.minCutS, curLen - cutRhythm.trimStepS);
     const center = (longest.in + longest.out) / 2;
     longest.in = center - newLen / 2;
     longest.out = center + newLen / 2;
@@ -110,8 +188,9 @@ function convergeSteadyCutAverage(segments: DraftSegment[]): void {
  * yet validated (CueSheetInput) — the caller validates it with validateCueSheet.
  */
 export function assembleDraft(clipsMoments: ClipMoments[], options: AssembleOptions): CueSheetInput {
+  const config = resolveAssembleConfig(options.config);
   const sortedClips = [...clipsMoments].sort((a, b) => a.clip.localeCompare(b.clip));
-  const padS = options.boundaryPadS ?? DEFAULT_BOUNDARY_PAD_S;
+  const padS = options.boundaryPadS ?? config.boundaryPadS;
 
   const segments: DraftSegment[] = [];
   let speedupCount = 0;
@@ -121,15 +200,15 @@ export function assembleDraft(clipsMoments: ClipMoments[], options: AssembleOpti
 
     const steadyCandidates: Candidate[] = [];
     for (const m of cm.moments) {
-      if (m.quality >= MIN_QUALITY) {
+      if (m.quality >= config.qualityThreshold) {
         let inS = Math.max(0, m.inS - padS);
         let outS = Math.min(clipDur, m.outS + padS);
         const len = outS - inS;
-        if (len > MAX_CUT_S) {
+        if (len > config.cutRhythm.maxCutS) {
           // If the padded length exceeds the cap, shrink both ends symmetrically (keep the
           // motion centered) — trimming only one side would just eat back the padding we
           // just added, making it pointless.
-          const excess = len - MAX_CUT_S;
+          const excess = len - config.cutRhythm.maxCutS;
           inS += excess / 2;
           outS -= excess / 2;
         }
@@ -153,18 +232,18 @@ export function assembleDraft(clipsMoments: ClipMoments[], options: AssembleOpti
     const candidates: Candidate[] = [...steadyCandidates];
 
     for (const r of cm.monotonousRanges) {
-      if (speedupCount >= SPEEDUP_CAP) break;
-      if (isMonotonousRangeRisky(r)) {
+      if (speedupCount >= config.timelapseConnector.capPerEpisode) break;
+      if (isMonotonousRangeRisky(r, config.faceHeuristic)) {
         console.log(`[assemble] ${cm.clip} ${r.startS}-${r.endS}s: 얼굴 노출 위험으로 배속 커넥터 건너뜀`);
         continue;
       }
       const fullDur = r.endS - r.startS;
-      if (fullDur < SPEEDUP_MIN_SLICE_S) continue;
-      const sliceDur = Math.min(fullDur, SPEEDUP_MAX_SLICE_S);
+      if (fullDur < config.timelapseConnector.minSliceS) continue;
+      const sliceDur = Math.min(fullDur, config.timelapseConnector.maxSliceS);
       candidates.push({
         inS: r.startS,
         outS: r.startS + sliceDur,
-        speed: SPEEDUP_SPEED,
+        speed: config.timelapseConnector.speed,
         volume: 1,
         subtitle: `(빨리감기) ${r.desc}`,
       });
@@ -177,7 +256,7 @@ export function assembleDraft(clipsMoments: ClipMoments[], options: AssembleOpti
     }
   }
 
-  convergeSteadyCutAverage(segments);
+  convergeSteadyCutAverage(segments, config.cutRhythm);
 
   return {
     project: {

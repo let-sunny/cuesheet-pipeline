@@ -1,8 +1,12 @@
 export { scanFolder, intervalFor } from "./scan.js";
 export type { FrameRef, ClipManifest, Manifest } from "./scan.js";
 
-export { assembleDraft } from "./assemble.js";
-export type { AssembleOptions } from "./assemble.js";
+export { assembleDraft, DEFAULT_ASSEMBLE_CONFIG, resolveAssembleConfig } from "./assemble.js";
+export type {
+  AssembleOptions,
+  AssembleGrammarConfig,
+  AssembleGrammarConfigOverride,
+} from "./assemble.js";
 
 export {
   shotTypeSchema,

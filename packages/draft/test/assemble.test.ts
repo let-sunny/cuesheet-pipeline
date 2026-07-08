@@ -316,6 +316,40 @@ describe("assembleDraft", () => {
     expect(front?.out ?? 0).toBeLessThanOrEqual(back?.in ?? 0);
   });
 
+  it("config.qualityThreshold를 5로 올리면 quality 3~4는 채택하지 않는다", () => {
+    const moments: ClipMoments[] = [
+      {
+        clip: "a.mp4",
+        clipSummary: "요약",
+        moments: [
+          { inS: 0, outS: 3, shotType: "object", memo: "quality3", quality: 3 },
+          { inS: 5, outS: 8, shotType: "object", memo: "quality4", quality: 4 },
+          { inS: 10, outS: 13, shotType: "object", memo: "quality5", quality: 5 },
+        ],
+        monotonousRanges: [],
+      },
+    ];
+    const cue = assembleDraft(moments, { ...opts(), config: { qualityThreshold: 5 } });
+    expect(cue.segments).toHaveLength(1);
+    expect(cue.segments?.[0]?.subtitle).toBe("quality5");
+  });
+
+  it("config.timelapseConnector.capPerEpisode를 낮추면 그 상한까지만 배속 커넥터를 뽑는다", () => {
+    const monotonousRanges = Array.from({ length: 5 }, (_, i) => ({
+      startS: i * 100,
+      endS: i * 100 + 40,
+      desc: `구간${i}`,
+    }));
+    const moments: ClipMoments[] = [
+      { clip: "a.mp4", clipSummary: "", moments: [], monotonousRanges },
+    ];
+    const cue = assembleDraft(moments, {
+      ...opts(),
+      config: { timelapseConnector: { capPerEpisode: 2 } },
+    });
+    expect(cue.segments).toHaveLength(2);
+  });
+
   it("정속 세그먼트는 speed 1, volume 1로 채운다", () => {
     const moments: ClipMoments[] = [
       {
