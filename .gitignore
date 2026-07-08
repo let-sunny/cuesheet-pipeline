@@ -20,3 +20,6 @@ proto_final_*.mp4
 
 # pipeline judgment/scan artifacts - personal data, never commit
 media/drafts/
+
+# derived outputs - never commit
+*.srt
