@@ -100,7 +100,10 @@ Homebrew default `ffmpeg` is missing `drawtext` (no libfreetype/fontconfig) — 
 
 The user's own Claude Code session (a *different* session from the one operating this repo, or
 the same one) attaches to `cuesheet-bridge` and edits the cuesheet in place — no Claude API call
-happens inside the app itself. Registered in the root `.mcp.json`:
+happens inside the app itself. Registered in the root `.mcp.json`, which points at
+`packages/bridge/dist/index.js` — **that file only exists after a build** (`pnpm --filter
+@cuesheet/bridge build`, or `pnpm -r build` for everything), so run one of those once before a
+Claude Code session tries to attach to `cuesheet-bridge`, or the server fails to start:
 
 ```json
 {

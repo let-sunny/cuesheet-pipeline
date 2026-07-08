@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 # Generates sample test clips with ffmpeg testsrc/sine (no copyright/size concerns).
-# Regenerate: bash media/clips/generate.sh
+# Regenerate: bash scripts/generate-sample-clips.sh
+# Output goes to media/clips/ (repo-relative), regardless of the caller's cwd.
 set -euo pipefail
-cd "$(dirname "$0")"
+OUT_DIR="$(dirname "$0")/../media/clips"
+mkdir -p "$OUT_DIR"
+cd "$OUT_DIR"
 
 FFMPEG=${FFMPEG:-ffmpeg}
 

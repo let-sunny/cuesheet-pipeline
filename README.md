@@ -31,15 +31,31 @@ The cuesheet is the single source of truth: the web editor and Claude Code both 
 write the same validated JSON, so hand edits and natural-language commands never conflict.
 See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full package/data-flow map.
 
+## Prerequisites
+
+- Node.js >= 20, pnpm >= 11 (the repo pins an exact version via `packageManager` in
+  `package.json` — run `corepack enable` once so `pnpm` resolves to that version).
+- ffmpeg on `PATH`. On macOS, the default Homebrew `ffmpeg` formula is missing
+  `drawtext` (no libfreetype/fontconfig support), which subtitle burn-in needs —
+  install `brew install ffmpeg-full` instead and put it first on `PATH`. See
+  [packages/render/README.md](packages/render/README.md) for the exact command.
+  Cuesheets with no subtitles render fine with the plain `ffmpeg` formula.
+
 ## Quickstart
 
 ```bash
 pnpm install
+pnpm -r build                         # also needed once before opening Claude Code,
+                                       # so the MCP bridge (cuesheet-bridge) has a dist to run
 pnpm episode "<raw footage folder>"   # scan + vision draft, then launches the editor
 ```
 
 Or from Claude Code, run `/episode <raw footage folder>` to generate the rough cut, then
 open the editor at `localhost:5173` to polish and export.
+
+No footage on hand yet? `bash scripts/generate-sample-clips.sh` generates a couple of
+synthetic test clips (ffmpeg testsrc/color bars + tone, no copyright concerns) into
+`media/clips/` so you can try the pipeline end to end.
 
 ## Why this exists
 
