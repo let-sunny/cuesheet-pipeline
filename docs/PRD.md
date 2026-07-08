@@ -12,6 +12,16 @@ set it apart: it works on footage with no dialogue (vision-based), and it bakes 
 user's own editing grammar (cut rhythm 2.8-3.0s, shot vocabulary, narrative arc, the
 chin-line face policy).
 
+## Phase goals (user-declared, 2026-07-09)
+
+1. **Usability up, zero feature regression** — every UX change preserves existing capability.
+2. **Astryx as an AI-driven design-system testbed** — the user's AI exercises Astryx to its
+   fullest; bugs/gaps found along the way become an upstream fix-proposal list.
+3. **Packaged for others** — clean, beautiful, well-ordered code with HIGH test coverage;
+   a stranger (or their AI) can clone and use it.
+4. **Table-stakes editor features** we deferred for MVP — multiple named subtitle styles,
+   title/chapter subtitles, and others the AI should proactively propose and add.
+
 ## 2. User and core scenario
 
 Single user (a knitting vlogger). Weekly routine:
