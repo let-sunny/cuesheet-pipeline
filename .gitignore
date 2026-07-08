@@ -23,3 +23,8 @@ media/drafts/
 
 # derived outputs - never commit
 *.srt
+
+# real-episode working cuesheets - personal content, keep local only
+episodes/
+proto_*.cuesheet.json
+archive/proto-v3/*.cuesheet.json
