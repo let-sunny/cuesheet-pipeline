@@ -35,6 +35,32 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 - **Proxy playback**: original 4K HEVC can't play in-browser -> 720p H.264 proxy for preview, render uses the original
 - **iCloud rule**: must check `stat blocks=0` before reading source footage (reading a placeholder hangs forever), manage space with `brctl download/evict`
 
+## 2026-07-09 overnight: release-readiness chain (autonomous loop)
+
+- **English everywhere in git (complete)**: history rewritten (106 commit messages
+  translated, personal paths scrubbed incl. dash-encoded variants, judgment data purged),
+  UI chrome, validation messages, code comments, docs, runtime strings across
+  bridge/CLI/server. Remaining Korean = content data, voice-guide examples, test titles
+  (pending decision).
+- **Privacy**: zero media blobs ever in history (verified); moments/progress/manifest
+  untracked + history-purged; SRT outputs untracked (*.srt ignored); Vrew branding
+  removed (one competitor-research doc retained as legitimate analysis).
+- **Release surface**: README rewritten as the public front door; ARCHITECTURE.md moved
+  to root; AGENTS.md + llms.txt added (agent-operated onboarding); bridge MCP expanded
+  to 4 tools (validate_cuesheet dry-run, get_schema); CLI --json on scan/assemble/render;
+  assembly grammar split into overridable config (defaults unchanged, proven by tests);
+  crop aspect lock generalized to derive from project aspect (schema refine + ffprobe
+  render check + UI lock).
+- **Refactoring audit**: 4 duplication families consolidated; 16 files reordered to the
+  code-layout convention (public surface -> protagonist -> helpers), recorded in
+  CLAUDE.md; oversized-file split candidates listed for discussion (App.tsx 1404L etc).
+- **UX polish from live feedback**: card spacing/no-dimming/badge wrapping, banner
+  button hierarchy, read-only clip name, separated Delete zone, Export audit,
+  project-name download filenames, intro/outro upload, Save dirty emphasis (proactive).
+  Toast inverted theme confirmed as intentional Astryx design.
+- Tests: 113 across 5 packages, all green. astryx PR #3660 tidied and review-pending;
+  third-party duplicate PR #3690 under watch (ours predates, with tests+changeset).
+
 ## 2026-07-08 major overhaul (PRD established + hierarchy realigned + pipeline expanded, autonomous loop)
 
 **Canonical docs established**: `docs/PRD.md` (full feature list, terminology dictionary, state
