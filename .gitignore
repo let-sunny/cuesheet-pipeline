@@ -17,3 +17,6 @@ nohup.out
 .claude/scheduled_tasks.lock
 media/drafts/frames/
 proto_final_*.mp4
+
+# pipeline judgment/scan artifacts - personal data, never commit
+media/drafts/
