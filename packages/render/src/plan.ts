@@ -9,6 +9,12 @@ export interface RenderPlan {
   /** -filter_complex graph (for debugging/verification) */
   filterComplex: string;
   outputPath: string;
+  /**
+   * Non-fatal warnings collected while building the plan (e.g. a subtitle likely to overflow the
+   * frame at render). Callers (the CLI, the web server) are responsible for surfacing these -
+   * this stays a plain data field so buildRenderPlan itself has no I/O/logging side effects.
+   */
+  warnings: string[];
 }
 
 export interface SourceDimensions {
@@ -52,6 +58,7 @@ export function buildRenderPlan(
   const filters: string[] = [];
   // The concat filter requires per-segment [v][a] pairs to alternate: [v0][a0][v1][a1]...
   const concatLabels: string[] = [];
+  const warnings: string[] = [];
   let clipCount = 0;
   let idx = 0;
 
@@ -107,7 +114,14 @@ export function buildRenderPlan(
   // v1 constraint: intro duration can't be known without probing the file, so it's not included in this offset.
   let segmentOffset = 0;
   const narrationCues: { path: string; start: number }[] = [];
-  for (const s of cue.segments) {
+  cue.segments.forEach((s, i) => {
+    if (burnSubtitles && s.subtitle.length > 0) {
+      const style = effectiveSubtitleStyle(cue.subtitleStyle, s.styleOverride);
+      const overflow = subtitleOverflowWarning(s.subtitle, style.size, W);
+      if (overflow) {
+        warnings.push(`segments[${i}].subtitle: ${overflow}`);
+      }
+    }
     addClip(join(cue.clipDir, s.clip), {
       ss: s.in,
       dur: s.out - s.in,
@@ -121,7 +135,7 @@ export function buildRenderPlan(
       narrationCues.push({ path: join(cue.narration.dir, s.narration), start: segmentOffset });
     }
     segmentOffset += (s.out - s.in) / s.speed;
-  }
+  });
   if (cue.outro) addClip(cue.outro, {});
 
   const n = clipCount;
@@ -179,7 +193,7 @@ export function buildRenderPlan(
     "-y",
     outputPath,
   ];
-  return { args, filterComplex, outputPath };
+  return { args, filterComplex, outputPath, warnings };
 }
 
 /**
@@ -274,3 +288,31 @@ function drawtextFilter(text: string, style: CueSheet["subtitleStyle"]): string 
 
 /** Relative tolerance for the crop-vs-project-aspect check (1%). */
 const CROP_ASPECT_TOLERANCE = 0.01;
+
+/**
+ * Cheap heuristic for "this subtitle might overflow the frame" - drawtext never wraps text, so a
+ * run of characters with no spaces just draws off both edges of the frame once it's wide enough.
+ * This is a rough character-count-vs-estimated-pixel-width guard, not a precise prediction (exact
+ * wrap parity with drawtext isn't feasible without the actual font metrics) - it's the last-resort
+ * guard right before the real ffmpeg render, mirroring the same heuristic/ratio the web editor
+ * shows at edit time (packages/web/src/lib/subtitleOverflow.ts).
+ */
+const AVG_CHAR_WIDTH_RATIO = 0.6;
+
+function longestUnwrappableToken(text: string): string {
+  return text
+    .split(/\s+/)
+    .reduce((longest, token) => (token.length > longest.length ? token : longest), "");
+}
+
+function subtitleOverflowWarning(text: string, fontSizePx: number, frameWidthPx: number): string | null {
+  const token = longestUnwrappableToken(text);
+  if (token.length === 0) {
+    return null;
+  }
+  const estimatedWidthPx = token.length * fontSizePx * AVG_CHAR_WIDTH_RATIO;
+  if (estimatedWidthPx <= frameWidthPx) {
+    return null;
+  }
+  return `a ${token.length}-character run with no spaces may not fit the frame width at render (estimate only, drawtext doesn't wrap)`;
+}

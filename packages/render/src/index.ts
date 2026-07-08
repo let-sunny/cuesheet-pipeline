@@ -105,6 +105,9 @@ try {
   console.error((e as Error).message);
   process.exit(1);
 }
+for (const warning of plan.warnings) {
+  console.error(`Warning: ${warning}`);
+}
 console.error(`ffmpeg ${plan.args.join(" ")}`);
 
 const proc = spawn("ffmpeg", plan.args, { stdio: "inherit" });
