@@ -14,14 +14,14 @@ const hexColor = z
   .string()
   .regex(
     /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/,
-    "hex 색상 형식이어야 합니다 (예: #ffffff 또는 #fff)",
+    "must be a hex color (e.g. #ffffff or #fff)",
   );
 
 export const projectSchema = z.object({
-  name: z.string().min(1, "project.name은 비어 있을 수 없습니다"),
-  fps: z.number().positive("fps는 양수여야 합니다"),
-  width: z.number().int("width는 정수여야 합니다").positive("width는 양수여야 합니다"),
-  height: z.number().int("height는 정수여야 합니다").positive("height는 양수여야 합니다"),
+  name: z.string().min(1, "project.name must not be empty"),
+  fps: z.number().positive("fps must be positive"),
+  width: z.number().int("width must be an integer").positive("width must be positive"),
+  height: z.number().int("height must be an integer").positive("height must be positive"),
 });
 
 /**
@@ -31,17 +31,17 @@ export const projectSchema = z.object({
  */
 export const cropSchema = z
   .object({
-    x: z.number().nonnegative("crop.x는 0 이상이어야 합니다"),
-    y: z.number().nonnegative("crop.y는 0 이상이어야 합니다"),
-    w: z.number().gt(0.1, "crop.w는 0.1보다 커야 합니다"),
-    h: z.number().gt(0.1, "crop.h는 0.1보다 커야 합니다"),
+    x: z.number().nonnegative("crop.x must be >= 0"),
+    y: z.number().nonnegative("crop.y must be >= 0"),
+    w: z.number().gt(0.1, "crop.w must be > 0.1"),
+    h: z.number().gt(0.1, "crop.h must be > 0.1"),
   })
   .refine((c) => c.x + c.w <= 1, {
-    error: "crop.x + crop.w는 1 이하여야 합니다",
+    error: "crop.x + crop.w must be <= 1",
     path: ["x"],
   })
   .refine((c) => c.y + c.h <= 1, {
-    error: "crop.y + crop.h는 1 이하여야 합니다",
+    error: "crop.y + crop.h must be <= 1",
     path: ["y"],
   });
 
@@ -52,21 +52,21 @@ export const subtitleBackgroundSchema = z.object({
   color: hexColor,
   opacity: z
     .number()
-    .min(0, "background.opacity는 0 이상이어야 합니다")
-    .max(1, "background.opacity는 1 이하여야 합니다"),
+    .min(0, "background.opacity must be >= 0")
+    .max(1, "background.opacity must be <= 1"),
   padding: z
     .number()
-    .min(0, "background.padding은 0 이상이어야 합니다")
-    .max(120, "background.padding은 120 이하여야 합니다")
+    .min(0, "background.padding must be >= 0")
+    .max(120, "background.padding must be <= 120")
     .default(8),
 });
 
 export const subtitleStyleSchema = z.object({
-  font: z.string().min(1, "font는 비어 있을 수 없습니다"),
-  size: z.number().positive("size는 양수여야 합니다"),
+  font: z.string().min(1, "font must not be empty"),
+  size: z.number().positive("size must be positive"),
   color: hexColor,
   outlineColor: hexColor,
-  outlineWidth: z.number().nonnegative("outlineWidth는 0 이상이어야 합니다"),
+  outlineWidth: z.number().nonnegative("outlineWidth must be >= 0"),
   position: z.enum(["bottom", "top", "center"]),
   // 자막 뒤 반투명 배경 박스. 생략/null = 배경 없음(기존 동작 100% 유지).
   background: subtitleBackgroundSchema.nullable().optional(),
@@ -74,8 +74,8 @@ export const subtitleStyleSchema = z.object({
   // 생략 시 40(기존 하드코딩 값과 동일) — 기존 큐시트 렌더 결과가 그대로 유지된다.
   margin: z
     .number()
-    .min(8, "margin은 8 이상이어야 합니다")
-    .max(600, "margin은 600 이하여야 합니다")
+    .min(8, "margin must be >= 8")
+    .max(600, "margin must be <= 600")
     .default(40),
 });
 
@@ -94,47 +94,47 @@ export const subtitleStyleSchema = z.object({
 export const subtitleStyleOverrideSchema = subtitleStyleSchema.partial().extend({
   margin: z
     .number()
-    .min(8, "margin은 8 이상이어야 합니다")
-    .max(600, "margin은 600 이하여야 합니다")
+    .min(8, "margin must be >= 8")
+    .max(600, "margin must be <= 600")
     .optional(),
 });
 
 export const segmentSchema = z
   .object({
-    clip: z.string().min(1, "clip 파일명은 비어 있을 수 없습니다"),
-    in: z.number().nonnegative("in은 0 이상이어야 합니다"),
-    out: z.number().positive("out은 양수여야 합니다"),
-    speed: z.number().positive("speed는 0보다 커야 합니다").default(1.0),
+    clip: z.string().min(1, "clip filename must not be empty"),
+    in: z.number().nonnegative("in must be >= 0"),
+    out: z.number().positive("out must be positive"),
+    speed: z.number().positive("speed must be > 0").default(1.0),
     volume: z
       .number()
-      .min(0, "volume은 0.0 이상이어야 합니다")
-      .max(1, "volume은 1.0 이하여야 합니다")
+      .min(0, "volume must be >= 0.0")
+      .max(1, "volume must be <= 1.0")
       .default(1.0), // 이 세그먼트 오디오 볼륨. 1.0=원본, 0.3="30% 수준", 0=무음
     subtitle: z.string(), // 빈 문자열 허용
     // 이 컷에 얹을 내레이션 오디오 파일명(narration.dir 기준). null/생략이면 내레이션 없음.
-    narration: z.string().min(1, "narration 파일명은 비어 있을 수 없습니다").nullable().optional(),
+    narration: z.string().min(1, "narration filename must not be empty").nullable().optional(),
     // 원본 해상도 기준 비율 크롭(0~1). null/생략이면 크롭 없음(원본 그대로).
     crop: cropSchema.nullable().optional(),
     // 이 컷만의 자막 스타일 부분 오버라이드. null/생략이면 전역 subtitleStyle 그대로.
     styleOverride: subtitleStyleOverrideSchema.nullable().optional(),
   })
   .refine((s) => s.in < s.out, {
-    error: "in은 out보다 작아야 합니다 (in < out)",
+    error: "in must be less than out (in < out)",
     path: ["in"],
   });
 
 export const bgmCueSchema = z
   .object({
-    file: z.string().min(1, "bgm.file은 비어 있을 수 없습니다"),
-    start: z.number().nonnegative("start는 0 이상이어야 합니다"),
-    end: z.number().positive("end는 양수여야 합니다"),
+    file: z.string().min(1, "bgm.file must not be empty"),
+    start: z.number().nonnegative("start must be >= 0"),
+    end: z.number().positive("end must be positive"),
     volume: z
       .number()
-      .min(0, "volume은 0.0 이상이어야 합니다")
-      .max(1, "volume은 1.0 이하여야 합니다"),
+      .min(0, "volume must be >= 0.0")
+      .max(1, "volume must be <= 1.0"),
   })
   .refine((b) => b.start < b.end, {
-    error: "start는 end보다 작아야 합니다 (start < end)",
+    error: "start must be less than end (start < end)",
     path: ["start"],
   });
 
@@ -145,20 +145,20 @@ export const bgmCueSchema = z
  */
 export const narrationConfigSchema = z.object({
   enabled: z.boolean(),
-  dir: z.string().min(1, "narration.dir은 비어 있을 수 없습니다"),
+  dir: z.string().min(1, "narration.dir must not be empty"),
   volume: z
     .number()
-    .min(0, "volume은 0.0 이상이어야 합니다")
-    .max(1, "volume은 1.0 이하여야 합니다")
+    .min(0, "volume must be >= 0.0")
+    .max(1, "volume must be <= 1.0")
     .default(1.0),
 });
 
 export const cueSheetSchema = z.object({
   project: projectSchema,
-  clipDir: z.string().min(1, "clipDir은 비어 있을 수 없습니다"),
+  clipDir: z.string().min(1, "clipDir must not be empty"),
   intro: z.string().min(1).nullable(),
   outro: z.string().min(1).nullable(),
-  segments: z.array(segmentSchema).min(1, "segments는 최소 1개 이상이어야 합니다"),
+  segments: z.array(segmentSchema).min(1, "segments must have at least 1 item"),
   bgm: z.array(bgmCueSchema),
   subtitleStyle: subtitleStyleSchema,
   narration: narrationConfigSchema.optional(),

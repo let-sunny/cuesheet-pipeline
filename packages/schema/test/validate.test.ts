@@ -197,7 +197,7 @@ describe("validateCueSheet - 실패 케이스", () => {
     const result = validateCueSheet(bad);
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.errors.some((e) => e.includes("최소 1개"))).toBe(true);
+      expect(result.errors.some((e) => e.includes("at least 1"))).toBe(true);
     }
   });
 
