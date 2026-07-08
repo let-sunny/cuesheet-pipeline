@@ -92,20 +92,73 @@ metadata text keep full contrast (not dimmed).
 ```
 [Timeline (zoom controls at the far right)]
 [Play all button]
-+- Cut list -----------+ +- Video column (sticky) ------------+
-| row: thumbnail|       | | scene header (#n, badge, desc)     |
-| subtitle (inline)     | | video (reframe, subtitle overlay)  |
-|   |scene line|badge   | | playback controls (one row: play,  |
-|                        | |   In, Out, split — hugs the video) |
-|                        | +- Cut settings (order in section 4)-+
-+------------------------+
+[BGM gutter header: collapse toggle + count badge | + Add track]
++gu+- Cut list -----------+ +- Video column (sticky) ------------+
+|tt| row: thumbnail|       | | scene header (#n, badge, desc)     |
+|er| subtitle (inline)     | | video (reframe, subtitle overlay)  |
+|  |   |scene line|badge   | | Overview bar (full clip)           |
+|  |                        | | Zoomed-in bar (drag In/Out here)   |
+|  |                        | | playback controls (one row: play,  |
+|  |                        | |   In, Out, split — hugs the video) |
+|  |                        | +- Cut settings OR BGM settings -----+
++--+------------------------+   (right column swaps per selection)
 ```
+
+**BGM gutter (2026-07-09, replaces the earlier "Timeline · Background music (BGM)" section
+that lived in the Export step)**: background music editing moved next to the cut list because
+you cannot place music against nothing — you need to see cut content (thumbnails/subtitles/scene
+lines) to decide "the music changes at cut #3". Design:
+- Each bgm cue renders as a **vertical bar in the gutter spanning the cut rows it covers** — not
+  a proportional-time horizontal lane. Storage stays seconds (the schema/render contract is
+  unchanged); the gutter converts cut index <-> accumulated playback time
+  (`lib/bgmCutMapping.ts`) purely for display/editing.
+- **Anchoring**: dragging a bar (move) or its top/bottom edge (resize) snaps to **cut
+  boundaries**, never an arbitrary pixel/second. Bar geometry is read directly off the actual
+  rendered row elements' `offsetTop`/`offsetHeight` (not computed from a separate proportional
+  time axis), so it is pixel-exact with the cut list by construction — a row growing (subtitle
+  text wrapping) keeps the bar aligned without any separate sync logic.
+- **Overlaps are allowed** (e.g. a music bed under a shorter sting) — overlapping cues are
+  assigned to separate lanes (`lib/bgmLanes.ts`, greedy interval scheduling) and render as
+  parallel thin columns in the gutter, each independently clickable/draggable.
+- **Collapsible**: the whole gutter can be collapsed to a thin strip via its header toggle (a
+  count badge shows how many tracks exist while collapsed, since tracks can multiply).
+- **Selection swaps the right column**: clicking a bar sets the panel on the right to
+  `BgmSettingsPanel` instead of Cut settings — file picker (with pre-listen: a play/stop button
+  next to each candidate file, so auditioning doesn't require assigning first), start/end shown
+  as cut numbers ("Cuts 3-17") alongside the seconds they resolve to, volume, and a separated
+  destructive [Remove track]. Clicking a cut row (not a bar) swaps the panel back to Cut
+  settings. "+ Add track" (gutter header) adds a track defaulting to span just the currently
+  selected cut.
+- Works alongside "Play all" so timing can be audited by ear while watching.
+- The Export step (section 5) now shows only a one-line, read-only summary — see there.
+
+**Two-level trim (2026-07-09)**: a single scrub bar mapping the *entire clip's* duration to its
+pixel width makes a short in/out range (e.g. 3s inside a 900s+ long take) sub-pixel and
+undraggable. Fixed with two stacked bars under the video, both always visible:
+- **Overview bar** — the full clip; shows the detail bar's current zoom window as a highlighted
+  box. Click or drag anywhere on it re-centers the window on that point (the window's width is
+  unchanged, only its position moves).
+- **Detail (zoomed-in) bar** — maps only the current zoom window to its width, so In/Out handles
+  get real pixel room to drag regardless of clip length. Default window: the cut's in/out range
+  padded by 30% of its own length on each side, widened to at least 20s (or the whole clip, if
+  shorter than that — so a short clip's "window" is simply the entire clip, both bars reading
+  effectively the same range). The window resets to this default when the selected cut or the
+  clip's duration changes, but deliberately *not* on every in/out edit — it holds still while
+  dragging the detail handles; only the overview bar (a separate, deliberate action) repositions
+  it.
+- Both bars show the current-time playhead; [Set In here]/[Set Out here] are unchanged (they use
+  the current playback position, independent of which bar is visible).
 
 ## 4. Cut settings group definitions (fixed order and layout)
 
 **G1. Range** — one row: `In [narrow] Out [narrow] Length 12.3s (read-only)`
 **G2. Playback** — one row: `Speed [narrow]x Volume [narrow]%` (paired alignment, never
-  oversized)
+  oversized). Speed is capped at **16x** (input: min 0.1, step 0.1, max 16; over-entry clamps
+  instead of erroring, with a note shown once the cap is hit) — browsers throw setting
+  `HTMLMediaElement.playbackRate` above 16, which would otherwise crash this same preview. The
+  schema enforces the same cap (`speed must be <= 16`), and VideoPreview/SequencePlayer also
+  defensively clamp the value actually assigned to `playbackRate` (belt-and-suspenders for
+  old/hand-edited data and the J/K/L shuttle's further multiplier).
 **G3. Subtitle** — textarea (full) + collapsible sub-section **"Subtitle style for this
   cut"** (indented/bordered to make clear it belongs under Subtitle): size, color, outline,
   background (color + opacity in one row), margin + [Apply to all cuts] [Release]
@@ -145,21 +198,49 @@ expected degradation, not a bug.
 ## 5. (3) Export
 
 Section order (the natural order of preparing output): **Project** (name, fps, resolution)
--> **Subtitle style (global)** (size/color/outline as one group / background box as one
-group (toggle + color + opacity + margin) / position + edge margin in one row / note: "see
-the (2) Edit video column for a live preview") -> **Intro/outro** (select + release,
-collapsible manual entry) -> **BGM** -> **Narration** (toggle, folder, volume, help text) ->
+-> **Subtitle style (global)** (compact live preview / size/color/outline as one group /
+background box as one group / position + edge margin, each its own row / note pointing at the
+(2) Edit video column for the composited-over-actual-video version) -> **Intro/outro** (select +
+release, collapsible manual entry) -> **Background music** (one-line summary only — editing
+lives in the (2) Edit step, see section 3) -> **Narration** (toggle, folder, volume, help text) ->
 **Output** ([Download subtitles .srt] [Export...] — Export dialog: resolution presets /
 burn-in subtitles / summary / start).
+
+**Layout tokens (2026-07-09 revision — fixes the "inputs are tiny and right-skewed" bug)**: a
+section's form content is capped at a **readable column width** (620px; 680px for the subtitle
+style section, which also holds a preview stage) and left-anchored — the panel itself can be much
+wider than that on a large viewport, and that extra width is deliberately left empty on the right
+rather than stretched into. Within a row, the **label sits in a fixed 120px column immediately to
+the left of its field** — never `justify-content: space-between` (that was the actual bug: with
+the section stretched to the full step-body width, space-between threw the label to the far left
+and the field to the far right with a large empty gap between, which read as "tiny, right-skewed
+inputs" even though the fields themselves weren't small). Field width is chosen by content type,
+not by the row: numbers use the shared `narrow` token (80px, same as Cut settings' G1/G2); short
+free text (Name, Font) uses a wider `medium` text token (240px, `.field-text-medium` — distinct
+from the 180px `.field-medium` used for selects elsewhere, since 180px reads cramped for a text
+field); color rows keep the swatch + hex pair immediately adjacent to the label, never split
+across the panel. **Background box group**: the enable checkbox, then (only while enabled) color,
+opacity, and padding, each its own row. **Position and Edge margin are two separate rows** (not
+one shared row) — cramming a select and a slider onto one row is what caused a clipped "Position"
+label and a squeezed slider in the first place; there's no space constraint forcing them together.
+
+**Subtitle style live preview (2026-07-09 addition)**: a compact (~360px, 16:9) preview stage
+sits directly under the section header, visible while every control below it is adjusted — an
+earlier, bulkier full-preview was removed for being redundant with the Edit step, but removing all
+in-place feedback went too far; this restores just enough. It renders a sample line ("자막
+미리보기 Aa 123") over a real frame thumbnail from the first cut's clip (falling back to a fixed
+dark stage color), using the *exact* overlay CSS/merge helpers the Edit step's video uses
+(`lib/subtitleOverlay.ts`, `.video-subtitle-overlay*` classes) — reused, not re-implemented, so it
+cannot drift out of sync with the real thing. Respects position/edge margin and the background
+box exactly as the real overlay does.
 
 **Button hierarchy and state rules for this step (2026-07-08, applies section 0/6 rules
 concretely)**: the one primary of the whole step is [Export] in Output; [Download subtitles
 .srt] is secondary. Within Intro/outro, "Upload file" is secondary and "Clear" is ghost —
 Clear only un-assigns a reference (instantly reversible from the same panel via re-select),
-it does not delete a file, so it is not treated as destructive (contrast with BGM row
-[Delete], which removes a cue entry and is `variant="destructive"`). No section in this step
+it does not delete a file, so it is not treated as destructive. No section in this step
 dims a whole row/card via opacity for any state (matches section 2's rule, generalized to
-every step). Long file names (intro/outro "Clip: <name>" label, BGM `file` field) stay inside
+every step). Long file names (intro/outro "Clip: <name>" label) stay inside
 their row's bounds via ellipsis or wrap — never raw layout overflow; native `<select>`
 elements truncate long option text using the browser's own mechanism, which is acceptable
 (contained, not a custom-overflow bug). Free-text fields are only used where there is no
@@ -182,6 +263,16 @@ Buttons that belong to one group render inside one container (not spread across 
 stay visually together, and action groups in banners/dialog footers are right-aligned.
 
 ## Changelog
+- 2026-07-09 — four changes in one round, in priority order: (1) BGM editing moved from the
+  Export step into a collapsible vertical gutter next to the (2) Edit cut list, anchored to cut
+  boundaries with overlap lanes (section 3) - Export now shows a one-line summary only (section
+  5); (2) Export step layout tokens fixed - readable-column max-width, fixed-width left label,
+  content-typed field widths, background box/position/margin split into one-field-per-row
+  (section 5), plus a restored compact live subtitle-style preview reusing the Edit step's own
+  overlay code; (3) segment.speed capped at 16 (schema + UI clamp + defensive playbackRate clamp)
+  since browsers throw above that (section 4, G2); (4) two-level trim (overview + zoomed-in bar)
+  in the Edit video column so a short in/out range inside a long source clip still gets real,
+  draggable handle spacing (section 3).
 - 2026-07-09 — added rule 8 (never style raw element selectors globally, and never reach into
   Astryx components via CSS at all — props only). Root cause of a reported "button hierarchy
   invisible" bug: styles.css's unlayered `button {}` / `button:hover:not(:disabled)` /
