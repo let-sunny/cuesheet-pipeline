@@ -28,6 +28,27 @@
    **releasing with history intact is not an option; exporting to a fresh public repo is
    the safe path**
 
+## Distribution model (decided 2026-07-09)
+
+The tool is offered in layers — a stable machine surface first, AI layers on top:
+
+```
+Layer 3  docs for AI (AGENTS.md / llms.txt)   - explains the tool to agents
+Layer 2  MCP tools (bridge)                   - lets agents operate it
+Layer 1  CLI + library functions (--json)     - the stable machine surface
+```
+
+Consumption models, staged:
+
+| Model | User experience | When |
+|---|---|---|
+| **A. Clone-and-own** (current) | Clone the repo, install, register MCP - live inside it. Fits the "fork a personal tool and make it yours" story (grammar config, voice guide as data) | Now - verified by the fresh-clone onboarding rehearsal |
+| **B. npm-installed CLI** | `npx` the tools as dependencies; user's own folder holds cuesheets/config/voice guide | If public demand appears. Groundwork done: grammar config split, repo-relative paths, --json |
+| **C. MCP-only** | Add one MCP server to any AI client; whole pipeline exposed as tools (scan/assemble/render) | Derivative of B, for AI-only users who never touch a CLI |
+
+Decision: polish A now; hold B/C together with the npm-publish decision until there is
+demand. The thresholds for B were deliberately lowered in advance.
+
 ## Open questions (need the user's decision)
 
 - Do we even want to release publicly? (Portfolio value vs. keeping this a personal project)
