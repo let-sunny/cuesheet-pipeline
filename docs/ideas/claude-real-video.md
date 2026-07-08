@@ -1,149 +1,190 @@
-# 아이디어: claude-real-video(crv)로 스크립트-영상 자동 매칭
+# Idea: Automatic script-to-footage matching with claude-real-video (crv)
 
-> **최종 상태(2026-07-05): 미채택 — 검토 종료, 설치본 삭제됨.** 실측 근거는 아래
-> "2차 실측"/"3차 교차 검증" 섹션, 대체 구현과의 차이는 맨 아래 "crv vs 자체 구축" 섹션 참고.
-> 설치했던 venv(스크래치패드)는 제거 완료. brew `python@3.12`는 crv 테스트 때 설치된
-> 부수 패키지로 아직 남아 있음(다른 용도가 없다면 `brew uninstall python@3.12`로 제거 가능).
+> **Final status (2026-07-05): not adopted — review closed, installation removed.** For the
+> empirical grounds, see the "Second-round measurement" / "Third-round cross-validation" sections
+> below; for the difference from the alternative implementation, see the "crv vs. the in-house
+> pipeline" section at the bottom. The venv (scratchpad) that was installed has been removed.
+> The brew `python@3.12` package installed as a side effect of testing crv is still present
+> (can be removed with `brew uninstall python@3.12` if it serves no other purpose).
 
-## 리서치 배경
+## Research background
 
-스레드에서 화제였던 영상 분석 라이브러리를 찾아본 결과:
+Looked into a video-analysis library that had been trending in a thread:
 [claude-real-video (crv)](https://github.com/HUANGCHIHHUNGLeo/claude-real-video)
-— 2026-06-30 공개, 리서치 시점 기준 5일 만에 star 810, HN 프론트페이지. PyPI 배포, MIT.
+— released 2026-06-30, 810 stars within 5 days as of the research date, HN front page.
+Distributed via PyPI, MIT license.
 
-## crv가 하는 일
+## What crv does
 
-- 원본 영상(URL 또는 로컬 파일)에서 **씬 전환 감지 + 슬라이딩 윈도우 중복제거**로
-  "실제로 달라지는 프레임"만 추출. 고정 간격(1fps 등) 샘플링과 달리 static한
-  구간은 뭉치고 fast-cut 구간은 놓치지 않음.
-- ffmpeg/ffprobe + Whisper로 전부 **로컬 처리**. 결과물:
+- From source footage (URL or local file), extracts only "frames that actually change" via
+  scene-transition detection + sliding-window deduplication. Unlike fixed-interval sampling
+  (e.g. 1fps), it collapses static stretches and doesn't miss fast-cut stretches.
+- Everything runs locally via ffmpeg/ffprobe + Whisper. Output:
   `crv-out/frames/*.jpg` + `transcript.txt` + `MANIFEST.txt`.
-- `--why "..."`로 분석 관점 지정 가능, `--kb <dir>`로 결과를 노트로 저장.
-- Claude Code 스킬로도 설치 가능 (`~/.claude/skills`에 복사) — 링크만 주면 알아서 봄.
-- 의존: ffmpeg만 있으면 됨 (drawtext 불필요 — [ffmpeg 빌드 이슈](../../CLAUDE.md)와 무관,
-  기본 `brew install ffmpeg`로 충분).
+- `--why "..."` lets you specify the analysis angle; `--kb <dir>` saves the results as notes.
+- Can also be installed as a Claude Code skill (copied into `~/.claude/skills`) — just give it
+  a link and it looks it over on its own.
+- Dependencies: ffmpeg is the only requirement (no drawtext needed — unrelated to the
+  [ffmpeg build issue](../../CLAUDE.md), a plain `brew install ffmpeg` suffices).
 
-## 실제 콘텐츠 성격 (중요 — 이전 버전의 이 문서가 잘못 짚었던 부분)
+## What the actual content is like (important — a point an earlier version of this document got wrong)
 
-이 프로젝트의 실사용 소스는 **뜨개질 브이로그**다. 원본 영상은 뜨개질하는 손/작업 모습을
-찍은 것으로 **대사(내레이션) 자체가 없다** — 사용자가 스크립트를 따로 써서 그걸 화면
-자막으로 얹는 흔한 브이로그 편집 방식이다. CLAUDE.md의 "음성이 아니라 대본을 기준으로"가
-바로 이 얘기: 오디오에 맞는 발화 구간을 찾는 게 아니라, **대본(자막) 한 줄이 묘사하는
-동작/장면과 시각적으로 맞는 원본 영상 구간을 찾는 것**이 매칭의 본질이다.
+The real-world source for this project is a knitting vlog. The source footage shows
+hands/knitting work being filmed and has no dialogue (narration) at all — the user writes a
+separate script and overlays it as on-screen subtitles, a common vlog editing approach. This is
+exactly what CLAUDE.md's "based on the script, not the audio" means: the essence of matching
+isn't finding the speech segment that lines up with the audio, but finding the source-footage
+segment that visually matches the action/scene a given script (subtitle) line describes.
 
-→ 결론: crv의 **Whisper 전사 기능은 이 프로젝트엔 필요 없다.** 쓸모가 있다면 순전히
-**씬 프레임 추출**(원본 영상에서 "이 구간엔 이런 동작이 보인다"는 대표 프레임을 뽑는 것)
-쪽이고, 매칭은 그 프레임을 Claude가 보고 자막 문장과 시각적으로 대조하는 방식이어야 한다.
-(이전 버전은 "매칭 = 대본↔오디오전사"라는 흔한 패턴을 무비판적으로 가져와 적었던 오류 —
-아래 "상태"의 1차 스모크 테스트 결론도 그 전제 위에서 나온 것이라 재평가 필요.)
+→ Conclusion: crv's Whisper transcription feature is not needed for this project. If anything
+is useful, it is purely the scene-frame extraction (pulling representative frames from the
+source footage that show "this is the action visible in this stretch"), and matching should
+work by having Claude look at those frames and visually compare them against the subtitle
+sentences. (The earlier version uncritically imported the common pattern "matching = script <->
+audio transcript" — an error. The first-round smoke-test conclusion under "Status" below was
+also built on that premise and needs re-evaluation.)
 
-## 이 프로젝트에 적용한다면 (개정)
+## If applied to this project (revised)
 
-문제를 단순하게 만드는 제약 두 가지(사용자 확인):
-- **대본 순서 = 영상 시간 순서**(브이로그) — 전역 검색/재배열이 아니라 앞에서부터
-  훑는 순서 보존 정렬 문제. 전역 매칭 로직은 과설계.
-- **원본은 3초~40분까지 다양, 움직임 작음.** 10분 이상 긴 클립은 보통
-  (1) 빨리감기(배속)용 아니면 (2) 하이라이트 구간만 골라 쓰는 용도 —
-  "배속용인지 / 어느 지점이 하이라이트인지"를 알려주는 게 핵심 가치.
+Two constraints that simplify the problem (confirmed by the user):
+- Script order = footage time order (vlog) — this is an order-preserving sort problem, scanned
+  front-to-back, not a global search/reordering problem. A global-matching design would be
+  over-engineering.
+- Source clips range from 3 seconds to 40 minutes, with little motion. A clip longer than 10
+  minutes is usually meant either for (1) speed-up (fast-forward) use, or (2) picking out only
+  a highlight segment — telling the user "this is for speed-up" / "here's where the highlight
+  is" is the core value.
 
-흐름:
-1. 사용자가 스크립트(자막용 대본)와 원본 뜨개질 영상들을 준비.
-2. crv로 원본 영상 → **씬 프레임만** 추출(`--no-transcribe`로 whisper 경로 자체를 안 씀).
-   움직임이 작아 씬 감지가 안 걸리면 고정 간격 추출로 폴백.
-3. Claude Code가 프레임들을 **시각적으로** 보고: 긴 클립이면 "통배속 vs 하이라이트"
-   판단 + 하이라이트 위치(초) 후보를 뽑고, 대본 줄과 순서대로 대조해
-   `segments`(clip/in/out/speed) 초안을 채운 큐시트를 생성.
-4. 사람은 초안을 웹에서 미세 조정만 하면 됨.
+Flow:
+1. The user prepares the script (the subtitle draft) and the source knitting footage.
+2. Run crv on the source footage -> extract only scene frames (`--no-transcribe` disables the
+   whisper path entirely). If motion is too small for scene detection to trigger, fall back to
+   fixed-interval extraction.
+3. Claude Code visually looks at the frames: for a long clip, decides "speed up the whole thing
+   vs. pick a highlight" + picks candidate highlight positions (in seconds), then matches them
+   against the script lines in order to generate a draft cuesheet filling in `segments`
+   (clip/in/out/speed).
+4. The human only needs to fine-tune the draft on the web app.
 
-관건은 뜨개질처럼 **컷 전환이 거의 없는 단일 롱테이크 촬영본**에서 crv의 씬 감지가
-"동작이 바뀌는 지점"을 얼마나 잘 잡아내는가다 — crv는 원래 편집된(여러 컷으로 이루어진)
-영상을 전제로 설계된 도구라, 단일 롱테이크 안에서의 미세한 동작 변화 감지는 검증된 적 없음.
+The crux is how well crv's scene detection can catch "points where the action changes" in a
+single long-take recording with almost no cut transitions, as with knitting — crv was
+originally designed with edited (multi-cut) footage as its premise, so detecting subtle motion
+changes within a single long take has never been validated.
 
-## 상태
+## Status
 
-**1차 스모크 테스트는 잘못된 전제(대본↔오디오전사 매칭) 위에서 진행됨 — 재검증 필요.**
-아래는 그 1차 테스트에서 재사용 가능한 사실만 남기고, 결론은 무효로 처리한다.
+**The first-round smoke test was carried out on a wrong premise (script <-> audio-transcript
+matching) — needs re-validation.**
+Below, only the facts from that first-round test that remain reusable are kept; its conclusions
+are treated as void.
 
-- 설치: `pip install --user`는 PEP 668(externally-managed)로 막혀 venv 필요. venv로는
-  2초 만에 설치 성공(`claude-real-video 0.4.0`, `yt-dlp`/`Pillow` 동봉). whisper는 기본
-  의존성에 없음 — **이 프로젝트엔 어차피 필요 없으므로 설치 안 해도 됨.**
-  (`--no-transcribe`로 명시적으로 꺼서 쓸 것.)
-- 실행: `media/clips/cut_01.mp4`(움직이는 testsrc2)·`cut_02.mp4`(정적 smptebars, 둘 다 합성
-  테스트 패턴)에 기본/민감 옵션으로 각각 실행 — cut_01은 12→4프레임, cut_02는 12→1프레임.
-  "정적 vs 변화 있는 화면" 구분 신호는 있었으나, 이것도 진짜 뜨개질 영상(단일 롱테이크,
-  미세한 손동작 변화)과는 성격이 달라 그대로 참고하기 어려움.
-- ~~"transcript가 핵심 공백"~~ — **폐기.** 이 프로젝트엔 애초에 전사가 필요 없음(위 참고).
+- Install: `pip install --user` is blocked by PEP 668 (externally-managed), so a venv is
+  required. Via venv, install succeeded in 2 seconds (`claude-real-video 0.4.0`, bundled with
+  `yt-dlp`/`Pillow`). whisper is not in the default dependencies — not needed for this project
+  anyway, so it doesn't need to be installed. (Use it with `--no-transcribe` explicitly turning
+  that path off.)
+- Run: ran both default and sensitive options against `media/clips/cut_01.mp4` (moving
+  testsrc2) and `cut_02.mp4` (static smptebars, both synthetic test patterns) — cut_01 went
+  12->4 frames, cut_02 went 12->1 frame. There was a signal distinguishing "static vs. changing
+  screen," but this too differs in nature from real knitting footage (a single long take with
+  subtle hand-motion changes) and is hard to carry over as-is.
+- ~~"transcript is the core gap"~~ — discarded. This project never needed transcription in the
+  first place (see above).
 
-## 2차 실측 결과 (2026-07-05, 실제 원본) — 최종 판정: crv 채택 안 함
+## Second-round measurement (2026-07-05, real source footage) — final verdict: crv not adopted
 
-사용자의 실제 에피소드 소재(원본 52개 + 완성본 4:29 + 자막 srt)로 실측했다.
+Measured against the user's real episode material (52 source clips + a finished 4:29 edit +
+subtitle srt).
 
-- **씬 감지는 이 소재에서 무효**: 실제 뜨개 롱테이크 17분 4K(고정 톱다운 앵글, 컷 없음)에서
-  ffmpeg scene 점수 최댓값 0.0903 — 표준 임계값(0.3~0.4)은 물론 0.1에서도 감지 0건.
-  0.05로 낮추면 25건 걸리지만 대부분 손 모션 블러(내용 불변)였고, 실제 내용 변화(옷감을
-  펼치는 동작 611s, 노출 변화 989s)와 겹친 건 2건. crv의 핵심 가치(씬 감지 + dedup)가
-  이 소재에선 작동하지 않으므로 **crv를 도입할 이유가 없다** — dedup은 오히려 17분을
-  프레임 한두 장으로 뭉개버릴 것.
-- **고정 간격(60초) 프레임만으로도 부족**: 17분에서 육안 식별 가능한 변화 지점은 1곳뿐.
-  뜨개 진행 자체는 정지 프레임 비교로 판별이 거의 안 됨.
-- **쓸만한 신호 조합**: (a) 저임계(0.03~0.05) scene 점수 스파이크 = "손이 크게 움직인
-  이벤트"(작업물 돌리기, 자세 전환 등) 후보, (b) 노출/밝기 변화, (c) 고정 간격 샘플 —
-  이 후보 프레임들을 Claude Vision이 보고 고르는 방식이 현실적.
-- **완성본 역산에서 나온 편집 문법**(자동화가 흉내내야 할 목표): 자막 83개/4:29(평균 2.9초),
-  자막 경계 ≈ 컷 경계, 동작 설명 자막 ↔ 선명한 손 클로즈업, 시간 경과 ↔ 타이머 소품·결과물
-  정지컷(배속 화면은 드묾), 고양이 자막 ↔ 고양이 샷, 제품 언급 ↔ 정적 오브젝트 샷.
-  즉 "하이라이트"의 실체는 씬 전환이 아니라 **샷 유형 어휘(손 클로즈업/오브젝트/고양이/
-  형태 변화 순간)에 맞는 순간 고르기**다.
-- 처리 비용 실측: 4K 17분을 320px로 다운스케일 디코드 시 씬 스코어 패스 약 6분(2.8x 배속).
-  40분 원본이면 약 14분 — 배치로는 감당 가능, 프록시(저해상도 사본) 선생성이 합리적.
-- 운영 주의: 원본 폴더는 iCloud 축출 파일이 많음(blocks=0 placeholder는 읽기가 무한 정지).
-  파이프라인은 처리 전 `stat -f %b`로 로컬 실물 여부를 확인해야 한다.
+- Scene detection is invalid for this material: on a real 17-minute 4K knitting long take
+  (fixed top-down angle, no cuts), the ffmpeg scene score peaked at 0.0903 — zero detections not
+  only at the standard threshold (0.3-0.4) but even at 0.1. Lowering it to 0.05 catches 25 hits,
+  but most were hand motion blur (no content change), and only 2 overlapped with actual content
+  changes (unfolding the fabric at 611s, an exposure change at 989s). Since crv's core value
+  (scene detection + dedup) doesn't work on this material, there is no reason to adopt crv —
+  dedup would instead collapse the 17 minutes down to one or two frames.
+- Fixed-interval (60-second) frames alone are also insufficient: only 1 visually identifiable
+  change point in the 17 minutes. The progress of the knitting itself is almost impossible to
+  tell apart via still-frame comparison.
+- A usable combination of signals: (a) low-threshold (0.03-0.05) scene-score spikes as
+  candidates for "an event where the hand moved significantly" (turning the work, changing
+  posture, etc.), (b) exposure/brightness changes, (c) fixed-interval samples — having Claude
+  Vision look at these candidate frames and pick is the realistic approach.
+- The editing grammar reverse-engineered from the finished edit (the target for automation to
+  imitate): 83 subtitles / 4:29 (average 2.9s), subtitle boundaries ≈ cut boundaries,
+  action-description subtitles <-> sharp hand close-ups, time-elapsed <-> timer prop /
+  finished-result still shots (speed-up shots are rare), cat subtitles <-> cat shots, product
+  mentions <-> static object shots. In other words, what a "highlight" actually is isn't a
+  scene transition but picking the moment that fits a vocabulary of shot types (hand close-up /
+  object / cat / shape-change moment).
+- Measured processing cost: decoding a downscaled 320px pass over the 17-minute 4K clip for
+  scene scoring takes about 6 minutes (2.8x speed). For a 40-minute source clip, about 14
+  minutes — manageable as a batch job; pre-generating a proxy (a low-resolution copy) is
+  reasonable.
+- Operational caveat: the source folder has many iCloud-evicted files (a blocks=0 placeholder
+  hangs indefinitely on read). The pipeline must check local-file presence with `stat -f %b`
+  before processing.
 
-## 3차 교차 검증 (2026-07-05, 두 번째 에피소드 "닷믹스베스트") — 씬 감지 완전 배제 확정
+## Third-round cross-validation (2026-07-05, second episode "dotmix-best") — scene detection fully ruled out, confirmed
 
-두 번째 에피소드(원본 52개, 완성본 5:29 + 자막 100큐)로 같은 분석을 반복한 결과:
+Repeating the same analysis on a second episode (52 source clips, a finished 5:29 edit + 100
+subtitle cues) found:
 
-- **씬 감지 무효 재현**: 28분 41초 4K 롱테이크에서 scene 최댓값 0.0914(로우키 0.0903과
-  거의 동일), 0.1 이상 감지 0건. 상위 지점 6곳 전부 손 모션 블러.
-- **더 결정적인 발견**: 60초 간격 프레임 육안 판독으로는 하이라이트 후보 5곳(고양이 등장
-  ~600s, 음료 캔 등장 ~900s, 자세 변화 ~1140s, 편물 형태 변화 ~1380s, 마무리 동작 ~1680s)이
-  식별됐는데, 이 지점들은 **scene 점수 0.02 임계값조차 넘지 못함**. 즉 씬 점수 상위 지점과
-  실제 하이라이트가 전혀 불일치 — 로우키에서 세웠던 "저임계 모션 스파이크를 후보 신호로
-  쓴다"는 가설도 폐기. **비전(프레임 육안 판독)이 주 신호이고 유일하게 작동하는 신호다.**
-- **비용 구조 발견**: 전체 디코드가 필요한 씬 패스는 29분 영상에 9.7분 소요(불필요해졌으니
-  제거). 반면 시크 기반 프레임 추출(`-ss`를 `-i` 앞에)은 수 초 — 후보 추출이 사실상 공짜.
-- **편집 문법 일반화 확인**: 자막당 평균 2.953s(로우키 2.944s와 사실상 동일), 커버리지
-  89.8%(로우키 90.6%), 자막 한 줄=한 컷 대응 30/30, 고양이/리빌/장 전환 갭 패턴 동일.
-  새로 관찰: PIP 비교 인서트, 야외 B롤(단추 가게), srt 타임코드 1시간 오프셋(01:00:00 시작,
-  파싱 시 보정 필요), 모션 블러 컷 0/30 — 배속 컷은 완성본에서 매우 드묾.
-- 닷믹스 원본도 iCloud 축출이 다수(39/52). srt는 `brctl download`로 즉시 내려받아짐
-  (작은 파일은 브리지 데몬이 정상 동작 — 대용량만 실질 블로커).
+- Scene-detection invalidity reproduced: on a 28-minute-41-second 4K long take, scene score
+  peaked at 0.0914 (nearly identical to lowkey's 0.0903), zero detections at or above 0.1. All
+  6 top-scoring points were hand motion blur.
+- A more decisive finding: visual inspection of 60-second-interval frames identified 5
+  highlight candidates (cat appears ~600s, a drink can appears ~900s, posture change ~1140s, a
+  change in the knitted piece's shape ~1380s, a finishing motion ~1680s) — and these points
+  don't even clear a scene-score threshold of 0.02. In other words, the points with the highest
+  scene scores and the actual highlights are completely uncorrelated — this also discards the
+  hypothesis raised in lowkey that "low-threshold motion spikes can be used as a candidate
+  signal." Vision (visual inspection of frames) is the primary signal, and the only one that
+  works.
+- Cost-structure finding: the full-decode scene pass takes 9.7 minutes for a 29-minute clip
+  (now removed, since it's no longer needed). By contrast, seek-based frame extraction (`-ss`
+  placed before `-i`) takes seconds — candidate extraction is effectively free.
+- Confirmed generalization of the editing grammar: average 2.953s per subtitle (essentially
+  identical to lowkey's 2.944s), 89.8% coverage (lowkey: 90.6%), one subtitle line = one cut
+  correspondence at 30/30, the same cat / reveal / chapter-transition gap patterns. Newly
+  observed: PIP comparison inserts, outdoor B-roll (a button shop), a 1-hour srt timecode
+  offset (starts at 01:00:00, needs correcting when parsed), 0/30 motion-blur cuts — speed-up
+  cuts are very rare in finished edits.
+- The dotmix source footage also has many iCloud-evicted files (39/52). The srt downloaded
+  immediately via `brctl download` (the bridge daemon works fine for small files — only large
+  files are a real blocker).
 
-- **다음 액션(개정 3 — 설계 확정)**: 사용자 결정(영상-먼저: 초벌 편집본을 먼저 만들고
-  자막은 나중에) + 교차 검증 결과 반영. crv 없이, 씬 감지 없이:
-  1. 클립별 시크 기반 고정 간격 프레임 추출(60초 coarse) — blocks=0 placeholder 사전 감지.
-  2. Claude Vision이 프레임을 훑어 변화 지점을 찾고, 변화 구간만 촘촘히 재샘플링해
-     위치를 좁힘(coarse-to-fine 이분 탐색).
-  3. 샷 유형 분류(선명한 손 클로즈업/정적 오브젝트/고양이/형태 변화·리빌 순간) 후
-     시간순 그대로 사용자 편집 리듬(평균 컷 2.9초, 완성본 4:30~5:30, 커버리지 ~90%)으로
-     `segments` 초안 큐시트 생성. subtitle 필드에 "화면에 뭐가 보이는지" 메모를 넣어
-     사용자가 웹에서 고쳐 쓰게 한다.
-  4. 채점: 두 에피소드 정답지(실제 자막 타이밍·컷)와 초안의 겹침 정도. bridge 확장은 그 뒤에.
+- Next action (revision 3 — design finalized): reflecting the user's decision (video-first:
+  build the rough cut/draft edit first, subtitles later) plus the cross-validation results.
+  Without crv, without scene detection:
+  1. Seek-based fixed-interval frame extraction per clip (60-second coarse pass) — detect
+     blocks=0 placeholders beforehand.
+  2. Claude Vision scans the frames to find change points, then re-samples only the changed
+     stretches more densely to narrow down the position (coarse-to-fine binary search).
+  3. Classify shot type (sharp hand close-up / static object / cat / shape-change or reveal
+     moment), then generate a draft cuesheet with `segments`, in time order, matching the
+     user's editing rhythm (average cut 2.9s, finished length 4:30-5:30, coverage ~90%). Put a
+     note of "what's visible on screen" into the `subtitle` field so the user can rewrite it
+     on the web app.
+  4. Scoring: measure overlap between the draft and the two episodes' answer keys (actual
+     subtitle timing/cuts). Bridge expansion comes after that.
 
-## crv vs 자체 구축 파이프라인 — 뭐가 다른가 (기록용)
+## crv vs. the in-house pipeline — what's actually different (for the record)
 
-같은 발상("프레임을 뽑아 Claude가 본다")에서 출발했지만, 실측 후 전혀 다른 물건이 됐다.
+Both started from the same idea ("extract frames and have Claude look at them"), but after
+empirical measurement they turned into entirely different things.
 
-| | crv | 자체 구축 (proto-draft 파이프라인) |
+| | crv | In-house (proto-draft pipeline) |
 |---|---|---|
-| 목적 | 범용 "영상 이해/요약" 보조 (프레임+전사 뽑아주기) | **편집 초벌본 생성** — 큐시트(JSON) 계약을 거쳐 실제 mp4 렌더까지 |
-| 프레임 선별 | 씬 전환 감지 + 중복제거. **편집된 멀티컷 영상 전제** | 시크 기반 고정 간격 + 변화 구간만 1~2초로 좁히는 coarse-to-fine. **컷 없는 롱테이크 전제** |
-| 이 소재에서의 성능 | 씬 점수 최대 0.09 → 감지 0건, dedup은 롱테이크를 프레임 한두 장으로 뭉갬 | 두 에피소드 실측으로 검증 — 프로토타입 컷의 82%가 사용자 실편집과 일치·유사 |
-| 오디오 | Whisper 전사가 주요 기능 | 사용 안 함 (원본에 대사 없음) |
-| 판단 | 프레임만 뽑고 판단은 사용자 몫 | Claude Vision이 **사용자 편집 문법**(실편집 역산: 컷 평균 2.9초, 샷 어휘 — 손 클로즈업/오브젝트/고양이/리빌/착용)으로 분류·선별하고 배속 리듬까지 조립 |
-| 품질 루프 | 없음 | 메모-프레임 자기검증 + 실편집 정답지 채점(일치/유사/회수율) |
-| 의존성 | Python venv, yt-dlp, (선택) whisper | ffmpeg + 기존 TS 모노레포 — 추가 의존성 0 |
+| Purpose | General-purpose "video understanding/summarization" assistant (extracts frames + transcript) | **Rough-cut/draft generation** — via a cuesheet (JSON) contract, all the way to an actual mp4 render |
+| Frame selection | Scene-transition detection + deduplication. **Assumes edited multi-cut footage** | Seek-based fixed interval + coarse-to-fine narrowing changed stretches down to 1-2s. **Assumes a cutless long take** |
+| Performance on this material | Scene score maxes out at 0.09 -> zero detections; dedup collapses a long take down to one or two frames | Validated by measurement on two episodes — 82% of the prototype's cuts matched or resembled the user's actual edit |
+| Audio | Whisper transcription is a core feature | Not used (source footage has no dialogue) |
+| Judgment | Only extracts frames; judgment is left to the user | Claude Vision classifies and selects using **the user's editing grammar** (reverse-engineered from real edits: average cut 2.9s, a shot vocabulary — hand close-up / object / cat / reveal / wearing), and even assembles the speed-up rhythm |
+| Quality loop | None | Note-frame self-verification + scoring against real-edit answer keys (match/similar/recall rate) |
+| Dependencies | Python venv, yt-dlp, (optional) whisper | ffmpeg + the existing TS monorepo — zero added dependencies |
 
-한 줄 요약: crv는 "영상을 훑어보게 해주는" 범용 도구고, 우리 것은 "이 사용자의 편집을
-흉내내 초벌본을 만들어주는" 특화 파이프라인이다. crv의 핵심 가정(씬 전환이 존재한다,
-발화가 있다)이 이 프로젝트 소재에서 둘 다 성립하지 않는다는 게 실측으로 확인돼 미채택.
+One-line summary: crv is a general-purpose tool that "lets you skim through a video," while
+ours is a specialized pipeline that "generates a rough cut by imitating this specific user's
+editing." crv's core assumptions (that scene transitions exist, that there is speech) both fail
+to hold for this project's material, as confirmed by measurement — hence, not adopted.

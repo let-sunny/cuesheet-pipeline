@@ -1,31 +1,36 @@
-# 구성요소별 공개 가치 분류 — 논의용 (2026-07-08)
+# Public-value classification by component — for discussion (2026-07-08)
 
-> 근거: `docs/research/oss-landscape.md` (스타 수 실측 포함). 결정은 사용자 몫 —
-> 이 문서는 "무엇을, 왜, 어떤 순서로" 공개할지의 제안.
+> Basis: `docs/research/oss-landscape.md` (includes measured star counts). The decision is
+> the user's — this document only proposes "what, why, and in what order" to release.
 
-## 분류표
+## Classification table
 
-| 구성요소 | 분류 | 근거 | 공개 시 필요 작업 |
+| Component | Classification | Rationale | Work needed to release |
 |---|---|---|---|
-| **draft** (비전 초벌) | **공개 후보 1순위** | 선행 OSS 없음. 최대 화제작 video-use(15.9k★)가 "오디오 우선, 무대사 불가"를 명시 — 정확히 그 여집합. 씬 감지 무용 실측 반례 데이터 보유 | 영어 README+실측 리포트(위키 영어화로 준비됨), 뜨개 특화 조립 규칙(컷 리듬 상수 등)을 설정으로 분리, 이름 결정 |
-| **schema+render+bridge** (한 벌) | 공개 후보 2순위 | editly(5.4k★) 14개월 방치 — "zod 계약+로컬 ffmpeg+MCP 편집" 현대판 후계 빈자리 | draft와 같은 저장소로 묶어 공개하는 게 자연스러움(분리 배포 불필요) |
-| bridge 단독 | 패턴만 글로 | "앱이 아니라 문서를 조종하라" — 블로그/위키 글감으로 가치. 코드 단독 발표는 소품 | 글 한 편 |
-| **web** | **비공개 유지** | OpenCut(61.7k★)이 범용 자리 점유. 우리 것의 가치는 "사용자 개인 문법 내장"이라 공개 의미 없음 | — |
-| voice-guide, 편집 문법 상수 | **비공개 유지(개인 데이터)** | 사용자의 말투·편집 습관 그 자체 | 공개 시엔 "만드는 방법론"만 (역산 위키 페이지가 그 역할) |
-| /episode·goal 커맨드 | 회색 지대 | 오케스트레이션 패턴은 흥미로우나 개인 환경 결합 강함 | 공개한다면 패턴 설명 글로 |
+| **draft** (vision-based rough cut) | **Top release candidate** | No prior OSS covers this. The biggest name in "agentic video editing," video-use (15.9k stars), states outright that it's "audio-first, doesn't work without dialogue" — this is exactly its complement. We hold measured counter-evidence that scene detection is useless for this footage | English README + a measured findings report (already in progress via the wiki's English conversion), split the knitting-specific assembly rules (cut-rhythm constants, etc.) out into config, decide on a name |
+| **schema+render+bridge** (as a set) | Release candidate #2 | editly (5.4k stars) has been dormant for 14 months — there's an open slot for a modern successor to "zod contract + local ffmpeg + MCP editing" | Natural to bundle with draft in the same repo for release (no need to split distribution) |
+| bridge alone | Write-up only | "Steer a document, not an app" — worth a blog/wiki post on its own; the code alone is too small a release | One write-up |
+| **web** | **Keep private** | OpenCut (61.7k stars) already owns the general-purpose slot. Our web app's value is "bakes in the user's personal editing grammar," which has no meaning as a public release | — |
+| voice-guide, editing-grammar constants | **Keep private (personal data)** | This is literally the user's speech patterns and editing habits | If released at all, share only the "how it was derived" methodology (the reverse-engineering wiki page already serves this role) |
+| /episode, /goal commands | Gray area | The orchestration pattern is interesting, but it's tightly coupled to a personal environment | If released, as a pattern write-up |
 
-## 제안 시나리오 (공개를 결정한다면)
+## Proposed scenario (if release is decided on)
 
-1. **선행**: 위키 영어화(완료 예정) → 저장소 공개 전환만으로 "실험 리포트 딸린 도구"가 됨
-2. **1차**: 이 저장소 자체를 public으로 (draft가 주인공, schema/render/bridge가 기반,
-   web은 "개인 특화 예시"로 명시. voice-guide 등 개인 데이터는 사전 분리/치환)
-3. **2차**: draft 포지셔닝 글 — "video-use가 못 보는 영상 편집하기" (Show HN/레딧 등)
-4. **주의**: 공개 전 개인정보 스윕 필수 — media/ 경로·가족 언급·원본 파일명·얼굴 정책
-   세부가 커밋 히스토리에 있음 → **히스토리 포함 공개는 불가, 공개용 새 저장소로
-   내보내기(export)가 안전**
+1. **Prerequisite**: convert the wiki to English (in progress) -> flipping the repo to
+   public then becomes "a tool with an experiment report attached"
+2. **Phase 1**: make this repo itself public (draft as the headline, schema/render/bridge as
+   the foundation, web explicitly labeled "a personal-specialization example." Personal data
+   like voice-guide must be split out/redacted beforehand)
+3. **Phase 2**: a positioning write-up for draft — "editing the video that video-use can't
+   see" (Show HN, Reddit, etc.)
+4. **Caution**: a privacy sweep is mandatory before release — media/ paths, family mentions,
+   original filenames, and face-policy details are in the commit history ->
+   **releasing with history intact is not an option; exporting to a fresh public repo is
+   the safe path**
 
-## 미결 질문 (사용자 결정 필요)
+## Open questions (need the user's decision)
 
-- 공개 자체를 원하는가? (포트폴리오 가치 vs 개인 프로젝트 유지)
-- 공개 단위: 모노레포 통짜 vs draft만 별도 저장소
-- 시점: 실수/풀기 감지(백로그 1위)까지 넣고 vs 지금 상태로
+- Do we even want to release publicly? (Portfolio value vs. keeping this a personal project)
+- Release unit: the whole monorepo vs. draft as its own repo
+- Timing: wait until the mistake/frog-it detection feature (backlog #1) lands, or release
+  as-is now

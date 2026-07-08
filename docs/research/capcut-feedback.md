@@ -1,53 +1,53 @@
-# CapCut(캡컷) 계열 사용자 피드백 리서치 (원자료)
+# CapCut-family user feedback research (raw material)
 
-> 2026-07-07 리서치 에이전트 산출. 종합·결론은 `editor-ux-benchmark.md` 참고.
+> Produced by a research agent on 2026-07-07. See `editor-ux-benchmark.md` for the synthesis and conclusions.
 
-## A. 캡컷이 이긴 인터랙션 5개
+## A. Five interactions where CapCut wins
 
-**1. 클립 가장자리 핸들 드래그 트림 + 자동 스냅(갭 자동 봉합)**
-- 클립 선택 시 흰 박스, 양 끝 드래그 트림. 이동 시 이웃 클립에 자동 정렬(마그네틱), 갭은 자동/우클릭으로 닫힘. 정밀 배치 시 스냅 잠깐 끄는 관례.
-- 초보가 "숫자 입력 없이 눈으로" in/out 조정, 스냅 덕에 실수(갭·겹침)가 구조적으로 안 생김.
-- 우리 관련성: 핸들 드래그+스냅이 초보 UX의 사실상 표준 관례.
+**1. Drag-to-trim clip edge handles + auto-snap (gaps auto-close)**
+- Selecting a clip shows a white box; drag either end to trim. Moving a clip auto-aligns to neighboring clips (magnetic), and gaps close automatically or via right-click. Convention is to briefly disable snapping for precise placement.
+- Lets beginners adjust in/out "by eye, without typing numbers"; snapping structurally prevents mistakes (gaps, overlaps).
+- Relevance to us: handle-drag + snap is the de facto standard convention for beginner UX.
 
-**2. "재생 → Split(Ctrl+B) → Delete → 갭 닫힘"의 3동작 컷 루프**
-- 컷 편집의 90%가 이 루프로 끝남 — "10분 만에 익힌다"는 평의 실체. 다이얼로그·모드 전환 없이 타임라인 위에서 완결.
-- 우리 관련성: 자동 초안 다듬기에서 가장 빈번할 조작이 정확히 이 루프.
+**2. The three-action cut loop: "play -> Split (Ctrl+B) -> Delete -> gap closes"**
+- 90% of cut editing ends up being this loop -- the substance behind the "learn it in 10 minutes" reputation. Completes entirely on the timeline, with no dialogs or mode switches.
+- Relevance to us: the operation that will be most frequent in touching up an auto-generated draft is exactly this loop.
 
-**3. 타임라인 줌 인/아웃 ↔ 플레이헤드 스크럽의 왕복 리듬**
-- "확대해서 프레임 직전까지 스크럽 → 컷 → 축소" 상시 반복. 정밀도와 전체 조망을 같은 화면에서 전환 비용 없이.
-- 우리 관련성: 미니 타임라인이 고정 배율이면 이 리듬 불가 — 롱테이크 경계 잡기에 줌 유무 차이가 큼.
+**3. The back-and-forth rhythm of timeline zoom in/out <-> playhead scrubbing**
+- Constant repetition of "zoom in, scrub to just before the frame -> cut -> zoom out." Switches between precision and overview on the same screen at no cost.
+- Relevance to us: if the mini timeline has a fixed zoom level, this rhythm is impossible -- whether zoom exists or not makes a big difference for finding boundaries in long takes.
 
-**4. 자동 자막 원클릭 생성 + 스타일 일괄 적용**
-- 한국 초보 커뮤니티에서 캡컷 추천 1순위 사유. 스타일이 트랙 단위라 일관성이 공짜.
-- 우리 관련성: 전사는 무관하지만 "스타일은 프로젝트 단위 한 번 + 100큐 일괄 UI"라는 기대치는 그대로 적용.
+**4. One-click auto subtitle generation + batch style application**
+- The top reason CapCut is recommended in Korean beginner communities. Style is applied per track, so consistency comes for free.
+- Relevance to us: transcription is irrelevant to us, but the expectation that "style is set once per project + a batch UI applies it across 100 cues" still applies.
 
-**5. 프리뷰에서 텍스트 직접 드래그 배치 + 프리셋 카드**
-- 자막을 프리뷰 화면 안에서 직접 끌어 위치·크기 조정(WYSIWYG), 스타일은 썸네일 카드로 즉시.
-- 우리 관련성: 미리보기 위 자막 드래그가 사용자 기대 관례. 크롭 드래그 편집과 같은 문법.
+**5. Direct text drag placement in preview + preset cards**
+- Subtitles can be dragged directly within the preview screen to adjust position/size (WYSIWYG); styles switch instantly via thumbnail cards.
+- Relevance to us: dragging subtitles over the preview is the expected convention for users. Same grammar as crop-drag editing.
 
-보너스: 한국 커뮤니티에서 브루가 캡컷을 이기는 지점 = "자막 삭제 = 해당 구간 삭제"(자막-컷 동기)와 무음 자동 정리. 롱폼·설명형은 브루, 숏폼·트렌드는 캡컷이라는 역할 분담이 공통 결론.
+Bonus: in Korean communities, the point where Vrew beats CapCut is "deleting a subtitle = deleting that segment" (subtitle-cut sync) and automatic silence cleanup. The common conclusion is a division of labor: Vrew for long-form/explainer content, CapCut for short-form/trend content.
 
-## B. 사용자 불만 3개
+## B. Three user complaints
 
-**1. 유료화 러그풀 (한/영 공통 최대 불만)**
-- 무료였던 자동 자막·워터마크 제거·폰트 등이 순차 Pro 이동, 가격 인상. Reddit "rugpull", Change.org 청원, 구글 플레이 2.4점.
-- 우리 관련성: 로컬·무료·본인 소유라 이 불만 계층이 구조적으로 없음.
+**1. Monetization "rug pull" (the single biggest complaint across Korean and English communities)**
+- Previously free features -- auto subtitles, watermark removal, fonts -- moved to Pro one by one, alongside price hikes. Reddit "rugpull" threads, a Change.org petition, a 2.4-star rating on Google Play.
+- Relevance to us: local, free, and user-owned, so this entire complaint category structurally does not exist for us.
 
-**2. 롱폼·프로 작업의 구조적 한계**
-- 멀티트랙 비효율, 오디오 파형·EQ 부재, 컬러 스코프 없음, 무료판 15분/720p 제한, 미디어 태깅 부재. "숏폼 최적, 롱폼에서 DaVinci로 이주"가 전형 서사.
-- 우리 관련성: 4~6분 본편은 캡컷 강점과 한계 사이 — 간편 문법 + 제한 없음 조합이 빈 자리.
+**2. Structural limits for long-form/professional work**
+- Multitrack inefficiency, no audio waveform/EQ, no color scope, free tier capped at 15 minutes/720p, no media tagging. The typical narrative is "great for short-form, but people migrate to DaVinci for long-form."
+- Relevance to us: our 4-6 minute main output sits between CapCut's strengths and its limits -- the combination of "simple grammar + no limits" is an open space.
 
-**3. 알림 스팸·광고·과금 UX + 자막 세부 조정 번거로움**
-- "자막 세부 조정 번거로움"이 캡컷 실편집 불만 중 우리가 직접 경쟁하는 유일 항목 — 큐 단위 미세 조정은 브루가 기준선.
+**3. Notification spam/ads/paywall UX + tedium of fine subtitle adjustment**
+- "Tedium of fine subtitle adjustment" is the one item among CapCut's real-editing complaints where we directly compete -- per-cue fine-tuning is the baseline set by Vrew.
 
-## C. 못 넘어가는 이유 vs 떠나는 이유
+## C. Reasons people can't move on vs. reasons people leave
 
-- 못 넘어감: 10분 학습 곡선, 트렌드 템플릿, 모바일-데스크톱 연속성, 속도.
-- 떠남: 유료화(1위), 롱폼 한계(2위). 이탈처: DaVinci, Filmora, Instagram Edits.
+- Can't move on: the 10-minute learning curve, trend templates, mobile-desktop continuity, speed.
+- Leave: monetization (#1), long-form limits (#2). Destinations: DaVinci, Filmora, Instagram Edits.
 
-## 출처
-- Zebracat/Ben Claremont/Subclip/sambaravid/Miracamp 리뷰·비교
-- Descript의 CapCut 워크플로우 분석, capeditcut/VideoProc/Filmora 타임라인 가이드, Pexo, 단축키 목록
-- Riverside/Hollyland/CrePal 자막 가이드
-- Android Authority, vediting, Change.org, eesel 대안 정리
-- 나무위키 CapCut/평가, 드롭샷매치·이랜서·피카클립·papaswith 한국어 비교 후기
+## Sources
+- Zebracat/Ben Claremont/Subclip/sambaravid/Miracamp reviews and comparisons
+- Descript's analysis of the CapCut workflow, capeditcut/VideoProc/Filmora timeline guides, Pexo, keyboard shortcut lists
+- Riverside/Hollyland/CrePal subtitle guides
+- Android Authority, vediting, Change.org, eesel roundups of alternatives
+- Namuwiki CapCut entry/reviews, Korean-language comparison reviews from Dropshot Match, e-Lancer, PikaClip, and papaswith

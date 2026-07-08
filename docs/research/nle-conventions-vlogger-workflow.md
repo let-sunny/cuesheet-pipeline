@@ -1,33 +1,48 @@
-# 프로 NLE 관례 + 브이로거 워크플로우 리서치 (원자료)
+# Pro NLE conventions + vlogger workflow research (raw material)
 
-> 2026-07-07 리서치 에이전트 산출. 종합·결론은 `editor-ux-benchmark.md` 참고.
+> Produced by a research agent on 2026-07-07. See `editor-ux-benchmark.md` for the synthesis and conclusions.
 
-## A. 프로 NLE 표준 관례 톱 7 (초보 튜토리얼·후기 언급 빈도 순)
+## A. Top 7 standard pro-NLE conventions (ranked by mention frequency in beginner tutorials/reviews)
 
-| # | 관례 | 설명 | 왜 사랑받나 |
+| # | Convention | Description | Why it's loved |
 |---|---|---|---|
-| 1 | 스페이스 재생/정지 | 재생 토글의 절대 기본 | 모든 NLE 공통 — 배울 것 없이 몸에 붙음 |
-| 2 | J/K/L 셔틀 | J 역재생·K 정지·L 정재생, 연타 배속 | "편집자 근육기억의 DNA". 긴 원본 훑으며 컷 지점 찾기가 마우스 스크럽보다 압도적으로 빠름(셔틀 도구 10~30% 시간 절감 보고). 롱테이크 리뷰에 결정적 |
-| 3 | I/O 인·아웃 마킹 + 3점 편집 | 소스에서 구간 지정 → 타임라인 삽입 | 초보가 익히는 순간 "클립 놓고 자르기"에서 "쓸 구간만 뽑아 붙이기"로 전환 |
-| 4 | 리플 삭제 | 삭제 시 뒤 클립 자동 당김 | "이거 모르면 갭 지우느라 인생 낭비" — 튜토리얼 최다 언급 |
-| 5 | 블레이드/컷 at 플레이헤드 (Cmd+K/B) | 재생 위치에서 즉시 분할 | "재생-정지-컷" 리듬의 핵심 |
-| 6 | 스냅 토글 (S/N) | 경계·플레이헤드 자석 정렬 | 프레임 정밀 정렬 보장, 단일 키 토글이라 리듬 안 깨짐 |
-| 7 | 타임라인 줌 (+/−, Shift+Z) | 확대 미세 트림 ↔ 전체 복귀 | "미시 작업 ↔ 전체 구조"의 왕복이 편집의 기본 사이클 |
+| 1 | Space play/pause | The absolute basic play toggle | Common to every NLE -- second nature with nothing to learn |
+| 2 | J/K/L shuttle | J reverse, K pause, L play forward, repeated taps speed up | "The DNA of an editor's muscle memory." Overwhelmingly faster than mouse scrubbing for finding cut points while scanning long footage (shuttle tools reported to save 10-30% of time). Decisive for reviewing long takes |
+| 3 | I/O in/out marking + three-point editing | Mark a range in the source -> insert into timeline | The moment beginners learn this, they shift from "drop a clip and trim it" to "pull only the parts you need and assemble them" |
+| 4 | Ripple delete | Downstream clips auto-pull-in on delete | "Not knowing this wastes your life deleting gaps" -- the most-mentioned tip in tutorials |
+| 5 | Blade/cut at playhead (Cmd+K/B) | Instant split at the current playback position | The core of the "play-pause-cut" rhythm |
+| 6 | Snap toggle (S/N) | Magnetic alignment of boundaries/playhead | Guarantees frame-precise alignment; a single-key toggle keeps the rhythm from breaking |
+| 7 | Timeline zoom (+/-, Shift+Z) | Zoom in for fine trims <-> zoom back out to the full view | The back-and-forth between "micro work" and "overall structure" is the basic cycle of editing |
 
-보조: 키보드 전용 워크플로우 ~20% 속도 향상 주장, 실제 프로 다수는 하이브리드(왼손 셔틀+오른손 마우스). DaVinci가 Premiere/FCP7 키맵 프리셋을 내장할 정도로 업계 표준.
+Secondary: keyboard-only workflows are claimed to be ~20% faster; in practice most pros use a hybrid (left hand on the shuttle, right hand on the mouse). DaVinci even ships built-in Premiere/FCP7 keymap presets, that's how industry-standard this is.
 
-## B. 브이로거 시간 도둑 톱 3
+## B. Top 3 vlogger time sinks
 
-1. **풋티지 로깅 + 컷 고르기(셀렉트)** — 로깅 1~10시간, 러프컷 2~5시간. 완성 1분당 총 편집 45~60분이 업계 평균, 5분 브이로그 ≈ 4시간.
-2. **자막/캡션** — 수동 캡션은 영상 길이의 5~10배, 타임코드 수동 지정만 +1~2시간. 자막 많은 포맷(큐 83~100개)일수록 지배적 비용.
-3. **음악·이펙트·트랜지션 + 색/사운드 마감** — 트랜지션 3~8시간, 컬러·믹싱 2~6시간. 단, 일상 브이로그는 이 비중이 낮다는 언급 다수.
+1. **Footage logging + picking cuts (selects)** -- logging takes 1-10 hours, rough cut 2-5 hours. Industry
+   average is 45-60 minutes of total editing per finished minute; a 5-minute vlog runs to about 4 hours.
+2. **Subtitles/captions** -- manual captioning takes 5-10x the video length, plus 1-2 more hours just for
+   manual timecode assignment. The heavier the subtitle format (83-100 cues), the more this cost dominates.
+3. **Music, effects, transitions + color/sound finishing** -- transitions take 3-8 hours, color/mixing
+   2-6 hours. That said, many note that this share is lower for everyday vlogs.
 
-## C. AI 자동 편집, 신뢰 경계 발견 3개
+## C. Three trust boundaries found in AI auto-editing
 
-1. **"대사 기반 러프컷"은 신뢰 확보 성공, 단 대사 있는 콘텐츠 한정.** Gling: "클린업의 90% 자동, 60분 원본 → 5분 내 러프컷", 영상당 2~3시간 절감 후기 다수. 공통 단서: "대화 중심 외에는 무용" — **무대사 콘텐츠에는 이 계열 전체가 적용 불가.**
-2. **하이라이트 '선별'은 인간과 기준이 어긋난다.** Opus Clip: "AI의 하이라이트 정의가 내 것과 불일치", 클립이 어색한 지점에서 시작/끝. 컨센서스: 초기 추출은 맡기되 최종 선별·경계 조정은 사람.
-3. **프레이밍·시각 자동화는 "감시하며 쓰는 도구".** Premiere Auto Reframe: 잘 될 땐 원클릭, "피사체 놓치고 벽으로 이동" 보고. 패턴: **자동 결과를 기본값으로 받고 실패 지점만 수동 교정하는 흐름은 수용, 검수 없는 완전 자동은 불신.**
+1. **"Dialogue-based rough cuts" have won trust, but only for content with dialogue.** Gling: "90% of
+   cleanup automated, 60-minute source -> rough cut within 5 minutes," with many reviews reporting
+   2-3 hours saved per video. The recurring caveat: "useless outside dialogue-centric content" --
+   **this entire category is inapplicable to dialogue-free content.**
+2. **Highlight "selection" diverges from human judgment.** Opus Clip: "the AI's definition of a
+   highlight doesn't match mine," clips starting/ending at awkward points. Consensus: delegate the
+   initial extraction, but leave final selection and boundary adjustment to a human.
+3. **Framing/visual automation is "a tool you use while watching it."** Premiere Auto Reframe: one-click
+   when it works, but reports of "losing the subject and drifting toward a wall." Pattern: **accepting
+   automated output as a default and manually correcting only the failure points is acceptable; fully
+   automatic with no review is not trusted.**
 
-## 출처
-Filmsupply 단축키, No Film School J/K/L, Apple FCP·Adobe 3점 편집, Storyblocks 리플, Evercast Resolve 치트시트, PremiumBeat 키보드 전용, Gling·TastyEdits·Veedyou 편집시간, 3PlayMedia 캡션, Submagic·Fritz·ImpactPlus Opus 리뷰, rmupdate Gling 리뷰, Frame.io 텍스트 편집, StreamingMedia·Adobe 커뮤니티 Auto Reframe.
-(주의: Reddit 원문 직접 인용은 확보 실패 — 수치는 편집 대행/도구 업체 집계 및 크리에이터 인용 기반.)
+## Sources
+Filmsupply keyboard shortcuts, No Film School on J/K/L, Apple FCP/Adobe on three-point editing, Storyblocks
+on ripple delete, Evercast Resolve cheat sheet, PremiumBeat on keyboard-only workflows, Gling/TastyEdits/Veedyou
+on editing time, 3PlayMedia on captioning, Submagic/Fritz/ImpactPlus Opus Clip reviews, rmupdate's Gling review,
+Frame.io on text-based editing, StreamingMedia/Adobe community on Auto Reframe.
+(Note: could not obtain direct Reddit quotes -- figures are based on aggregates from editing agencies/tool
+vendors and creator citations.)

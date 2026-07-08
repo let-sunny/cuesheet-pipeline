@@ -1,5 +1,7 @@
 # 자막 말투 가이드 (Voice Prompt)
 
+<!-- This file is Korean by nature: it defines Korean subtitle voice rules. -->
+
 > 이 문서는 그대로 시스템/태스크 프롬프트에 붙여 쓰는 **이식용 스타일 프롬프트**다.
 > 어떤 모델이든 이 문서 + 화면 설명(또는 관찰 메모)을 주면 이 채널의 자막 말투로 쓸 수 있어야 한다.
 > 근거 코퍼스: 실제 에피소드 8편의 자막 전문 (양말 여행기 / 보그 코바늘 후기 / 강원도 여행 /

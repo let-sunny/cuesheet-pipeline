@@ -1,65 +1,82 @@
-# Vrew·Descript 사용자 피드백 리서치 (원자료)
+# Vrew/Descript user feedback research (raw material)
 
-> 2026-07-07 리서치 에이전트 산출. 종합·결론은 `editor-ux-benchmark.md` 참고.
+> Produced by a research agent on 2026-07-07. See `editor-ux-benchmark.md` for the synthesis and conclusions.
 
-## 칭찬 패턴 5개
+## Five praise patterns
 
-**1. "텍스트 지우면 컷이 지워진다" — 텍스트-미디어 1:1 조작 자체**
-- Descript: "지우고 싶은 대사 부분을 스크립트에서 삭제하면 컷은 Descript가 알아서" — 대화 중심 콘텐츠(인터뷰/팟캐스트/튜토리얼)에서 "몇 시간을 절약"한다는 표현이 반복 등장. 타임라인 도구에 지친 초보자에게 특히 호평. Vrew도 동일 상찬: "인식된 텍스트를 ctrl+c/ctrl+v 하면 영상이 같이 편집"되고 텍스트 순서를 바꾸면 영상 순서도 바뀜.
-- 좋은 이유: 조작 대상이 "시간축의 추상적 구간"이 아니라 "읽을 수 있는 문장"이라 인지 부하가 급감.
-- 우리 관련성: 자막=컷 1:1 구조가 이 핵심 가치의 직접 구현.
+**1. "Delete the text and the cut is deleted" -- 1:1 text-to-media manipulation itself**
+- Descript: "delete the line of dialogue you want gone from the script, and Descript handles the cut for you" -- for dialogue-centric content (interviews/podcasts/tutorials), phrasing like "saved me hours" comes up repeatedly. Especially praised by beginners tired of timeline tools. Vrew gets the same praise: "ctrl+c/ctrl+v on the recognized text edits the video along with it," and reordering the text reorders the video too.
+- Why it's good: the object being manipulated is not "an abstract span on a time axis" but "a readable sentence," which drastically cuts cognitive load.
+- Relevance to us: the subtitle = cut 1:1 structure is a direct implementation of this core value.
 
-**2. 자막 자동 생성 + 싱크 자동 유지**
-- Vrew 클리앙 후기: "음성에 맞게 착착 자막이 달려있게" / 음성인식 정확도 "10점 만점에 9점" / 줄바꿈으로 텍스트를 분리해도 "음성과 정확한 싱크는 그대로". Descript도 "transcript가 곧 캡션, 텍스트-미디어 동기가 프레임 단위 유지"가 최상위 장점.
-- 우리 관련성: 우리는 스크립트를 이미 갖고 시작하므로 자막 생성은 공짜지만, "어떤 조작을 해도 싱크가 안 깨진다"는 신뢰가 같은 무게로 요구됨.
+**2. Automatic subtitle generation + automatically maintained sync**
+- A Vrew review on Clien (Korean forum): "subtitles line up neatly with the audio" / speech recognition accuracy is "9 out of 10" / even after splitting text into new lines, "the exact sync with the audio stays intact." Descript too: "the transcript is the caption, and text-to-media sync stays frame-accurate" is its top-cited strength.
+- Relevance to us: since we start with a script already in hand, subtitle generation is free for us, but the same weight of trust -- "no operation ever breaks sync" -- is still required.
 
-**3. 클립 나누기/합치기가 클릭 한 번**
-- Vrew: "자막이 길면 [클립 나누기], 합치고 싶으면 [클립 합치기] 버튼 한 번" — 자막 한 줄의 granularity를 즉석 재조정.
-- 우리 관련성: 자막=컷 1:1이면 동일 요구가 반드시 옴.
+**3. Splitting/merging clips is one click**
+- Vrew: "if a subtitle is too long, hit [Split Clip]; to merge, hit [Merge Clip] once" -- lets you re-adjust the granularity of a single subtitle line on the fly.
+- Relevance to us: if subtitle = cut 1:1, the same demand is inevitable.
 
-**4. 무음/필러 자동 제거 (일괄 정리형 자동화)**
-- Vrew: 무음 구간 자동 감지 후 "클릭 한 번으로 일괄 조정·삭제". Descript: filler word 제거·Studio Sound. 공통점: "AI가 목록을 뽑고 사용자가 일괄 승인".
-- 우리 관련성: 우리 초안 파이프라인(모먼트 후보 → 조립)과 같은 "후보 제시 + 일괄 적용" 패턴 — 사용자가 신뢰하는 자동화 형태.
+**4. Automatic silence/filler removal (batch-cleanup-style automation)**
+- Vrew: automatically detects silent spans, then "adjusts/deletes them all in one click." Descript: filler-word removal, Studio Sound. Common thread: "AI produces a list, the user bulk-approves it."
+- Relevance to us: the same "present candidates + bulk apply" pattern as our own draft pipeline
+  (moment candidates -> assembly) -- a form of automation users trust.
 
-**5. "프로그램 같지 않은" 진입 장벽 — 문서 편집기 멘탈모델**
-- Vrew 클리앙: "프로그램이라는 느낌조차 들지 않는" 직관성. Descript: "Word 문서 편집하듯".
-- 우리 관련성: 3스텝 구조가 이 멘탈모델과 부합 — 타임라인을 전면에 안 내세우는 게 강점.
+**5. A "doesn't feel like a program" barrier to entry -- the document-editor mental model**
+- Vrew on Clien: "it doesn't even feel like a program," praised for its intuitiveness. Descript: "like editing a Word document."
+- Relevance to us: our three-step structure fits this mental model -- not putting the timeline front and center is a strength.
 
-## 불만 패턴 5개
+## Five complaint patterns
 
-**1. 자막 스타일이 전체 일괄로만 적용됨 (개별 제어 부재)**
-- Vrew 공식 Q&A: "스타일을 바꾸면 모든 클립에 다 적용"이 대표 불만. 반대 방향(개별→전체 일괄)도 안 됨. 텍스트 박스 크기 조절 부재. Descript도 "캡션 디자인 종류 더" 요구 반복.
-- 핵심: 사용자는 "기본은 일괄, 예외는 개별"의 양방향을 원함.
+**1. Subtitle style can only be applied globally, in bulk (no per-item control)**
+- Vrew's official Q&A: the top complaint is "changing the style applies it to every clip." The reverse
+  direction (per-item -> bulk apply) doesn't work either. No text-box size control. Descript also has
+  recurring requests for "more caption design options."
+- Core issue: users want both directions -- "global by default, per-item as the exception."
 
-**2. 자동 컷이 말/동작의 호흡을 안 지킴**
-- "문장이 끝나기도 전에 다음 장면으로 넘어가거나 제스처가 완성되기 전에 컷이 바뀌면 어색" — 자동 컷 후 수동 다듬기 사실상 필수. Descript는 'Avoid harsh cuts' 옵션(어색해질 컷은 자동으로 건너뜀)을 공식 추가.
-- 우리 관련성: 뜨개 손동작 완결성에 더 치명적 — 확신 없는 경계는 보수적으로 넓게.
+**2. Automatic cuts don't respect the beat of speech/motion**
+- "It feels off when the scene changes before a sentence finishes, or the cut changes before a gesture
+  completes" -- manual touch-up after auto-cutting is effectively mandatory. Descript officially added an
+  'Avoid harsh cuts' option (automatically skips cuts that would look awkward).
+- Relevance to us: this is even more critical for the completeness of a knitting hand motion --
+  when a boundary is uncertain, err on the conservative, wider side.
 
-**3. 긴 프로젝트에서 불안정·느려짐 + 싱크 붕괴**
-- Descript: "60초 클립 만드는데 두 번 얼었다", 긴 영상 크래시·랙, 타임라인-영상 싱크 불일치. Vrew: "10분 이상 영상에서 자막 싱크가 안 맞기 시작".
-- 우리 관련성: 40분 롱테이크 — 미리보기/시크 성능이 검증 항목.
+**3. Instability/slowdowns + sync breakage on long projects**
+- Descript: "it froze twice while making a 60-second clip," crashes/lag on longer videos, timeline-to-video
+  sync mismatches. Vrew: "subtitle sync starts drifting on videos over 10 minutes."
+- Relevance to us: a 40-minute long take -- preview/seek performance is something we need to verify.
 
-**4. 정밀 컷 제어로 내려가는 순간 마찰**
-- Descript: "정밀한 타임라인 제어가 필요하면 좌절. 타임라인은 뒷전(afterthought) 같다". 단어 경계 오류 불만이 12-18개월째 지속.
-- 우리 관련성: 텍스트 레벨과 초 단위 레벨의 양층 구조 필수, 아래층을 뒷전으로 만들면 같은 불만. 우리는 발화 정렬이 없어 "단어 경계" 문제 자체가 없음.
+**4. Friction the moment you drop down to precise cut control**
+- Descript: "frustrating when you need precise timeline control; the timeline feels like an afterthought."
+  Word-boundary-error complaints have persisted for 12-18 months.
+- Relevance to us: a two-layer structure (text level and second-level) is essential, and treating the
+  lower layer as an afterthought produces the same complaint. We have no speech alignment, so the
+  "word boundary" problem doesn't exist for us in the first place.
 
-**5. 가격·크레딧 전환 배신감 + 결과물 품질 저하**
-- Vrew 2023 유료 전환 불만 지속. Descript "크레딧 하루 소진", export 품질 저하(500MB→23MB).
-- 교훈: 렌더 품질이 신뢰의 마지막 관문.
+**5. Pricing/credit-model betrayal + degraded output quality**
+- Complaints about Vrew's 2023 shift to paid tiers persist. Descript: "credits run out in a day," and
+  export quality degradation (500MB -> 23MB).
+- Lesson: render quality is the last gate of trust.
 
-## 자막 편집 UX 디테일
+## Subtitle-editing UX details
 
-- Descript는 "transcript 교정(미디어 불변)"과 "편집(삭제=컷)"을 구분 — 우리 구조에선 자막이 원본과 결합돼 있지 않아 자연 해소(구조적 이점).
-- Vrew는 기본 서식(전체) vs 클립 선택 서식(개별)의 이중 구조인데 양방향 전파가 안 돼 불만.
-- 싱크 조정: 둘 다 "자동 싱크 + 어긋났을 때의 수동 미세조정 통로" 제공.
+- Descript distinguishes "correcting the transcript (media unchanged)" from "editing (delete = cut)" --
+  in our structure, subtitles aren't bound to the source, so this resolves naturally (a structural
+  advantage).
+- Vrew has a dual structure of default formatting (global) vs. selected-clip formatting (per-item), but
+  the lack of two-way propagation between them is a complaint.
+- Sync adjustment: both offer "auto sync + a manual fine-tuning path for when it drifts."
 
-## 자동/수동 경계 — 신뢰가 갈리는 규칙성
+## The auto/manual boundary -- the pattern behind where trust splits
 
-- 신뢰: 결과가 즉시 보이고, 되돌리기 쉽고, 일괄 승인 전 목록 검토 가능한 자동화.
-- 불신: 조용히 품질을 깎는 자동화 — 오류가 최종 영상에서야 발견되는 것.
-- Descript 'Avoid harsh cuts' = 자동화가 공격적 최적화보다 보수적 안전을 택할 때 신뢰 유지.
+- Trusted: automation whose result is immediately visible, easy to undo, and reviewable as a list before
+  bulk approval.
+- Distrusted: automation that quietly degrades quality -- where errors are only discovered in the final
+  video.
+- Descript's 'Avoid harsh cuts' = trust is preserved when automation chooses conservative safety over
+  aggressive optimization.
 
-## 출처
-- Vrew 공식 Q&A/FAQ/튜토리얼, 클리앙 사용기, 유료화 안내 정리 글
-- eesel Descript reviews 종합(G2/Reddit/Trustpilot), workfromyourlaptop, Style Factory, Capterra, G2
-- Descript Help(Filler words/Correct transcript/wordbar), Descript 피드백 보드
+## Sources
+- Vrew's official Q&A/FAQ/tutorials, Clien (Korean forum) user reports, roundups of its paywall announcement
+- eesel's synthesis of Descript reviews (G2/Reddit/Trustpilot), workfromyourlaptop, Style Factory, Capterra, G2
+- Descript Help (Filler words/Correct transcript/wordbar), the Descript feedback board

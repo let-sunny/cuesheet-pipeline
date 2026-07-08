@@ -1,39 +1,45 @@
-# OSS 지형 리서치 — 구성요소별 공개 가치 (2026-07-08)
+# OSS landscape research -- publication value by component (2026-07-08)
 
-> 목적: 모노레포 구성요소 중 "다른 사람에게도 유용한 것" 분류. 스타 수는 GitHub API 실측.
-> 결론 요약은 맨 아래 판정표. 상세 비교는 세션 리서치 리포트 기반.
+> Purpose: classify which components of the monorepo are "useful to others." Star counts are measured
+> via the GitHub API.
+> A summary conclusion is in the verdict table at the bottom. Detailed comparisons are based on session
+> research reports.
 
-## 핵심 발견 3개
+## Three key findings
 
-1. **draft(비전 기반 무대사 초벌)의 여집합 포지션이 시장 규모로 확인됨.**
-   "에이전트 영상 편집"의 최대 화제작 video-use(15.9k 스타, 신생 폭발)가 공식 문서에
-   "LLM은 영상을 안 보고 읽는다(Audio is primary)"라고 한계를 명시 — 무대사 원본(브이로그·
-   크래프트·작업 영상)은 이 물결 전체가 못 다루는 영역. auto-editor의 motion 모드가 유일한
-   인접인데, 우리 실측(뜨개 롱테이크 씬 점수 0.09, 하이라이트와 무상관)이 그 방식의 반례.
-   "VLM 프레임 판독 + 시크 coarse-to-fine + 순서 보존"의 실전 OSS는 발견되지 않음.
+1. **draft's (vision-based, dialogue-free rough-cut) complement position is confirmed by market size.**
+   video-use, the biggest talking point in "agentic video editing" (15.9k stars, a fresh breakout hit),
+   states in its own docs that "an LLM reads video, it doesn't watch it (audio is primary)" -- an
+   explicit limitation. That means dialogue-free source footage (vlogs, craft/work videos) is territory
+   this entire wave cannot handle. auto-editor's motion mode is the only adjacent approach, and our own
+   measurements (knitting long-take scene scores of 0.09, uncorrelated with highlights) are a
+   counterexample to that method. No production OSS was found for "VLM frame reading + seek-based
+   coarse-to-fine + order-preserving matching."
 
-2. **schema+render는 'editly의 후계' 자리가 비어 있음.**
-   가장 유사한 선행 editly(JSON spec→ffmpeg, 5.4k 스타)가 14개월 방치(이슈 80개).
-   OTIO는 교환 포맷(렌더 의미론 없음), 상용 JSON→영상 API들(json2video/Shotstack)은
-   시장 검증만 제공. "zod 스키마=계약(z.infer, 검증 에러 '필드경로: 이유') + 로컬 ffmpeg
-   렌더"는 빈자리. 단 카테고리 자체는 커머디티라 폭발력 제한.
+2. **schema+render has an open seat as "editly's successor."**
+   The closest prior art, editly (JSON spec -> ffmpeg, 5.4k stars), has been dormant for 14 months
+   (80 open issues). OTIO is an interchange format (no rendering semantics), and commercial
+   JSON-to-video APIs (json2video/Shotstack) only prove market demand. "A zod schema as contract
+   (z.infer, validation errors as `field-path: reason`) + local ffmpeg rendering" is an open spot.
+   That said, the category itself is a commodity, which caps the upside.
 
-3. **bridge(MCP 편집)는 패턴이 독창적이나 단독으론 소품.**
-   기존 MCP 영상 편집은 NLE 원격조종(davinci-resolve-mcp 1.4k) 아니면 ffmpeg 단발 래퍼.
-   "검증되는 JSON 문서를 공유 상태로 두고 AI와 사람이 무충돌 병행 편집"이라는 문서-계약형
-   패턴은 없음 — schema와 묶어 발표할 때 가치.
+3. **bridge (MCP-based editing) is an original pattern but a minor piece on its own.**
+   Existing MCP video-editing projects are either NLE remote control (davinci-resolve-mcp, 1.4k) or
+   one-shot ffmpeg wrappers. There's no prior art for the document-as-contract pattern of "a validated
+   JSON document as shared state, edited concurrently by AI and a human with no conflicts" -- it has
+   value when presented together with schema.
 
-## 판정표
+## Verdict table
 
-| 구성요소 | 주목 가능성 | 포지셔닝 한 줄 |
+| Component | Attention potential | One-line positioning |
 |---|---|---|
-| draft | **높음** | "video-use가 못 보는 영상을 위한 도구 — 무대사 원본에서 VLM 프레임 판독으로 초벌 편집. 씬 감지 0건 롱테이크 실측 데이터 동봉" |
-| schema+render(+bridge) | 중 | "editly의 정신적 후계 — zod 계약 큐시트 + ffmpeg 렌더 + Claude Code가 편집하는 MCP까지 한 벌" |
-| bridge 단독 | 중(패턴)/저(규모) | "MCP로 앱이 아니라 문서를 조종하라" |
-| schema 단독 | 저~중 | OTIO/editly 인접 점유 |
-| web | 저 | OpenCut(61.7k)이 범용 점유 — 개인 문법 특화로 유지 |
+| draft | **High** | "A tool for the videos video-use can't see -- rough-cut drafting from dialogue-free source footage via VLM frame reading. Ships with measured data: 0 scene detections on long takes" |
+| schema+render(+bridge) | Medium | "The spiritual successor to editly -- a zod-contract cuesheet + ffmpeg rendering + an MCP server that lets Claude Code edit it, all in one" |
+| bridge alone | Medium (pattern) / Low (scale) | "Control a document via MCP, not an app" |
+| schema alone | Low-Medium | Occupies space adjacent to OTIO/editly |
+| web | Low | OpenCut (61.7k) already occupies the general-purpose space -- keep ours specialized to personal editing grammar |
 
-## 참고 좌표 (주요 프로젝트)
-Remotion 52.4k(코드=영상, 상용 라이선스) · OpenMontage 35.0k(에이전트 영상 제작) ·
-video-use 15.9k(전사 기반 에이전트 편집) · moviepy 14.8k · ShortGPT 7.7k · FunClip 5.9k ·
-editly 5.4k(방치) · auto-editor 4.5k · OTIO 1.9k · davinci-resolve-mcp 1.4k · OpenCut 61.7k
+## Reference landscape (notable projects)
+Remotion 52.4k (code-as-video, commercial license) - OpenMontage 35.0k (agentic video production) -
+video-use 15.9k (transcript-based agentic editing) - moviepy 14.8k - ShortGPT 7.7k - FunClip 5.9k -
+editly 5.4k (dormant) - auto-editor 4.5k - OTIO 1.9k - davinci-resolve-mcp 1.4k - OpenCut 61.7k

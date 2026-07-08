@@ -1,49 +1,58 @@
-# 에디터 UX 벤치마크 리서치 (Vrew·Descript·CapCut·프로 NLE)
+# Editor UX benchmark research (Vrew, Descript, CapCut, pro NLEs)
 
-> 2026-07-07. 목적: 다른 편집 툴들의 사용자 피드백에서 우리 툴이 취할 것 고르기.
-> 리서치만 — 반영은 사용자와 논의 후. 상세 근거·출처는 각 에이전트 리포트(세션 기록) 참고.
+> 2026-07-07. Purpose: from user feedback on other editing tools, pick what our tool should adopt.
+> Research only -- adoption to be decided after discussion with the user. See each agent report (session record) for detailed rationale and sources.
 
-## A. 우리가 이미 맞게 가고 있는 것 (업계 검증됨)
+## A. Things we're already getting right (industry-validated)
 
-1. **자막 = 컷 1:1 구조** — Vrew·Descript에서 가장 사랑받는 단일 인터랙션("텍스트 지우면 컷이
-   지워진다")의 직접 구현. 한국 커뮤니티에서 브루가 캡컷을 이기는 킬러 기능과 동일 구조.
-2. **자동 = 검토 가능한 후보 제시** — 신뢰받는 자동화의 공통 패턴(무음 목록, filler 하이라이트
-   = 우리 팔레트 채택/탈락 배지). 불신받는 자동화는 "오류가 최종 영상에서야 발견되는" 것 —
-   우리가 장면 묘사+프레임 확인을 편집 화면에 넣은 방향이 정답.
-3. **시간 도둑 1·2위를 자동화** — 브이로거 편집시간의 최대 비중은 ① 풋티지 로깅+컷 고르기
-   (1~10시간) ② 자막(영상 길이의 5~10배) — 정확히 우리 파이프라인이 대체한 두 가지.
-4. **무대사 콘텐츠는 업계 공백** — Gling/Descript/Premiere 문장편집 전부 전사 전제라 "대사
-   없는 콘텐츠엔 무용"이 리뷰 공통 단서. 비전 기반인 우리 접근이 유일 대안 포지션.
-5. **문서형 멘탈모델(타임라인 전면 아님)** — "프로그램 같지 않다"가 Vrew 최고 상찬.
-   3스텝 구조 유지가 맞음.
-6. **리플 삭제가 기본** — 컷 삭제 시 갭이 생길 수 없는 구조(concat 렌더)라 프로 NLE에서
-   "인생 낭비 방지 1순위"로 꼽히는 리플 삭제가 공짜로 구현돼 있음.
-7. **로컬·무료·기능이 사라지지 않음** — 캡컷 러그풀·Vrew 유료화·Descript 크레딧 불만이
-   각 툴 이탈 사유 1위. 우리 포지션의 구조적 이점.
+1. **Subtitle = cut 1:1 structure** -- a direct implementation of the single interaction most loved in
+   Vrew and Descript ("delete the text and the cut is deleted"). Same structure as the killer feature
+   that lets Vrew beat CapCut in Korean communities.
+2. **Automation presents reviewable candidates** -- the common pattern behind trusted automation
+   (silence lists, filler highlights = our palette's adopt/reject badges). Distrusted automation is
+   the kind where "errors are only discovered in the final video" -- putting scene descriptions +
+   frame confirmation into the editing screen is the right call.
+3. **Automating time-sink #1 and #2** -- the largest shares of a vlogger's editing time are
+   (1) footage logging + picking cuts (1-10 hours) and (2) subtitles (5-10x the video length) --
+   exactly the two things our pipeline replaces.
+4. **Dialogue-free content is an industry gap** -- Gling/Descript/Premiere's text-based editing all
+   assume transcripts, so "useless for content without dialogue" is a recurring caveat across reviews.
+   Our vision-based approach is the only alternative position.
+5. **Document-style mental model (not timeline-first)** -- "doesn't feel like a program" is Vrew's
+   highest praise. Keeping our three-step structure is the right call.
+6. **Ripple delete by default** -- because gaps cannot occur when a cut is deleted (concat rendering),
+   we get ripple delete for free -- the thing pro NLE users rank as "the #1 way to avoid wasting your
+   life" for free.
+7. **Local, free, features that don't disappear** -- CapCut's rug pull, Vrew's paywall, and Descript's
+   credit complaints are each tool's #1 reason for churn. A structural advantage of our position.
 
-## B. 취할 후보 (논의 대상, 체감효과/공수 순)
+## B. Candidates to adopt (for discussion, ordered by felt impact/effort)
 
-| # | 후보 | 근거 | 예상 공수 |
+| # | Candidate | Rationale | Estimated effort |
 |---|---|---|---|
-| 1 | **J/K/L 셔틀 + 재생-분할 루프 완성** — J 역/K 정지/L 정재생(연타 배속), 재생 중 Cmd+B 분할은 있음 | NLE 관례 1~2위, "롱테이크에서 컷 지점 찾기"에 결정적 — 우리 40분 원본 시나리오 그 자체 | 소 |
-| 2 | **미리보기에서 자막 직접 드래그** (위치·크기) | CapCut WYSIWYG 관례 — "좌표 입력 없이 보이는 그대로". 여백 슬라이더의 상위호환 | 중 |
-| 3 | **자막 스타일 큐별 오버라이드** (기본은 전역, 예외만 개별) | Vrew 불만 1위가 "일괄만 됨". 강조 자막(크게/색 다르게) 요구는 반드시 옴 | 중~대 (스키마 확장) |
-| 4 | **컷 나누기/합치기 버튼** — 분할(Cmd+B)은 있음, 인접 컷 합치기가 없음 | Vrew 기본 조작. 자막 granularity 재조정에 필수 짝 | 소 |
-| 5 | **미니 타임라인 줌** | CapCut "정밀↔조망 왕복 리듬". 90컷을 고정 배율로는 미세 경계 조작 불가 | 중 |
-| 6 | **자동 컷 경계 여유 패딩** — 동작(뜨개 손짓)이 완성되기 전 컷 방지 | Vrew 불만 2위 "호흡 안 지킴", Descript가 'Avoid harsh cuts'로 공식 수용한 방향. 확신 없으면 넓게 | 소 (파이프라인) |
-| 7 | **최종 렌더 해상도 옵션** (업로드용 1080p+) | Descript 교훈: "렌더 품질이 신뢰의 마지막 관문". 현재 프로젝트 기본 720p | 소 (이미 project.width 조정 가능 — UI 노출 문제) |
-| 8 | 프리뷰 스크럽(리스트 밖 자유 탐색) 강화, 스냅 | CapCut 관례. 현재 컷 단위 이동만 | 중 |
+| 1 | **Complete the J/K/L shuttle + play-split loop** -- J reverse / K pause / L play forward (repeated taps speed up), split with Cmd+B during playback already exists | NLE convention #1-2, decisive for "finding cut points in a long take" -- exactly our 40-minute source-footage scenario | Small |
+| 2 | **Direct drag of subtitles in the preview** (position/size) | CapCut's WYSIWYG convention -- "what you see is what you get, no coordinate entry." A superset of the margin slider | Medium |
+| 3 | **Per-cue subtitle style overrides** (global default, per-cue exceptions only) | Vrew's #1 complaint is "can only apply in bulk." Requests for emphasized subtitles (bigger/different color) are inevitable | Medium-large (schema extension) |
+| 4 | **Split/merge cut buttons** -- split (Cmd+B) exists, but merging adjacent cuts does not | A basic Vrew operation. A necessary counterpart for re-adjusting subtitle granularity | Small |
+| 5 | **Mini timeline zoom** | CapCut's "precision <-> overview" back-and-forth rhythm. With 90 cuts at a fixed zoom level, fine-grained boundary work is impossible | Medium |
+| 6 | **Automatic padding around cut boundaries** -- prevents cutting before an action (a knitting hand gesture) completes | Vrew's #2 complaint, "doesn't respect the beat/pacing"; the direction Descript officially adopted as "Avoid harsh cuts." Err wide when unsure | Small (pipeline) |
+| 7 | **Final render resolution option** (1080p+ for upload) | Descript's lesson: "render quality is the last gate of trust." Current project default is 720p | Small (project.width is already adjustable -- it's a matter of exposing it in the UI) |
+| 8 | Strengthen preview scrubbing (free-form seeking outside the list), snapping | CapCut convention. Currently only cut-by-cut movement | Medium |
 
-## C. 명시적으로 안 가는 것
+## C. Explicitly not pursuing
 
-- **멀티트랙·이펙트·템플릿 마켓** — 북극성에서 이미 제외. 캡컷 이탈 사유(롱폼 한계)와
-  우리 강점이 정확히 반대라 그대로 유지.
-- **전사/발화 기반 기능 일체** — 소재에 대사 없음 (CLAUDE.md 절대 전제).
-- **단어 경계 자동 정렬 문제** — Descript 최장수 불만인데, 우리는 구조적으로 없음
-  (자막이 원본 오디오와 결합 안 됨). 만들지 않는 것이 이점.
+- **Multitrack, effects, template marketplace** -- already excluded by the north star. This is exactly
+  the opposite of CapCut's churn reason (long-form limits) and our strength, so it stays excluded.
+- **Any transcript/speech-based feature** -- the source footage has no dialogue (an absolute premise
+  in CLAUDE.md).
+- **Automatic word-boundary alignment** -- Descript's longest-running complaint, but this structurally
+  does not exist for us (subtitles are not bound to source audio). Not building it is an advantage.
 
-## D. 논의 질문 (사용자에게)
+## D. Discussion questions (for the user)
 
-1. B표에서 어디까지 갈까? (내 추천: 1·4·6·7 먼저 — 소공수 고효과, 2·5는 다음, 3은 실수요 확인 후)
-2. 7번: 업로드용 최종 렌더를 1080p로 올릴까? (원본 4K라 가능, 렌더 시간은 ~2배)
-3. 6번: 자동 컷 경계에 앞뒤 0.3~0.5초 여유를 기본으로 줄까? (컷이 살짝 길어지는 대신 동작 잘림 방지)
+1. How far should we go on table B? (My recommendation: 1, 4, 6, 7 first -- low effort, high impact;
+   2, 5 next; 3 after confirming real demand)
+2. #7: should we raise the final upload render to 1080p? (Source is 4K so it's possible; render time
+   is ~2x)
+3. #6: should automatic cut boundaries default to 0.3-0.5s of padding on each side? (Cuts get slightly
+   longer in exchange for not clipping actions)
