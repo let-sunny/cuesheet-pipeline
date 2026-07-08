@@ -17,7 +17,6 @@ const renderOutputPath = resolve(repoRoot, "out.mp4");
 const proxyDir = resolve(repoRoot, "media/proxies");
 // Moment palette: storage location for the rough classification data and thumbnail frames.
 const draftsRoot = resolve(repoRoot, "media/drafts");
-const framesRoot = resolve(draftsRoot, "frames");
 // Disk cache for segment thumbnails (seek-extraction results, used by the edit step's cut list/mini timeline).
 const thumbsDir = resolve(repoRoot, "media/.thumbs");
 
@@ -29,6 +28,20 @@ function momentsPath(): string {
   // Defaults to the currently active dataset (dotmix_v4) — when starting the server with a
   // different dataset, set MOMENTS_PATH explicitly.
   return process.env.MOMENTS_PATH ?? resolve(draftsRoot, "dotmix_v4/moments.json");
+}
+
+/**
+ * Thumbnail frames directory for the moment palette - always the "frames" folder living alongside
+ * momentsPath()'s moments.json (same dataset), not a fixed path. This used to be hardcoded to the
+ * legacy flat `media/drafts/frames` directory while momentsPath() already defaulted to the
+ * dataset-specific `media/drafts/dotmix_v4/moments.json` - most clip folders happened to have
+ * identical names in both places, masking the mismatch, but any clip whose frames only exist under
+ * the dataset folder (e.g. ones added/regenerated after the v4 dataset was created) 404'd on every
+ * card. Deriving this from momentsPath() instead keeps the two in sync automatically, including
+ * when MOMENTS_PATH is overridden to a different dataset.
+ */
+function framesRoot(): string {
+  return resolve(dirname(momentsPath()), "frames");
 }
 
 /** Checks whether target is inside root (including root itself) — prevents path escape. */
@@ -48,7 +61,43 @@ let lastRenderBurnSubtitles = true;
 interface RenderJobState {
   state: "idle" | "running" | "done" | "error";
   progress: number;
+  /** Short, extracted summary of the failure - what the client shows in the toast/banner. */
   error?: string;
+  /** Full raw ffmpeg stderr dump, for a collapsible "show details" section on the client. */
+  errorDetail?: string;
+}
+
+/**
+ * ffmpeg fatal-error line patterns, checked from the end of stderr backwards - ffmpeg has no
+ * single consistent "the error is on this line" convention, so this is a best-effort summary for
+ * the toast/banner (previously the raw ~2000-char stderr dump was shown in both the toast AND the
+ * persistent banner at once, which read as duplicated wall-of-text). Falls back to the last
+ * non-empty line if nothing matches; the full dump stays available in the collapsible detail for
+ * whatever this heuristic misses.
+ */
+const FFMPEG_ERROR_LINE_PATTERNS = [
+  /^\[.*\] Error .*/,
+  /No such file or directory/,
+  /Invalid data found when processing input/,
+  /Unknown encoder/,
+  /Unsupported codec/,
+  /Conversion failed!/,
+  /Error while (opening|filtering|decoding|encoding|muxing)/,
+  /Permission denied/,
+];
+
+function extractFfmpegErrorSummary(stderr: string): string {
+  const lines = stderr
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    const line = lines[i]!;
+    if (FFMPEG_ERROR_LINE_PATTERNS.some((p) => p.test(line))) {
+      return line;
+    }
+  }
+  return lines[lines.length - 1] ?? "Unknown ffmpeg error";
 }
 
 // State of the last (or currently running) render job. Since only one job exists at a time, a single
@@ -1032,6 +1081,7 @@ export function cuesheetPlugin(): Plugin {
           state: renderJob.state,
           progress: renderJob.progress,
           error: renderJob.error,
+          errorDetail: renderJob.errorDetail,
           outputReady: renderJob.state === "done" && existsSync(renderOutputPath),
         });
       });
@@ -1094,6 +1144,9 @@ export function cuesheetPlugin(): Plugin {
         // relative path, convert it to an absolute path based on the repo root before passing it in.
         const cueForRender = { ...result.data, clipDir: resolveRepoPath(result.data.clipDir) };
         const plan = buildRenderPlan(cueForRender, renderOutputPath, { burnSubtitles });
+        for (const warning of plan.warnings) {
+          server.config.logger.warn(`[render] ${warning}`);
+        }
         const proc = spawn("ffmpeg", plan.args, { stdio: ["ignore", "pipe", "pipe"] });
         let stderr = "";
         proc.stdout?.on("data", () => {});
@@ -1121,7 +1174,12 @@ export function cuesheetPlugin(): Plugin {
             lastRenderName = result.data.project.name;
             lastRenderBurnSubtitles = burnSubtitles;
           } else {
-            renderJob = { state: "error", progress: renderJob.progress, error: stderr.slice(-2000) };
+            renderJob = {
+              state: "error",
+              progress: renderJob.progress,
+              error: extractFfmpegErrorSummary(stderr),
+              errorDetail: stderr.slice(-4000),
+            };
           }
         });
 
@@ -1168,8 +1226,9 @@ export function cuesheetPlugin(): Plugin {
         const rawPath = decodeURIComponent(
           (req.url ?? "").split("?")[0]?.replace(/^\/+/, "") ?? "",
         );
-        const target = resolve(framesRoot, rawPath);
-        if (!rawPath || !isWithin(framesRoot, target) || extname(target).toLowerCase() !== ".jpg") {
+        const root = framesRoot();
+        const target = resolve(root, rawPath);
+        if (!rawPath || !isWithin(root, target) || extname(target).toLowerCase() !== ".jpg") {
           res.statusCode = 400;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
           res.end("Invalid path");
@@ -1196,8 +1255,9 @@ export function cuesheetPlugin(): Plugin {
         const folder = decodeURIComponent(
           (req.url ?? "").split("?")[0]?.replace(/^\/+/, "") ?? "",
         );
-        const target = resolve(framesRoot, folder);
-        if (!folder || folder.includes("/") || !isWithin(framesRoot, target)) {
+        const root = framesRoot();
+        const target = resolve(root, folder);
+        if (!folder || folder.includes("/") || !isWithin(root, target)) {
           res.statusCode = 400;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
           res.end("Invalid clip folder");
