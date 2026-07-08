@@ -1,6 +1,8 @@
 # CLAUDE.md
 
-This file is guidance for Claude working in this repository.
+This file is guidance for Claude working in this repository (developing it — code, schema,
+packages, tests). For an agent *operating* this tool on a user's behalf instead (running the
+pipeline, editing a cuesheet via the MCP bridge, rendering output), see [AGENTS.md](./AGENTS.md).
 
 ## Project
 

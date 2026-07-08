@@ -1,0 +1,23 @@
+# cuesheet-pipeline
+
+> Vision-first rough-cut generation for dialogue-free footage — a cuesheet JSON contract, local
+> ffmpeg render, and natural-language editing via MCP.
+
+Point it at a folder of raw footage with no dialogue (e.g. a knitting vlog) and it produces a
+rough-cut cuesheet by having a vision model judge extracted frames, then lets a human or an
+agent refine that cuesheet (browser editor, or natural-language commands through an MCP bridge)
+before rendering the final video locally with ffmpeg. The cuesheet (JSON) is the single source
+of truth every step reads from or writes to.
+
+## Docs
+
+- [README](./README.md): quickstart, what it does, why it exists.
+- [AGENTS.md](./AGENTS.md): onboarding for an agent operating this tool on a user's behalf —
+  exact CLI invocations, the MCP bridge tool surface, file/path conventions, typical workflows.
+- [ARCHITECTURE.md](./ARCHITECTURE.md): package map, data flow, dependency graph, key design
+  decisions, for anyone developing the repo itself (paired with CLAUDE.md).
+- [docs/PRD.md](./docs/PRD.md): product requirements — north star, user scenario, feature list.
+- [docs/screen-spec.md](./docs/screen-spec.md): canonical screen layout for the web editor.
+- [GitHub wiki](https://github.com/let-sunny/cuesheet-pipeline/wiki): experiment write-ups —
+  editing-grammar reverse-engineering, scene-detection measurement (and why it was rejected),
+  rough-cut pipeline iterations.
