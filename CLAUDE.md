@@ -162,7 +162,10 @@ own CSS via explicit classes only.
 
 Internal component anatomy follows Astryx's shape, scaled down: one folder per
 significant component — `Component.tsx` (role header at top) + co-located
-`Component.test.tsx` + `index.ts` export gate. `.doc.mjs` is omitted until we ship
+`Component.css` (its styles only; the global stylesheet keeps tokens/base/shared
+`.plain-*` rules exclusively) + `Component.test.tsx` + `index.ts` export gate.
+Reusable stateful logic is extracted into custom hooks (`src/hooks/`), each small
+enough to unit-test on its own. `.doc.mjs` is omitted until we ship
 public components. SYNC comments only where real cross-file chains exist.
 
 ## Testability as the size limit (user rule, 2026-07-09)
