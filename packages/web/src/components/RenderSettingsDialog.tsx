@@ -129,7 +129,7 @@ export function RenderSettingsDialog({
               ) : null}
 
               <div className="render-dialog-actions">
-                <Button label="Cancel" variant="ghost" onClick={() => onOpenChange(false)} />
+                <Button label="Cancel" variant="secondary" onClick={() => onOpenChange(false)} />
                 <Button
                   label={rendering ? "Exporting…" : "Start export"}
                   variant="primary"

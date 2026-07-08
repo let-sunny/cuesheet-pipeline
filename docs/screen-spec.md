@@ -88,11 +88,22 @@ metadata text keep full contrast (not dimmed).
   is in use)
 **G5. Reframe** — status display + [Edit] [Release] (Edit opens an overlay mode on the video)
 **G6. Cut actions** — one row of buttons: [Split Cmd+B] [Merge with next cut Cmd+J]
-  [Duplicate] - [Set as intro] [Set as outro] - [Delete (danger color, last)]
+  [Duplicate] [Set as intro] [Set as outro]. No primary in this row — none of these five is
+  a dominant/default action, so all are `secondary`/`ghost` (2026-07-08 revision: this group
+  used to also hold Delete at the end, visually pushed right by a CSS trick; that read as
+  "just another cut action" and risked a misclick on a destructive operation).
+**Destructive zone (separate from G6, panel bottom)** — [Delete], alone, separated from G6 by
+  a divider + extra spacing and rendered `variant="destructive"`. This is not a numbered G
+  group: it is deliberately isolated so it can never be mistaken for a routine action (section
+  0-5 "destructive/rare actions ... last" taken literally — last and set apart, not just last
+  in reading order).
 
 Rationale: G1-G3 cover 90% of the edit loop (range -> subtitle), G4-G6 are occasional.
 "Subtitle style for this cut" is a sub-property of subtitle, so it lives inside G3 — never
-its own section (this is the core fix for the current problem).
+its own section (this is the core fix for the current problem). The clip filename in G1 is
+read-only plain text (not an input) — the only legitimate way to change which source clip a
+cut points to is picking a scene in (1) Scenes or duplicating an existing cut; hand-typing a
+filename is error-prone and was never a real, supported path.
 
 **Confirmed width tokens for G1/G2 (2026-07-08, measured)**: label column 40px, `narrow`
 input 80px (up from 64px — 64px let a 5-character decimal value like `39.87` collide with
@@ -116,10 +127,34 @@ collapsible manual entry) -> **BGM** -> **Narration** (toggle, folder, volume, h
 **Output** ([Download subtitles .srt] [Export...] — Export dialog: resolution presets /
 burn-in subtitles / summary / start).
 
-## 6. Shared dialog layout
+**Button hierarchy and state rules for this step (2026-07-08, applies section 0/6 rules
+concretely)**: the one primary of the whole step is [Export] in Output; [Download subtitles
+.srt] is secondary. Within Intro/outro, "Upload file" is secondary and "Clear" is ghost —
+Clear only un-assigns a reference (instantly reversible from the same panel via re-select),
+it does not delete a file, so it is not treated as destructive (contrast with BGM row
+[Delete], which removes a cue entry and is `variant="destructive"`). No section in this step
+dims a whole row/card via opacity for any state (matches section 2's rule, generalized to
+every step). Long file names (intro/outro "Clip: <name>" label, BGM `file` field) stay inside
+their row's bounds via ellipsis or wrap — never raw layout overflow; native `<select>`
+elements truncate long option text using the browser's own mechanism, which is acceptable
+(contained, not a custom-overflow bug). Free-text fields are only used where there is no
+picker alternative (e.g. narration folder — a filesystem path with no browser folder-picker
+API); anything with a real picker (clip files) must not also expose a free-text edit path.
+
+## 6. Shared dialog layout, and button-group hierarchy (any multi-button row)
 
 Astryx Dialog. Title -> body (same form-grid rules) -> footer with [Cancel] [Primary action]
 at the right. Only one primary action gets emphasis.
+
+**General rule, not just dialogs**: any row/group of buttons that belong together (dialog
+footer, banner actions, a toolbar) must have at most one `variant="primary"` — pick the
+single recommended/default action and give it primary; every other action in that same group
+is `secondary` or `ghost`, and destructive actions are always `variant="destructive"`
+regardless of whether the group has a primary. A group with no dominant action (e.g. a row of
+equally-weighted operations) may have zero primaries — that's fine, it just must not have two.
+Buttons that belong to one group render inside one container (not spread across a
+`justify-content: space-between` row shared with unrelated content like a text label) so they
+stay visually together, and action groups in banners/dialog footers are right-aligned.
 
 ## Changelog
 - 2026-07-08 first draft — established the fix baseline for the hierarchy collapse (In/Out

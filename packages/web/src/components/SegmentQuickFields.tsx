@@ -104,14 +104,17 @@ export function SegmentQuickFields({
       {/* G1. 구간 */}
       <div className="qf-group">
         <div className="qf-group-label">Range</div>
-        <label className="qf-field field-full">
+        {/* clip 파일명은 읽기 전용 텍스트로만 표시한다(2026-07-08 개정) - 이 컷이 가리키는
+            원본 클립을 바꾸는 정식 경로는 (1) Scenes 팔레트에서 다른 장면을 고르거나 컷을
+            복제하는 것뿐이라, 자유 타이핑 입력은 오타로 존재하지 않는 파일을 가리키게 하기
+            쉬운 버그 유발 지점이었다. 그래도 복사(선택)는 가능해야 하므로 일반 텍스트로만
+            보여준다(disabled input이 아니라 span - disabled는 브라우저에 따라 선택이 막힌다). */}
+        <div className="qf-field field-full">
           <span>clip</span>
-          <input
-            type="text"
-            value={segment.clip}
-            onChange={(e) => onChange({ clip: e.target.value })}
-          />
-        </label>
+          <span className="qf-readonly-value" title={segment.clip}>
+            {segment.clip}
+          </span>
+        </div>
         <div className="qf-row">
           <label className="qf-field field-narrow">
             <span>In</span>
@@ -254,7 +257,7 @@ export function SegmentQuickFields({
         </div>
       </div>
 
-      {/* G6. 컷 작업 */}
+      {/* G6. 컷 작업 - Delete는 여기 없다(아래 별도 위험 zone 참고, screen-spec 4절 개정). */}
       <div className="qf-group">
         <div className="qf-group-label">Cut actions</div>
         <div className="qf-row qf-actions-row">
@@ -290,15 +293,20 @@ export function SegmentQuickFields({
             }
             onClick={onSetOutro}
           />
-          <Button
-            label="Delete"
-            variant="destructive"
-            size="sm"
-            isDisabled={!canDelete}
-            tooltip={canDelete ? undefined : "Can't delete the last remaining cut"}
-            onClick={onDelete}
-          />
         </div>
+      </div>
+
+      {/* 위험 zone: 삭제만 분리(screen-spec 4절 2026-07-08 개정) - 구분선+여백으로 위의
+          컷 작업 그룹과 확실히 갈라, 다른 버튼과 나란히 눌려 실수로 삭제되는 걸 막는다. */}
+      <div className="qf-danger-zone">
+        <Button
+          label="Delete"
+          variant="destructive"
+          size="sm"
+          isDisabled={!canDelete}
+          tooltip={canDelete ? undefined : "Can't delete the last remaining cut"}
+          onClick={onDelete}
+        />
       </div>
     </div>
   );

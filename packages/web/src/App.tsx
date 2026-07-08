@@ -1170,8 +1170,15 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       {restoreSnapshot ? (
         <div className="banner">
           You have unsaved edits from the last session (last edited {minutesAgoLabel(restoreSnapshot.savedAt)}).
-          <Button label="Continue editing" variant="secondary" size="sm" onClick={handleRestoreSnapshot} />
-          <Button label="Discard and use saved" variant="ghost" size="sm" onClick={handleDiscardSnapshot} />
+          {/* screen-spec 6절: 그룹 안 primary는 하나만 - 이어서 편집하는 쪽이 기본 추천
+              동작이라 primary, 되돌리는 쪽은 secondary(2026-07-08 개정). 버튼 두 개는
+              한 액션 그룹으로 묶어(.banner-actions) 텍스트와 분리, 오른쪽 정렬한다 -
+              예전엔 이 div가 3개 flex 아이템(텍스트+버튼+버튼)이라 space-between이
+              버튼을 서로 떨어뜨려 놓아 "따로 노는" 배치였다. */}
+          <div className="banner-actions">
+            <Button label="Continue editing" variant="primary" size="sm" onClick={handleRestoreSnapshot} />
+            <Button label="Discard and use saved" variant="secondary" size="sm" onClick={handleDiscardSnapshot} />
+          </div>
         </div>
       ) : null}
 
