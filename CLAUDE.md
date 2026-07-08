@@ -10,13 +10,14 @@ assembling them into the final video — and that process is excessively manual 
 automating and streamlining it is the core motivation. A cuesheet (JSON) serves as the contract,
 connecting editing results to automatic rendering. Full-stack TypeScript, pnpm monorepo.
 
-**North star (user-declared, 2026-07-05): "my own Vrew."** You throw in raw footage and get (1) a
-rough cut (cuesheet) auto-generated, (2) refine it in the browser with video-editor-grade UX, and
-(3) render it right away — a personal, specialized editor. Two differentiators from general-purpose
-Vrew: it works on footage with no dialogue (visual-based draft generation; Vrew's transcript-based
-editing is useless for this content), and it bakes in the user's own editing grammar (cut rhythm,
-shot vocabulary, narrative arc). Everything else Vrew offers (multitrack, effects, general-purpose
-templates) is not being pursued — "draft automation + a touch-up editor" is the whole front line.
+**North star (user-declared, 2026-07-05): "a personal, fully-tailored video editor."** You throw in
+raw footage and get (1) a rough cut (cuesheet) auto-generated, (2) refine it in the browser with
+video-editor-grade UX, and (3) render it right away — a personal, specialized editor. Two
+differentiators from general-purpose transcript-based editors: it works on footage with no dialogue
+(visual-based draft generation; transcript-based editing is useless for this content), and it bakes
+in the user's own editing grammar (cut rhythm, shot vocabulary, narrative arc). Everything else a
+general-purpose editor offers (multitrack, effects, general-purpose templates) is not being pursued
+— "draft automation + a touch-up editor" is the whole front line.
 
 **Real content example (read this to avoid misunderstanding): a knitting vlog.** The raw footage
 shows hands/work while knitting and **has no dialogue (narration)**. The user writes a script

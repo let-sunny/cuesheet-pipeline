@@ -1,4 +1,4 @@
-# PRD — My Own Vrew (Cuesheet Editor)
+# PRD — Personal Cuesheet Editor
 
 > 2026-07-08. Product requirements re-derived after features had piled up without a spec and
 > the hierarchy collapsed. From now on, every new feature gets a place in this document first,

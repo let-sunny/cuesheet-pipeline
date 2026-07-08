@@ -116,8 +116,9 @@ const result = validateCueSheet(cueInput); // assembleDraft itself doesn't valid
   `subtitle=memo`. **Boundary padding**: once accepted, `in = max(0, inS - PAD)` and
   `out = min(clipDur, outS + PAD)` are applied first (`PAD` defaults to 0.4s, adjustable/disableable
   via `assembleDraft({ boundaryPadS })` or the CLI's `--boundary-pad`). This is slack to keep a
-  motion (a knitting hand gesture) from being cut off before it completes (see Vrew's "doesn't
-  respect breathing room" complaint and Descript's 'Avoid harsh cuts' reference). `clipDur`
+  motion (a knitting hand gesture) from being cut off before it completes (see the "doesn't
+  respect breathing room" complaint pattern in transcript-based editors and Descript's 'Avoid
+  harsh cuts' reference). `clipDur`
   comes from manifest.json's `durS` (wired automatically by the CLI); clips without an entry
   skip the upper-bound clamp. If padding causes adjacent cuts within the same clip to overlap,
   half of the overlap is rolled back from each side so they no longer overlap. Individual

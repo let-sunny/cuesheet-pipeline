@@ -55,8 +55,8 @@ export interface AssembleGrammarConfig {
   /**
    * Default padding (seconds) added to steady-highlight cut boundaries when
    * AssembleOptions.boundaryPadS is not given. Prevents a motion (knitting hand gesture) from
-   * being cut off before it completes — see Vrew's "doesn't respect breathing room" complaint
-   * and Descript's 'Avoid harsh cuts' reference.
+   * being cut off before it completes — see the "doesn't respect breathing room" complaint
+   * pattern in transcript-based editors and Descript's 'Avoid harsh cuts' reference.
    */
   boundaryPadS: number;
 }

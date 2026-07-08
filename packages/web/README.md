@@ -1,8 +1,8 @@
 # @cuesheet/web
 
 A browser editor for editing a cuesheet (`CueSheet` JSON) and running the render. The touch-up
-stage of "my personal Vrew" — the screen where a human refines the rough cuesheet that
-`@cuesheet/draft` produced.
+stage of the personal, fully-tailored video editor — the screen where a human refines the rough
+cuesheet that `@cuesheet/draft` produced.
 
 Made up of three steps (`StepNav`):
 

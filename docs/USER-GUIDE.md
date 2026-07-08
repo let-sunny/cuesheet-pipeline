@@ -1,4 +1,4 @@
-# User Guide — My Own Vrew
+# User Guide — Personal Cuesheet Editor
 
 > Audience: the owner of this tool (a knitting YouTuber). Answers "what do I do" when you open
 > the editor.

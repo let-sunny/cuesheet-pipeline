@@ -7,7 +7,7 @@
 
 ## North Star
 
-**"My own Vrew"** — a personal editor: throw in raw footage and (1) a rough cut is generated
+**"A personal, fully-tailored video editor"** — throw in raw footage and (1) a rough cut is generated
 automatically, (2) polish it in the browser with video-editor-grade UX, (3) it renders right
 there. What sets it apart: it works on footage with no dialogue (vision-based), and it bakes
 in the user's own editing grammar. See the "Project" section of CLAUDE.md for details.

@@ -25,7 +25,7 @@
 - Subtitles can be dragged directly within the preview screen to adjust position/size (WYSIWYG); styles switch instantly via thumbnail cards.
 - Relevance to us: dragging subtitles over the preview is the expected convention for users. Same grammar as crop-drag editing.
 
-Bonus: in Korean communities, the point where Vrew beats CapCut is "deleting a subtitle = deleting that segment" (subtitle-cut sync) and automatic silence cleanup. The common conclusion is a division of labor: Vrew for long-form/explainer content, CapCut for short-form/trend content.
+Bonus: in Korean communities, the point where transcript-based editors beat CapCut is "deleting a subtitle = deleting that segment" (subtitle-cut sync) and automatic silence cleanup. The common conclusion is a division of labor: transcript-based editors for long-form/explainer content, CapCut for short-form/trend content.
 
 ## B. Three user complaints
 
@@ -38,7 +38,7 @@ Bonus: in Korean communities, the point where Vrew beats CapCut is "deleting a s
 - Relevance to us: our 4-6 minute main output sits between CapCut's strengths and its limits -- the combination of "simple grammar + no limits" is an open space.
 
 **3. Notification spam/ads/paywall UX + tedium of fine subtitle adjustment**
-- "Tedium of fine subtitle adjustment" is the one item among CapCut's real-editing complaints where we directly compete -- per-cue fine-tuning is the baseline set by Vrew.
+- "Tedium of fine subtitle adjustment" is the one item among CapCut's real-editing complaints where we directly compete -- per-cue fine-tuning is the baseline set by transcript-based editors.
 
 ## C. Reasons people can't move on vs. reasons people leave
 
