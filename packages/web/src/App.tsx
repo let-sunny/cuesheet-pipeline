@@ -49,6 +49,14 @@ import { RenderSettingsDialog } from "./components/RenderSettingsDialog.js";
 /** ← / → 1회 이동량(1프레임, 30fps 기준). Shift+← / →는 1초. */
 const FRAME_SECONDS = 1 / 30;
 
+// 오버라이드 해제 시 styleOverride 키 자체를 제거한다(값을 null로 두지 않는다) —
+// null도 "오버라이드 없음"으로 스키마상 유효하지만(nullable), 저장 파일에 불필요한
+// "styleOverride": null이 남는 걸 피하려고 생략(undefined)으로 통일한다.
+function withoutStyleOverride(segment: Segment): Segment {
+  const { styleOverride: _styleOverride, ...rest } = segment;
+  return rest;
+}
+
 type SaveState =
   | { status: "idle" }
   | { status: "saving" }
@@ -1019,7 +1027,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
 
   // "이 컷만 스타일" 토글 — 켜면 전역 subtitleStyle을 그대로 복사한 오버라이드로 시작해서
   // (편집 즉시 눈에 보이는 값이 바뀌지 않게) 사용자가 거기서부터 값을 조정하게 한다.
-  // 끄면(=오버라이드 해제) styleOverride를 null로 되돌린다. 토글 자체는 개별 편집.
+  // 끄면(=오버라이드 해제) styleOverride 키를 제거한다. 토글 자체는 개별 편집.
   const toggleSegmentStyleOverride = useCallback((i: number, enabled: boolean) => {
     if (!draft) {
       return;
@@ -1030,7 +1038,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         return prev;
       }
       const segments = prev.segments.map((s, idx) =>
-        idx === i ? { ...s, styleOverride: enabled ? { ...prev.subtitleStyle } : null } : s,
+        idx === i ? (enabled ? { ...s, styleOverride: { ...prev.subtitleStyle } } : withoutStyleOverride(s)) : s,
       );
       return { ...prev, segments };
     });
@@ -1061,7 +1069,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       if (!prev) {
         return prev;
       }
-      const segments = prev.segments.map((s, idx) => (idx === i ? { ...s, styleOverride: null } : s));
+      const segments = prev.segments.map((s, idx) => (idx === i ? withoutStyleOverride(s) : s));
       return { ...prev, segments };
     });
   }, [draft, recordDiscreteChange]);
@@ -1093,7 +1101,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         return prev;
       }
       const mergedGlobal: SubtitleStyle = { ...prev.subtitleStyle, ...target.styleOverride };
-      const segments = prev.segments.map((s, idx) => (idx === i ? { ...s, styleOverride: null } : s));
+      const segments = prev.segments.map((s, idx) => (idx === i ? withoutStyleOverride(s) : s));
       return { ...prev, subtitleStyle: mergedGlobal, segments };
     });
   }, [draft, recordDiscreteChange]);

@@ -19,11 +19,27 @@ export type SaveResult =
   | { ok: true; data: CueSheet }
   | { ok: false; errors: string[] };
 
+/** 저장 직전 방어선 — segment.styleOverride가 null/undefined면 키 자체를 제거한다.
+ * App.tsx의 편집 경로가 이미 키를 생략하도록 고쳐졌지만(2026-07-08), 여기서도
+ * 한 번 더 정규화해 "styleOverride": null이 저장 파일에 남는 걸 막는다. */
+function normalizeCueSheetForSave(cuesheet: CueSheet): CueSheet {
+  return {
+    ...cuesheet,
+    segments: cuesheet.segments.map((s) => {
+      if (s.styleOverride == null) {
+        const { styleOverride: _styleOverride, ...rest } = s;
+        return rest;
+      }
+      return s;
+    }),
+  };
+}
+
 export async function saveCueSheet(cuesheet: CueSheet): Promise<SaveResult> {
   const res = await fetch("/api/cuesheet", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(cuesheet),
+    body: JSON.stringify(normalizeCueSheetForSave(cuesheet)),
   });
   return (await res.json()) as SaveResult;
 }

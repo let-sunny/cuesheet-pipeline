@@ -384,6 +384,11 @@ export function MomentPalette({
                 : qualityRejected
                   ? " status-rejected-quality"
                   : "";
+              const rejectedLabel = faceRejected
+                ? "자동 제외: 얼굴 노출"
+                : qualityRejected
+                  ? "자동 제외: 품질 낮음"
+                  : null;
               return (
                 // Card(BaseProps)는 title을 명시적으로 omit하므로(footgun 목록) 카드
                 // 전체 정보 툴팁은 이 플레인 래퍼 div가 대신 맡는다.
@@ -392,7 +397,16 @@ export function MomentPalette({
                     padding={0}
                     className={`moment-card${inUse ? " in-use" : ""}${statusClass}`}
                   >
-                    <div className="moment-thumb">
+                    {/* 자동 제외 사유는 카드 맨 위 전폭 배너로 - 썸네일 위 작은 코너 배지보다
+                        훨씬 눈에 띄어 "흐린 게 뭐고 찐한 게 뭐냐"는 오독을 없앤다(피드백
+                        2026-07-08). 담기 버튼은 이 상태에서도 계속 활성 - 자동 제외는
+                        "금지"가 아니라 "자동이 거른 것"이라 언제든 되살릴 수 있음을 보여준다. */}
+                    {rejectedLabel ? (
+                      <div className={`moment-status-banner${faceRejected ? " face" : " quality"}`}>
+                        {rejectedLabel}
+                      </div>
+                    ) : null}
+                    <div className={`moment-thumb${rejectedLabel ? " rejected" : ""}`}>
                       {frame ? (
                         <img
                           src={`/draft-frames/${encodeURIComponent(card.clipFolder)}/${encodeURIComponent(frame)}`}
@@ -414,78 +428,73 @@ export function MomentPalette({
                           className="moment-badge-in-use"
                         />
                       ) : null}
-                      {!inUse && faceRejected ? (
-                        <Badge variant="error" label="자동 제외: 얼굴 노출" className="moment-badge-rejected face" />
-                      ) : null}
-                      {!inUse && qualityRejected ? (
-                        <Badge
-                          variant="warning"
-                          label="자동 제외: 품질 낮음"
-                          className="moment-badge-rejected quality"
-                        />
-                      ) : null}
                     </div>
                     {/* 카드 위계(screen-spec 2절): 썸네일 -> 상태 배지(위, 썸네일 오버레이) ->
                         장면 설명(전문, 줄바꿈 허용) -> 메타(샷유형·길이·품질) -> 액션. 이
                         화면은 장면을 "읽고 고르는" 화면이라 설명 클램프는 제거했다
-                        (maxLines={0} = 무클램프) — 과거 -webkit-line-clamp 버그 회피용
-                        래퍼(.moment-memo-wrap)는 패딩 용도로만 남긴다. */}
-                    <div className="moment-memo-wrap">
-                      <Text type="supporting" maxLines={0}>
-                        {displayMemo}
-                      </Text>
-                    </div>
-                    <div className="moment-info">
-                      <Badge variant={meta.badgeVariant} label={meta.label} />
-                      <span className="moment-duration">{(card.outS - card.inS).toFixed(1)}s</span>
-                      {card.quality != null ? (
-                        <span className="moment-quality">품질 {card.quality}/5</span>
-                      ) : null}
-                    </div>
-                    <div className="moment-card-actions">
-                      <Button
-                        label={inUse ? "담김" : "담기"}
-                        variant="primary"
-                        size="sm"
-                        isDisabled={inUse}
-                        onClick={() => handleAdd(card)}
-                      />
-                      {/* 사용 안 중일 땐 빼기를 숨기되(자리는 그대로 차지해 카드 높이가
-                          담기/빼기 유무와 무관하게 일정하게 유지된다). */}
-                      <Button
-                        label="빼기"
-                        variant="destructive"
-                        size="sm"
-                        isDisabled={!inUse}
-                        className={inUse ? "" : "placeholder"}
-                        onClick={() => onRemoveSegment(card.clipFileName, card.inS, card.outS)}
-                      />
-                    </div>
-                    <div className="moment-io-actions">
-                      <Button
-                        label={isIntro ? "인트로 지정됨" : "인트로로"}
-                        variant="ghost"
-                        size="sm"
-                        className={`moment-io-button${isIntro ? " active" : ""}`}
-                        isDisabled={tooLongForIntroOutro}
-                        tooltip={
-                          introOutroDisabledTitle ??
-                          "이 클립 전체를 인트로로 지정합니다(구간 지정 불가, 클립 전체 삽입)"
-                        }
-                        onClick={() => onSetIntro(card.clipFileName)}
-                      />
-                      <Button
-                        label={isOutro ? "아웃트로 지정됨" : "아웃트로로"}
-                        variant="ghost"
-                        size="sm"
-                        className={`moment-io-button${isOutro ? " active" : ""}`}
-                        isDisabled={tooLongForIntroOutro}
-                        tooltip={
-                          introOutroDisabledTitle ??
-                          "이 클립 전체를 아웃트로로 지정합니다(구간 지정 불가, 클립 전체 삽입)"
-                        }
-                        onClick={() => onSetOutro(card.clipFileName)}
-                      />
+                        (maxLines={0} = 무클램프). 카드 내부 간격 규칙(screen-spec 0-1/0-2):
+                        일관 패딩 12px + 그룹(설명/메타/액션) 간 명확한 gap을
+                        .moment-card-body가 전담한다. */}
+                    <div className="moment-card-body">
+                      <div className="moment-memo-wrap">
+                        <Text type="supporting" maxLines={0}>
+                          {displayMemo}
+                        </Text>
+                      </div>
+                      <div className="moment-info">
+                        <Badge variant={meta.badgeVariant} label={meta.label} />
+                        <span className="moment-duration">{(card.outS - card.inS).toFixed(1)}s</span>
+                        {card.quality != null ? (
+                          <span className="moment-quality">품질 {card.quality}/5</span>
+                        ) : null}
+                      </div>
+                      <div className="moment-actions-group">
+                        <div className="moment-card-actions">
+                          <Button
+                            label={inUse ? "담김" : "담기"}
+                            variant="primary"
+                            size="sm"
+                            isDisabled={inUse}
+                            onClick={() => handleAdd(card)}
+                          />
+                          {/* 사용 안 중일 땐 빼기를 숨기되(자리는 그대로 차지해 카드 높이가
+                              담기/빼기 유무와 무관하게 일정하게 유지된다). */}
+                          <Button
+                            label="빼기"
+                            variant="destructive"
+                            size="sm"
+                            isDisabled={!inUse}
+                            className={inUse ? "" : "placeholder"}
+                            onClick={() => onRemoveSegment(card.clipFileName, card.inS, card.outS)}
+                          />
+                        </div>
+                        <div className="moment-io-actions">
+                          <Button
+                            label={isIntro ? "인트로 지정됨" : "인트로로"}
+                            variant="ghost"
+                            size="sm"
+                            className={`moment-io-button${isIntro ? " active" : ""}`}
+                            isDisabled={tooLongForIntroOutro}
+                            tooltip={
+                              introOutroDisabledTitle ??
+                              "이 클립 전체를 인트로로 지정합니다(구간 지정 불가, 클립 전체 삽입)"
+                            }
+                            onClick={() => onSetIntro(card.clipFileName)}
+                          />
+                          <Button
+                            label={isOutro ? "아웃트로 지정됨" : "아웃트로로"}
+                            variant="ghost"
+                            size="sm"
+                            className={`moment-io-button${isOutro ? " active" : ""}`}
+                            isDisabled={tooLongForIntroOutro}
+                            tooltip={
+                              introOutroDisabledTitle ??
+                              "이 클립 전체를 아웃트로로 지정합니다(구간 지정 불가, 클립 전체 삽입)"
+                            }
+                            onClick={() => onSetOutro(card.clipFileName)}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </Card>
                 </div>

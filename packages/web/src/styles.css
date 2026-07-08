@@ -464,12 +464,16 @@ textarea {
 }
 
 /*
- * 폭 토큰 3종(screen-spec 0-2) — 라벨+입력 페어가 있는 화면 전반(컷 설정/마무리 등)에서
- * 공유한다. narrow=숫자 5자(IN/OUT/배속/볼륨), medium=셀렉트·짧은 텍스트, full=textarea·슬라이더.
+ * 폭 토큰 3종(screen-spec 0-2/4절 확정, 2026-07-08) — 라벨+입력 페어가 있는 화면
+ * 전반(컷 설정/마무리 등)에서 공유한다. narrow=숫자 5자(IN/OUT/배속/볼륨),
+ * medium=셀렉트·짧은 텍스트, full=textarea·슬라이더.
+ * narrow 폭은 64px -> 80px로 확정 — 64px는 실측값 "39.87"(5자+소수점) 같은 값이
+ * 네이티브 number 스피너 화살표와 겹쳐 잘려 보이는 문제가 있었다(컷 설정 실측
+ * 스크린샷에서 재현). 80px는 5자+소수점+스피너가 잘리지 않고 들어간다.
  */
 .field-narrow input,
 .field-narrow select {
-  width: 64px;
+  width: 80px;
   flex: 0 0 auto;
 }
 
@@ -1075,23 +1079,41 @@ textarea {
   opacity: 0.5;
 }
 
-/* 탈락(자동 제외) 카드 — 썸네일/메모는 읽혀야 하므로 완전 회색아웃은 금지,
-   중간 정도만 흐리게 해 "존재하지만 채택되지 않았다"를 표시한다. */
-.moment-card.status-rejected-quality,
+/* 탈락(자동 제외) 카드 상태 표현 규칙(screen-spec 2절, 2026-07-08 개정) — 전체
+   opacity 흐림은 "비활성/로딩"으로 오독되어 폐기. 대신 (a) 썸네일만 채도를
+   낮추고(.moment-thumb.rejected img) (b) 사유는 카드 최상단 전폭 배너
+   (.moment-status-banner)로 명료히 밝힌다. 설명/메타/액션 영역은 그대로 온전한
+   대비로 읽혀야 한다 — "존재하지만 자동으로는 채택 안 됨(되살릴 수 있음)"이지
+   "흐려서 안 보이는 것"이 아니다.
+   테두리 색은 배너와 같은 계열로 카드 전체에도 상태를 은은히 이어준다. */
 .moment-card.status-rejected-face {
-  opacity: 0.62;
-  filter: grayscale(0.35);
+  border: 1px solid var(--error-border);
 }
 
-/* 색(품질/얼굴 구분)은 이제 Badge의 variant="warning"|"error"가 담당 — 여기서는
-   썸네일 위 오버레이 배치만 얹는다. */
-.moment-badge-rejected {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  max-width: calc(100% - 8px);
-  white-space: normal;
-  text-align: right;
+.moment-card.status-rejected-quality {
+  border: 1px solid var(--warning-border);
+}
+
+/* 자동 제외 사유 배너 — 카드 맨 위, 전폭. 코너의 작은 배지보다 훨씬 눈에 띄어야
+   한다는 게 이번 개정의 핵심(작아서 "흐린 카드=비활성"으로 오독됐던 문제). */
+.moment-status-banner {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.moment-status-banner.face {
+  background: var(--error-border);
+  color: var(--error-text);
+}
+
+.moment-status-banner.quality {
+  background: var(--warning-border);
+  color: var(--warning-text);
 }
 
 /* 배경은 의도적으로 테마 무관 고정 다크 — 로드 전/후 항상 영상 프레임 썸네일이
@@ -1108,6 +1130,12 @@ textarea {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+/* 자동 제외 카드는 썸네일만 채도를 낮춘다(60~80% grayscale) — 전체 흐림 대신
+   "이 장면 자체는 그대로 보이되, 자동으로는 채택되지 않았다"를 표시. */
+.moment-thumb.rejected img {
+  filter: grayscale(0.7);
 }
 
 .moment-thumb-empty {
@@ -1142,27 +1170,45 @@ textarea {
   right: 4px;
 }
 
+/* 메타 행(카테고리 배지·길이·품질) — screen-spec 0-2 "같은 행의 요소는 베이스라인
+   정렬"에 따라 align-items: baseline (2026-07-08). */
 .moment-info {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  padding: 6px 8px 0;
   font-size: 13px;
   color: var(--text-tertiary);
+}
+
+/* 카드 내부 위계(screen-spec 2절) 컨테이너 — 썸네일(전폭, 패딩 없음) 아래
+   설명/메타/액션 세 그룹을 일관 패딩 12px + 그룹 간 명확한 gap으로 배치한다.
+   패딩·gap 수치는 screen-spec 4절 폭 토큰과 짝을 이루는 카드 전용 값. */
+.moment-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
 }
 
 /* 이 화면은 장면을 "읽고 고르는" 화면이라 설명 텍스트는 더 이상 클램프하지
    않는다(Text maxLines={0}, 전문 노출) — 과거 line-clamp 요소가 이 flex-column
    카드의 "직속" flex 아이템일 때 높이 계산이 어긋나던 버그 때문에 플레인
-   래퍼로 감쌌던 것인데, 클램프 자체가 없어졌으니 지금은 패딩만 준다. */
+   래퍼로 감쌌던 것인데, 패딩/gap은 이제 부모 .moment-card-body가 전담한다.  */
 .moment-memo-wrap {
-  padding: 4px 8px 8px;
+  padding: 0;
+}
+
+/* 담기/빼기(주 액션)와 인트로/아웃트로(보조 액션)는 같은 "액션" 그룹 — 그룹
+   내부는 촘촘히(6px), 위의 메타 행과는 body의 gap(10px)으로 분리된다. */
+.moment-actions-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .moment-card-actions {
   display: flex;
   gap: 6px;
-  margin: 0 8px 8px;
 }
 
 .moment-card-actions button {
@@ -1174,7 +1220,6 @@ textarea {
 .moment-io-actions {
   display: flex;
   gap: 6px;
-  margin: 0 8px 8px;
 }
 
 .moment-io-button {
@@ -1631,6 +1676,21 @@ textarea {
 .qf-field > span:first-child {
   flex: 0 0 auto;
   white-space: nowrap;
+}
+
+/* screen-spec 0-2 "라벨은 좌정렬 1열" — G1(시작/끝)·G2(배속/볼륨)처럼 한 행에 쌍을
+   두는 필드는 라벨 폭을 고정해 인풋 시작 x가 필드마다 들쭉날쭉해지지 않게 한다.
+   실측(2026-07-08): 라벨 폭이 자동(끝=1자 vs 볼륨=2자)이면 두 번째 필드의 인풋
+   시작 위치가 행마다 최대 24px씩 어긋나 "오른쪽으로 쏠려 보인다"는 원인이었다. */
+.qf-row .qf-field > span:first-child {
+  width: 40px;
+}
+
+/* 필드 슬롯 자체도 고정 폭으로 — G2(배속x/볼륨%)만 있는 단위 접미사(qf-suffix)가
+   두 번째 필드(끝/볼륨)의 시작 x를 행마다 다시 어긋나게 하는 걸 막는다(단위가
+   없는 G1 시작/끝도 같은 폭을 차지해 빈 여백으로 자리를 맞춘다). */
+.qf-row .field-narrow {
+  width: 144px;
 }
 
 .qf-suffix {
