@@ -9,7 +9,7 @@ interface Props {
 export function ProjectMetaFields({ project, onChange }: Props) {
   return (
     <div className="settings-group">
-      <label className="settings-field">
+      <label className="settings-field field-text-medium">
         <span>Name</span>
         <input
           type="text"
@@ -18,7 +18,7 @@ export function ProjectMetaFields({ project, onChange }: Props) {
           onChange={(e) => onChange({ name: e.target.value })}
         />
       </label>
-      <label className="settings-field">
+      <label className="settings-field field-narrow">
         <span>FPS</span>
         <input
           type="number"
@@ -31,7 +31,7 @@ export function ProjectMetaFields({ project, onChange }: Props) {
           }}
         />
       </label>
-      <label className="settings-field">
+      <label className="settings-field field-narrow">
         <span>Width</span>
         <input
           type="number"
@@ -45,7 +45,7 @@ export function ProjectMetaFields({ project, onChange }: Props) {
           }}
         />
       </label>
-      <label className="settings-field">
+      <label className="settings-field field-narrow">
         <span>Height</span>
         <input
           type="number"

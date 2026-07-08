@@ -428,9 +428,10 @@ body {
   padding: 16px;
   background: var(--surface-1);
   border-radius: 8px;
+  box-sizing: border-box;
 }
 
-/* The subtitle style panel holds a large frame preview, so it grows wider. */
+/* The subtitle style panel holds a compact live preview stage, so it grows a bit wider. */
 .settings-group-wide {
   flex: 2 1 480px;
 }
@@ -443,30 +444,40 @@ body {
   letter-spacing: 0.05em;
 }
 
+/* Label sits in a fixed-width column immediately to the LEFT of its field (never pushed to the
+   opposite edge via space-between) - the field itself is sized by its width-token modifier below
+   (.field-narrow/.field-medium/.field-text-medium/.wide-input), not by stretching to fill the row. */
 .settings-field {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 10px;
   font-size: 13px;
 }
 
 .settings-field > span:first-child {
-  flex: 0 0 auto;
-  min-width: 32px;
+  flex: 0 0 120px;
   white-space: nowrap;
+  color: var(--text-secondary);
 }
 
 .settings-field input,
 .settings-field select {
   flex: 0 0 auto;
-  width: 140px;
+  /* Fallback for fields that don't opt into a width token below - same as the narrow number token,
+     since most untokened fields left here are short. */
+  width: 80px;
 }
 
 .settings-field input[type="checkbox"],
 .settings-field input[type="range"] {
   width: auto;
+}
+
+/* Free text where 180px (the shared .field-medium select/short-text token) reads cramped - Name,
+   Font, and similar single-word/short-phrase fields. */
+.field-text-medium input {
+  width: 240px;
 }
 
 .color-field-inputs {
@@ -494,6 +505,31 @@ body {
   margin: 12px 0 0;
   font-size: 12px;
   color: var(--text-secondary);
+}
+
+/* Subtitle style (global) section's compact live preview (FinishingSettings.tsx) - same
+   container-query trick as .video-crop-frame/.sequence-player-stage so cqw-based font
+   size/outline width read at the true on-screen proportion regardless of this stage's fixed
+   display width. Background is intentionally fixed dark (matches .mini-strip-block) so it reads
+   as a stage even with no clip thumbnail available yet. */
+.subtitle-style-preview-stage {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 16 / 9;
+  background: var(--stage-bg);
+  border-radius: 6px;
+  overflow: hidden;
+  container-type: inline-size;
+  margin-bottom: 14px;
+}
+
+.subtitle-style-preview-thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /*
@@ -1829,10 +1865,27 @@ body {
    flex:1 1 260px / 2 1 480px (meant only for the horizontal flex-wrap layout, see the old
    FinishingSettings), each section would be forced by flex-grow to divide up and fill the leftover
    vertical space, growing a large empty gap below the content (the same bug already hit once in
-   .render-dialog) — so here too, grow/basis are turned off so a section only takes up its content's height. */
+   .render-dialog) — so here too, grow/basis are turned off so a section only takes up its content's
+   height. Width is additionally capped at a readable column (screen-spec section 5, revised
+   2026-07-09 - the "right-skewed, tiny inputs" fix): with flex-grow off but the parent's default
+   align-items:stretch, each section still stretched to the full step-body width (up to ~2000px on
+   a wide viewport), and inside it .settings-field's rows used to justify-content:space-between,
+   which threw the label to the far left and the input to the far right with a giant gap between -
+   the "inputs are tiny and right-skewed" complaint. Capping width here (not on the base class, so
+   the horizontal row layouts elsewhere - IntroOutroEditor's side-by-side groups, RenderSettingsDialog
+   - keep their own flex:1 1 260px grow/shrink behavior) keeps the column at a natural reading width,
+   left-anchored; the empty space to the right of it is deliberate. */
 .finish-layout > .settings-group,
 .finish-layout > .settings-group-wide {
   flex: 0 0 auto;
+  width: 100%;
+  max-width: 620px;
+}
+
+.finish-layout > .settings-group-wide {
+  /* The subtitle style section holds a compact live preview stage - a bit wider so the stage
+     (360px) and its own padding/labels don't feel cramped. */
+  max-width: 680px;
 }
 
 .finish-layout h3 {

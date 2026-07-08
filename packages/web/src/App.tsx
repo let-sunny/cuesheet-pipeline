@@ -1321,6 +1321,10 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
             <SubtitleStyleSettings
               subtitleStyle={draft.subtitleStyle}
               onSubtitleStyleChange={updateSubtitleStyle}
+              projectWidth={draft.project.width}
+              projectHeight={draft.project.height}
+              previewClip={draft.segments[0]?.clip}
+              previewClipTimeS={draft.segments[0] ? draft.segments[0].in + 0.3 : 0}
             />
 
             <IntroOutroEditor
