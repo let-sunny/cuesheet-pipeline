@@ -1,6 +1,8 @@
 import { join } from "node:path";
 import type { CueSheet, SubtitleStyleOverride } from "@cuesheet/schema";
 
+export { buildSrt, secondsToSrtTimestamp } from "./srt.js";
+
 export interface RenderPlan {
   /** Full argument list to follow "ffmpeg" */
   args: string[];
@@ -28,99 +30,6 @@ export interface RenderPlanOptions {
    * don't actually share the project's aspect ratio.
    */
   sourceDimensions?: Record<string, SourceDimensions>;
-}
-
-/** Relative tolerance for the crop-vs-project-aspect check (1%). */
-const CROP_ASPECT_TOLERANCE = 0.01;
-
-/**
- * Verifies that each cropped segment's actual pixel aspect ratio (crop.w*srcWidth /
- * crop.h*srcHeight) matches the project's aspect ratio (project.width/project.height) within
- * CROP_ASPECT_TOLERANCE — beyond that, render/plan.ts's crop -> scale=W:H (no letterboxing)
- * would stretch the image. Throws a field-path style error naming the offending cut; a no-op
- * for segments with no crop or no matching sourceDimensions entry.
- */
-function assertCropMatchesProjectAspect(cue: CueSheet, sourceDimensions?: Record<string, SourceDimensions>): void {
-  if (!sourceDimensions) return;
-  const projectAspect = cue.project.width / cue.project.height;
-  cue.segments.forEach((s, i) => {
-    if (!s.crop) return;
-    const dims = sourceDimensions[s.clip];
-    if (!dims) return;
-    const cropAspect = (s.crop.w * dims.width) / (s.crop.h * dims.height);
-    const deviation = Math.abs(cropAspect - projectAspect) / projectAspect;
-    if (deviation > CROP_ASPECT_TOLERANCE) {
-      throw new Error(
-        `segments[${i}].crop: clip "${s.clip}" (source ${dims.width}x${dims.height}) crop aspect ` +
-          `${cropAspect.toFixed(3)} deviates from project aspect ${projectAspect.toFixed(3)} by ` +
-          `more than ${CROP_ASPECT_TOLERANCE * 100}%`,
-      );
-    }
-  });
-}
-
-/** Escapes text for ffmpeg drawtext (backslash, colon, single quote, percent) */
-function escapeDrawtext(text: string): string {
-  return text
-    .replace(/\\/g, "\\\\")
-    .replace(/:/g, "\\:")
-    .replace(/'/g, "\\'")
-    .replace(/%/g, "\\%");
-}
-
-/** atempo only supports 0.5-2.0 -> speeds outside that range are decomposed into a chain */
-function atempoChain(speed: number): string[] {
-  const parts: number[] = [];
-  let s = speed;
-  while (s > 2) {
-    parts.push(2);
-    s /= 2;
-  }
-  while (s < 0.5) {
-    parts.push(0.5);
-    s *= 2;
-  }
-  parts.push(Number(s.toFixed(6)));
-  return parts.map((p) => `atempo=${p}`);
-}
-
-/**
- * Effective subtitle style per segment = shallow merge of styleOverride onto the global subtitleStyle.
- * background is the one exception and is replaced wholesale (avoids ambiguous leftovers like
- * opacity from a partial merge) — since the shallow merge overwrites whole object fields anyway,
- * this rule is satisfied without any extra handling.
- * If override is absent (omitted/null), the global style is used as-is.
- */
-function effectiveSubtitleStyle(
-  global: CueSheet["subtitleStyle"],
-  override?: SubtitleStyleOverride | null,
-): CueSheet["subtitleStyle"] {
-  if (!override) return global;
-  return { ...global, ...override };
-}
-
-function drawtextFilter(text: string, style: CueSheet["subtitleStyle"]): string {
-  const t = escapeDrawtext(text);
-  let base =
-    `drawtext=text='${t}':fontsize=${style.size}:fontcolor=${style.color}` +
-    `:borderw=${style.outlineWidth}:bordercolor=${style.outlineColor}:font='${style.font}'`;
-  if (style.background) {
-    const { color, opacity, padding } = style.background;
-    base += `:box=1:boxcolor=${color}@${opacity}:boxborderw=${padding}`;
-  }
-  const x = "(w-text_w)/2";
-  let y: string;
-  switch (style.position) {
-    case "top":
-      y = String(style.margin);
-      break;
-    case "center":
-      y = "(h-text_h)/2";
-      break;
-    default:
-      y = `h-text_h-${style.margin}`; // bottom
-  }
-  return `${base}:x=${x}:y=${y}`;
 }
 
 /**
@@ -273,4 +182,95 @@ export function buildRenderPlan(
   return { args, filterComplex, outputPath };
 }
 
-export { buildSrt, secondsToSrtTimestamp } from "./srt.js";
+/**
+ * Verifies that each cropped segment's actual pixel aspect ratio (crop.w*srcWidth /
+ * crop.h*srcHeight) matches the project's aspect ratio (project.width/project.height) within
+ * CROP_ASPECT_TOLERANCE — beyond that, render/plan.ts's crop -> scale=W:H (no letterboxing)
+ * would stretch the image. Throws a field-path style error naming the offending cut; a no-op
+ * for segments with no crop or no matching sourceDimensions entry.
+ */
+function assertCropMatchesProjectAspect(cue: CueSheet, sourceDimensions?: Record<string, SourceDimensions>): void {
+  if (!sourceDimensions) return;
+  const projectAspect = cue.project.width / cue.project.height;
+  cue.segments.forEach((s, i) => {
+    if (!s.crop) return;
+    const dims = sourceDimensions[s.clip];
+    if (!dims) return;
+    const cropAspect = (s.crop.w * dims.width) / (s.crop.h * dims.height);
+    const deviation = Math.abs(cropAspect - projectAspect) / projectAspect;
+    if (deviation > CROP_ASPECT_TOLERANCE) {
+      throw new Error(
+        `segments[${i}].crop: clip "${s.clip}" (source ${dims.width}x${dims.height}) crop aspect ` +
+          `${cropAspect.toFixed(3)} deviates from project aspect ${projectAspect.toFixed(3)} by ` +
+          `more than ${CROP_ASPECT_TOLERANCE * 100}%`,
+      );
+    }
+  });
+}
+
+/** Escapes text for ffmpeg drawtext (backslash, colon, single quote, percent) */
+function escapeDrawtext(text: string): string {
+  return text
+    .replace(/\\/g, "\\\\")
+    .replace(/:/g, "\\:")
+    .replace(/'/g, "\\'")
+    .replace(/%/g, "\\%");
+}
+
+/** atempo only supports 0.5-2.0 -> speeds outside that range are decomposed into a chain */
+function atempoChain(speed: number): string[] {
+  const parts: number[] = [];
+  let s = speed;
+  while (s > 2) {
+    parts.push(2);
+    s /= 2;
+  }
+  while (s < 0.5) {
+    parts.push(0.5);
+    s *= 2;
+  }
+  parts.push(Number(s.toFixed(6)));
+  return parts.map((p) => `atempo=${p}`);
+}
+
+/**
+ * Effective subtitle style per segment = shallow merge of styleOverride onto the global subtitleStyle.
+ * background is the one exception and is replaced wholesale (avoids ambiguous leftovers like
+ * opacity from a partial merge) — since the shallow merge overwrites whole object fields anyway,
+ * this rule is satisfied without any extra handling.
+ * If override is absent (omitted/null), the global style is used as-is.
+ */
+function effectiveSubtitleStyle(
+  global: CueSheet["subtitleStyle"],
+  override?: SubtitleStyleOverride | null,
+): CueSheet["subtitleStyle"] {
+  if (!override) return global;
+  return { ...global, ...override };
+}
+
+function drawtextFilter(text: string, style: CueSheet["subtitleStyle"]): string {
+  const t = escapeDrawtext(text);
+  let base =
+    `drawtext=text='${t}':fontsize=${style.size}:fontcolor=${style.color}` +
+    `:borderw=${style.outlineWidth}:bordercolor=${style.outlineColor}:font='${style.font}'`;
+  if (style.background) {
+    const { color, opacity, padding } = style.background;
+    base += `:box=1:boxcolor=${color}@${opacity}:boxborderw=${padding}`;
+  }
+  const x = "(w-text_w)/2";
+  let y: string;
+  switch (style.position) {
+    case "top":
+      y = String(style.margin);
+      break;
+    case "center":
+      y = "(h-text_h)/2";
+      break;
+    default:
+      y = `h-text_h-${style.margin}`; // bottom
+  }
+  return `${base}:x=${x}:y=${y}`;
+}
+
+/** Relative tolerance for the crop-vs-project-aspect check (1%). */
+const CROP_ASPECT_TOLERANCE = 0.01;

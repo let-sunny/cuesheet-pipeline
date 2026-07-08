@@ -1,16 +1,5 @@
 import type { CueSheet } from "@cuesheet/schema";
 
-/** Formats a time in seconds as an SRT timestamp (HH:MM:SS,mmm). */
-export function secondsToSrtTimestamp(totalSeconds: number): string {
-  const ms = Math.max(0, Math.round(totalSeconds * 1000));
-  const hh = Math.floor(ms / 3600000);
-  const mm = Math.floor((ms % 3600000) / 60000);
-  const ss = Math.floor((ms % 60000) / 1000);
-  const mmm = ms % 1000;
-  const pad = (n: number, len = 2) => String(n).padStart(len, "0");
-  return `${pad(hh)}:${pad(mm)}:${pad(ss)},${pad(mmm, 3)}`;
-}
-
 /**
  * Walks the segments in order and converts the output-timeline time ((out-in)/speed,
  * cumulative) into SRT. Cuts with an empty subtitle are skipped, and indices are
@@ -38,4 +27,15 @@ export function buildSrt(cue: CueSheet): string {
     index += 1;
   }
   return blocks.join("\n");
+}
+
+/** Formats a time in seconds as an SRT timestamp (HH:MM:SS,mmm). */
+export function secondsToSrtTimestamp(totalSeconds: number): string {
+  const ms = Math.max(0, Math.round(totalSeconds * 1000));
+  const hh = Math.floor(ms / 3600000);
+  const mm = Math.floor((ms % 3600000) / 60000);
+  const ss = Math.floor((ms % 60000) / 1000);
+  const mmm = ms % 1000;
+  const pad = (n: number, len = 2) => String(n).padStart(len, "0");
+  return `${pad(hh)}:${pad(mm)}:${pad(ss)},${pad(mmm, 3)}`;
 }
