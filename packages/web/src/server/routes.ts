@@ -25,7 +25,15 @@ const renderOutputPath = resolve(repoRoot, "out.mp4");
 // often don't pick up well anyway).
 const uploadClipExtensions = new Set([".mp4", ".mov", ".m4v", ".webm"]);
 // Upload size cap - intro/outro are whole clips of 15s or less, so this is plenty generous.
-const uploadClipMaxBytes = 500 * 1024 * 1024;
+// Overridable via registerRoutes' options (tests use a tiny cap to exercise the oversize guard
+// without transferring hundreds of MB).
+const DEFAULT_UPLOAD_CLIP_MAX_BYTES = 500 * 1024 * 1024;
+
+export interface RegisterRoutesOptions {
+  uploadClipMaxBytes?: number;
+  /** Root directory /api/bgm-files scans recursively (default: repo-root media/). Overridable for tests. */
+  mediaRoot?: string;
+}
 
 // Minimal flag to block concurrent requests while a render is in progress (no queuing).
 let renderInProgress = false;
@@ -157,7 +165,15 @@ async function collectAudioFiles(
  * subtitles.srt, upload-clip, clip-files, bgm-files, narration-files, and the render output
  * download route.
  */
-export function registerRoutes(server: ViteDevServer, filePath: string, watcher: CuesheetWatcher): void {
+export function registerRoutes(
+  server: ViteDevServer,
+  filePath: string,
+  watcher: CuesheetWatcher,
+  options: RegisterRoutesOptions = {},
+): void {
+  const uploadClipMaxBytes = options.uploadClipMaxBytes ?? DEFAULT_UPLOAD_CLIP_MAX_BYTES;
+  const mediaRoot = options.mediaRoot ?? resolve(repoRoot, "media");
+
   server.middlewares.use("/api/cuesheet", async (req, res) => {
     if (req.method === "GET") {
       try {
@@ -394,7 +410,7 @@ export function registerRoutes(server: ViteDevServer, filePath: string, watcher:
     }
 
     const found = new Map<string, string>();
-    await collectAudioFiles(resolve(repoRoot, "media"), 3, found);
+    await collectAudioFiles(mediaRoot, 3, found);
     if (clipDir) {
       await collectAudioFiles(clipDir, 0, found);
     }
@@ -472,31 +488,42 @@ export function registerRoutes(server: ViteDevServer, filePath: string, watcher:
     await mkdir(clipDir, { recursive: true });
     const tmpPath = `${targetPath}.upload.tmp`;
     let totalBytes = 0;
-    req.on("data", (chunk: Buffer) => {
-      totalBytes += chunk.length;
-      if (totalBytes > uploadClipMaxBytes) {
-        req.destroy(new Error("payload too large"));
-      }
-    });
+    let tooLarge = false;
 
     try {
-      await new Promise<void>((res_, rej) => {
+      await new Promise<void>((resolvePipe, rejectPipe) => {
         const writeStream = createWriteStream(tmpPath);
-        writeStream.on("error", rej);
-        writeStream.on("finish", res_);
-        req.on("error", rej);
+        req.on("data", (chunk: Buffer) => {
+          totalBytes += chunk.length;
+          if (totalBytes > uploadClipMaxBytes && !tooLarge) {
+            tooLarge = true;
+            // Stop writing to disk without destroying req (IncomingMessage.destroy() tears down
+            // the underlying socket, which would kill the connection the 413 response below still
+            // needs to be sent on) - just detach the write side and resolve early.
+            req.unpipe(writeStream);
+            writeStream.destroy();
+            resolvePipe();
+          }
+        });
+        writeStream.on("error", rejectPipe);
+        writeStream.on("finish", resolvePipe);
+        req.on("error", rejectPipe);
         req.pipe(writeStream);
       });
     } catch (e) {
       await rm(tmpPath, { force: true }).catch(() => {});
-      if (totalBytes > uploadClipMaxBytes) {
-        sendJson(res, 413, {
-          ok: false,
-          error: "File is too large - the upload limit is 500MB, pick a smaller file",
-        });
-      } else {
-        sendJson(res, 500, { ok: false, error: `Upload failed: ${(e as Error).message}` });
-      }
+      sendJson(res, 500, { ok: false, error: `Upload failed: ${(e as Error).message}` });
+      return;
+    }
+
+    if (tooLarge) {
+      await rm(tmpPath, { force: true }).catch(() => {});
+      sendJson(res, 413, {
+        ok: false,
+        error: "File is too large - the upload limit is 500MB, pick a smaller file",
+      });
+      // Drain whatever body bytes are still arriving so the connection can close/keep-alive cleanly.
+      req.resume();
       return;
     }
 
