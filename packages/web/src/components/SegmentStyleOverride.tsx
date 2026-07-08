@@ -3,6 +3,7 @@ import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { Slider } from "@astryxdesign/core/Slider";
 import { Button } from "@astryxdesign/core/Button";
 import type { Segment, SubtitleBackground, SubtitleStyle, SubtitleStyleOverride } from "@cuesheet/schema";
+import { useNumericField } from "../hooks/useNumericField.js";
 import { toColorInputValue } from "../lib/subtitleOverlay.js";
 
 interface Props {
@@ -36,6 +37,12 @@ export function SegmentStyleOverride({
 }: Props) {
   const override = segment.styleOverride;
 
+  const sizeField = useNumericField({
+    value: override?.size ?? globalStyle.size,
+    coerce: (n) => Math.max(1, n),
+    onCommit: (next) => onChangeOverride({ size: next }),
+  });
+
   return (
     <div className="qf-style-override">
       <div className="qf-style-override-toggle">
@@ -47,16 +54,7 @@ export function SegmentStyleOverride({
           <div className="style-override-fields">
             <label className="settings-field">
               <span>Size</span>
-              <input
-                type="number"
-                className="plain-field"
-                min={1}
-                value={override.size ?? globalStyle.size}
-                onChange={(e) => {
-                  const v = e.target.valueAsNumber;
-                  onChangeOverride({ size: Number.isNaN(v) ? globalStyle.size : v });
-                }}
-              />
+              <input type="number" className="plain-field" min={1} {...sizeField} />
             </label>
 
             <label className="settings-field">

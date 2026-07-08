@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Button } from "@astryxdesign/core/Button";
 import type { BgmCue } from "@cuesheet/schema";
 import { bgmFileStreamUrl, type BgmFile } from "../api.js";
+import { useNumericField } from "../hooks/useNumericField.js";
 
 interface Props {
   cue: BgmCue;
@@ -61,6 +62,22 @@ export function BgmSettingsPanel({
 
   const currentFileKnown = cue.file !== "" && files.some((f) => f.path === cue.file);
 
+  const startField = useNumericField({
+    value: startCutIdx + 1,
+    coerce: (n) => Math.min(endCutIdx + 1, Math.max(1, Math.round(n))),
+    onCommit: (next) => onChangeRange(next - 1, endCutIdx),
+  });
+  const endField = useNumericField({
+    value: endCutIdx + 1,
+    coerce: (n) => Math.max(startCutIdx + 1, Math.min(cutCount, Math.round(n))),
+    onCommit: (next) => onChangeRange(startCutIdx, next - 1),
+  });
+  const volumeField = useNumericField({
+    value: Math.round(cue.volume * 100),
+    coerce: (n) => Math.min(100, Math.max(0, Math.round(n))),
+    onCommit: (next) => onChangeVolume(next / 100),
+  });
+
   return (
     <div className="quick-fields">
       <h2 className="qf-panel-title">Background music track {bgmIndex + 1}</h2>
@@ -106,38 +123,12 @@ export function BgmSettingsPanel({
         <div className="qf-row">
           <label className="qf-field field-narrow">
             <span>Start</span>
-            <input
-              type="number"
-              className="plain-field"
-              value={startCutIdx + 1}
-              min={1}
-              max={endCutIdx + 1}
-              onChange={(e) => {
-                const v = Math.round(e.target.valueAsNumber);
-                if (Number.isNaN(v)) {
-                  return;
-                }
-                onChangeRange(Math.min(endCutIdx, Math.max(0, v - 1)), endCutIdx);
-              }}
-            />
+            <input type="number" className="plain-field" min={1} max={endCutIdx + 1} {...startField} />
             <span className="qf-suffix">cut</span>
           </label>
           <label className="qf-field field-narrow">
             <span>End</span>
-            <input
-              type="number"
-              className="plain-field"
-              value={endCutIdx + 1}
-              min={startCutIdx + 1}
-              max={cutCount}
-              onChange={(e) => {
-                const v = Math.round(e.target.valueAsNumber);
-                if (Number.isNaN(v)) {
-                  return;
-                }
-                onChangeRange(startCutIdx, Math.max(startCutIdx, Math.min(cutCount - 1, v - 1)));
-              }}
-            />
+            <input type="number" className="plain-field" min={startCutIdx + 1} max={cutCount} {...endField} />
             <span className="qf-suffix">cut</span>
           </label>
         </div>
@@ -151,21 +142,7 @@ export function BgmSettingsPanel({
         <div className="qf-row">
           <label className="qf-field field-narrow">
             <span>Volume</span>
-            <input
-              type="number"
-              className="plain-field"
-              value={Math.round(cue.volume * 100)}
-              min={0}
-              max={100}
-              step={1}
-              onChange={(e) => {
-                const v = e.target.valueAsNumber;
-                if (Number.isNaN(v)) {
-                  return;
-                }
-                onChangeVolume(Math.min(100, Math.max(0, v)) / 100);
-              }}
-            />
+            <input type="number" className="plain-field" min={0} max={100} step={1} {...volumeField} />
             <span className="qf-suffix">%</span>
           </label>
         </div>

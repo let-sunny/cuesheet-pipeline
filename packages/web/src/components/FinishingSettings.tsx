@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { Slider } from "@astryxdesign/core/Slider";
 import type { NarrationConfig, SubtitleBackground, SubtitleStyle } from "@cuesheet/schema";
+import { useNumericField } from "../hooks/useNumericField.js";
 import {
   subtitleBackgroundRgba,
   subtitleOutlineStyle,
@@ -47,6 +48,22 @@ export function SubtitleStyleSettings({
     onSubtitleStyleChange({ background: { ...base, ...patch } });
   }
 
+  const sizeField = useNumericField({
+    value: subtitleStyle.size,
+    coerce: (n) => Math.max(1, n),
+    onCommit: (next) => onSubtitleStyleChange({ size: next }),
+  });
+  const outlineWidthField = useNumericField({
+    value: subtitleStyle.outlineWidth,
+    coerce: (n) => Math.max(0, n),
+    onCommit: (next) => onSubtitleStyleChange({ outlineWidth: next }),
+  });
+  const paddingField = useNumericField({
+    value: (background ?? DEFAULT_BACKGROUND).padding,
+    coerce: (n) => Math.min(120, Math.max(0, n)),
+    onCommit: (next) => patchBackground({ padding: next }),
+  });
+
   return (
     <div className="settings-group settings-group-wide">
       <h3>Subtitle style (global)</h3>
@@ -75,16 +92,7 @@ export function SubtitleStyleSettings({
       </label>
       <label className="settings-field field-narrow">
         <span>Size</span>
-        <input
-          type="number"
-          className="plain-field"
-          value={subtitleStyle.size}
-          min={1}
-          onChange={(e) => {
-            const v = e.target.valueAsNumber;
-            onSubtitleStyleChange({ size: Number.isNaN(v) ? 0 : v });
-          }}
-        />
+        <input type="number" className="plain-field" min={1} {...sizeField} />
       </label>
       <label className="settings-field">
         <span>
@@ -125,16 +133,7 @@ export function SubtitleStyleSettings({
       </label>
       <label className="settings-field field-narrow">
         <span>Outline width</span>
-        <input
-          type="number"
-          className="plain-field"
-          value={subtitleStyle.outlineWidth}
-          min={0}
-          onChange={(e) => {
-            const v = e.target.valueAsNumber;
-            onSubtitleStyleChange({ outlineWidth: Number.isNaN(v) ? 0 : v });
-          }}
-        />
+        <input type="number" className="plain-field" min={0} {...outlineWidthField} />
       </label>
 
       {/* Background box group (toggle+color+opacity+padding) */}
@@ -170,17 +169,7 @@ export function SubtitleStyleSettings({
           />
           <label className="settings-field field-narrow">
             <span>Background padding (px)</span>
-            <input
-              type="number"
-              className="plain-field"
-              min={0}
-              max={120}
-              value={background.padding}
-              onChange={(e) => {
-                const v = e.target.valueAsNumber;
-                patchBackground({ padding: Number.isNaN(v) ? 0 : v });
-              }}
-            />
+            <input type="number" className="plain-field" min={0} max={120} {...paddingField} />
           </label>
         </>
       ) : null}
