@@ -2,7 +2,10 @@ import { Button } from "@astryxdesign/core/Button";
 import type { Segment, SubtitleStyle, SubtitleStyleOverride } from "@cuesheet/schema";
 import { INTRO_OUTRO_MAX_DURATION_S } from "../clipPaths.js";
 import { narrationFileUrl, type NarrationFile } from "../api.js";
+import { useNumericField } from "../hooks/useNumericField.js";
 import type { MergeEligibility } from "../lib/segmentMerge.js";
+import { mergeSubtitleStyle } from "../lib/subtitleOverlay.js";
+import { subtitleOverflowWarning } from "../lib/subtitleOverflow.js";
 import { SegmentStyleOverride } from "./SegmentStyleOverride.js";
 
 interface Props {
@@ -37,6 +40,8 @@ interface Props {
   canDelete: boolean;
   /** Global subtitle style — used as the default/display value for the override in the per-cut subtitle style section. */
   globalSubtitleStyle: SubtitleStyle;
+  /** Project frame width (px) — used to estimate whether the subtitle text might overflow the frame. */
+  projectWidth: number;
   onToggleStyleOverride: (enabled: boolean) => void;
   onChangeStyleOverride: (patch: Partial<SubtitleStyleOverride>) => void;
   onPromoteStyleOverride: () => void;
@@ -71,14 +76,43 @@ export function SegmentQuickFields({
   onDelete,
   canDelete,
   globalSubtitleStyle,
+  projectWidth,
   onToggleStyleOverride,
   onChangeStyleOverride,
   onPromoteStyleOverride,
   onClearStyleOverride,
 }: Props) {
+  // These hooks must run unconditionally (before the `!segment` early return below) - they fall
+  // back to placeholder values when there's no selected segment, but the actual fields only
+  // render once `segment` is confirmed non-null further down.
+  const inField = useNumericField({
+    value: segment?.in ?? 0,
+    coerce: (n) => Math.max(0, n),
+    onCommit: (next) => onChange({ in: next }),
+  });
+  const outField = useNumericField({
+    value: segment?.out ?? 0,
+    coerce: (n) => Math.max(0, n),
+    onCommit: (next) => onChange({ out: next }),
+  });
+  const speedField = useNumericField({
+    value: segment?.speed ?? 1,
+    // Capped at 16 - browsers throw a NotSupportedError setting playbackRate above that.
+    coerce: (n) => Math.min(16, Math.max(0.1, n)),
+    onCommit: (next) => onChange({ speed: next }),
+  });
+  const volumeField = useNumericField({
+    value: segment ? Math.round(segment.volume * 100) : 100,
+    coerce: (n) => Math.min(100, Math.max(0, Math.round(n))),
+    onCommit: (next) => onChange({ volume: next / 100 }),
+  });
+
   if (!segment) {
     return null;
   }
+
+  const effectiveStyleSize = mergeSubtitleStyle(globalSubtitleStyle, segment.styleOverride).size;
+  const subtitleWarning = subtitleOverflowWarning(segment.subtitle, effectiveStyleSize, projectWidth);
 
   // This cut's actual output length (after speed applied). If the selected narration file is longer than this, it overlaps the next cut.
   const outputDurationS = (segment.out - segment.in) / segment.speed;
@@ -121,29 +155,11 @@ export function SegmentQuickFields({
         <div className="qf-row">
           <label className="qf-field field-narrow">
             <span>In</span>
-            <input
-              type="number"
-              className="plain-field"
-              value={segment.in}
-              min={0}
-              onChange={(e) => {
-                const v = e.target.valueAsNumber;
-                onChange({ in: Number.isNaN(v) ? 0 : v });
-              }}
-            />
+            <input type="number" className="plain-field" min={0} {...inField} />
           </label>
           <label className="qf-field field-narrow">
             <span>Out</span>
-            <input
-              type="number"
-              className="plain-field"
-              value={segment.out}
-              min={0}
-              onChange={(e) => {
-                const v = e.target.valueAsNumber;
-                onChange({ out: Number.isNaN(v) ? 0 : v });
-              }}
-            />
+            <input type="number" className="plain-field" min={0} {...outField} />
           </label>
           <span className="qf-readonly">Length {(segment.out - segment.in).toFixed(1)}s</span>
         </div>
@@ -158,39 +174,17 @@ export function SegmentQuickFields({
             <input
               type="number"
               className="plain-field"
-              value={segment.speed}
               min={0.1}
               max={16}
               step={0.1}
               title="Speed is capped at 16x - browsers can't play video faster than that"
-              onChange={(e) => {
-                const v = e.target.valueAsNumber;
-                if (Number.isNaN(v)) {
-                  onChange({ speed: 1 });
-                  return;
-                }
-                onChange({ speed: Math.min(16, Math.max(0.1, v)) });
-              }}
+              {...speedField}
             />
             <span className="qf-suffix">x</span>
           </label>
           <label className="qf-field field-narrow">
             <span>Volume</span>
-            <input
-              type="number"
-              className="plain-field"
-              value={Math.round(segment.volume * 100)}
-              min={0}
-              max={100}
-              step={1}
-              onChange={(e) => {
-                const v = e.target.valueAsNumber;
-                if (Number.isNaN(v)) {
-                  return;
-                }
-                onChange({ volume: Math.min(100, Math.max(0, v)) / 100 });
-              }}
-            />
+            <input type="number" className="plain-field" min={0} max={100} step={1} {...volumeField} />
             <span className="qf-suffix">%</span>
           </label>
         </div>
@@ -211,6 +205,7 @@ export function SegmentQuickFields({
             onChange={(e) => onChange({ subtitle: e.target.value })}
           />
         </label>
+        {subtitleWarning ? <p className="qf-note">{subtitleWarning}</p> : null}
 
         <SegmentStyleOverride
           segment={segment}
