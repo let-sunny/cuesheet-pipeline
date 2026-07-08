@@ -20,8 +20,13 @@ if (cue.ok) {
 CLI (requires ffmpeg):
 
 ```bash
-cuesheet-render project.cuesheet.json out.mp4
+cuesheet-render project.cuesheet.json out.mp4 [--no-subtitles] [--srt <path>] [--json]
 ```
+
+`--json`: on success, emits a single structured result object to stdout —
+`{outputPath, durationS, srtPath}` (`durationS` is probed from the rendered file with ffprobe,
+`srtPath` is `null` unless `--srt` was passed). Human-readable progress/errors always go to
+stderr, `--json` or not, so stdout stays parseable by a script.
 
 ## Behavior
 

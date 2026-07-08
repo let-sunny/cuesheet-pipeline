@@ -7,12 +7,22 @@ import { buildRenderPlan } from "./plan.js";
 import type { SourceDimensions } from "./plan.js";
 import { buildSrt } from "./srt.js";
 
+/** Structured `cuesheet-render --json` result. */
+export interface RenderJsonResult {
+  outputPath: string;
+  /** Rendered output duration in seconds (ffprobe on the produced file), or null if it couldn't be probed. */
+  durationS: number | null;
+  srtPath: string | null;
+}
+
 /**
  * CLI: reads a cuesheet file, validates it, and renders the final video with ffmpeg.
- * Usage: cuesheet-render [cuesheet.json] [output.mp4] [--no-subtitles] [--srt <path>]
+ * Usage: cuesheet-render [cuesheet.json] [output.mp4] [--no-subtitles] [--srt <path>] [--json]
  * Defaults: project.cuesheet.json -> out.mp4, subtitle burn-in on
  * --no-subtitles: produces a clean video without drawtext (for combining with a CC/SRT track).
  * --srt <path>: also writes an SRT file from the same cuesheet (same logic as web's /api/subtitles.srt).
+ * --json: on success, emits a single structured result object (RenderJsonResult) to stdout —
+ * human-readable progress/errors always go to stderr, --json or not, so stdout stays parseable.
  */
 const args = process.argv.slice(2);
 const srtFlagIndex = args.indexOf("--srt");
@@ -21,6 +31,7 @@ const positional = args.filter(
   (a, i) => !a.startsWith("--") && (srtFlagIndex === -1 || i !== srtFlagIndex + 1),
 );
 const burnSubtitles = !args.includes("--no-subtitles");
+const jsonMode = args.includes("--json");
 const cuePath = positional[0] ?? process.env.CUESHEET_PATH ?? "project.cuesheet.json";
 const outPath = positional[1] ?? "out.mp4";
 
@@ -66,6 +77,18 @@ function probeDimensions(path: string): SourceDimensions | null {
   return { width: Number(match[1]), height: Number(match[2]) };
 }
 
+/** Probes a media file's duration (seconds) via ffprobe. Returns null on failure. */
+function probeDurationS(path: string): number | null {
+  const proc = spawnSync(
+    "ffprobe",
+    ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", path],
+    { encoding: "utf-8" },
+  );
+  if (proc.status !== 0) return null;
+  const value = Number.parseFloat(proc.stdout.trim());
+  return Number.isFinite(value) ? value : null;
+}
+
 // Only cropped clips need probing (buildRenderPlan's crop/project-aspect check is a no-op for
 // clips without a sourceDimensions entry).
 const croppedClips = new Set(result.data.segments.filter((s) => s.crop).map((s) => s.clip));
@@ -90,5 +113,13 @@ proc.on("error", (e) => {
   process.exit(1);
 });
 proc.on("exit", (code) => {
+  if (jsonMode && (code ?? 0) === 0) {
+    const result: RenderJsonResult = {
+      outputPath: outPath,
+      durationS: probeDurationS(outPath),
+      srtPath: srtOutPath,
+    };
+    console.log(JSON.stringify(result));
+  }
   process.exit(code ?? 0);
 });
