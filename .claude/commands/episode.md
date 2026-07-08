@@ -152,12 +152,36 @@ node packages/draft/dist/cli.js assemble \
 ### (6) 검증 + 서버 전환
 
 - `episodes/<슬러그>.cuesheet.json`이 (3)에서 이미 `validateCueSheet`를 통과한 상태다.
-  (4)/(5)에서 자막·크롭을 직접 수정했다면 저장 전 다시 `validateCueSheet`로 확인한다
-  (직접 JSON을 고쳤다면 schema 드리프트 가능성이 있으므로).
-- 웹 서버가 이 에피소드의 `CUESHEET_PATH`로 떠 있는지 확인한다. `pnpm episode`가
-  이미 서버를 그 경로로 띄웠으면 그대로 두고, 다른 에피소드용으로 떠 있었다면
-  사용자에게 재시작이 필요하다고 안내한다(자동으로 죽이고 재기동하지 않는다 -
-  사용자가 다른 작업 중일 수 있음).
+  (4)/(5)에서 자막·크롭을 직접 수정했다면 저장 전 다시 확인한다(직접 JSON을 고쳤다면
+  schema 드리프트 가능성이 있으므로). 확인 명령:
+
+  ```bash
+  node --input-type=module -e "
+  import { validateCueSheet } from './packages/schema/dist/index.js';
+  import { readFileSync } from 'node:fs';
+  const data = JSON.parse(readFileSync('episodes/<슬러그>.cuesheet.json', 'utf-8'));
+  console.log(JSON.stringify(validateCueSheet(data)));
+  "
+  ```
+
+- **주의**: (1)에서 `--scan-only`로 스캔했으므로 `scripts/episode.mjs`의 포트 체크/서버
+  기동/브라우저 오픈 로직(5173 확인 후 안내 또는 기동)은 **이번 실행에서 전혀 실행되지
+  않았다** - `--scan-only`는 그 블록 전체를 건너뛰고 조기 반환한다. 즉 이 에피소드용
+  웹 서버가 떠 있는지는 스크립트가 알려주지 않으므로 직접 확인해야 한다:
+
+  ```bash
+  curl -s http://localhost:5173/api/cuesheet | grep -m1 '"name"'
+  ```
+
+  응답의 `project.name`이 `<슬러그>`(이번 에피소드의 project name)와 다르면 - 즉 서버가
+  다른 에피소드용으로 떠 있으면 - 사용자에게 재시작이 필요하다고 안내한다(자동으로
+  죽이고 재기동하지 않는다 - 사용자가 다른 작업 중일 수 있음). 안내할 정확한 명령:
+
+  ```bash
+  CUESHEET_PATH=$(pwd)/episodes/<슬러그>.cuesheet.json pnpm --filter @cuesheet/web dev
+  ```
+
+  5173 포트에 아무것도 떠 있지 않으면(curl 실패) 위 명령으로 처음부터 띄우면 된다.
 
 ### (7) 보고
 
@@ -166,7 +190,9 @@ node packages/draft/dist/cli.js assemble \
 - 컷 수 / 총 길이(초·분:초)
 - 얼굴 노출 처리 건수(크롭 제안/quality 강등)
 - 배속 커넥터 삽입 개수
-- 에디터 URL (`http://localhost:5173`)
+- 에디터 URL (`http://localhost:5173`) - (6)에서 서버가 이미 이 에피소드로 떠 있을 때만
+  바로 유효하다. 다른 에피소드용으로 떠 있었다면 URL 대신 (6)에서 안내한 재시작 명령을
+  그대로 보고에 포함한다(사용자가 그 명령을 실행해야 이 에피소드가 보인다).
 - 다음 할 일: "에디터에서 본편 재생으로 훑고 다듬어라" (이 커맨드는 초벌까지만)
 
 ## 참고
