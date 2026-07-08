@@ -23,8 +23,8 @@ import {
   type NarrationFile,
 } from "./api.js";
 import { buildClipPath, computeClipDurations } from "./clipPaths.js";
-import { computeMergeEligibility } from "./segmentMerge.js";
-import { scaleCueSheetForResolution } from "./subtitleScale.js";
+import { computeMergeEligibility } from "./lib/segmentMerge.js";
+import { scaleCueSheetForResolution } from "./lib/subtitleScale.js";
 import { VideoPreview } from "./components/VideoPreview.js";
 import type { VideoPreviewHandle } from "./components/VideoPreview.js";
 import { BgmEditor } from "./components/BgmEditor.js";
@@ -32,7 +32,7 @@ import { TimelineView } from "./components/TimelineView.js";
 import { MomentPalette } from "./components/MomentPalette.js";
 import { KeyboardHelp } from "./components/KeyboardHelp.js";
 import { HeaderBar } from "./components/HeaderBar.js";
-import type { ThemeModeSetting } from "./theme.js";
+import type { ThemeModeSetting } from "./lib/theme.js";
 import { StepNav } from "./components/StepNav.js";
 import type { Step } from "./components/StepNav.js";
 import { MiniTimelineStrip } from "./components/MiniTimelineStrip.js";

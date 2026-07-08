@@ -1,17 +1,22 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { validateCueSheet } from "@cuesheet/schema";
 import { buildRenderPlan } from "./plan.js";
+import { buildSrt } from "./srt.js";
 
 /**
  * CLI: 큐시트 파일을 읽어 검증하고, ffmpeg로 본편을 렌더한다.
- * 사용법: cuesheet-render [큐시트.json] [출력.mp4] [--no-subtitles]
+ * 사용법: cuesheet-render [큐시트.json] [출력.mp4] [--no-subtitles] [--srt <경로>]
  * 기본값: project.cuesheet.json → out.mp4, 자막 굽기 켜짐
  * --no-subtitles: drawtext를 생략한 클린 영상을 만든다(CC/SRT 트랙과 조합용).
+ * --srt <경로>: 같은 큐시트로 SRT 파일도 함께 써낸다(web의 /api/subtitles.srt와 동일 로직).
  */
-const positional = process.argv.slice(2).filter((a) => !a.startsWith("--"));
-const burnSubtitles = !process.argv.includes("--no-subtitles");
+const args = process.argv.slice(2);
+const srtFlagIndex = args.indexOf("--srt");
+const srtOutPath = srtFlagIndex === -1 ? null : (args[srtFlagIndex + 1] ?? null);
+const positional = args.filter((a, i) => !a.startsWith("--") && i !== srtFlagIndex + 1);
+const burnSubtitles = !args.includes("--no-subtitles");
 const cuePath = positional[0] ?? process.env.CUESHEET_PATH ?? "project.cuesheet.json";
 const outPath = positional[1] ?? "out.mp4";
 
@@ -27,6 +32,11 @@ const result = validateCueSheet(raw);
 if (!result.ok) {
   console.error(`큐시트 검증 실패:\n${result.errors.join("\n")}`);
   process.exit(1);
+}
+
+if (srtOutPath !== null) {
+  writeFileSync(srtOutPath, buildSrt(result.data), "utf-8");
+  console.error(`SRT 저장됨: ${srtOutPath}`);
 }
 
 const plan = buildRenderPlan(result.data, outPath, { burnSubtitles });

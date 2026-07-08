@@ -6,8 +6,7 @@ import { fileURLToPath } from "node:url";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
 import { findLostFieldPaths, validateCueSheet, type CueSheet } from "@cuesheet/schema";
-import { buildRenderPlan } from "@cuesheet/render";
-import { buildSrt } from "./srt.js";
+import { buildRenderPlan, buildSrt } from "@cuesheet/render";
 
 const here = dirname(fileURLToPath(import.meta.url));
 // src -> web -> packages -> 저장소 루트

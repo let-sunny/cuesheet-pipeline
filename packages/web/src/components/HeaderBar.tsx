@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Button } from "@astryxdesign/core/Button";
-import type { ThemeModeSetting } from "../theme.js";
+import type { ThemeModeSetting } from "../lib/theme.js";
 
 interface Props {
   projectName: string;

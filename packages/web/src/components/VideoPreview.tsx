@@ -3,15 +3,15 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import { Button } from "@astryxdesign/core/Button";
 import type { Crop, Segment, SubtitleStyle } from "@cuesheet/schema";
 import { fetchProxyStatus, type ClipMoments, type ProxyStatus } from "../api.js";
-import { cropPreviewStyle } from "../cropPreview.js";
-import { matchSceneInfo, shotTypeLabel } from "../sceneInfo.js";
+import { cropPreviewStyle } from "../lib/cropPreview.js";
+import { matchSceneInfo, shotTypeLabel } from "../lib/sceneInfo.js";
 import {
   mergeSubtitleStyle,
   subtitleBackgroundRgba,
   subtitleOutlineStyle,
   subtitlePositionStyle,
   toCqw,
-} from "../subtitleOverlay.js";
+} from "../lib/subtitleOverlay.js";
 import { CropEditOverlay } from "./CropEditOverlay.js";
 
 /** 프록시 준비 상태 폴링 주기(ms). */

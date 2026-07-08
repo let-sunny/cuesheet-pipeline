@@ -17,8 +17,8 @@ export function secondsToSrtTimestamp(totalSeconds: number): string {
  * intro/outro는 narration 오프셋과 동일한 v1 제약으로 이 누적에 포함하지 않는다
  * (render/plan.ts 참고 — intro 길이를 파일 프로빙 없이 알 수 없어서).
  *
- * 순수 함수라 web dev-server 플러그인(cuesheet-plugin.ts) 외에 스크립트/CLI에서도
- * 그대로 재사용할 수 있다(패키지 분리는 다음 단계).
+ * 큐시트를 소비해 출력물(SRT)을 만드는 로직이라 render 패키지 소속 —
+ * web(cuesheet-plugin.ts)의 /api/subtitles.srt 라우트와 CLI(--srt) 둘 다 이 함수를 그대로 쓴다.
  */
 export function buildSrt(cue: CueSheet): string {
   let cursor = 0;

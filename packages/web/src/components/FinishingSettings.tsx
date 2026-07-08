@@ -1,7 +1,7 @@
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { Slider } from "@astryxdesign/core/Slider";
 import type { NarrationConfig, SubtitleBackground, SubtitleStyle } from "@cuesheet/schema";
-import { toColorInputValue } from "../subtitleOverlay.js";
+import { toColorInputValue } from "../lib/subtitleOverlay.js";
 
 const DEFAULT_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75, padding: 8 };
 

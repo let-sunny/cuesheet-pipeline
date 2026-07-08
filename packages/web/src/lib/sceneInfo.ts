@@ -1,6 +1,6 @@
 import type { Segment } from "@cuesheet/schema";
-import type { ClipMoments, ShotType } from "./api.js";
-import { baseName } from "./clipPaths.js";
+import type { ClipMoments, ShotType } from "../api.js";
+import { baseName } from "../clipPaths.js";
 
 export type SceneInfo =
   | { kind: "moment"; memo: string; shotType: ShotType; inS: number; outS: number }

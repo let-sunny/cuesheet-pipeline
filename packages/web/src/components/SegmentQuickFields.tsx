@@ -2,7 +2,7 @@ import { Button } from "@astryxdesign/core/Button";
 import type { Segment, SubtitleStyle, SubtitleStyleOverride } from "@cuesheet/schema";
 import { INTRO_OUTRO_MAX_DURATION_S } from "../clipPaths.js";
 import { narrationFileUrl, type NarrationFile } from "../api.js";
-import type { MergeEligibility } from "../segmentMerge.js";
+import type { MergeEligibility } from "../lib/segmentMerge.js";
 import { SegmentStyleOverride } from "./SegmentStyleOverride.js";
 
 interface Props {

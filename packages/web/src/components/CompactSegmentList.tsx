@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { Segment } from "@cuesheet/schema";
 import type { ClipMoments } from "../api.js";
-import { matchSceneInfo, shotTypeLabel } from "../sceneInfo.js";
+import { matchSceneInfo, shotTypeLabel } from "../lib/sceneInfo.js";
 import { SegmentThumb } from "./SegmentThumb.js";
 
 interface Props {

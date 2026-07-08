@@ -223,3 +223,5 @@ export function buildRenderPlan(
   ];
   return { args, filterComplex, outputPath };
 }
+
+export { buildSrt, secondsToSrtTimestamp } from "./srt.js";

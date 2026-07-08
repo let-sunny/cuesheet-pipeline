@@ -3,7 +3,7 @@ import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { Slider } from "@astryxdesign/core/Slider";
 import { Button } from "@astryxdesign/core/Button";
 import type { Segment, SubtitleBackground, SubtitleStyle, SubtitleStyleOverride } from "@cuesheet/schema";
-import { toColorInputValue } from "../subtitleOverlay.js";
+import { toColorInputValue } from "../lib/subtitleOverlay.js";
 
 const DEFAULT_OVERRIDE_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75, padding: 8 };
 

@@ -6,7 +6,7 @@ import { stoneTheme } from "@astryxdesign/theme-stone/built";
 import "@astryxdesign/core/reset.css";
 import "@astryxdesign/theme-stone/theme.css";
 import { App } from "./App.js";
-import { loadThemeMode, saveThemeMode } from "./theme.js";
+import { loadThemeMode, saveThemeMode } from "./lib/theme.js";
 import "./styles.css";
 
 const container = document.getElementById("root");

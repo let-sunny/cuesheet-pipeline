@@ -2,16 +2,16 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "re
 import type { MouseEvent } from "react";
 import type { Segment, SubtitleStyle } from "@cuesheet/schema";
 import { Button } from "@astryxdesign/core/Button";
-import { cropPreviewStyle } from "../cropPreview.js";
+import { cropPreviewStyle } from "../lib/cropPreview.js";
 import type { ClipMoments } from "../api.js";
-import { matchSceneInfo } from "../sceneInfo.js";
+import { matchSceneInfo } from "../lib/sceneInfo.js";
 import {
   mergeSubtitleStyle,
   subtitleBackgroundRgba,
   subtitleOutlineStyle,
   subtitlePositionStyle,
   toCqw,
-} from "../subtitleOverlay.js";
+} from "../lib/subtitleOverlay.js";
 
 /** 외부(App.tsx의 Space 단축키 등)에서 이어재생을 제어하기 위한 핸들. */
 export interface SequencePlayerHandle {
