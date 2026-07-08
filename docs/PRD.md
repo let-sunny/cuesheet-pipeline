@@ -218,11 +218,13 @@ and CLI's schema versions ever drift, we choose a loud failure over silent data 
 
 1. **Named subtitle style presets** — reusable presets (e.g., default/inner-voice/shout)
    assignable per cut; completes the per-cut override story.
-2. **Title cards with retro presets (user-specified)** — `segment.title?: {text, preset,
-   durationS?}` optional field; presets: Typewriter (per-letter typing + cursor), VHS
-   (glitch snap-in + jitter), Pixel (block reveal), Neon (flicker-on). Web preview via
-   CSS/JS; RENDER REQUIRES AN ASS/libass SPIKE FIRST (typing via karaoke tags — verify
-   ffmpeg-full libass before building UI).
+2. **Title cards with presets (user-finalized trio)** — `segment.title?: {text, preset,
+   durationS?}` optional field; presets matched to the cozy knitting-vlog mood:
+   **Gooey** (organic blob-melt text, SVG-filter based), **Particle** (fibers/sparkles
+   assembling into text, canvas), **Typing** (per-letter typewriter + cursor).
+   Web preview via CSS/JS. Render paths: Typing via ASS/libass karaoke; Gooey/Particle
+   via headless frame-capture -> alpha overlay compositing (spike in progress validating
+   both paths + caching strategy per (text, preset)).
 3. **Fades** — audio/video fade in/out at cut boundaries and episode ends (optional fields).
 4. **Audio ducking** — BGM lowers under narration (render sidechain).
 5. YouTube chapter list generation from no-subtitle gaps (grammar: gaps = chapter breaks).
