@@ -7,10 +7,6 @@ import type { ClipMoments, MonotonousRange } from "./types.js";
  * separately by the caller (CLI).
  */
 
-const DEFAULT_FPS = 30;
-const DEFAULT_WIDTH = 1280;
-const DEFAULT_HEIGHT = 720;
-
 /**
  * The editing-grammar constants below (cut rhythm, quality threshold, timelapse-connector
  * rules, face heuristic word lists, boundary pad) encode the user's own editing style, reverse
@@ -122,67 +118,6 @@ export interface AssembleOptions {
 }
 
 /**
- * Whether a timelapse-connector candidate range carries face-exposure risk. If faceExposed
- * is explicitly set, follow it as-is; otherwise fall back to a desc-text heuristic (risky if
- * a face-part word and the risk word both appear — conservatively, treat ambiguous cases as
- * risky. Observed in practice: vision judgments sometimes phrase this using only a part name
- * without the word "face" itself, e.g. "lips are almost always exposed", so part-name
- * vocabulary is checked too).
- */
-function isMonotonousRangeRisky(
-  r: MonotonousRange,
-  faceHeuristic: AssembleGrammarConfig["faceHeuristic"],
-): boolean {
-  if (typeof r.faceExposed === "boolean") return r.faceExposed;
-  const facePart = faceHeuristic.partWords.some((w) => r.desc.includes(w));
-  return facePart && r.desc.includes(faceHeuristic.riskWord);
-}
-
-interface Candidate {
-  inS: number;
-  outS: number;
-  speed: number;
-  volume: number;
-  subtitle: string;
-}
-
-type DraftSegment = { clip: string; in: number; out: number; speed: number; volume: number; subtitle: string };
-
-/**
- * If the overall average length of steady cuts (speed===1) exceeds AVG_TRIGGER_S (3.1s),
- * a simple greedy pass trims the longest cut by 0.25s at a time until the average converges
- * into the 2.8-3.0s range. Timelapse connectors (speed!==1) are left untouched. Mutates the
- * segment objects directly. Trimming shrinks symmetrically from both the in/out ends — so the
- * motion-centered framing gained from boundary padding isn't rendered meaningless by trimming
- * from only one side.
- */
-function convergeSteadyCutAverage(
-  segments: DraftSegment[],
-  cutRhythm: AssembleGrammarConfig["cutRhythm"],
-): void {
-  const steady = segments.filter((s) => s.speed === 1);
-  if (steady.length === 0) return;
-
-  const average = () => steady.reduce((sum, s) => sum + (s.out - s.in), 0) / steady.length;
-
-  if (average() <= cutRhythm.avgTriggerS) return;
-
-  let guard = steady.length * 100; // Infinite-loop guard — trimming should never need to go beyond this.
-  while (average() > cutRhythm.avgHighS && guard-- > 0) {
-    let longest = steady[0] as DraftSegment;
-    for (const s of steady) {
-      if (s.out - s.in > longest.out - longest.in) longest = s;
-    }
-    const curLen = longest.out - longest.in;
-    if (curLen <= cutRhythm.minCutS) break; // No more room to trim.
-    const newLen = Math.max(cutRhythm.minCutS, curLen - cutRhythm.trimStepS);
-    const center = (longest.in + longest.out) / 2;
-    longest.in = center - newLen / 2;
-    longest.out = center + newLen / 2;
-  }
-}
-
-/**
  * Converts moments.json into cuesheet input according to the assembly rules (quality
  * filter, timelapse-connector insertion, chronological sort). The return value is not
  * yet validated (CueSheetInput) — the caller validates it with validateCueSheet.
@@ -280,3 +215,68 @@ export function assembleDraft(clipsMoments: ClipMoments[], options: AssembleOpti
     },
   };
 }
+
+/**
+ * Whether a timelapse-connector candidate range carries face-exposure risk. If faceExposed
+ * is explicitly set, follow it as-is; otherwise fall back to a desc-text heuristic (risky if
+ * a face-part word and the risk word both appear — conservatively, treat ambiguous cases as
+ * risky. Observed in practice: vision judgments sometimes phrase this using only a part name
+ * without the word "face" itself, e.g. "lips are almost always exposed", so part-name
+ * vocabulary is checked too).
+ */
+function isMonotonousRangeRisky(
+  r: MonotonousRange,
+  faceHeuristic: AssembleGrammarConfig["faceHeuristic"],
+): boolean {
+  if (typeof r.faceExposed === "boolean") return r.faceExposed;
+  const facePart = faceHeuristic.partWords.some((w) => r.desc.includes(w));
+  return facePart && r.desc.includes(faceHeuristic.riskWord);
+}
+
+interface Candidate {
+  inS: number;
+  outS: number;
+  speed: number;
+  volume: number;
+  subtitle: string;
+}
+
+type DraftSegment = { clip: string; in: number; out: number; speed: number; volume: number; subtitle: string };
+
+/**
+ * If the overall average length of steady cuts (speed===1) exceeds AVG_TRIGGER_S (3.1s),
+ * a simple greedy pass trims the longest cut by 0.25s at a time until the average converges
+ * into the 2.8-3.0s range. Timelapse connectors (speed!==1) are left untouched. Mutates the
+ * segment objects directly. Trimming shrinks symmetrically from both the in/out ends — so the
+ * motion-centered framing gained from boundary padding isn't rendered meaningless by trimming
+ * from only one side.
+ */
+function convergeSteadyCutAverage(
+  segments: DraftSegment[],
+  cutRhythm: AssembleGrammarConfig["cutRhythm"],
+): void {
+  const steady = segments.filter((s) => s.speed === 1);
+  if (steady.length === 0) return;
+
+  const average = () => steady.reduce((sum, s) => sum + (s.out - s.in), 0) / steady.length;
+
+  if (average() <= cutRhythm.avgTriggerS) return;
+
+  let guard = steady.length * 100; // Infinite-loop guard — trimming should never need to go beyond this.
+  while (average() > cutRhythm.avgHighS && guard-- > 0) {
+    let longest = steady[0] as DraftSegment;
+    for (const s of steady) {
+      if (s.out - s.in > longest.out - longest.in) longest = s;
+    }
+    const curLen = longest.out - longest.in;
+    if (curLen <= cutRhythm.minCutS) break; // No more room to trim.
+    const newLen = Math.max(cutRhythm.minCutS, curLen - cutRhythm.trimStepS);
+    const center = (longest.in + longest.out) / 2;
+    longest.in = center - newLen / 2;
+    longest.out = center + newLen / 2;
+  }
+}
+
+const DEFAULT_FPS = 30;
+const DEFAULT_WIDTH = 1280;
+const DEFAULT_HEIGHT = 720;

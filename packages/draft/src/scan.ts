@@ -10,10 +10,6 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 
-const VIDEO_EXT = /\.(mp4|mov)$/i;
-const FFPROBE_TIMEOUT_MS = 15_000;
-const FFMPEG_TIMEOUT_MS = 15_000;
-
 export interface FrameRef {
   t: number;
   path: string;
@@ -37,6 +33,43 @@ export function intervalFor(durS: number): number {
   if (durS < 60) return 5;
   if (durS < 300) return 15;
   return 60;
+}
+
+/**
+ * Scans the raw source folder: skips iCloud not-downloaded clips, and for local clips
+ * only, probes duration with ffprobe and then extracts frames at a length-based interval.
+ */
+export async function scanFolder(srcDir: string, workDir: string): Promise<Manifest> {
+  const names = readdirSync(srcDir)
+    .filter((n) => VIDEO_EXT.test(n))
+    .sort((a, b) => a.localeCompare(b));
+
+  const evicted: string[] = [];
+  const clips: ClipManifest[] = [];
+  const framesRoot = join(workDir, "frames");
+
+  for (const name of names) {
+    const path = join(srcDir, name);
+    if (isEvicted(path)) {
+      evicted.push(name);
+      continue;
+    }
+
+    const durS = await probeDuration(path);
+    const interval = intervalFor(durS);
+    const clipFramesDir = join(framesRoot, name.replace(VIDEO_EXT, ""));
+    mkdirSync(clipFramesDir, { recursive: true });
+
+    const frames: FrameRef[] = [];
+    for (const t of timestampsFor(durS, interval)) {
+      const framePath = await extractFrame(path, t, clipFramesDir);
+      if (framePath) frames.push({ t, path: framePath });
+    }
+
+    clips.push({ name, durS, interval, frames });
+  }
+
+  return { clips, evicted };
 }
 
 /**
@@ -88,39 +121,6 @@ async function extractFrame(clipPath: string, t: number, outDir: string): Promis
   return outPath;
 }
 
-/**
- * Scans the raw source folder: skips iCloud not-downloaded clips, and for local clips
- * only, probes duration with ffprobe and then extracts frames at a length-based interval.
- */
-export async function scanFolder(srcDir: string, workDir: string): Promise<Manifest> {
-  const names = readdirSync(srcDir)
-    .filter((n) => VIDEO_EXT.test(n))
-    .sort((a, b) => a.localeCompare(b));
-
-  const evicted: string[] = [];
-  const clips: ClipManifest[] = [];
-  const framesRoot = join(workDir, "frames");
-
-  for (const name of names) {
-    const path = join(srcDir, name);
-    if (isEvicted(path)) {
-      evicted.push(name);
-      continue;
-    }
-
-    const durS = await probeDuration(path);
-    const interval = intervalFor(durS);
-    const clipFramesDir = join(framesRoot, name.replace(VIDEO_EXT, ""));
-    mkdirSync(clipFramesDir, { recursive: true });
-
-    const frames: FrameRef[] = [];
-    for (const t of timestampsFor(durS, interval)) {
-      const framePath = await extractFrame(path, t, clipFramesDir);
-      if (framePath) frames.push({ t, path: framePath });
-    }
-
-    clips.push({ name, durS, interval, frames });
-  }
-
-  return { clips, evicted };
-}
+const VIDEO_EXT = /\.(mp4|mov)$/i;
+const FFPROBE_TIMEOUT_MS = 15_000;
+const FFMPEG_TIMEOUT_MS = 15_000;

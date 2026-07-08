@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { z } from "zod";
-import { validateCueSheet } from "@cuesheet/schema";
+import { formatIssue, validateCueSheet } from "@cuesheet/schema";
 import { assembleDraft } from "./assemble.js";
 import type { AssembleGrammarConfigOverride } from "./assemble.js";
 import { scanFolder } from "./scan.js";
@@ -45,23 +44,6 @@ function parseArgs(argv: string[]): ParsedArgs {
     }
   }
   return { positional, flags };
-}
-
-/** Converts a zod issue path (e.g. [0,"moments",0,"quality"]) to the form "[0].moments[0].quality" */
-function pathToString(path: ReadonlyArray<PropertyKey>): string {
-  let out = "";
-  for (const key of path) {
-    if (typeof key === "number") {
-      out += `[${key}]`;
-    } else {
-      out += out ? `.${String(key)}` : String(key);
-    }
-  }
-  return out || "(root)";
-}
-
-function formatIssue(issue: z.core.$ZodIssue): string {
-  return `${pathToString(issue.path)}: ${issue.message}`;
 }
 
 async function runScan(rest: string[]): Promise<void> {

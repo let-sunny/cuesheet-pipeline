@@ -8,33 +8,12 @@ import type { Manifest } from "./scan.js";
  * clips (5+ minutes) are targeted — short clips don't have time for this narrative to unfold.
  */
 
-const LONGTAKE_MIN_DUR_S = 300;
-
 export interface FramePair {
   clip: string;
   tA: number;
   tB: number;
   frameA: string;
   frameB: string;
-}
-
-/**
- * Builds a schedule of adjacent frame pairs from each clip's frame sequence in the manifest.
- * Clips shorter than minDurS are excluded (default 300s = 5 minutes).
- */
-export function buildPairSchedule(manifest: Manifest, minDurS = LONGTAKE_MIN_DUR_S): FramePair[] {
-  const pairs: FramePair[] = [];
-  for (const clip of manifest.clips) {
-    if (clip.durS < minDurS) continue;
-    const frames = [...clip.frames].sort((a, b) => a.t - b.t);
-    for (let i = 0; i < frames.length - 1; i++) {
-      const a = frames[i];
-      const b = frames[i + 1];
-      if (!a || !b) continue;
-      pairs.push({ clip: clip.name, tA: a.t, tB: b.t, frameA: a.path, frameB: b.path });
-    }
-  }
-  return pairs;
 }
 
 /**
@@ -65,6 +44,25 @@ export interface NarrativeEvent {
   type: NarrativeEventType;
   atS: number;
   note: string;
+}
+
+/**
+ * Builds a schedule of adjacent frame pairs from each clip's frame sequence in the manifest.
+ * Clips shorter than minDurS are excluded (default 300s = 5 minutes).
+ */
+export function buildPairSchedule(manifest: Manifest, minDurS = LONGTAKE_MIN_DUR_S): FramePair[] {
+  const pairs: FramePair[] = [];
+  for (const clip of manifest.clips) {
+    if (clip.durS < minDurS) continue;
+    const frames = [...clip.frames].sort((a, b) => a.t - b.t);
+    for (let i = 0; i < frames.length - 1; i++) {
+      const a = frames[i];
+      const b = frames[i + 1];
+      if (!a || !b) continue;
+      pairs.push({ clip: clip.name, tA: a.t, tB: b.t, frameA: a.path, frameB: b.path });
+    }
+  }
+  return pairs;
 }
 
 /**
@@ -105,3 +103,5 @@ export function extractNarrativeEvents(
 
   return events.sort((a, b) => a.clip.localeCompare(b.clip) || a.atS - b.atS);
 }
+
+const LONGTAKE_MIN_DUR_S = 300;
