@@ -150,6 +150,16 @@ edits handled grows, schema expands along with it.
   out`).
 - **No emoji** (in code, comments, commits, or subtitle text examples — anywhere).
 
+## Component layering (user rule, 2026-07-09)
+
+Follow Astryx's component system as-is. Components own their styling (variants);
+never restyle them through global CSS element selectors. When customization is
+needed, add a NAMED wrapper component around the Astryx component (thin, same API
+surface plus our constraint) — do not scatter per-call-site xstyle/style tweaks.
+If the same tweak appears twice, that is the signal to promote it to a wrapper.
+Domain-custom areas (timeline, crop overlay, palette cards, video stage) keep their
+own CSS via explicit classes only.
+
 ## Testability as the size limit (user rule, 2026-07-09)
 
 A file must always be small enough to write test code for. If a module is too big or
