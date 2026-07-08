@@ -406,7 +406,7 @@ export function MomentPalette({
                         {rejectedLabel}
                       </div>
                     ) : null}
-                    <div className={`moment-thumb${rejectedLabel ? " rejected" : ""}`}>
+                    <div className="moment-thumb">
                       {frame ? (
                         <img
                           src={`/draft-frames/${encodeURIComponent(card.clipFolder)}/${encodeURIComponent(frame)}`}
@@ -415,19 +415,24 @@ export function MomentPalette({
                       ) : (
                         <div className="moment-thumb-empty" />
                       )}
-                      <span className="moment-number">
-                        {card.clipFolder} · {card.inS.toFixed(1)}s
-                      </span>
                       {/* Thumbnail(Astryx)은 정사각형 고정+오버레이 슬롯이 없어(children prop
-                          자체가 없음) 이 3중 오버레이(번호칩·상태배지·이미지) 합성엔 안 맞아
-                          커스텀 유지 — 상태 배지 자체는 Badge로 교체. */}
-                      {inUse ? (
-                        <Badge
-                          variant="success"
-                          label={`In use - cut ${cutNumber}`}
-                          className="moment-badge-in-use"
-                        />
-                      ) : null}
+                          자체가 없음) 이 오버레이(번호칩·상태배지·이미지) 합성엔 안 맞아
+                          커스텀 유지 — 상태 배지 자체는 Badge로 교체. 번호칩+배지는 같은
+                          flex-wrap 행에 넣어(.moment-thumb-overlay) 클립명이 길 때 배지가
+                          겹치거나(둘 다 절대배치라 코너 충돌) 텍스트가 잘리는 대신 배지가
+                          다음 줄로 내려가게 한다(2026-07-08 피드백 - 잘림/겹침보다 줄바꿈). */}
+                      <div className="moment-thumb-overlay">
+                        <span className="moment-number">
+                          {card.clipFolder} · {card.inS.toFixed(1)}s
+                        </span>
+                        {inUse ? (
+                          <Badge
+                            variant="success"
+                            label={`In use - cut ${cutNumber}`}
+                            className="moment-badge-in-use"
+                          />
+                        ) : null}
+                      </div>
                     </div>
                     {/* 카드 위계(screen-spec 2절): 썸네일 -> 상태 배지(위, 썸네일 오버레이) ->
                         장면 설명(전문, 줄바꿈 허용) -> 메타(샷유형·길이·품질) -> 액션. 이

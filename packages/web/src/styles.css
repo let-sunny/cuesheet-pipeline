@@ -357,6 +357,14 @@ textarea {
   font-size: 13px;
 }
 
+/* 배너 안 버튼 그룹(예: 이어서 편집/폐기) — 텍스트와 분리된 하나의 액션 묶음으로
+   나란히·우측에 붙인다(screen-spec 6절). */
+.banner-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
 .banner.success {
   border-color: var(--success-border);
   color: var(--success-text);
@@ -1075,17 +1083,13 @@ textarea {
   overflow: hidden;
 }
 
-.moment-card.in-use {
-  opacity: 0.5;
-}
-
-/* 탈락(자동 제외) 카드 상태 표현 규칙(screen-spec 2절, 2026-07-08 개정) — 전체
-   opacity 흐림은 "비활성/로딩"으로 오독되어 폐기. 대신 (a) 썸네일만 채도를
-   낮추고(.moment-thumb.rejected img) (b) 사유는 카드 최상단 전폭 배너
-   (.moment-status-banner)로 명료히 밝힌다. 설명/메타/액션 영역은 그대로 온전한
-   대비로 읽혀야 한다 — "존재하지만 자동으로는 채택 안 됨(되살릴 수 있음)"이지
-   "흐려서 안 보이는 것"이 아니다.
-   테두리 색은 배너와 같은 계열로 카드 전체에도 상태를 은은히 이어준다. */
+/* 탈락(자동 제외) 카드 및 사용 중 카드 상태 표현 규칙(screen-spec 2절, 2026-07-08 개정,
+   2026-07-08 재개정) — 전체 opacity 흐림도, 썸네일만 채도를 낮추는 것도(grayscale) 둘 다
+   가독성을 해친다는 사용자 피드백으로 완전히 폐기했다. 이제 두 상태 모두 카드/썸네일은
+   항상 100% 대비로 그대로 보여주고, 상태는 오직 (a) 카드 최상단 전폭 배너
+   (.moment-status-banner, 제외 사유) (b) 코너 배지(.moment-badge-in-use, 사용 중)
+   (c) 테두리 색(아래)만으로 전달한다 — "존재하지만 자동으로는 채택 안 됨(되살릴 수 있음)"
+   이지 "흐려서/탈색돼서 안 보이는 것"이 아니다. 설명/메타/액션 영역도 항상 온전한 대비. */
 .moment-card.status-rejected-face {
   border: 1px solid var(--error-border);
 }
@@ -1132,29 +1136,35 @@ textarea {
   display: block;
 }
 
-/* 자동 제외 카드는 썸네일만 채도를 낮춘다(60~80% grayscale) — 전체 흐림 대신
-   "이 장면 자체는 그대로 보이되, 자동으로는 채택되지 않았다"를 표시. */
-.moment-thumb.rejected img {
-  filter: grayscale(0.7);
-}
-
 .moment-thumb-empty {
   width: 100%;
   height: 100%;
   background: var(--stage-bg);
 }
 
+/* 번호칩(클립명+시각) + "사용 중" 배지를 한 flex-wrap 행에 담는 오버레이 컨테이너
+   (2026-07-08 개정) — 예전엔 둘 다 독립적으로 absolute 배치(좌상단/우상단)라 클립
+   폴더명이 길면 번호칩이 우상단 배지와 겹치거나(overflow) 텍스트가 잘렸다. 이제는 같은
+   행의 두 flex 아이템이라 폭이 모자라면 배지가 자동으로 다음 줄로 내려간다(줄바꿈 우선,
+   텍스트 잘림/겹침 금지 — 사용자 피드백). */
+.moment-thumb-overlay {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 4px;
+}
+
 /* moment-thumb(항상 어두운 썸네일 캔버스) 위 오버레이라 텍스트 색도 테마와 무관하게
    고정 밝은 색이어야 한다 — 안 그러면 라이트 테마에서 색(--text-primary가 어두워짐)이
    상속돼 어두운 칩 위 어두운 글자로 보이지 않는다. */
 .moment-number {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  max-width: calc(100% - 8px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: break-word;
   font-size: 12px;
   padding: 1px 5px;
   background: #00000099;
@@ -1162,20 +1172,21 @@ textarea {
   border-radius: 3px;
 }
 
-/* 색("사용 중" 강조)은 이제 Badge의 variant="success"가 담당 — 여기서는 썸네일
-   위 오버레이 배치만 얹는다. */
+/* 색("사용 중" 강조)은 이제 Badge의 variant="success"가 담당 — 여기서는 오버레이 행
+   안에서 줄어들지 않게(항상 온전한 텍스트로 다음 줄에 내려가게)만 얹는다. */
 .moment-badge-in-use {
-  position: absolute;
-  top: 4px;
-  right: 4px;
+  flex-shrink: 0;
 }
 
 /* 메타 행(카테고리 배지·길이·품질) — screen-spec 0-2 "같은 행의 요소는 베이스라인
-   정렬"에 따라 align-items: baseline (2026-07-08). */
+   정렬"에 따라 align-items: baseline (2026-07-08). flex-wrap(2026-07-08 재개정): 카테고리
+   배지 라벨이 길어 폭이 모자라면 뒤 항목이 잘리는 대신 다음 줄로 내려간다. */
 .moment-info {
   display: flex;
   align-items: baseline;
+  flex-wrap: wrap;
   justify-content: space-between;
+  gap: 4px 10px;
   font-size: 13px;
   color: var(--text-tertiary);
 }
@@ -1703,6 +1714,18 @@ textarea {
   color: var(--text-tertiary);
 }
 
+/* clip 파일명(읽기 전용) - 다른 qf-field 값과 같은 자리에 앉되, 길어도 카드/패널 폭을
+   벗어나지 않게 줄임표로 담는다(선택/복사는 잘림과 무관하게 전체 텍스트로 된다). */
+.qf-readonly-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
 .qf-subtitle-field textarea {
   resize: vertical;
 }
@@ -1738,8 +1761,15 @@ textarea {
   gap: 8px;
 }
 
-.qf-actions-row > :last-child {
-  margin-left: auto;
+/* 삭제(위험 동작)는 컷 작업 그룹에서 분리해 패널 맨 아래 별도 zone에 둔다(screen-spec
+   4절 2026-07-08 개정) - 구분선(에러 색)+여백으로 확실히 갈라 다른 액션과 나란히
+   눌려 실수로 삭제되지 않게 한다. */
+.qf-danger-zone {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--error-border);
+  display: flex;
+  justify-content: flex-end;
 }
 
 .narration-guide {
@@ -1843,12 +1873,46 @@ textarea {
   display: block;
 }
 
+.intro-outro-dropzone {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px dashed var(--border-dashed);
+  border-radius: 4px;
+}
+
+.intro-outro-dropzone-active {
+  border-color: var(--accent);
+  background: var(--surface-3-soft);
+}
+
+.intro-outro-file-input {
+  display: none;
+}
+
+.intro-outro-dropzone-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.intro-outro-upload-error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12px;
+  color: var(--error-text);
+}
+
 .settings-field.wide-input {
   flex: 1 1 320px;
   min-width: 0;
 }
 
-.settings-field.wide-input input {
+.settings-field.wide-input input,
+.settings-field.wide-input select {
   flex: 1 1 auto;
   min-width: 0;
   width: 100%;
