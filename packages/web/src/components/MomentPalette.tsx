@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@astryxdesign/core/Button";
+import { Card } from "@astryxdesign/core/Card";
+import { Badge } from "@astryxdesign/core/Badge";
+import type { BadgeVariant } from "@astryxdesign/core/Badge";
+import { Text } from "@astryxdesign/core/Text";
 import type { Segment } from "@cuesheet/schema";
 import { fetchDraftFrames, fetchMoments } from "../api.js";
 import type { ClipMoments, ShotType } from "../api.js";
@@ -51,17 +55,24 @@ const SHOT_TYPE_CATEGORY: Record<ShotType, Category> = {
   other: "기타",
 };
 
-const CATEGORY_META: Record<Category, { label: string; className: string }> = {
-  "뜨개구간": { label: "뜨개구간", className: "knit-range" },
-  "뜨개": { label: "뜨개", className: "knit" },
-  "고양이": { label: "고양이", className: "cat" },
-  "리빌": { label: "리빌", className: "reveal" },
-  "재료·소품": { label: "재료·소품", className: "object" },
-  "외출": { label: "외출", className: "outing" },
-  "실수": { label: "실수", className: "mistake" },
-  "착용": { label: "착용", className: "wearing" },
-  "변화": { label: "변화", className: "change" },
-  "기타": { label: "기타", className: "other" },
+/** 카테고리 -> Badge variant. 기존 styles.css category-tag 색 의도를 그대로
+ * 보존해 매핑(뜨개구간=teal, 뜨개=blue, 고양이=purple, 재료·소품=green, 실수=red,
+ * 착용=pink, 변화=cyan, 기타=gray는 기존 커스텀 태그와 1:1). 리빌/외출은 기존에
+ * category-tag 전용 커스텀 색(각각 tag-reveal, tag-outing 변수)이었는데 Badge
+ * 팔레트엔 그 두 색이 없어 남는 orange/yellow로 접었다. */
+const CATEGORY_META: Record<Category, { label: string; badgeVariant: BadgeVariant }> = {
+  "뜨개구간": { label: "뜨개구간", badgeVariant: "teal" },
+  "뜨개": { label: "뜨개", badgeVariant: "blue" },
+  "고양이": { label: "고양이", badgeVariant: "purple" },
+  "리빌": { label: "리빌", badgeVariant: "orange" },
+  "재료·소품": { label: "재료·소품", badgeVariant: "green" },
+  "외출": { label: "외출", badgeVariant: "yellow" },
+  "실수": { label: "실수", badgeVariant: "red" },
+  "착용": { label: "착용", badgeVariant: "pink" },
+  "변화": { label: "변화", badgeVariant: "cyan" },
+  // BadgeVariantMap에는 gray가 없어(neutral/info/success/warning/error/blue/cyan/
+  // green/orange/pink/purple/red/teal/yellow만 존재) 가장 가까운 neutral로 대체.
+  "기타": { label: "기타", badgeVariant: "neutral" },
 };
 
 type StatusFilter = "전체" | "채택만" | "탈락만";
@@ -374,94 +385,109 @@ export function MomentPalette({
                   ? " status-rejected-quality"
                   : "";
               return (
-                <div
-                  className={`moment-card${inUse ? " in-use" : ""}${statusClass}`}
-                  key={card.key}
-                  title={fullInfo}
-                >
-                  <div className="moment-thumb">
-                    {frame ? (
-                      <img
-                        src={`/draft-frames/${encodeURIComponent(card.clipFolder)}/${encodeURIComponent(frame)}`}
-                        alt=""
-                      />
-                    ) : (
-                      <div className="moment-thumb-empty" />
-                    )}
-                    <span className="moment-number">
-                      {card.clipFolder} · {card.inS.toFixed(1)}s
-                    </span>
-                    {inUse ? <span className="moment-badge-in-use">사용 중 · 컷 {cutNumber}</span> : null}
-                    {!inUse && faceRejected ? (
-                      <span className="moment-badge-rejected face">자동 제외: 얼굴 노출</span>
-                    ) : null}
-                    {!inUse && qualityRejected ? (
-                      <span className="moment-badge-rejected quality">자동 제외: 품질 낮음</span>
-                    ) : null}
-                  </div>
-                  {/* 카드 위계(screen-spec 2절): 썸네일 -> 상태 배지(위, 썸네일 오버레이) ->
-                      장면 설명(2줄) -> 메타(샷유형·길이·품질) -> 액션. -webkit-line-clamp가
-                      걸린 요소가 이 flex-column 카드의 "직속" flex 아이템이면(이 환경
-                      Chromium 실측) 클램프 높이 계산이 어긋나 3번째 줄이 잘리다 만 채로
-                      버튼 위에 흘러넘친다 — 플레인 래퍼로 한 겹 감싸 line-clamp 요소
-                      자체는 flex 아이템이 되지 않게 한다. */}
-                  <div className="moment-memo-wrap">
-                    <div className="moment-memo" title={displayMemo}>
-                      {displayMemo}
+                // Card(BaseProps)는 title을 명시적으로 omit하므로(footgun 목록) 카드
+                // 전체 정보 툴팁은 이 플레인 래퍼 div가 대신 맡는다.
+                <div className="moment-card-wrap" key={card.key} title={fullInfo}>
+                  <Card
+                    padding={0}
+                    className={`moment-card${inUse ? " in-use" : ""}${statusClass}`}
+                  >
+                    <div className="moment-thumb">
+                      {frame ? (
+                        <img
+                          src={`/draft-frames/${encodeURIComponent(card.clipFolder)}/${encodeURIComponent(frame)}`}
+                          alt=""
+                        />
+                      ) : (
+                        <div className="moment-thumb-empty" />
+                      )}
+                      <span className="moment-number">
+                        {card.clipFolder} · {card.inS.toFixed(1)}s
+                      </span>
+                      {/* Thumbnail(Astryx)은 정사각형 고정+오버레이 슬롯이 없어(children prop
+                          자체가 없음) 이 3중 오버레이(번호칩·상태배지·이미지) 합성엔 안 맞아
+                          커스텀 유지 — 상태 배지 자체는 Badge로 교체. */}
+                      {inUse ? (
+                        <Badge
+                          variant="success"
+                          label={`사용 중 · 컷 ${cutNumber}`}
+                          className="moment-badge-in-use"
+                        />
+                      ) : null}
+                      {!inUse && faceRejected ? (
+                        <Badge variant="error" label="자동 제외: 얼굴 노출" className="moment-badge-rejected face" />
+                      ) : null}
+                      {!inUse && qualityRejected ? (
+                        <Badge
+                          variant="warning"
+                          label="자동 제외: 품질 낮음"
+                          className="moment-badge-rejected quality"
+                        />
+                      ) : null}
                     </div>
-                  </div>
-                  <div className="moment-info">
-                    <span className={`category-tag cat-${meta.className}`}>{meta.label}</span>
-                    <span className="moment-duration">{(card.outS - card.inS).toFixed(1)}s</span>
-                    {card.quality != null ? (
-                      <span className="moment-quality">품질 {card.quality}/5</span>
-                    ) : null}
-                  </div>
-                  <div className="moment-card-actions">
-                    <Button
-                      label={inUse ? "담김" : "담기"}
-                      variant="primary"
-                      size="sm"
-                      isDisabled={inUse}
-                      onClick={() => handleAdd(card)}
-                    />
-                    {/* 사용 안 중일 땐 빼기를 숨기되(자리는 그대로 차지해 카드 높이가
-                        담기/빼기 유무와 무관하게 일정하게 유지된다). */}
-                    <Button
-                      label="빼기"
-                      variant="destructive"
-                      size="sm"
-                      isDisabled={!inUse}
-                      className={inUse ? "" : "placeholder"}
-                      onClick={() => onRemoveSegment(card.clipFileName, card.inS, card.outS)}
-                    />
-                  </div>
-                  <div className="moment-io-actions">
-                    <Button
-                      label={isIntro ? "인트로 지정됨" : "인트로로"}
-                      variant="ghost"
-                      size="sm"
-                      className={`moment-io-button${isIntro ? " active" : ""}`}
-                      isDisabled={tooLongForIntroOutro}
-                      tooltip={
-                        introOutroDisabledTitle ??
-                        "이 클립 전체를 인트로로 지정합니다(구간 지정 불가, 클립 전체 삽입)"
-                      }
-                      onClick={() => onSetIntro(card.clipFileName)}
-                    />
-                    <Button
-                      label={isOutro ? "아웃트로 지정됨" : "아웃트로로"}
-                      variant="ghost"
-                      size="sm"
-                      className={`moment-io-button${isOutro ? " active" : ""}`}
-                      isDisabled={tooLongForIntroOutro}
-                      tooltip={
-                        introOutroDisabledTitle ??
-                        "이 클립 전체를 아웃트로로 지정합니다(구간 지정 불가, 클립 전체 삽입)"
-                      }
-                      onClick={() => onSetOutro(card.clipFileName)}
-                    />
-                  </div>
+                    {/* 카드 위계(screen-spec 2절): 썸네일 -> 상태 배지(위, 썸네일 오버레이) ->
+                        장면 설명(전문, 줄바꿈 허용) -> 메타(샷유형·길이·품질) -> 액션. 이
+                        화면은 장면을 "읽고 고르는" 화면이라 설명 클램프는 제거했다
+                        (maxLines={0} = 무클램프) — 과거 -webkit-line-clamp 버그 회피용
+                        래퍼(.moment-memo-wrap)는 패딩 용도로만 남긴다. */}
+                    <div className="moment-memo-wrap">
+                      <Text type="supporting" maxLines={0}>
+                        {displayMemo}
+                      </Text>
+                    </div>
+                    <div className="moment-info">
+                      <Badge variant={meta.badgeVariant} label={meta.label} />
+                      <span className="moment-duration">{(card.outS - card.inS).toFixed(1)}s</span>
+                      {card.quality != null ? (
+                        <span className="moment-quality">품질 {card.quality}/5</span>
+                      ) : null}
+                    </div>
+                    <div className="moment-card-actions">
+                      <Button
+                        label={inUse ? "담김" : "담기"}
+                        variant="primary"
+                        size="sm"
+                        isDisabled={inUse}
+                        onClick={() => handleAdd(card)}
+                      />
+                      {/* 사용 안 중일 땐 빼기를 숨기되(자리는 그대로 차지해 카드 높이가
+                          담기/빼기 유무와 무관하게 일정하게 유지된다). */}
+                      <Button
+                        label="빼기"
+                        variant="destructive"
+                        size="sm"
+                        isDisabled={!inUse}
+                        className={inUse ? "" : "placeholder"}
+                        onClick={() => onRemoveSegment(card.clipFileName, card.inS, card.outS)}
+                      />
+                    </div>
+                    <div className="moment-io-actions">
+                      <Button
+                        label={isIntro ? "인트로 지정됨" : "인트로로"}
+                        variant="ghost"
+                        size="sm"
+                        className={`moment-io-button${isIntro ? " active" : ""}`}
+                        isDisabled={tooLongForIntroOutro}
+                        tooltip={
+                          introOutroDisabledTitle ??
+                          "이 클립 전체를 인트로로 지정합니다(구간 지정 불가, 클립 전체 삽입)"
+                        }
+                        onClick={() => onSetIntro(card.clipFileName)}
+                      />
+                      <Button
+                        label={isOutro ? "아웃트로 지정됨" : "아웃트로로"}
+                        variant="ghost"
+                        size="sm"
+                        className={`moment-io-button${isOutro ? " active" : ""}`}
+                        isDisabled={tooLongForIntroOutro}
+                        tooltip={
+                          introOutroDisabledTitle ??
+                          "이 클립 전체를 아웃트로로 지정합니다(구간 지정 불가, 클립 전체 삽입)"
+                        }
+                        onClick={() => onSetOutro(card.clipFileName)}
+                      />
+                    </div>
+                  </Card>
                 </div>
               );
             })}

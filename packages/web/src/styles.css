@@ -1051,16 +1051,23 @@ textarea {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  /* 카드 높이가 이제 장면 묘사 길이에 따라 제각각이라(클램프 제거) 기본값인
+     stretch를 두면 짧은 메모 카드가 같은 줄의 긴 카드 높이만큼 늘어나 버린다.
+     각 줄은 독립적으로(masonry는 아님) 자기 콘텐츠 높이만 차지하게 한다. */
+  align-items: flex-start;
 }
 
-.moment-card {
-  position: relative;
+.moment-card-wrap {
   width: 168px;
+}
+
+/* 배경/테두리/둥근 모서리는 이제 Astryx Card(variant="default")가 담당한다 —
+   여기서는 그리드 안에서의 크기·레이아웃·overflow-hidden(썸네일 위 모서리
+   클리핑용)만 얹는다. */
+.moment-card {
+  width: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
   overflow: hidden;
 }
 
@@ -1076,27 +1083,15 @@ textarea {
   filter: grayscale(0.35);
 }
 
+/* 색(품질/얼굴 구분)은 이제 Badge의 variant="warning"|"error"가 담당 — 여기서는
+   썸네일 위 오버레이 배치만 얹는다. */
 .moment-badge-rejected {
   position: absolute;
   top: 4px;
   right: 4px;
-  font-size: 12px;
-  padding: 1px 5px;
-  border-radius: 3px;
   max-width: calc(100% - 8px);
   white-space: normal;
-  line-height: 1.3;
   text-align: right;
-}
-
-.moment-badge-rejected.quality {
-  background: var(--badge-quality-bg);
-  color: var(--badge-quality-text);
-}
-
-.moment-badge-rejected.face {
-  background: var(--badge-face-bg);
-  color: var(--badge-face-text);
 }
 
 /* 배경은 의도적으로 테마 무관 고정 다크 — 로드 전/후 항상 영상 프레임 썸네일이
@@ -1139,15 +1134,12 @@ textarea {
   border-radius: 3px;
 }
 
+/* 색("사용 중" 강조)은 이제 Badge의 variant="success"가 담당 — 여기서는 썸네일
+   위 오버레이 배치만 얹는다. */
 .moment-badge-in-use {
   position: absolute;
   top: 4px;
   right: 4px;
-  font-size: 13px;
-  padding: 1px 5px;
-  background: var(--badge-inuse-bg);
-  color: var(--badge-inuse-text);
-  border-radius: 3px;
 }
 
 .moment-info {
@@ -1159,26 +1151,12 @@ textarea {
   color: var(--text-tertiary);
 }
 
+/* 이 화면은 장면을 "읽고 고르는" 화면이라 설명 텍스트는 더 이상 클램프하지
+   않는다(Text maxLines={0}, 전문 노출) — 과거 line-clamp 요소가 이 flex-column
+   카드의 "직속" flex 아이템일 때 높이 계산이 어긋나던 버그 때문에 플레인
+   래퍼로 감쌌던 것인데, 클램프 자체가 없어졌으니 지금은 패딩만 준다. */
 .moment-memo-wrap {
-  /* line-clamp 요소(.moment-memo)가 이 flex-column 카드의 "직속" flex 아이템이
-     되지 않도록 감싸는 플레인 래퍼 — flex 아이템으로 직접 두면(이 환경 Chromium
-     실측 확인) line-clamp 높이 계산이 어긋나 3번째 줄이 잘리다 만 채로 버튼
-     위에 흘러넘치는 버그가 있었다. 패딩도 여기서 준다. */
   padding: 4px 8px 8px;
-}
-
-.moment-memo {
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--text-quaternary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  /* 짧은 메모도 카드 높이가 일관되게 2줄 분량(line-height 1.4 * 2)은 확보한다.
-     explicit height를 같이 주면 위 flex 아이템 이슈와 겹쳐 다시 새므로 넣지 않는다. */
-  min-height: 2.8em;
 }
 
 .moment-card-actions {
@@ -1217,63 +1195,6 @@ textarea {
 
 .moment-io-button:disabled {
   opacity: 0.4;
-}
-
-.category-tag {
-  padding: 1px 6px;
-  border-radius: 3px;
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-.category-tag.cat-knit-range {
-  background: var(--tag-teal-bg);
-  color: var(--tag-teal-text);
-}
-
-.category-tag.cat-knit {
-  background: var(--tag-blue-bg);
-  color: var(--tag-blue-text);
-}
-
-.category-tag.cat-cat {
-  background: var(--tag-purple-bg);
-  color: var(--tag-purple-text);
-}
-
-.category-tag.cat-reveal {
-  background: var(--tag-reveal-bg);
-  color: var(--tag-reveal-text);
-}
-
-.category-tag.cat-object {
-  background: var(--tag-green-bg);
-  color: var(--tag-green-text);
-}
-
-.category-tag.cat-outing {
-  background: var(--tag-outing-bg);
-  color: var(--tag-outing-text);
-}
-
-.category-tag.cat-mistake {
-  background: var(--tag-red-bg);
-  color: var(--tag-red-text);
-}
-
-.category-tag.cat-wearing {
-  background: var(--tag-pink-bg);
-  color: var(--tag-pink-text);
-}
-
-.category-tag.cat-change {
-  background: var(--tag-cyan-bg);
-  color: var(--tag-cyan-text);
-}
-
-.category-tag.cat-other {
-  background: var(--tag-gray-bg);
-  color: var(--tag-gray-text);
 }
 
 .keyboard-help {
