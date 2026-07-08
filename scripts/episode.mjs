@@ -75,13 +75,13 @@ function ensureDraftBuilt() {
   if (existsSync(cliPath)) {
     return cliPath;
   }
-  console.log("cuesheet-draft가 빌드되어 있지 않아 먼저 빌드합니다...");
+  console.log("cuesheet-draft isn't built yet, building it first...");
   const result = spawnSync("pnpm", ["--filter", "@cuesheet/draft", "build"], {
     cwd: repoRoot,
     stdio: "inherit",
   });
   if (result.status !== 0) {
-    console.error("cuesheet-draft 빌드 실패");
+    console.error("cuesheet-draft build failed");
     process.exit(result.status ?? 1);
   }
   return cliPath;
@@ -96,26 +96,26 @@ async function main() {
   const { positional, flags } = parseArgs(process.argv.slice(2));
   const srcArg = positional[0];
   if (!srcArg) {
-    console.error("사용법: pnpm episode <원본폴더> [--scan-only] [--no-open] [--rescan]");
+    console.error("Usage: pnpm episode <source-folder> [--scan-only] [--no-open] [--rescan]");
     process.exit(1);
   }
 
   const srcDir = resolve(srcArg);
   if (!existsSync(srcDir) || !statSync(srcDir).isDirectory()) {
-    console.error(`폴더를 찾을 수 없습니다: ${srcDir}`);
+    console.error(`Folder not found: ${srcDir}`);
     process.exit(1);
   }
 
   const entries = readdirSync(srcDir);
   const videoFiles = entries.filter((f) => VIDEO_EXTS.has(extname(f).toLowerCase()));
   if (videoFiles.length === 0) {
-    console.error(`영상 파일이 없습니다: ${srcDir}`);
+    console.error(`No video files found: ${srcDir}`);
     process.exit(1);
   }
 
   const evictedCount = videoFiles.filter((f) => statSync(resolve(srcDir, f)).blocks === 0).length;
   console.log(
-    `원본 폴더: ${srcDir} (영상 ${videoFiles.length}개, iCloud 미다운로드 ${evictedCount}개)`,
+    `Source folder: ${srcDir} (${videoFiles.length} videos, ${evictedCount} not downloaded from iCloud)`,
   );
 
   const slug = slugify(basename(srcDir));
@@ -126,34 +126,34 @@ async function main() {
 
   const manifestPath = resolve(draftDir, "manifest.json");
   if (existsSync(manifestPath) && !flags.rescan) {
-    console.log(`이미 스캔됨, 건너뜁니다: ${manifestPath} (다시 스캔하려면 --rescan)`);
+    console.log(`Already scanned, skipping: ${manifestPath} (use --rescan to scan again)`);
   } else {
     const cliPath = ensureDraftBuilt();
     mkdirSync(draftDir, { recursive: true });
-    console.log(`스캔 시작 -> ${draftDir}`);
+    console.log(`Starting scan -> ${draftDir}`);
     const result = spawnSync("node", [cliPath, "scan", srcDir, "--out", draftDir], {
       cwd: repoRoot,
       stdio: "inherit",
     });
     if (result.status !== 0) {
-      console.error("스캔 실패");
+      console.error("Scan failed");
       process.exit(result.status ?? 1);
     }
   }
 
   if (flags["scan-only"]) {
-    console.log(`\n다음 단계: Claude Code에서 실행 -> /episode ${srcArg}`);
+    console.log(`\nNext step: run in Claude Code -> /episode ${srcArg}`);
     return;
   }
 
   if (await isPortOpen(WEB_PORT)) {
     console.log(
-      `\n웹 에디터가 이미 http://localhost:${WEB_PORT} 에 떠 있습니다 (그대로 둡니다).\n` +
-        `다른 에피소드용으로 떠 있는 경우 CUESHEET_PATH가 다를 수 있으니, 이 에피소드로 보려면 서버를 재시작하세요:\n` +
+      `\nThe web editor is already running at http://localhost:${WEB_PORT} (leaving it as is).\n` +
+        `If it's running for a different episode, CUESHEET_PATH may differ - restart the server to view this episode:\n` +
         `  CUESHEET_PATH=${cuesheetPath} pnpm --filter @cuesheet/web dev`,
     );
   } else {
-    console.log(`웹 에디터 기동 중... (CUESHEET_PATH=${cuesheetPath})`);
+    console.log(`Starting the web editor... (CUESHEET_PATH=${cuesheetPath})`);
     const child = spawn("pnpm", ["--filter", "@cuesheet/web", "dev"], {
       cwd: repoRoot,
       env: { ...process.env, CUESHEET_PATH: cuesheetPath },
@@ -165,7 +165,7 @@ async function main() {
     const up = await waitForPort(WEB_PORT, 15000);
     if (!up) {
       console.error(
-        `${WEB_PORT}번 포트가 15초 안에 뜨지 않았습니다 - 로그 확인 필요(pnpm --filter @cuesheet/web dev 직접 실행).`,
+        `Port ${WEB_PORT} did not come up within 15s - check the logs (run pnpm --filter @cuesheet/web dev directly).`,
       );
     }
   }
@@ -174,8 +174,8 @@ async function main() {
     openBrowser(`http://localhost:${WEB_PORT}`);
   }
 
-  console.log(`\n에디터: http://localhost:${WEB_PORT}`);
-  console.log(`다음 단계: Claude Code에서 실행 -> /episode ${srcArg}`);
+  console.log(`\nEditor: http://localhost:${WEB_PORT}`);
+  console.log(`Next step: run in Claude Code -> /episode ${srcArg}`);
 }
 
 main();
