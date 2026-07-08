@@ -220,8 +220,12 @@ and CLI's schema versions ever drift, we choose a loud failure over silent data 
    assignable per cut; completes the per-cut override story.
 2. **Title cards with presets (user-finalized trio)** — `segment.title?: {text, preset,
    durationS?}` optional field; presets matched to the cozy knitting-vlog mood:
-   **Gooey** (organic blob-melt text, SVG-filter based), **Particle** (fibers/sparkles
-   assembling into text, canvas), **Typing** (per-letter typewriter + cursor).
+   **Gooey** (organic blobs assembling into text; **Melt** variant for exit — letters
+   drip away, SVG-filter based), **Particle** (fibers/sparkles assembling, canvas),
+   **Typing** (per-letter typewriter + cursor). Titles support an optional backdrop
+   dim layer (`title.backdrop: {dim: 0-1}`) fading with the title — cheap in both
+   render paths. Transition-only dimming (no title) belongs to the fades feature
+   (dip-to-dim as a cut-boundary property), not to titles.
    Web preview via CSS/JS. Render paths: Typing via ASS/libass karaoke; Gooey/Particle
    via headless frame-capture -> alpha overlay compositing (spike in progress validating
    both paths + caching strategy per (text, preset)).
