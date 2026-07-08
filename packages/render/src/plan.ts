@@ -9,10 +9,54 @@ export interface RenderPlan {
   outputPath: string;
 }
 
+export interface SourceDimensions {
+  width: number;
+  height: number;
+}
+
 export interface RenderPlanOptions {
   /** Burns subtitles into the video via drawtext. Defaults to true (existing behavior).
    * If false, produces a clean video meant to be combined with a CC/SRT track — drawtext is omitted. */
   burnSubtitles?: boolean;
+  /**
+   * Actual source dimensions (from ffprobe), keyed by clip filename (segment.clip) — only
+   * needed for clips that have a crop. buildRenderPlan stays pure (no ffprobe itself); the
+   * CLI probes each cropped clip and passes the result here. Clips without an entry (or when
+   * this whole option is omitted) skip the check below — the schema-level check
+   * (@cuesheet/schema's w===h invariant) already covers the same-aspect-source assumption;
+   * this is the precise check against the clip's *actual* dimensions, catching sources that
+   * don't actually share the project's aspect ratio.
+   */
+  sourceDimensions?: Record<string, SourceDimensions>;
+}
+
+/** Relative tolerance for the crop-vs-project-aspect check (1%). */
+const CROP_ASPECT_TOLERANCE = 0.01;
+
+/**
+ * Verifies that each cropped segment's actual pixel aspect ratio (crop.w*srcWidth /
+ * crop.h*srcHeight) matches the project's aspect ratio (project.width/project.height) within
+ * CROP_ASPECT_TOLERANCE — beyond that, render/plan.ts's crop -> scale=W:H (no letterboxing)
+ * would stretch the image. Throws a field-path style error naming the offending cut; a no-op
+ * for segments with no crop or no matching sourceDimensions entry.
+ */
+function assertCropMatchesProjectAspect(cue: CueSheet, sourceDimensions?: Record<string, SourceDimensions>): void {
+  if (!sourceDimensions) return;
+  const projectAspect = cue.project.width / cue.project.height;
+  cue.segments.forEach((s, i) => {
+    if (!s.crop) return;
+    const dims = sourceDimensions[s.clip];
+    if (!dims) return;
+    const cropAspect = (s.crop.w * dims.width) / (s.crop.h * dims.height);
+    const deviation = Math.abs(cropAspect - projectAspect) / projectAspect;
+    if (deviation > CROP_ASPECT_TOLERANCE) {
+      throw new Error(
+        `segments[${i}].crop: clip "${s.clip}" (source ${dims.width}x${dims.height}) crop aspect ` +
+          `${cropAspect.toFixed(3)} deviates from project aspect ${projectAspect.toFixed(3)} by ` +
+          `more than ${CROP_ASPECT_TOLERANCE * 100}%`,
+      );
+    }
+  });
 }
 
 /** Escapes text for ffmpeg drawtext (backslash, colon, single quote, percent) */
@@ -93,6 +137,7 @@ export function buildRenderPlan(
   opts?: RenderPlanOptions,
 ): RenderPlan {
   const burnSubtitles = opts?.burnSubtitles ?? true;
+  assertCropMatchesProjectAspect(cue, opts?.sourceDimensions);
   const { width: W, height: H, fps } = cue.project;
   const inputs: string[] = [];
   const filters: string[] = [];

@@ -14,6 +14,15 @@ interface Props {
   /** The container the crop overlay is drawn on (the frame wrapping the video) — the basis for pixel<->ratio conversion. */
   frameRef: RefObject<HTMLDivElement | null>;
   onChange: (crop: Crop) => void;
+  /**
+   * Target crop.w/crop.h ratio (w/h) to lock to while resizing. Derived by the caller from the
+   * project's aspect ratio and the source video's natural dimensions — see
+   * @cuesheet/schema's cueSheetSchema superRefine for the underlying invariant (crop.w/crop.h
+   * must reproduce the project's aspect ratio once scaled from the source). For same-aspect
+   * sources (source aspect === project aspect) this is 1, reproducing the old square-lock
+   * behavior exactly. Defaults to 1 if omitted.
+   */
+  lockRatio?: number;
 }
 
 function clamp(v: number, min: number, max: number): number {
@@ -21,53 +30,64 @@ function clamp(v: number, min: number, max: number): number {
 }
 
 /**
- * Transforms resize-handle drag deltas so w==h (square ratio coordinates) is always maintained.
- * When the source and output aspect ratios match (16:9 for this project), a w==h crop has no distortion.
+ * Transforms resize-handle drag deltas so crop.w/crop.h always stays equal to `ratio`. With
+ * ratio===1 this reduces to the old square-lock (w===h) behavior; more generally, w and h are
+ * scaled together so their ratio holds. dy is converted to width-equivalent units via
+ * `dy * ratio` so the two drag axes combine correctly for any ratio (matches the old
+ * `(dx+dy)/2` when ratio===1).
  *
- * - Corner handles (nw/ne/se/sw): anchor the opposite corner and compute the square's side
- *   length from the average of the two drag axes (diagonal movement amount).
+ * - Corner handles (nw/ne/se/sw): anchor the opposite corner and compute the size from the
+ *   average of the two (ratio-normalized) drag axes.
  * - Edge handles (n/e/s/w): fix the anchor (the opposite edge) and size from a single axis,
- *   then sync the cross axis to the same size while keeping its center.
+ *   then fit the cross axis to the ratio-derived size while keeping its center.
  */
-function resizeSquare(s: Crop, handle: HandleId, dx: number, dy: number): Crop {
+function resizeLocked(s: Crop, handle: HandleId, dx: number, dy: number, ratio: number): Crop {
+  const dyW = dy * ratio; // dy expressed in width-equivalent units
   switch (handle) {
     case "se": {
-      const bound = Math.min(1 - s.x, 1 - s.y);
-      const size = clamp(s.w + (dx + dy) / 2, MIN_SIZE, bound);
-      return { x: s.x, y: s.y, w: size, h: size };
+      const bound = Math.min(1 - s.x, (1 - s.y) * ratio);
+      const w = clamp(s.w + (dx + dyW) / 2, MIN_SIZE, bound);
+      return { x: s.x, y: s.y, w, h: w / ratio };
     }
     case "nw": {
-      const bound = Math.min(s.x + s.w, s.y + s.h);
-      const size = clamp(s.w - (dx + dy) / 2, MIN_SIZE, bound);
-      return { x: s.x + s.w - size, y: s.y + s.h - size, w: size, h: size };
+      const bound = Math.min(s.x + s.w, (s.y + s.h) * ratio);
+      const w = clamp(s.w - (dx + dyW) / 2, MIN_SIZE, bound);
+      const h = w / ratio;
+      return { x: s.x + s.w - w, y: s.y + s.h - h, w, h };
     }
     case "ne": {
-      const bound = Math.min(1 - s.x, s.y + s.h);
-      const size = clamp(s.w + (dx - dy) / 2, MIN_SIZE, bound);
-      return { x: s.x, y: s.y + s.h - size, w: size, h: size };
+      const bound = Math.min(1 - s.x, (s.y + s.h) * ratio);
+      const w = clamp(s.w + (dx - dyW) / 2, MIN_SIZE, bound);
+      const h = w / ratio;
+      return { x: s.x, y: s.y + s.h - h, w, h };
     }
     case "sw": {
-      const bound = Math.min(s.x + s.w, 1 - s.y);
-      const size = clamp(s.w + (dy - dx) / 2, MIN_SIZE, bound);
-      return { x: s.x + s.w - size, y: s.y, w: size, h: size };
+      const bound = Math.min(s.x + s.w, (1 - s.y) * ratio);
+      const w = clamp(s.w + (dyW - dx) / 2, MIN_SIZE, bound);
+      const h = w / ratio;
+      return { x: s.x + s.w - w, y: s.y, w, h };
     }
     case "e": {
-      const size = clamp(s.w + dx, MIN_SIZE, 1 - s.x);
-      return { x: s.x, y: fitCrossAxis(size, s.y, s.h), w: size, h: size };
+      const w = clamp(s.w + dx, MIN_SIZE, 1 - s.x);
+      const h = w / ratio;
+      return { x: s.x, y: fitCrossAxis(h, s.y, s.h), w, h };
     }
     case "w": {
       const newX = clamp(s.x + dx, 0, s.x + s.w - MIN_SIZE);
-      const size = s.x + s.w - newX;
-      return { x: s.x + s.w - size, y: fitCrossAxis(size, s.y, s.h), w: size, h: size };
+      const w = s.x + s.w - newX;
+      const h = w / ratio;
+      return { x: s.x + s.w - w, y: fitCrossAxis(h, s.y, s.h), w, h };
     }
     case "s": {
-      const size = clamp(s.h + dy, MIN_SIZE, 1 - s.y);
-      return { x: fitCrossAxis(size, s.x, s.w), y: s.y, w: size, h: size };
+      const h = clamp(s.h + dy, MIN_SIZE, 1 - s.y);
+      const w = h * ratio;
+      return { x: fitCrossAxis(w, s.x, s.w), y: s.y, w, h };
     }
     case "n": {
       const newY = clamp(s.y + dy, 0, s.y + s.h - MIN_SIZE);
-      const size = s.y + s.h - newY;
-      return { x: fitCrossAxis(size, s.x, s.w), y: s.y + s.h - size, w: size, h: size };
+      const h = s.y + s.h - newY;
+      const w = h * ratio;
+      return { x: fitCrossAxis(w, s.x, s.w), y: s.y + s.h - h, w, h };
     }
     default:
       return s;
@@ -95,7 +115,7 @@ function fitCrossAxis(size: number, otherAxisPos: number, otherAxisLen: number):
  * computed as 0-1 ratios (relative to frameRef's size) and reported to the parent
  * (VideoPreview) immediately via onChange — the parent manages the apply/cancel commit.
  */
-export function CropEditOverlay({ crop, frameRef, onChange }: Props) {
+export function CropEditOverlay({ crop, frameRef, onChange, lockRatio = 1 }: Props) {
   const dragStart = useRef<{
     crop: Crop;
     clientX: number;
@@ -122,7 +142,7 @@ export function CropEditOverlay({ crop, frameRef, onChange }: Props) {
     const s = start.crop;
 
     if (start.handle === "move") {
-      // Moving doesn't touch w/h, so the square (w==h) invariant is preserved automatically.
+      // Moving doesn't touch w/h, so the ratio-lock invariant is preserved automatically.
       onChange({
         x: clamp(s.x + dx, 0, 1 - s.w),
         y: clamp(s.y + dy, 0, 1 - s.h),
@@ -132,7 +152,7 @@ export function CropEditOverlay({ crop, frameRef, onChange }: Props) {
       return;
     }
 
-    onChange(resizeSquare(s, start.handle, dx, dy));
+    onChange(resizeLocked(s, start.handle, dx, dy, lockRatio));
   };
 
   const endDrag = (e: ReactPointerEvent<HTMLDivElement>) => {

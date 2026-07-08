@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { validateCueSheet } from "@cuesheet/schema";
 import { buildRenderPlan } from "./plan.js";
+import type { SourceDimensions } from "./plan.js";
 import { buildSrt } from "./srt.js";
 
 /**
@@ -26,27 +28,65 @@ let raw: unknown;
 try {
   raw = JSON.parse(readFileSync(cuePath, "utf-8"));
 } catch (e) {
-  console.error(`큐시트를 읽을 수 없습니다(${cuePath}): ${String(e)}`);
+  console.error(`Could not read the cuesheet (${cuePath}): ${String(e)}`);
   process.exit(1);
 }
 
 const result = validateCueSheet(raw);
 if (!result.ok) {
-  console.error(`큐시트 검증 실패:\n${result.errors.join("\n")}`);
+  console.error(`Cuesheet validation failed:\n${result.errors.join("\n")}`);
   process.exit(1);
 }
 
 if (srtOutPath !== null) {
   writeFileSync(srtOutPath, buildSrt(result.data), "utf-8");
-  console.error(`SRT 저장됨: ${srtOutPath}`);
+  console.error(`SRT saved: ${srtOutPath}`);
 }
 
-const plan = buildRenderPlan(result.data, outPath, { burnSubtitles });
+/** Probes a video file's pixel width/height via ffprobe. Returns null on failure. */
+function probeDimensions(path: string): SourceDimensions | null {
+  const proc = spawnSync(
+    "ffprobe",
+    [
+      "-v",
+      "error",
+      "-select_streams",
+      "v:0",
+      "-show_entries",
+      "stream=width,height",
+      "-of",
+      "csv=s=x:p=0",
+      path,
+    ],
+    { encoding: "utf-8" },
+  );
+  if (proc.status !== 0) return null;
+  const match = proc.stdout.trim().match(/^(\d+)x(\d+)$/);
+  if (!match) return null;
+  return { width: Number(match[1]), height: Number(match[2]) };
+}
+
+// Only cropped clips need probing (buildRenderPlan's crop/project-aspect check is a no-op for
+// clips without a sourceDimensions entry).
+const croppedClips = new Set(result.data.segments.filter((s) => s.crop).map((s) => s.clip));
+const sourceDimensions: Record<string, SourceDimensions> = {};
+for (const clip of croppedClips) {
+  const dims = probeDimensions(join(result.data.clipDir, clip));
+  if (dims) sourceDimensions[clip] = dims;
+}
+
+let plan;
+try {
+  plan = buildRenderPlan(result.data, outPath, { burnSubtitles, sourceDimensions });
+} catch (e) {
+  console.error((e as Error).message);
+  process.exit(1);
+}
 console.error(`ffmpeg ${plan.args.join(" ")}`);
 
 const proc = spawn("ffmpeg", plan.args, { stdio: "inherit" });
 proc.on("error", (e) => {
-  console.error(`ffmpeg 실행 실패(설치되어 있나요?): ${e.message}`);
+  console.error(`Failed to run ffmpeg (is it installed?): ${e.message}`);
   process.exit(1);
 });
 proc.on("exit", (code) => {

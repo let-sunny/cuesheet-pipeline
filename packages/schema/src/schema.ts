@@ -26,8 +26,10 @@ export const projectSchema = z.object({
 
 /**
  * Per-segment crop. Defined as a **ratio (0-1)** relative to the source resolution
- * (resolution-independent). x,y = top-left, w,h = size. Example: a vertical crop that
- * cuts off the top of the face: { x: 0, y: 0.25, w: 1, h: 0.75 }.
+ * (resolution-independent). x,y = top-left, w,h = size. w must equal h (within a small
+ * epsilon) — see cueSheetSchema's superRefine for why: for same-aspect sources, that's the
+ * condition under which the crop preserves the project's aspect ratio. Example: a vertical
+ * crop that cuts off the top of the face: { x: 0, y: 0.25, w: 0.75, h: 0.75 }.
  */
 export const cropSchema = z
   .object({
@@ -158,13 +160,42 @@ export const narrationConfigSchema = z.object({
     .default(1.0),
 });
 
-export const cueSheetSchema = z.object({
-  project: projectSchema,
-  clipDir: z.string().min(1, "clipDir must not be empty"),
-  intro: z.string().min(1).nullable(),
-  outro: z.string().min(1).nullable(),
-  segments: z.array(segmentSchema).min(1, "segments must have at least 1 item"),
-  bgm: z.array(bgmCueSchema),
-  subtitleStyle: subtitleStyleSchema,
-  narration: narrationConfigSchema.optional(),
-});
+/**
+ * Tolerance for the crop/project-aspect-ratio check below (see cueSheetSchema's superRefine).
+ */
+const CROP_ASPECT_EPSILON = 0.005;
+
+export const cueSheetSchema = z
+  .object({
+    project: projectSchema,
+    clipDir: z.string().min(1, "clipDir must not be empty"),
+    intro: z.string().min(1).nullable(),
+    outro: z.string().min(1).nullable(),
+    segments: z.array(segmentSchema).min(1, "segments must have at least 1 item"),
+    bgm: z.array(bgmCueSchema),
+    subtitleStyle: subtitleStyleSchema,
+    narration: narrationConfigSchema.optional(),
+  })
+  .superRefine((cue, ctx) => {
+    // crop.w and crop.h (see cropSchema) are ratios relative to the *source* frame's own
+    // width/height, not the project's. Source clips are assumed to already share the
+    // project's aspect ratio (project.width/project.height) — this project doesn't support
+    // mixed-aspect sources (see packages/render's crop -> scale=W:H, which stretches to fill
+    // without letterboxing). Deriving the invariant from that assumption: let
+    // projectAspect = project.width / project.height. Since srcW/srcH === projectAspect
+    // (same-aspect assumption), the crop window's own aspect in pixels is
+    // (w*srcW)/(h*srcH) = (w/h) * projectAspect. For the crop to preserve projectAspect (no
+    // distortion once scaled to W:H), (w/h) must equal 1 — i.e. w and h (the ratios) must be
+    // equal, which is the check below.
+    cue.segments.forEach((segment, i) => {
+      if (!segment.crop) return;
+      if (Math.abs(segment.crop.w - segment.crop.h) > CROP_ASPECT_EPSILON) {
+        ctx.addIssue({
+          code: "custom",
+          message:
+            "crop window must match the project aspect ratio (w and h ratios must be equal for same-aspect sources)",
+          path: ["segments", i, "crop"],
+        });
+      }
+    });
+  });

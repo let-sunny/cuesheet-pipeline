@@ -57,7 +57,21 @@ describe("validateCueSheet - 통과 케이스", () => {
     }
   });
 
-  it("crop이 유효하면 통과하고 그대로 반영된다", () => {
+  it("crop이 유효하면(project 비율과 w===h로 일치) 통과하고 그대로 반영된다", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      segments: [
+        { clip: "a.mp4", in: 0, out: 1, subtitle: "", crop: { x: 0, y: 0.25, w: 0.75, h: 0.75 } },
+      ],
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.segments[0]?.crop).toEqual({ x: 0, y: 0.25, w: 0.75, h: 0.75 });
+    }
+  });
+
+  it("crop.w와 crop.h가 어긋나면(w!==h, project 비율과 불일치) 실패한다", () => {
     const input = {
       ...(sample as Record<string, unknown>),
       segments: [
@@ -65,9 +79,9 @@ describe("validateCueSheet - 통과 케이스", () => {
       ],
     };
     const result = validateCueSheet(input);
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.data.segments[0]?.crop).toEqual({ x: 0, y: 0.25, w: 1, h: 0.75 });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.startsWith("segments[0].crop:"))).toBe(true);
     }
   });
 

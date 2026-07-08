@@ -176,15 +176,74 @@ describe("buildRenderPlan", () => {
             speed: 1,
             volume: 1,
             subtitle: "",
-            crop: { x: 0, y: 0.25, w: 1, h: 0.75 },
+            crop: { x: 0, y: 0.25, w: 0.75, h: 0.75 },
           },
         ],
       }),
       "out.mp4",
     );
     expect(p.filterComplex).toContain(
-      "setpts=PTS-STARTPTS,crop=w=iw*1:h=ih*0.75:x=iw*0:y=ih*0.25,scale=1920:1080",
+      "setpts=PTS-STARTPTS,crop=w=iw*0.75:h=ih*0.75:x=iw*0:y=ih*0.25,scale=1920:1080",
     );
+  });
+
+  it("sourceDimensions이 주어지고 실제 소스 비율이 project 비율과 일치하면 통과한다", () => {
+    const cue = make({
+      segments: [
+        {
+          clip: "a.mp4",
+          in: 0,
+          out: 5,
+          speed: 1,
+          volume: 1,
+          subtitle: "",
+          crop: { x: 0, y: 0.25, w: 0.75, h: 0.75 },
+        },
+      ],
+    });
+    // project is 1920x1080 (16:9); a same-aspect source (1920x1080) + a square crop (w===h)
+    // keeps the crop's own pixel aspect at 16:9 too.
+    expect(() =>
+      buildRenderPlan(cue, "out.mp4", { sourceDimensions: { "a.mp4": { width: 1920, height: 1080 } } }),
+    ).not.toThrow();
+  });
+
+  it("sourceDimensions의 실제 비율이 project 비율과 1%를 넘게 어긋나면 필드경로를 담아 실패한다", () => {
+    const cue = make({
+      segments: [
+        {
+          clip: "a.mp4",
+          in: 0,
+          out: 5,
+          speed: 1,
+          volume: 1,
+          subtitle: "",
+          crop: { x: 0, y: 0.25, w: 0.75, h: 0.75 },
+        },
+      ],
+    });
+    // Source isn't actually 16:9 (1920x1440, 4:3) despite the schema-level w===h crop —
+    // the crop's actual pixel aspect ends up 4:3, not the project's 16:9.
+    expect(() =>
+      buildRenderPlan(cue, "out.mp4", { sourceDimensions: { "a.mp4": { width: 1920, height: 1440 } } }),
+    ).toThrowError(/segments\[0\]\.crop: clip "a\.mp4"/);
+  });
+
+  it("sourceDimensions에 해당 클립 항목이 없으면 검사를 건너뛴다(옵션이므로 실패하지 않음)", () => {
+    const cue = make({
+      segments: [
+        {
+          clip: "a.mp4",
+          in: 0,
+          out: 5,
+          speed: 1,
+          volume: 1,
+          subtitle: "",
+          crop: { x: 0, y: 0.25, w: 0.75, h: 0.75 },
+        },
+      ],
+    });
+    expect(() => buildRenderPlan(cue, "out.mp4", { sourceDimensions: {} })).not.toThrow();
   });
 
   it("burnSubtitles: false면 drawtext를 생략하고 나머지 필터는 동일하다(CC/SRT용 클린 영상)", () => {

@@ -21,7 +21,7 @@ const server = new McpServer({ name: "cuesheet-bridge", version: "0.0.0" });
 server.registerTool(
   "get_cuesheet",
   {
-    description: "현재 큐시트(JSON)를 반환한다. 편집하기 전에 항상 먼저 읽어라.",
+    description: "Returns the current cuesheet (JSON). Always read this before editing.",
     inputSchema: {},
   },
   async () => {
@@ -37,9 +37,12 @@ server.registerTool(
   "update_cuesheet",
   {
     description:
-      "큐시트 전체를 새 값으로 교체한다. 스키마로 검증되며 통과해야만 저장된다. " +
-      "어떤 편집이든(볼륨·트림·자막·순서 등) 새 큐시트를 통째로 계산해서 넘겨라. " +
-      "먼저 get_cuesheet로 현재 값을 읽고, 필요한 부분만 바꾼 전체 객체를 보내면 된다.",
+      "Replaces the entire cuesheet with a new value. Validated against the schema and only " +
+      "saved if it passes. Whatever the edit (volume, trim, subtitle, order, etc.), compute " +
+      "the whole new cuesheet and pass it. Read the current value with get_cuesheet first, " +
+      "then send the whole object with only the needed parts changed. When setting " +
+      "segment.crop, crop.w and crop.h (ratios) must be equal — they must match the project's " +
+      "aspect ratio (assumes a same-aspect source).",
     inputSchema: { cuesheet: z.record(z.string(), z.unknown()) },
   },
   async ({ cuesheet }) => {
@@ -48,7 +51,7 @@ server.registerTool(
       content: [
         {
           type: "text" as const,
-          text: r.ok ? "저장 완료" : `검증 실패 — 저장하지 않음:\n${r.errors.join("\n")}`,
+          text: r.ok ? "Saved" : `Validation failed — not saved:\n${r.errors.join("\n")}`,
         },
       ],
       isError: !r.ok,

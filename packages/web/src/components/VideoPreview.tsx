@@ -77,6 +77,9 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   const [missing, setMissing] = useState(false);
   // null = not in crop edit mode. A value means an in-progress draft crop (not yet committed to the segment).
   const [cropEditDraft, setCropEditDraft] = useState<Crop | null>(null);
+  // The source video's own intrinsic pixel size (video.videoWidth/videoHeight), set once metadata
+  // loads — used (with projectWidth/projectHeight) to derive the crop ratio-lock below.
+  const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [playMode, setPlayMode] = useState<PlayMode>("loop");
@@ -206,6 +209,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     }
     const handleLoadedMetadata = () => {
       setDuration(video.duration);
+      setNaturalSize({ width: video.videoWidth, height: video.videoHeight });
       video.currentTime = segment.in;
       video.playbackRate = segment.speed;
       video.volume = segment.volume;
@@ -394,14 +398,37 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     onSplit(currentTime);
   };
 
+  // crop.w/crop.h (ratios of the source frame) must reproduce the project's aspect ratio once
+  // scaled onto the source (see @cuesheet/schema's cueSheetSchema superRefine) — i.e.
+  // w/h === (projectWidth/projectHeight) / (naturalWidth/naturalHeight). For same-aspect
+  // sources (the common case for this project) that's exactly 1, the old square-lock value.
+  // Falls back to 1 until the video's metadata has loaded.
+  const lockRatio =
+    naturalSize && naturalSize.width > 0 && naturalSize.height > 0
+      ? (projectWidth * naturalSize.height) / (projectHeight * naturalSize.width)
+      : 1;
+
+  /** The largest ratio-locked crop box (centered) that fits inside the full 0-1 frame. */
+  const maxCropForRatio = (ratio: number): Crop => {
+    const w = ratio >= 1 ? 1 : ratio;
+    const h = ratio >= 1 ? 1 / ratio : 1;
+    return { x: (1 - w) / 2, y: (1 - h) / 2, w, h };
+  };
+
   const startCropEdit = () => {
     if (!segment) {
       return;
     }
-    // The starting value for a new crop uses a square ratio (w==h) — when the source and output
-    // share the same aspect ratio (16:9), w==h keeps the crop window at 16:9 too, with no
-    // distortion (CropEditOverlay maintains this invariant even while dragging).
-    setCropEditDraft(segment.crop ?? { x: 0.15, y: 0.15, w: 0.7, h: 0.7 });
+    if (segment.crop) {
+      setCropEditDraft(segment.crop);
+      return;
+    }
+    // Starting value for a new crop: a ratio-locked box sized to 70% of the max box (matches
+    // the old { x: 0.15, y: 0.15, w: 0.7, h: 0.7 } default exactly when lockRatio===1).
+    const max = maxCropForRatio(lockRatio);
+    const w = max.w * 0.7;
+    const h = max.h * 0.7;
+    setCropEditDraft({ x: (1 - w) / 2, y: (1 - h) / 2, w, h });
   };
 
   const applyCropEdit = () => {
@@ -420,7 +447,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
    * shortcut for when dragging handles all the way out to the frame edges is tedious. You can
    * still narrow it back down and apply from here. */
   const resetCropEditToFullFrame = () => {
-    setCropEditDraft({ x: 0, y: 0, w: 1, h: 1 });
+    setCropEditDraft(maxCropForRatio(lockRatio));
   };
 
   const clearCropEdit = () => {
@@ -594,7 +621,12 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
               style={cropEditDraft ? undefined : cropPreviewStyle(segment.crop)}
             />
             {cropEditDraft ? (
-              <CropEditOverlay crop={cropEditDraft} frameRef={cropFrameRef} onChange={setCropEditDraft} />
+              <CropEditOverlay
+                crop={cropEditDraft}
+                frameRef={cropFrameRef}
+                onChange={setCropEditDraft}
+                lockRatio={lockRatio}
+              />
             ) : null}
             {!cropEditDraft && segment.subtitle.trim() !== "" ? (
               <div
