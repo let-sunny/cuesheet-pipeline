@@ -1,80 +1,128 @@
-# 화면 정의서 — 큐시트 에디터
+# Screen spec — Cuesheet editor
 
-> 2026-07-08. PRD.md와 짝을 이루는 화면 배치 정본. **위계 제1원칙** — 모든 요소는
-> 정보 그룹에 소속되고, 중요도와 시각 비중이 일치해야 한다. UI 변경은 이 문서를
-> 먼저 고치고 구현한다.
+> 2026-07-08. The canonical screen layout, paired with PRD.md. **Hierarchy is rule #1** —
+> every element must belong to an information group, and its importance must match its
+> visual weight. Fix this document first when changing the UI, then implement.
 
-## 0. 공통 위계 규칙 (전 화면 적용)
+## 0. Hierarchy rules that apply to every screen
 
-1. **그룹핑**: 모든 컨트롤은 이름 있는 섹션(헤더+구분) 아래 소속. 소속이 애매한 요소는
-   배치 전에 이 문서에서 소속을 정한다.
-2. **정렬 그리드**: 한 패널 안에서 라벨은 좌정렬 1열, 입력은 폭 토큰 3종만 사용 —
-   `narrow`(숫자 5자, 예: IN/OUT/배속/볼륨) / `medium`(셀렉트·짧은 텍스트) /
-   `full`(textarea·슬라이더). 같은 행의 요소는 베이스라인 정렬.
-3. **중요도=크기**: 사용 빈도·중요도가 낮은 컨트롤이 더 큰 공간을 차지하면 안 된다.
-   (예: 배속은 narrow 숫자 하나 — 현재처럼 행 하나를 다 먹으면 위반)
-4. **쌍은 나란히**: 의미상 쌍(IN·OUT, 색·투명도)은 같은 행. 한쪽만 줄바꿈 금지.
-5. **읽기 전용 정보는 위, 입력은 아래**: 패널 내에서 정보(장면 등) → 자주 만지는 입력 →
-   가끔 만지는 입력 → 파괴적/드문 동작(삭제 등) 순.
-6. Astryx 원컴포넌트 사용(PRD 4-2). 도메인 특화 4종(타임라인/크롭 오버레이/팔레트 카드/
-   비디오 스테이지)만 커스텀 허용.
-7. 단위·포맷 통일: 시간 `12.3s`, 비율 `%`, 색은 컬러피커+hex 병기.
+1. **Grouping**: every control belongs to a named section (header + divider). If an
+   element's group is ambiguous, decide where it belongs in this document before placing it.
+2. **Alignment grid**: within a panel, labels sit in a single left-aligned column, and
+   inputs use only 3 width tokens — `narrow` (5-digit numbers, e.g. In/Out/Speed/Volume),
+   `medium` (selects, short text), `full` (textarea, sliders). Elements on the same row are
+   baseline-aligned.
+3. **Importance = size**: a control used less often, or less important, must never take up
+   more space than one that's used more. (Example: Speed is a single narrow number field —
+   if it ever eats a whole row the way it currently does, that's a violation.)
+4. **Pairs sit side by side**: semantic pairs (In/Out, color/opacity) share a row. Never
+   wrap one half onto its own line.
+5. **Read-only info above, inputs below**: within a panel, order is info (scene, etc.) ->
+   frequently-touched inputs -> occasionally-touched inputs -> destructive/rare actions
+   (delete, etc.) last.
+6. Use Astryx single components (PRD section 5-2). Custom code is allowed only for the 4
+   domain-specific parts (timeline, crop overlay, palette card, video stage).
+7. Unify units and formats: time as `12.3s`, ratios as `%`, colors shown as color picker +
+   hex side by side.
 
-## 1. 헤더 (전역 고정)
+## 1. Header (global, fixed)
 
-`[앱명] [스텝 내비] ··· [언두][리두] | [테마 토글] [?] | [저장(dirty점)] [렌더]`
-— 오른쪽 끝이 주행동(저장/렌더). 렌더는 항상 다이얼로그 경유.
+`[App name] [Step nav] ... [Undo][Redo] | [Theme toggle] [?] | [Save (dirty dot)] [Export]`
+— the primary actions (Save/Export) sit at the far right. Export always opens through a
+dialog.
 
-## 2. ① 구성
-
-```
-[카테고리 필터 행][상태 필터 행(전체/채택만/탈락만)]
-[팔레트 그리드 — 카드]
-```
-카드 내부 위계: 썸네일 → 상태 배지(채택/탈락 사유) → 장면 묘사(전문, 클램프 없음 —
-이 화면은 묘사를 읽고 고르는 화면이라 자르면 안 됨) → 메타(클립·시각·샷유형·품질) →
-액션 행([담기/빼기] 주, [인트로로][아웃트로로] 보조 — 주/보조 시각 구분).
-
-## 3. ② 편집 (단일 화면)
+## 2. (1) Scenes
 
 ```
-[미니 타임라인 (줌 컨트롤 우측 끝)]
-[본편 재생 버튼]
-┌─ 컷 리스트 ─────────┐ ┌─ 비디오 열 (sticky) ────────────┐
-│ 행: 썸네일|자막(인라인)│ │ 장면 헤더 (#n·배지·묘사)         │
-│    |장면 줄|배지      │ │ 비디오 (크롭·자막 오버레이)       │
-│                      │ │ 재생 컨트롤 (한 행: 재생·IN·OUT·  │
-│                      │ │   분할 — 비디오에 밀착)           │
-│                      │ └─ 인스펙터 (아래 4절 순서) ────────┘
-└──────────────────────┘
+[Category filter row][Status filter row (All / In use only / Excluded only)]
+[Candidate grid — cards]
+```
+Card-internal hierarchy: thumbnail -> status badge (in-use / excluded reason) -> scene
+description (full text, not clamped — this screen exists to read the description and
+choose, so it must never be truncated) -> metadata (clip, timestamp, shot type, quality) ->
+action row ([Add]/[Remove] primary, [Set as intro]/[Set as outro] secondary — primary and
+secondary must be visually distinct).
+
+**Card-internal spacing (2026-07-08 revision)**: the thumbnail is full-bleed, no padding
+(fills the card edge to edge). Everything below it (description/metadata/actions) sits in
+one body container with a unified 12px padding and a 10px gap between groups
+(description <-> metadata <-> actions); within the actions group, [Add]/[Remove] and
+[Set as intro]/[Set as outro] sit tighter (6px). Because the Astryx Card is used with
+padding=0, this single body container (`.moment-card-body`) owns all padding/spacing —
+individual children must not carry their own padding. The metadata row (category badge,
+length, quality) is baseline-aligned.
+
+**State representation rule (2026-07-08 revision — fixes the "which one is dimmed and why"
+misread)**: excluded cards (quality below threshold / face exposure) must not dim the whole
+card via opacity — full dimming reads as "disabled/loading". Instead: (a) desaturate only
+the thumbnail image (grayscale 60-80%) — the scene itself stays legible, the only signal is
+"the auto-draft didn't pick this". (b) State the exclusion reason on a full-width banner at
+the very top of the card — far more noticeable than a small corner badge. (c) The [Add]
+button stays enabled — exclusion means "the automation filtered it out", not "forbidden";
+the user can always bring it back, and the button state must show that. Description and
+metadata text keep full contrast (not dimmed).
+
+## 3. (2) Edit (single screen)
+
+```
+[Timeline (zoom controls at the far right)]
+[Play all button]
++- Cut list -----------+ +- Video column (sticky) ------------+
+| row: thumbnail|       | | scene header (#n, badge, desc)     |
+| subtitle (inline)     | | video (reframe, subtitle overlay)  |
+|   |scene line|badge   | | playback controls (one row: play,  |
+|                        | |   In, Out, split — hugs the video) |
+|                        | +- Cut settings (order in section 4)-+
++------------------------+
 ```
 
-## 4. 인스펙터 그룹 정의 (순서·구성 고정)
+## 4. Cut settings group definitions (fixed order and layout)
 
-**G1. 구간** — 한 행: `IN [narrow] OUT [narrow] 길이 12.3s(읽기전용)`
-**G2. 재생** — 한 행: `배속 [narrow]x 볼륨 [narrow]%` (쌍 정렬, 과대 금지)
-**G3. 자막** — textarea(full) + **하위 접이식 "이 컷만 스타일"**(자막 소속임을 들여쓰기/
-  경계로 명시): 크기·색·외곽선·배경(색+투명도 한 행)·여백 + [전역으로 승격][해제]
-**G4. 내레이션** — 셀렉트(medium)+미리듣기+길이 경고 (내레이션 사용 시에만 표시)
-**G5. 크롭** — 상태 표시 + [편집][해제] (편집은 비디오 위 오버레이 모드)
-**G6. 컷 작업** — 한 행 버튼들: [분할 ⌘B][다음 컷과 합치기 ⌘J][복제] · [인트로로]
-  [아웃트로로] · [삭제(위험색, 끝)]
+**G1. Range** — one row: `In [narrow] Out [narrow] Length 12.3s (read-only)`
+**G2. Playback** — one row: `Speed [narrow]x Volume [narrow]%` (paired alignment, never
+  oversized)
+**G3. Subtitle** — textarea (full) + collapsible sub-section **"Subtitle style for this
+  cut"** (indented/bordered to make clear it belongs under Subtitle): size, color, outline,
+  background (color + opacity in one row), margin + [Apply to all cuts] [Release]
+**G4. Narration** — select (medium) + preview + length warning (shown only when narration
+  is in use)
+**G5. Reframe** — status display + [Edit] [Release] (Edit opens an overlay mode on the video)
+**G6. Cut actions** — one row of buttons: [Split Cmd+B] [Merge with next cut Cmd+J]
+  [Duplicate] - [Set as intro] [Set as outro] - [Delete (danger color, last)]
 
-근거: G1~G3이 편집 루프의 90%(구간→자막), G4~G6은 가끔. "이 컷만 스타일"은 자막의
-하위 속성이므로 G3 내부 — 독립 섹션 금지 (현행 문제의 핵심 교정).
+Rationale: G1-G3 cover 90% of the edit loop (range -> subtitle), G4-G6 are occasional.
+"Subtitle style for this cut" is a sub-property of subtitle, so it lives inside G3 — never
+its own section (this is the core fix for the current problem).
 
-## 5. ③ 마무리
+**Confirmed width tokens for G1/G2 (2026-07-08, measured)**: label column 40px, `narrow`
+input 80px (up from 64px — 64px let a 5-character decimal value like `39.87` collide with
+the native number-input spinner and get visually clipped, reproduced on a real cut), field
+slot (label + input + unit suffix) 144px fixed regardless of whether a unit suffix is
+present. The fixed slot width is what makes the second field in each row (Out / Volume)
+start at the same x across both rows — without it, a 1-character label ("Out") vs a
+2-character label ("Volume") plus the presence/absence of a unit suffix ("x" / "%") shifted
+the second input's start position by as much as 24px row to row, which read as the whole row
+leaning right. The read-only `Length` text in G1 wraps to its own line when the panel is too
+narrow to fit all three items on one row (`qf-row` already used `flex-wrap: wrap`) — this is
+expected degradation, not a bug.
 
-섹션 순서(출력 준비의 자연 순서): **프로젝트**(이름·fps·해상도) → **자막 스타일(전역)**
-(크기·색·외곽선 한 그룹 / 배경 박스 한 그룹(토글+색+투명도+여백) / 위치+가장자리 여백
-한 행 / "미리보기는 ②의 비디오에서" 안내) → **인트로/아웃트로**(셀렉트+해제, 접이식
-직접 입력) → **BGM** → **내레이션**(토글·폴더·볼륨·안내) → **출력**([자막 .srt 다운로드]
-[렌더…] — 렌더 다이얼로그: 해상도 프리셋/자막 굽기/요약/시작).
+## 5. (3) Export
 
-## 6. 다이얼로그 공통
+Section order (the natural order of preparing output): **Project** (name, fps, resolution)
+-> **Subtitle style (global)** (size/color/outline as one group / background box as one
+group (toggle + color + opacity + margin) / position + edge margin in one row / note: "see
+the (2) Edit video column for a live preview") -> **Intro/outro** (select + release,
+collapsible manual entry) -> **BGM** -> **Narration** (toggle, folder, volume, help text) ->
+**Output** ([Download subtitles .srt] [Export...] — Export dialog: resolution presets /
+burn-in subtitles / summary / start).
 
-Astryx Dialog. 제목 → 본문(폼 그리드 규칙 동일) → 푸터 우측 [취소][주행동]. 주행동
-1개만 강조.
+## 6. Shared dialog layout
 
-## 변경 이력
-- 2026-07-08 초판 — 위계 붕괴(IN/OUT 분리, 배속 과대, 스타일 소속 불명) 교정 기준 수립.
+Astryx Dialog. Title -> body (same form-grid rules) -> footer with [Cancel] [Primary action]
+at the right. Only one primary action gets emphasis.
+
+## Changelog
+- 2026-07-08 first draft — established the fix baseline for the hierarchy collapse (In/Out
+  split apart, oversized Speed field, unclear ownership of style overrides).
+- 2026-07-08 revision — card-internal spacing rule and excluded-card state representation
+  rule (section 2); confirmed G1/G2 width tokens from real measurements (section 4).

@@ -1,174 +1,218 @@
-# PRD — 내 전용 Vrew (큐시트 에디터)
+# PRD — My Own Vrew (Cuesheet Editor)
 
-> 2026-07-08. 기능이 스펙 없이 쌓여 위계가 무너진 것을 계기로 역정리한 제품 요구 정의.
-> 이후 모든 기능 추가는 이 문서에 자리를 먼저 정한 뒤 구현한다. 화면 배치는
-> `screen-spec.md`가 정본.
+> 2026-07-08. Product requirements re-derived after features had piled up without a spec and
+> the hierarchy collapsed. From now on, every new feature gets a place in this document first,
+> then gets implemented. Screen layout is governed by `screen-spec.md`.
 
-## 1. 북극성
+## 1. North Star
 
-원본 영상들을 던지면 (1) 초벌 편집본이 자동 생성되고 (2) 브라우저에서 다듬고
-(3) 바로 렌더까지 끝나는 **개인 특화 에디터**. 차별점: 무대사 영상에서 작동(비전 기반),
-사용자의 편집 문법(컷 리듬 2.8~3.0s·샷 어휘·기승전결·얼굴 턱끝 정책) 내장.
+A personal editor: throw in raw footage and (1) a rough cut is generated automatically,
+(2) you polish it in the browser, (3) export finishes the job right there. Two things that
+set it apart: it works on footage with no dialogue (vision-based), and it bakes in the
+user's own editing grammar (cut rhythm 2.8-3.0s, shot vocabulary, narrative arc, the
+chin-line face policy).
 
-## 2. 사용자와 핵심 시나리오
+## 2. User and core scenario
 
-단일 사용자(뜨개 브이로거). 주간 루틴:
+Single user (a knitting vlogger). Weekly routine:
 
 ```
-촬영 → pnpm episode "<폴더>" → /episode (초벌 완성) → 에디터 다듬기(30~60분)
-→ 렌더(자막판/클린판)+SRT → 유튜브 업로드
+Shoot -> pnpm episode "<folder>" -> /episode (rough cut done) -> polish in the editor (30-60 min)
+-> export (with subtitles / without) + SRT -> upload to YouTube
 ```
 
-다듬기 세부 루프: 본편 훑기(J/K/L) → 어색한 컷 수정(트림/분할/합치기/삭제) →
-자막 다듬기(인라인 Tab 흐름) → 특색 컷 스타일 → 인트로/아웃트로 → 렌더.
+Polish loop, in detail: scan through the edit (J/K/L) -> fix awkward cuts (trim/split/merge/
+delete) -> polish subtitles (inline Tab flow) -> style a few standout cuts -> intro/outro ->
+export.
 
-## 3. 기능 전체 목록 (누락 금지 — 재정렬 시 이 목록이 체크리스트)
+## 3. Full feature list (nothing gets dropped — this list is the checklist when reorganizing)
 
-### 헤더 (전역)
-저장(+dirty 표시) · 렌더(설정 다이얼로그 경유) · 언두/리두 버튼 · 테마 토글(시스템/라이트/다크) · 단축키 도움말(?)
+### Header (global)
 
-### 스텝 내비게이션
-① 구성 → ② 편집 → ③ 마무리 (컷 수 뱃지)
+Save (+ dirty indicator) - Export (via settings dialog) - Undo/Redo buttons - theme toggle
+(system/light/dark) - keyboard shortcut help (?)
 
-### ① 구성 (재료 고르기)
-- 순간 팔레트: 카드(썸네일·클립명·시각·장면 묘사·샷유형 배지·품질)
-- 카드 상태: 채택됨(컷N) / 자동 제외(품질·얼굴 사유 배지, 흐림) — 필터 [전체/채택만/탈락만]
-- 카테고리 필터(샷유형)
-- [담기]/[빼기] (얼굴 탈락 카드는 확인 문구 후 담기)
-- 카드에서 [인트로로]/[아웃트로로] (15초 초과 비활성+사유)
+### Step navigation
 
-### ② 편집 (다듬기 — 단일 화면, 모드 없음)
-- **컷 리스트**: 썸네일 + 인라인 자막 편집(Tab/Shift+Tab 흐름) + 장면 묘사 줄(배지+메모)
-  + 개별 스타일 배지 + 선택 시 우측 동기
-- **미니 타임라인**: 블록(썸네일/클립 경계선/현재 컷 강조), 줌(Cmd+휠, +/-, Shift+Z 복귀),
-  BGM 드래그
-- **비디오 열(sticky)**: 장면 헤더(#n·배지·묘사) → 비디오(크롭 반영 미리보기, 자막
-  오버레이 실시간·병합 스타일) → 재생 컨트롤(재생/정지·스크럽·IN/OUT 지정·분할)
-- **본편 재생**: 컷 이어재생(더블버퍼), 이전/다음 컷, 배속 1x/1.5x/2x, 진행 바 점프,
-  자막·장면 힌트 오버레이, 재생 중 편집 허용
-- **인스펙터** (그룹·순서는 screen-spec 4절): 구간(IN/OUT/길이), 재생(배속/볼륨),
-  자막(+이 컷만 스타일: size/색/외곽선/배경/여백, 전역 승격/해제), 내레이션(파일 선택·
-  미리듣기·길이 경고), 크롭(비율 잠금 편집/해제/전체 프레임), 컷 작업(분할 Cmd+B·
-  다음 컷과 합치기 Cmd+J·선택 컷 복제·삭제·인트로/아웃트로 지정)
-- **단축키**: Space, J/K/L(역/정지/재생·연타 배속), I/O, 화살표, Cmd+B/J/Z/Shift+Z, Tab, ?
-- 언두/리두(50스택, 연속 편집 묶음), localStorage 스냅샷 복원 배너
+(1) Scenes -> (2) Edit -> (3) Export (cut-count badge)
 
-### ③ 마무리 (출력)
-- 프로젝트 메타(이름/fps/해상도)
-- 자막 스타일(전역): 폰트 크기·색(컬러피커)·외곽선·배경 박스(색/투명도/여백)·
-  위치(상/중/하)·가장자리 여백 — 미리보기는 ② 비디오에서 실시간
-- 인트로/아웃트로: 파일 셀렉트(길이 표시, 15초 초과 비활성) + 접이식 직접 입력 + 해제
-- BGM 편집(파일/구간/볼륨)
-- 내레이션: 사용 토글·폴더·전체 볼륨·안내문
-- 렌더 다이얼로그: 해상도 프리셋(720p/1080p/4K — 자막 메트릭 비례 스케일)·자막
-  굽기/클린·요약·진행률·다운로드
-- 자막 다운로드(.srt)
+### (1) Scenes (choosing material)
 
-### 파이프라인 연동 (에디터 밖)
-scan/assemble CLI · /episode 커맨드 · MCP 브리지(get/update) · 파일 감시 자동 새로고침 ·
-프록시 자동 생성(무결성 검사)·썸네일 캐시 · 저장 필드 유실 가드
+- Scene candidates: cards (thumbnail, clip name, timestamp, scene description, shot-type
+  badge, quality)
+- Card states: In use (cut N) / Auto-excluded (badge with reason — quality or face — shown
+  dimmed) — filter [All / In use only / Excluded only]
+- Category filter (shot type)
+- [Add] / [Remove] (cards excluded for face reasons need a confirmation prompt before adding)
+- On a card: [Set as intro] / [Set as outro] (disabled + reason if longer than 15s)
 
-## 4. 용어 사전 (UI 문구 정본 — 어색한 외래어·개발 용어 교정)
+### (2) Edit (polish — single screen, no modes)
 
-화면·문서·대화에서 아래 왼쪽 열의 용어만 쓴다. 오른쪽은 금지(코드 내부에서만).
+- **Cut list**: thumbnail + inline subtitle editing (Tab/Shift+Tab flow) + scene description
+  line (badge + note) + per-cut style badge + syncs with the right column on selection
+- **Timeline (mini)**: blocks (thumbnail / clip boundary line / current-cut highlight), zoom
+  (Cmd+wheel, +/-, Shift+Z to reset), BGM drag
+- **Video column (sticky)**: scene header (#n, badge, description) -> video (preview with
+  reframe applied, live subtitle overlay, merged style) -> playback controls (play/pause,
+  scrub, set In/Out, split)
+- **Play all**: cuts play back to back (double-buffered), previous/next cut, speed 1x/1.5x/2x,
+  progress-bar jump, subtitle + scene-hint overlay, editing allowed during playback
+- **Cut settings** (grouping and order per screen-spec section 4): Range (In/Out/length),
+  Playback (speed/volume), Subtitle (+ Subtitle style for this cut: size/color/outline/
+  background/margin, promote to/release from global), Narration (file picker, preview, length
+  warning), Reframe (edit with locked aspect ratio / release / full frame), Cut actions
+  (split Cmd+B, merge with next cut Cmd+J, duplicate selected cut, delete, set as intro/outro)
+- **Keyboard shortcuts**: Space, J/K/L (reverse/pause/play, repeat to speed up), I/O, arrow
+  keys, Cmd+B/J/Z/Shift+Z, Tab, ?
+- Undo/Redo (50-deep stack, batches consecutive edits), localStorage snapshot-restore banner
 
-| 정본 용어 | 금지/이전 용어 | 뜻 |
+### (3) Export (output)
+
+- Project metadata (name/fps/resolution)
+- Subtitle style (global): font size, color (color picker), outline, background box
+  (color/opacity/margin), position (top/middle/bottom), edge margin — preview updates live in
+  the (2) Edit video column
+- Intro/outro: file picker (shows length, disabled above 15s) + collapsible manual entry +
+  clear button
+- BGM editing (file/range/volume)
+- Narration: on/off toggle, folder, overall volume, help text
+- Export dialog: resolution presets (720p/1080p/4K — subtitle metrics scale proportionally),
+  burn-in subtitles vs. clean, summary, progress, download
+- Subtitle download (.srt)
+
+### Pipeline integration (outside the editor)
+
+scan/assemble CLI - `/episode` command - MCP bridge (get/update) - file-watch auto-refresh -
+proxy auto-generation (integrity check) - thumbnail cache - saved-field-loss guard
+
+## 4. Terminology dictionary (canonical UI copy — corrects awkward loanwords and dev jargon)
+
+Screens, docs, and conversation use only the English UI label in the left column. The middle
+column is the Korean concept name used in internal docs/conversation. The right column is
+banned (dev-internal use only).
+
+**New rule (2026-07-08): UI chrome is English, content is the working language.** Every piece
+of UI chrome — buttons, labels, menus, status copy — uses the English label below. Generated
+content data (subtitle text, scene descriptions, etc.) stays in whatever language Claude Code
+is currently working in (Korean today) — it is not part of this dictionary and is never
+translated as UI copy would be.
+
+| English UI label (canonical — what appears on screen) | Korean concept name (docs/conversation) | Banned terms |
 |---|---|---|
-| **장면 고르기 / 다듬기 / 내보내기** | 구성/편집/마무리 (스텝명) | 3단계 이름 — 하는 일 그대로 |
-| **컷** | 세그먼트 | 타임라인에 놓인 편집 단위 |
-| **장면** | 순간, 모먼트 | 자동 판독이 찾아낸 쓸만한 구간 |
-| **장면 후보** | 순간 팔레트 | 장면 카드 목록 (①의 본체) |
-| **사용 중 / 자동 제외** | 채택/탈락 | 카드 상태 (제외는 사유 표기: 품질·얼굴) |
-| **장면 설명** | 장면 묘사, memo | 화면에 뭐가 보이는지 한 줄 |
-| **컷 설정** | 인스펙터 | 선택 컷의 우측 설정 패널 |
-| **구간 (시작/끝)** | IN/OUT, 트림 | 컷이 원본에서 쓰는 범위. 단축키 표기는 I/O 유지 |
-| **빨리감기 컷** | 배속 커넥터 | 시간 경과 연출용 고배속 컷 |
-| **전체 재생** | 본편 재생, 이어재생 | 컷들을 순서대로 감상 |
-| **타임라인** | 미니 타임라인 | 상단 블록 띠 |
-| **이 컷만 자막 스타일** | 이 컷만 스타일, styleOverride | 자막 그룹 하위의 개별 스타일 |
-| **모든 컷에 적용** | 전역으로 승격 | 개별 스타일을 기본 스타일로 |
-| **화면 조정(크롭)** | 크롭 단독 표기 | 비율 유지 리프레임/줌. 버튼명 "화면 조정" |
-| **내보내기** | 렌더 | 영상 파일 생성. 다이얼로그명 "내보내기" |
-| **자막 있는 영상 / 자막 없는 영상(CC용)** | 자막판/클린판 | 내보내기 2종 |
-| **저장 안 됨(●)** | dirty | 화면과 저장본이 다름 |
-| **실행 취소 / 다시 실행** | 언두/리두 | Cmd+Z / Cmd+Shift+Z |
-| **저장하지 않은 편집** | 스냅샷, 임시본 | 복원 배너에서만 노출 |
-| **배경음악** | BGM (약어 병기 허용) | |
-| 유지: 내레이션, 인트로/아웃트로, 자막, 배속, 볼륨, 썸네일 | | 이미 자연스러움 |
+| **Scenes / Edit / Export** | 장면 고르기 / 다듬기 / 내보내기 | 구성/편집/마무리 (step names) |
+| **Cut** | 컷 | segment |
+| **Scene** | 장면 | moment |
+| **Scene candidates** | 장면 후보 | moment palette |
+| **In use / Auto-excluded** | 사용 중 / 자동 제외 | adopted/rejected |
+| **Add / Remove** | 담기 / 빼기 | — |
+| **Scene description** | 장면 설명 | scene memo |
+| **Cut settings** | 컷 설정 | inspector |
+| **Range (In/Out)** | 구간(시작/끝) | trim (used alone) — now that the UI itself is English, the I/O shorthand naturally comes back for the keyboard-shortcut label |
+| **Speed** | 배속 | — |
+| **Volume** | 볼륨 | — |
+| **Subtitle** | 자막 | — |
+| **Subtitle style for this cut** | 이 컷만 자막 스타일 | per-cut style, styleOverride |
+| **Apply to all cuts** | 모든 컷에 적용 | promote to global |
+| **Reframe** | 화면 조정 | crop (used alone) — aspect-ratio-preserving reframe/zoom; button label is "Reframe" |
+| **Export** | 내보내기 | render |
+| **With subtitles / Without subtitles (for CC)** | 자막 있는 영상 / 자막 없는 영상(CC용) | subtitled/clean versions |
+| **Timelapse cut** | 빨리감기 컷 | speed connector |
+| **Play all** | 전체 재생 | main playthrough |
+| **Timeline** | 타임라인 | mini timeline |
+| **Unsaved** | 저장 안 됨(●) | dirty |
+| **Undo / Redo** | 실행 취소 / 다시 실행 | Cmd+Z / Cmd+Shift+Z |
+| **Unsaved edits** | 저장하지 않은 편집 | snapshot, temp copy — surfaced only in the restore banner |
+| **Background music** | 배경음악 | BGM abbreviation is fine alongside |
+| Keep as-is: Narration, Intro/Outro, Subtitle, Thumbnail | | already natural |
 
-원칙: 새 기능의 이름은 "사용자가 하는 일"로 짓고 이 표에 등록 후 구현.
+Principle: name a new feature after what the user is doing, register it in this table, then
+implement it.
 
-## 5. 비기능 요구
+## 5. Non-functional requirements
 
-1. **위계 제1원칙**: 요소는 반드시 정보 그룹에 소속되고, 중요도와 시각 비중이 일치한다.
-   그룹·정렬·입력폭은 screen-spec의 그리드 규칙을 따른다. (사용자 최우선 가치)
-2. **Astryx 원컴포넌트 우선**: 커스텀은 도메인 특화(타임라인/크롭 오버레이/팔레트 카드/
-   비디오 스테이지)만. 나머지는 Astryx Button/Dialog/Select/Checkbox/Slider/Tabs/Tag/Toast.
-3. 라이트/다크 테마 완전 대응 (영상 스테이지는 고정 다크).
-4. 90컷+ 규모에서 지연 없는 리스트/썸네일(lazy)·시크.
-5. 데이터 안전: 저장 검증(validateCueSheet)·필드 유실 가드·스냅샷.
+1. **Hierarchy is rule #1**: every element must belong to an information group, and its
+   importance must match its visual weight. Grouping, alignment, and input width follow the
+   grid rules in screen-spec. (Top user-stated priority.)
+2. **Astryx single components first**: custom code only for domain-specific parts (timeline,
+   crop overlay, palette card, video stage). Everything else uses Astryx
+   Button/Dialog/Select/Checkbox/Slider/Tabs/Tag/Toast.
+3. Full light/dark theme support (the video stage itself stays fixed dark).
+4. No lag in lists/thumbnails (lazy) or seeking at 90+ cuts.
+5. Data safety: save-time validation (validateCueSheet), saved-field-loss guard, snapshots.
 
-## 6. 상태 모델 — "저장"의 의미 (문구·UX의 근거)
+## 6. State model — what "save" means (the basis for copy and UX)
 
-데이터는 3층이며, 사용자에게 보이는 언어는 아래 표를 따른다:
+Data has three layers, and the language shown to the user follows this table:
 
-| 층 | 실체 | 사용자가 아는 이름 |
+| Layer | What it actually is | Name the user knows |
 |---|---|---|
-| 편집 중 | 메모리 상태(draft) | (없음 — 그냥 "지금 화면") |
-| 자동 임시본 | 브라우저 스냅샷(사고 대비 자동 백업) | "저장하지 않은 편집" |
-| **정본** | 디스크 큐시트 파일 | "저장된 상태" |
+| In progress | in-memory state (draft) | (none — just "what's on screen right now") |
+| Auto temp copy | browser snapshot (automatic backup against accidents) | "Unsaved edits" |
+| **Source of truth** | cuesheet file on disk | "Saved state" |
 
-**사용자가 알아야 하는 것 (UI가 스스로 설명):**
-- 저장 = 파일에 확정. **렌더·SRT·Claude 연동은 전부 저장본 기준.**
-- dirty 표시(●) = "화면과 저장본이 다름 → 저장 필요."
-- 복원 배너 = "지난 세션에 저장 안 한 편집이 남음" → [이어서 편집] / [버리고 저장본으로].
-- 언두/리두는 화면 기준이며 저장과 무관하게 동작.
+**What the user needs to know (the UI explains itself):**
+- Save = commits to the file. **Export, SRT, and Claude integration all work off the saved
+  copy.**
+- The dirty indicator (unsaved dot) = "what's on screen differs from what's saved -> save it."
+- The restore banner = "you have unsaved edits from a past session" -> [Continue editing] /
+  [Discard and use the saved copy].
+- Undo/Redo operate on the screen state and work independent of saving.
 
-**사용자가 몰라야 하는 것 (문구에 등장 금지):**
-localStorage/스냅샷/스키마/검증기/fs.watch/프록시 구조/undo 스택 — 구현 용어 대신
-사용자 언어("저장하지 않은 편집", "영상 준비 중")로만. 자동 임시본은 존재를 설명하지
-않고 필요한 순간(복원 배너)에만 드러낸다.
+**What the user must never see (must not appear in copy):**
+localStorage / snapshot / schema / validator / fs.watch / proxy internals / undo stack —
+never implementation jargon, only user language ("Unsaved edits," "Preparing video...").
+The auto temp copy is never explained proactively; it only surfaces when needed (the
+restore banner).
 
-**문구 원칙**: 상태 문구는 [상황 한 줄] + [다음 행동 한 줄]. 행동 없는 경고 금지.
+**Copy principle**: status copy is [one line of situation] + [one line of next action].
+No warning without an action.
 
-## 7. 성공 기준 (측정 가능해야 함)
+## 7. Success criteria (must be measurable)
 
-- 에피소드 1편: 초벌 자동 생성 무개입 완주, 다듬기 30~60분 내 완료
-- 초안 품질: 정답지 회수율 80%+(v4 실측 80.0), 오매칭 5% 미만
-- 얼굴 정책 위반 0컷 (내보내기 전 자동+감독 검증)
-- 내보내기 신뢰: 산출물 프레임 검증 통과, 실패 시 원인 문구 노출
+- One episode: rough cut is generated automatically with zero intervention, polishing
+  finishes within 30-60 minutes
+- Draft quality: recall against the answer key is 80%+ (v4 measured at 80.0), mismatches
+  under 5%
+- Zero face-policy violations in any cut (checked automatically and reviewed before export)
+- Export reliability: output passes frame-level verification; failures surface a clear
+  cause in the UI
 
-## 8. 오류·대기 상태 카탈로그 (문구는 상황+다음 행동)
+## 8. Error and waiting-state catalog (copy is situation + next action)
 
-| 상태 | 사용자 문구(요지) | 행동 |
+| State | User-facing copy (gist) | Action |
 |---|---|---|
-| 저장 검증 실패 | "저장할 수 없어요: <필드경로: 이유>" | 해당 컷 이동 링크 |
-| 필드 유실 감지 | "저장 시스템이 갱신 필요 — 서버 재시작 후 다시" | 재시도 |
-| 내보내기 실패 | ffmpeg 원인 요약 | 다시 시도/문의 |
-| 영상 준비 중(프록시) | "영상 준비 중 — 잠시 후 자동 재생" | 대기(자동) |
-| 클립 없음 | "원본을 찾을 수 없어요: <파일명>" | 폴더 확인 안내 |
-| 초안 없음(빈 상태) | "아직 초안이 없어요 — /episode로 생성" | 가이드 링크 |
+| Save validation failed | "Can't save: <field path: reason>" | link that jumps to the cut |
+| Saved-field loss detected | "The save system needs an update — restart the server and retry" | retry |
+| Export failed | summary of the ffmpeg cause | retry / contact |
+| Video preparing (proxy) | "Preparing video — will play automatically in a moment" | wait (automatic) |
+| Clip missing | "Can't find the source: <filename>" | prompt to check the folder |
+| No draft yet (empty state) | "No draft yet — generate one with /episode" | link to the guide |
 
-## 9. 실행 환경·프라이버시
+## 9. Runtime environment and privacy
 
-- macOS + Chrome 권장, ffmpeg-full 필요(자막 렌더), 로컬 전용 — **원본·편집물이 외부로
-  전송되지 않는다** (내레이션 생성 등 외부 서비스는 사용자가 명시적으로 쓸 때만)
-- 원본 불변 원칙: 파이프라인·에디터는 원본 영상을 절대 수정하지 않는다
-- 얼굴 정책(턱끝)은 제품 요구다: 판독 플래그 → 자동 제외/화면 조정 제안 → 내보내기 전 검증
+- macOS + Chrome recommended, ffmpeg-full required (subtitle rendering), local-only —
+  **source footage and edits are never sent anywhere** (external services like narration
+  generation are used only when the user explicitly opts in)
+- Source-immutability principle: neither the pipeline nor the editor ever modifies the
+  source footage
+- The chin-line face policy is a product requirement: flag it during scanning (vision) ->
+  suggest auto-exclusion/reframe -> verify again before export
 
-## 10. 스키마 호환 원칙
+## 10. Schema compatibility principle
 
-큐시트 스키마 확장은 **선택 필드로만** — 기존 큐시트는 항상 유효해야 한다. 저장 경로는
-필드 유실 가드를 통과해야 하며, 서버·CLI의 스키마 버전이 어긋나면 조용한 손실 대신
-시끄러운 실패를 택한다.
+Cuesheet schema extensions are **additive-only, optional fields** — existing cuesheets must
+always remain valid. The save path must pass the saved-field-loss guard, and if the server's
+and CLI's schema versions ever drift, we choose a loud failure over silent data loss.
 
-## 11. 백로그 (우선순위순)
+## 11. Backlog (in priority order)
 
-1. 실수/풀기 서사 감지 (시간축 프레임 비교 — 회수율 90%대 목표)
-2. 내레이션 대량 생성 연동 (ElevenLabs, 사용자 계정 후)
-3. 로우키 에피소드 런 (원본 재다운로드 필요)
-4. 에디터 빈 상태/온보딩 개선
+1. Detect "mistake / frog it and restart" narratives (frame comparison across the timeline —
+   target 90%+ recall)
+2. Bulk narration-generation integration (ElevenLabs, after the user sets up an account)
+3. Run the lowkey episode (source footage needs re-downloading)
+4. Improve the editor's empty state / onboarding
 
-## 12. 비목표 (하지 않음)
+## 12. Non-goals (not doing these)
 
-멀티트랙 · 이펙트/템플릿 마켓 · 전사 기반 기능 · 범용화(OpenCut 영역) · 협업.
+Multitrack - effects/template marketplace - transcript-based features - going general-purpose
+(OpenCut's territory) - collaboration.
