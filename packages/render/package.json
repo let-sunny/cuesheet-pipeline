@@ -1,7 +1,7 @@
 {
   "name": "@cuesheet/render",
   "version": "0.0.0",
-  "description": "큐시트를 받아 ffmpeg 명령으로 본편 영상을 렌더한다",
+  "description": "Renders the final video from a cuesheet via ffmpeg commands",
   "type": "module",
   "main": "./dist/plan.js",
   "types": "./dist/plan.d.ts",

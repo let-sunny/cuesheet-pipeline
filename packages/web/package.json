@@ -1,7 +1,7 @@
 {
   "name": "@cuesheet/web",
   "version": "0.0.0",
-  "description": "큐시트 라이브 미리보기 웹앱",
+  "description": "Web app for live cuesheet preview and editing",
   "private": true,
   "type": "module",
   "scripts": {

@@ -4,7 +4,7 @@ dist/
 .DS_Store
 coverage/
 
-# 대용량/생성물 (repo에 올리지 않음)
+# large files/generated artifacts (not committed to the repo)
 media/clips/*.mp4
 media/clips/*.m4a
 media/dotmix_src

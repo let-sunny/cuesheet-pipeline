@@ -1,7 +1,7 @@
 {
   "name": "@cuesheet/draft",
   "version": "0.0.0",
-  "description": "원본 폴더에서 초벌 편집 큐시트를 자동 생성한다 (스캔+프레임 추출 / 조립)",
+  "description": "Auto-generates a rough-cut cuesheet from a raw footage folder (scan+frame extraction / assemble)",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

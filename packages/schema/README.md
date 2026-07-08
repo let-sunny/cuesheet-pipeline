@@ -1,71 +1,82 @@
 # @cuesheet/schema
 
-큐시트의 **타입 + 런타임 검증**. web/render가 공유하는 계약(contract).
+**Type + runtime validation** for the cuesheet. The contract shared by web/render.
 
-## 사용
+## Usage
 
 ```ts
 import { validateCueSheet, type CueSheet } from "@cuesheet/schema";
 
 const result = validateCueSheet(jsonFromSomewhere);
 if (result.ok) {
-  const cue: CueSheet = result.data; // speed 등 default 적용됨
+  const cue: CueSheet = result.data; // defaults (e.g. speed) applied
 } else {
-  console.error(result.errors); // ["segments[0].in: in은 out보다 작아야 합니다 (in < out)", ...]
+  console.error(result.errors); // ["segments[0].in: in must be less than out (in < out)", ...]
 }
 ```
 
-## export
+## Exports
 
-- `cueSheetSchema` 등 zod 스키마 (부분 스키마도 개별 export)
-- `CueSheet`, `Segment`, `BgmCue`, `SubtitleStyle`, `Project`, `NarrationConfig` 타입
-- `CueSheetInput` — 검증 전 입력 타입(default 미적용), 웹앱 편집 상태용
+- `cueSheetSchema` and other zod schemas (sub-schemas are exported individually too)
+- `CueSheet`, `Segment`, `BgmCue`, `SubtitleStyle`, `Project`, `NarrationConfig` types
+- `CueSheetInput` — the pre-validation input type (defaults not applied), for the web app's edit state
 - `validateCueSheet(json)` → `{ ok: true, data } | { ok: false, errors: string[] }`
 
-## 검증 규칙
+## Validation rules
 
 - `segment.in < segment.out`, `segment.speed > 0`
-- `segments` 최소 1개
-- `bgm.start < bgm.end`, `bgm.volume` 0~1
-- `project.fps/width/height` 양수 (width/height는 정수)
-- 색상은 `#RGB` 또는 `#RRGGBB` hex
-- `narration.volume` 0~1, `segment.narration`은 빈 문자열 불가(있다면)
-- 실패 시 `필드경로: 이유` 형식의 메시지 배열
+- `segments` has at least 1 item
+- `bgm.start < bgm.end`, `bgm.volume` in 0-1
+- `project.fps/width/height` are positive (width/height must be integers)
+- Colors are `#RGB` or `#RRGGBB` hex
+- `narration.volume` in 0-1, `segment.narration` can't be an empty string (if present)
+- `segment.crop.w` must equal `segment.crop.h` (within a small epsilon) — see the crop section below
+- On failure, an array of `field-path: reason` messages
 
-## 세그먼트 크롭 (선택)
+## Segment crop (optional)
 
-- `segment.crop?: { x, y, w, h }` — 원본 해상도 기준 **비율(0~1)**로 정의(해상도 독립적).
-  `x,y`는 좌상단, `w,h`는 크기. 예: 얼굴 상단을 잘라내는 세로 크롭
-  `{ x: 0, y: 0.25, w: 1, h: 0.75 }`.
-- 제약: `x, y >= 0`, `x + w <= 1`, `y + h <= 1`, `w, h > 0.1`(실수 방지 하한).
-- null/생략이면 크롭 없음(원본 그대로) — 기존 큐시트는 그대로 유효하다.
-- 렌더 쪽 적용(트림 직후, 스케일 전에 crop 필터)은 `@cuesheet/render` README 참고.
+- `segment.crop?: { x, y, w, h }` — defined as a **ratio (0-1)** relative to the source
+  resolution (resolution-independent). `x,y` = top-left, `w,h` = size. `w` must equal `h`
+  (within a small epsilon) — since crop.w/crop.h are ratios of the *source* frame and sources
+  are assumed to share the project's aspect ratio, requiring `w === h` is exactly the
+  condition under which the crop preserves that aspect ratio (see `cueSheetSchema`'s
+  superRefine for the full derivation). Example: a vertical crop that cuts off the top of the
+  face: `{ x: 0, y: 0.25, w: 0.75, h: 0.75 }`.
+- Constraints: `x, y >= 0`, `x + w <= 1`, `y + h <= 1`, `w, h > 0.1` (lower bound to avoid
+  degenerate crops), and `w === h` (within epsilon 0.005, the project-aspect invariant above).
+- null/omitted means no crop (source as-is) — existing cuesheets remain valid as-is.
+- For how this is applied on the render side (crop filter right after trim, before scale), see
+  the `@cuesheet/render` README. `@cuesheet/render`'s `buildRenderPlan` also offers a more
+  precise runtime check (`sourceDimensions`) against a clip's *actual* pixel dimensions, for
+  sources that turn out not to share the project's aspect ratio after all.
 
-## 컷별 자막 스타일 오버라이드 (선택)
+## Per-cut subtitle style override (optional)
 
-- `segment.styleOverride?: SubtitleStyleOverride | null` — `subtitleStyle`의 모든 필드
-  (font/size/color/outlineColor/outlineWidth/position/margin/background)를 전부 선택
-  필드로 가진 부분 스키마. 생략하거나 `null`이면 이 컷은 전역 `subtitleStyle` 그대로다.
-- 기본은 전역 스타일, 예외적인 컷만 부분 오버라이드하는 설계다 — 컷마다 전체 스타일을
-  다시 쓸 필요 없이 바꾸고 싶은 필드만 넣으면 된다.
-- **`background`는 예외**: 지정하면 전역 `background`를 부분 병합이 아니라 통짜
-  교체한다(부분 병합 시 색만 바꾸고 opacity가 전역 값으로 남는 등 애매함이 생기기
-  때문). 배경을 바꾸려면 `color`/`opacity`/`padding`을 전부 넣어야 한다.
-- 병합 규칙(어느 필드가 최종 적용되는지)은 `@cuesheet/render`가 구현한다 — 자세한
-  내용은 그쪽 README 참고.
+- `segment.styleOverride?: SubtitleStyleOverride | null` — a partial schema where every field
+  of `subtitleStyle` (font/size/color/outlineColor/outlineWidth/position/margin/background) is
+  optional. If omitted or `null`, this cut uses the global `subtitleStyle` as-is.
+- Designed so the global style is the default and only exceptional cuts get a partial
+  override — you don't need to restate the whole style per cut, just the fields you want to change.
+- **`background` is the exception**: if specified, it replaces the global `background`
+  wholesale rather than being partially merged (a partial merge would create ambiguity, e.g.
+  changing only the color while opacity stays at the global value). To change the background,
+  supply all of `color`/`opacity`/`padding`.
+- The merge rule (which field wins in the end) is implemented by `@cuesheet/render` — see that
+  package's README for details.
 
-## 목소리 클로닝 내레이션 (선택, 피처 플래그)
+## Voice-cloned narration (optional, feature flag)
 
-- `cueSheet.narration?: { enabled: boolean, dir: string, volume: number(0~1, 기본 1) }`
-  — 필드가 없으면 완전 비활성, 기존 큐시트는 그대로 유효하다.
-- `segment.narration?: string | null` — 이 컷에 얹을 내레이션 오디오 **파일명만**
-  (`narration.dir` + 파일명으로 조립, `clipDir`/`segment.clip`과 같은 철학). null/생략이면
-  그 컷은 내레이션 없음.
-- 렌더 쪽 동작(세그먼트 출력 시작 시각에 믹스, v1 제약)은 `@cuesheet/render` README 참고.
+- `cueSheet.narration?: { enabled: boolean, dir: string, volume: number (0-1, default 1) }` —
+  fully disabled if the field is absent; existing cuesheets remain valid as-is.
+- `segment.narration?: string | null` — the **filename only** of the narration audio to place
+  on this cut (assembled from `narration.dir` + filename, the same philosophy as
+  `clipDir`/`segment.clip`). null/omitted means no narration for that cut.
+- For the render-side behavior (mixed in at the segment's output start time, a v1 constraint),
+  see the `@cuesheet/render` README.
 
-## 규약
+## Conventions
 
-- 시간 단위는 **초**. 프레임 환산은 render가 fps로.
-- `segment.clip`은 **파일명만**, 폴더는 `clipDir`. → 폴더 이동에 안 깨짐.
+- Time units are in **seconds**. Frame conversion is handled by render via fps.
+- `segment.clip` is **filename only**; the folder is `clipDir`. → doesn't break if the folder moves.
 
-예제: [`examples/sample.cuesheet.json`](./examples/sample.cuesheet.json)
+Example: [`examples/sample.cuesheet.json`](./examples/sample.cuesheet.json)

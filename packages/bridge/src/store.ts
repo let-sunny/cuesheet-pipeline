@@ -17,10 +17,10 @@ export function getCuesheet(path: string): ValidationResult {
   try {
     raw = readRaw(path);
   } catch (e) {
-    return { ok: false, errors: [`큐시트 파일을 읽을 수 없습니다: ${String(e)}`] };
+    return { ok: false, errors: [`Could not read the cuesheet file: ${String(e)}`] };
   }
   if (raw === null) {
-    return { ok: false, errors: [`큐시트 파일이 없습니다: ${path}`] };
+    return { ok: false, errors: [`Cuesheet file not found: ${path}`] };
   }
   return validateCueSheet(raw);
 }
@@ -47,7 +47,7 @@ export function updateCuesheet(path: string, next: unknown): ValidationResult {
   if (lostPaths.length > 0) {
     return {
       ok: false,
-      errors: [`저장 시 필드 유실 감지: ${lostPaths.join(", ")} - 서버 재시작(스키마 갱신) 필요`],
+      errors: [`Field loss detected on save: ${lostPaths.join(", ")} - restart the server (schema refresh) and retry`],
     };
   }
 

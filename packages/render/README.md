@@ -1,10 +1,10 @@
 # @cuesheet/render
 
-큐시트를 받아 **ffmpeg 명령**으로 본편 영상을 렌더한다. 큐시트 소비자.
+Takes a cuesheet and renders the final video via **ffmpeg commands**. A cuesheet consumer.
 
-## 사용
+## Usage
 
-라이브러리:
+Library:
 
 ```ts
 import { buildRenderPlan } from "@cuesheet/render";
@@ -17,76 +17,100 @@ if (cue.ok) {
 }
 ```
 
-CLI (ffmpeg 필요):
+CLI (requires ffmpeg):
 
 ```bash
 cuesheet-render project.cuesheet.json out.mp4
 ```
 
-## 동작
+## Behavior
 
-각 세그먼트를 트림(`-ss`/`-t`) → 배속(setpts/atempo) → 스케일·fps 정규화 → 자막(drawtext, 있으면)
-처리한 뒤 `concat`으로 이어 붙인다. intro/outro는 앞뒤로. bgm은 시작 시각(`adelay`)·볼륨 적용 후
-`amix`로 섞는다. 출력은 project의 fps·해상도, H.264/AAC mp4.
+Each segment is trimmed (`-ss`/`-t`) → sped up (setpts/atempo) → scale/fps normalized →
+subtitled (drawtext, if any), then joined with `concat`. intro/outro go before/after. bgm is
+mixed in with `amix` after applying its start time (`adelay`) and volume. Output uses the
+project's fps/resolution, H.264/AAC mp4.
 
-### 세그먼트 크롭 (선택)
+### Segment crop (optional)
 
-`segment.crop`이 있으면 그 세그먼트의 필터 체인에서 **트림 직후, 스케일 전에**
-`crop=w=iw*{w}:h=ih*{h}:x=iw*{x}:y=ih*{y}`를 적용한다(원본 해상도 기준 비율이라
-`iw`/`ih` 표현식으로 해상도 독립적으로 계산됨). crop 이후 종횡비가 바뀔 수 있지만,
-뒤이은 `scale=W:H`가 원래도(=crop 없는 세그먼트도) 종횡비 보존 없이 project 해상도로
-그대로 늘려 채우므로 별도 letterbox/pad 처리는 필요 없다 — crop 세그먼트도 같은
-규칙을 그대로 탄다. `crop` 필드가 없으면 ffmpeg 명령이 기존과 100% 동일하다.
+If `segment.crop` is present, that segment's filter chain applies
+`crop=w=iw*{w}:h=ih*{h}:x=iw*{x}:y=ih*{y}` **right after trim, before scale** (since it's a
+ratio relative to the source resolution, the `iw`/`ih` expressions make this
+resolution-independent). The aspect ratio can change after crop, but the following
+`scale=W:H` already stretches to the project resolution without preserving aspect ratio
+(true for segments without crop too), so no separate letterbox/pad handling is needed — cropped
+segments follow the same rule. If there's no `crop` field, the ffmpeg command is 100% identical
+to before.
 
-**주의: `w !== h`는 화면이 찌그러진다.** 소스와 project가 같은 종횡비(이 저장소 기준
-16:9)일 때 `crop.w === crop.h`면 크롭 창의 종횡비가 원본과 동일하게 유지돼
-`scale=W:H`가 늘려도 왜곡이 없다. `w !== h`로 크롭 창의 종횡비를 원본과 다르게
-만들면 `scale=W:H`가 그 비율 그대로 늘리면서 이미지가 찌그러져 보인다(예: 세로로만
-좁게 크롭하면 세로로 늘어남). schema 자체는 `w !== h`를 막지 않지만(계약은 유연하게
-열어둠), **웹 UI(크롭 편집 오버레이)와 자동 초안 파이프라인은 항상 `w === h`로만
-크롭을 생성**한다 — `w !== h`는 스키마를 직접 편집해 의도적으로 쓰는 경우로만 한정한다.
+**Caution: `w !== h` distorts the picture.** When the source and project share the same aspect
+ratio (16:9 in this repo), `crop.w === crop.h` keeps the crop window's aspect ratio the same as
+the original, so `scale=W:H` stretches it without distortion. Making the crop window's aspect
+ratio different from the original via `w !== h` means `scale=W:H` stretches it by that
+(different) ratio and the image looks distorted (e.g. a narrow vertical-only crop gets
+stretched vertically). `@cuesheet/schema` now enforces `w === h` (within a small epsilon) at
+validation time — see that package's README — so this can no longer happen through the normal
+web UI/pipeline; it only remains representable if someone edits a cuesheet by hand to bypass
+validation.
 
-### 컷별 자막 스타일 오버라이드 (선택)
+`buildRenderPlan` also accepts an optional `sourceDimensions` map (`RenderPlanOptions.sourceDimensions`,
+keyed by clip filename) as a precise runtime check beyond the schema-level invariant above: it
+verifies each cropped segment's *actual* pixel aspect ratio (`crop.w*srcWidth /
+crop.h*srcHeight`) against the project's aspect ratio, and throws a field-path style error
+naming the offending cut if they deviate by more than 1%. This catches sources that turn out to
+not actually share the project's aspect ratio, which the schema-level `w === h` check can't see
+(it only knows the ratios, not real pixel dimensions). The CLI (`cuesheet-render`) probes each
+cropped clip with ffprobe and passes the result in automatically; `buildRenderPlan` itself stays
+a pure function (no ffprobe call inside it) and skips the check for any clip missing from the map.
 
-세그먼트별 drawtext에 쓰이는 **유효 스타일**은 전역 `subtitleStyle`에 그 세그먼트의
-`segment.styleOverride`를 **얕은 병합**한 결과다: `{ ...subtitleStyle, ...styleOverride }`.
-override에 없는 필드(생략된 필드)는 전역 값을 그대로 쓰고, override에 있는 필드만 덮어쓴다.
+### Per-cut subtitle style override (optional)
 
-- **`background`는 통짜 교체**다 — 얕은 병합이 객체 필드 단위로 동작하므로, override에
-  `background`가 있으면 전역 `background`의 `color`/`opacity`/`padding`이 부분적으로
-  섞이지 않고 override 쪽 객체로 완전히 대체된다(부분 병합하면 색만 바꾸고 opacity가
-  전역 값으로 남는 등 애매함이 생기기 때문에 의도적으로 이렇게 설계했다).
-- `styleOverride`가 없거나(생략) `null`이면 그 세그먼트는 기존과 **100% 동일**한 drawtext가
-  나온다(회귀 없음).
-- `intro`/`outro`에는 `styleOverride`가 없다(세그먼트 전용 필드).
+The **effective style** used for each segment's drawtext is a **shallow merge** of the global
+`subtitleStyle` with that segment's `segment.styleOverride`: `{ ...subtitleStyle, ...styleOverride }`.
+Fields absent from the override fall back to the global value; only fields present in the
+override are overwritten.
 
-### 목소리 클로닝 내레이션 (피처 플래그)
+- **`background` is replaced wholesale** — since the shallow merge operates per object field,
+  if `background` is present in the override, the global `background`'s `color`/`opacity`/`padding`
+  aren't partially mixed in; the override's object replaces it completely (a partial merge
+  would create ambiguity, e.g. changing only the color while opacity stays at the global value
+  — this is a deliberate design choice).
+- If `styleOverride` is absent (omitted) or `null`, that segment's drawtext is **100% identical**
+  to before (no regression).
+- `intro`/`outro` have no `styleOverride` (a segment-only field).
 
-`narration.enabled === true`이고 세그먼트에 `narration`(파일명)이 있을 때만 동작한다.
-`narration` 필드 자체가 없거나 `enabled: false`면 ffmpeg 명령이 기존과 **100% 동일**하다.
+### Voice-cloned narration (feature flag)
 
-- 파일 경로는 `narration.dir` + 세그먼트별 `narration`(파일명만, `clipDir`/`segment.clip`와 같은 철학).
-- 각 내레이션 오디오는 **그 세그먼트의 출력 타임라인 시작 시각**(intro 이후 세그먼트 누적,
-  배속 반영: `(out-in)/speed`를 앞 세그먼트들에 대해 누적한 값)에 `adelay`로 배치되고
-  `narration.volume` 적용 후 기존 오디오(원본 소리+bgm)와 `amix`로 섞인다(bgm과 같은 패턴).
-- **v1 제약**: 내레이션 파일 길이가 그 컷 길이보다 길면 잘리지 않고 다음 컷 위로 겹쳐
-  재생된다(자동 트림 없음). 또한 이 시작 시각 계산은 intro 길이를 포함하지 않는다(파일
-  프로빙 없이 intro 길이를 알 수 없음 — intro를 쓰면서 내레이션도 쓰는 경우 오프셋이 밀릴 수 있음).
+Only active when `narration.enabled === true` and the segment has a `narration` (filename). If
+the `narration` field itself is absent, or `enabled: false`, the ffmpeg command is **100%
+identical** to before.
 
-## 주의
+- File paths are `narration.dir` + the per-segment `narration` (filename only, same philosophy
+  as `clipDir`/`segment.clip`).
+- Each narration audio is placed via `adelay` at **that segment's output-timeline start time**
+  (cumulative across preceding segments after intro, speed-adjusted: `(out-in)/speed` summed
+  over prior segments), then mixed with the existing audio (original sound + bgm) via `amix`
+  after applying `narration.volume` (same pattern as bgm).
+- **v1 constraint**: if the narration file is longer than that cut's length, it isn't trimmed —
+  it plays on overlapping into the next cut (no automatic trimming). Also, this start-time
+  calculation doesn't include intro length (intro length can't be known without probing the
+  file — using an intro together with narration may shift the offset).
 
-- **ffmpeg가 설치돼 있어야 실제 인코딩이 된다.** 없으면 CLI가 명확한 에러를 낸다.
-- **자막(drawtext)에는 `libfreetype`/`fontconfig`가 빌드에 포함된 ffmpeg가 필요하다.**
-  macOS Homebrew의 기본 `ffmpeg` 포뮬러는 이 라이브러리들이 빠져 있어 `drawtext` 필터를
-  못 찾는 에러(`No such filter: 'drawtext'`)가 난다. `brew install ffmpeg-full`로 설치한 뒤
-  `PATH`에서 그 바이너리가 먼저 잡히게 해야 한다(`ffmpeg-full`은 keg-only):
+## Notes
+
+- **ffmpeg must be installed for actual encoding to happen.** If it's missing, the CLI raises a
+  clear error.
+- **Subtitles (drawtext) need an ffmpeg build with `libfreetype`/`fontconfig`.** macOS
+  Homebrew's default `ffmpeg` formula is missing these libraries, causing a
+  `No such filter: 'drawtext'` error. Install with `brew install ffmpeg-full` and make sure that
+  binary comes first on `PATH` (`ffmpeg-full` is keg-only):
   ```bash
   export PATH="/opt/homebrew/opt/ffmpeg-full/bin:$PATH"
   ```
-  (자막이 없는 큐시트라면 기본 `ffmpeg`로도 충분하다.)
-- 자막 drawtext는 폰트가 필요하다(fontconfig 또는 `fontfile=`). subtitleStyle.font 이름으로
-  요청하며, 시스템에 해당 폰트가 없으면 fontconfig가 기본 폰트로 폴백한다(한글 렌더링은 됨,
-  지정한 폰트와 다르게 보일 수 있음). 정확한 폰트가 필요하면 fontfile 경로로 바꿔야 한다.
-- 실 클립(`cut_01.mp4`+`cut_02.mp4`, `project.cuesheet.json`)으로 `cuesheet-render` E2E를
-  검증함: 1920x1080/30fps/13s mp4가 정상 산출되고 자막도 바이너리 프레임으로 확인됨.
-- atempo는 0.5~2.0만 지원 → 범위 밖 배속은 자동으로 체인 분해한다.
+  (For cuesheets without subtitles, the default `ffmpeg` is enough.)
+- Subtitle drawtext needs a font (fontconfig or `fontfile=`). It's requested by the
+  subtitleStyle.font name; if the system doesn't have that font, fontconfig falls back to a
+  default font (Korean still renders, but may look different from the specified font). If an
+  exact font is required, switch to a fontfile path instead.
+- Verified `cuesheet-render` end-to-end with real clips (`cut_01.mp4`+`cut_02.mp4`,
+  `project.cuesheet.json`): a 1920x1080/30fps/13s mp4 is produced correctly, with subtitles
+  confirmed in the binary frames.
+- atempo only supports 0.5-2.0 → speeds outside that range are automatically decomposed into a chain.

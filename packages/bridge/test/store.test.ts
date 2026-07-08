@@ -76,7 +76,7 @@ describe("updateCuesheet", () => {
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.errors.some((e) => e.includes("segments[0].totallyUnknownField"))).toBe(true);
-      expect(r.errors.some((e) => e.includes("유실"))).toBe(true);
+      expect(r.errors.some((e) => e.includes("Field loss detected"))).toBe(true);
     }
     expect(existsSync(TMP)).toBe(false);
   });

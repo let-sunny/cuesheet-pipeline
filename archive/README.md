@@ -1,19 +1,20 @@
 # archive
 
-역할이 끝난 시제품 산출물 보관소. `docs/`는 공개/리서치 문서 전용이라(문서 목적
-체계 규약) 대용량 바이너리 산출물은 여기로 분리한다.
+Storage for prototype artifacts whose role has ended. Since `docs/` is reserved for
+public/research documents (per the doc-purpose convention), large binary artifacts are kept
+separate here.
 
 ## proto-v3/
 
-파이프라인이 v4로 정식화되기 전, 49클립 전체 규모로 처음 완주한 v3 제작런
-기록(2026-07-06~07-07). 운영본은 `proto_dotmix_v4.cuesheet.json`(레포 루트)이며
-이 폴더는 그 이전 이정표 기록 보존용이다.
+Record of the v3 production run (2026-07-06 to 07-07) — the first full run at the complete
+49-clip scale, before the pipeline was formalized into v4. The active cuesheet is
+`proto_dotmix_v4.cuesheet.json` (repo root); this folder preserves the earlier milestone record.
 
-- `proto_dotmix_v3.cuesheet.json` — v3 초벌 큐시트(119컷/6:37)
-- `proto_draft_dotmix_v3.mp4` — 위 큐시트의 초벌 렌더(gitignore 대상, 로컬에만 존재)
-- `proto_final_dotmix.mp4` / `proto_final_dotmix_nosub.mp4` — v3 초안을 웹 에디터로
-  수동 편집한 완성본("원본 -> 완성본" 전 과정이 도구 안에서 완결됨을 증명한 최초 사례,
-  gitignore 대상)
-- `닷믹스베스트.srt` — 위 완성본의 자막(97큐)
+- `proto_dotmix_v3.cuesheet.json` — the v3 rough-cut cuesheet (119 cuts / 6:37)
+- `proto_draft_dotmix_v3.mp4` — a rough render of the above cuesheet (gitignored, local only)
+- `proto_final_dotmix.mp4` / `proto_final_dotmix_nosub.mp4` — the v3 draft manually finished in
+  the web editor (the first case proving the full "raw footage -> finished cut" pipeline
+  completes end-to-end inside the tool; gitignored)
+- `닷믹스베스트.srt` — subtitles for the finished cut above (97 cues)
 
-자세한 수치·맥락은 `docs/STATUS.md`의 "검증된 수치"/"진행 중" 섹션 참고.
+See `docs/STATUS.md`'s "Verified numbers" / "In progress" sections for detailed figures and context.

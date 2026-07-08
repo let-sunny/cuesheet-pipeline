@@ -1,7 +1,7 @@
 {
   "name": "@cuesheet/bridge",
   "version": "0.0.0",
-  "description": "Claude Code가 붙어 큐시트를 편집하는 MCP 브리지 (자연어 명령 → 검증된 큐시트 변경)",
+  "description": "MCP bridge that Claude Code connects to for editing cuesheets (natural-language commands -> validated cuesheet changes)",
   "type": "module",
   "bin": {
     "cuesheet-bridge": "./dist/index.js"
