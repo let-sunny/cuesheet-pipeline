@@ -145,5 +145,6 @@ cut's start time.**
   dev server.
 - **Export fails**: check the ffmpeg message in the error banner, usually a clip path/codec
   issue — ask me.
-- Whenever anything's unclear: just tell Claude Code what's happening. The cuesheet lives in
-  git, so you can always roll back.
+- Whenever anything's unclear: just tell Claude Code what's happening. The editor keeps an automatic
+  local backup of unsaved edits (restore banner), and saved states can be recovered
+  by asking Claude Code.
