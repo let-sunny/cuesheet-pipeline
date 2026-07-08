@@ -85,6 +85,24 @@ interface ClipMoments {
 - 대본 순서 = 영상 시간 순서(브이로그 특성) - 전역 재배열 매칭이 아니라 순서 보존
   탐색이라는 전제를 유지한다.
 
+### (2.5) 풀기 서사 패스 (롱테이크가 있을 때만)
+
+5분 이상 롱테이크는 단일 프레임 판독으로 "실수/풀기(frogging)" 서사를 놓친다 —
+편물이 자라다 **줄어드는** 순간은 인접 프레임 쌍을 비교해야 보인다 (v4 실측: 정답
+풀기 지점 브래킷 성공, 대조군 오탐 0).
+
+1. 쌍 스케줄 생성: `node -e` 로 `@cuesheet/draft`의 `buildPairSchedule(manifest)` 호출
+   → 클립별 인접 프레임 쌍 목록.
+2. 쌍마다 두 프레임을 Read로 비교 판정(병렬 서브에이전트 불필요 — 수십 쌍 수준):
+   `{clip, tA, tB, verdict: grew|shrank|same|unclear, confidence 1-5, note}` 를
+   `media/drafts/<슬러그>/progress.json`에 기록 (zod: `progressFileSchema`).
+   shrank = 편물 감소/바늘에서 빠짐/실뭉치로 되돌아감.
+3. `extractNarrativeEvents(judgments)` 로 이벤트 추출 → **mistake_discovered 지점을
+   moments.json에 quality 5 순간으로 추가**(desc에 "풀기 발견" 명시, 실수 서사는
+   사용자 편집 문법의 핵심 스토리 비트), resumed 지점은 quality 4로 추가. 시각은
+   이벤트 atS 근방에서 프레임 재확인 후 정밀화(±60초 그리드이므로 필요시 그 구간만
+   15초 간격 재추출).
+
 ### (3) 조립
 
 빌드가 최신인지 먼저 확인한다(직전에 draft 소스를 건드렸다면 dist가 낡아있을 수 있다 -
