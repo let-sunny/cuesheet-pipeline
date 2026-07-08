@@ -31,6 +31,15 @@
 — the primary actions (Save/Export) sit at the far right. Export always opens through a
 dialog.
 
+**Dirty-state emphasis (2026-07-09 addition, section 6 applied concretely to this group)**:
+Save and Export are a two-button group, so exactly one of them is `primary` at any time — which
+one flips with dirty state instead of always being Export. While dirty, losing unsaved edits is
+the higher-stakes outcome than exporting slightly later, so Save gets `primary` (plus the dirty
+dot) and Export steps down to `secondary`. Once clean (saved), Export reverts to `primary` and
+Save becomes a quiet `secondary` action. This is why Save is allowed to outrank Export here even
+though section 5 calls Export "the one primary of the whole step" — that rule describes the
+steady (clean) state; the header's own group has its own state-dependent primary.
+
 ## 2. (1) Scenes
 
 ```

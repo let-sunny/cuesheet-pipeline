@@ -23,6 +23,13 @@ interface Props {
 /**
  * Slim fixed header (screen-spec section 1): [app name] ... [Undo][Redo] | [theme toggle][?]
  * | [Save (dirty dot)][Export] — the far right holds the primary actions (Save/Export).
+ *
+ * Dirty-state emphasis (screen-spec section 1, 2026-07-09 addition): while there are unsaved
+ * edits, losing them is the higher-stakes outcome than a slightly later export, so Save takes
+ * over as the one primary action and Export steps down to secondary; once saved (clean), Export
+ * reverts to primary and Save becomes a quiet secondary action. This still satisfies the
+ * one-primary-per-group rule (section 6) — the group's primary just changes with dirty state
+ * instead of always sitting on Export.
  */
 export function HeaderBar({
   projectName,
@@ -64,14 +71,14 @@ export function HeaderBar({
 
         <Button
           label={saving ? "Saving…" : "Save"}
-          variant="secondary"
+          variant={dirty ? "primary" : "secondary"}
           isDisabled={saving}
           tooltip={dirty ? "Click Save to write it to disk" : undefined}
           onClick={onSave}
         />
         <Button
           label={rendering ? `Exporting… ${renderProgress ?? 0}%` : "Export"}
-          variant="primary"
+          variant={dirty ? "secondary" : "primary"}
           isDisabled={renderDisabled}
           onClick={onRender}
         />
