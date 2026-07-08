@@ -18,6 +18,7 @@ export function KeyboardHelp({ visible, onToggle }: Props) {
   }
   return (
     <div className="keyboard-help">
+      <p className="keyboard-help-note">Playback/trim shortcuts (Space, L/K/J, I/O, arrows, Cmd+B) apply on the ② Edit step.</p>
       <ul className="keyboard-help-list">
         {SHORTCUTS.map(([key, desc]) => (
           <li key={key}>

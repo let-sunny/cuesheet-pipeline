@@ -104,7 +104,17 @@
  * light-dark() (branching on the color function instead of data-theme, so it stays semi-transparent
  * even when the OS picks dark under system mode).
  */
+/*
+ * Same upstream bug as above, but for --color-overlay itself - the token Dialog's ::backdrop
+ * uses for the full-viewport scrim behind the dialog. Light mode is #25252a80 (proper alpha,
+ * dims correctly), but dark mode is the opaque #28282a (no alpha at all) - since that's nearly
+ * the same tone as this app's own dark surfaces (--surface-0 #12141a / --surface-1 #1b1e28), an
+ * opaque flat fill reads as almost no dimming at all (measured 2026-07-09 QA pass: indistinguishable
+ * from the plain background). Redefined with real alpha in both directions so the dialog scrim
+ * actually dims what's behind it regardless of theme.
+ */
 [data-astryx-theme="stone"] {
+  --color-overlay: light-dark(#25252a80, rgba(0, 0, 0, 0.55));
   --color-overlay-hover: light-dark(#25252a0d, rgba(243, 243, 245, 0.08));
   --color-overlay-pressed: light-dark(#25252a1a, rgba(243, 243, 245, 0.16));
 }
@@ -739,6 +749,12 @@ body {
   border-radius: 2px;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+  /* A no-space run (e.g. a long URL/hashtag) would otherwise overflow the frame horizontally
+     unbroken - the actual drawtext render never wraps either, so this preview can't match it
+     exactly, but wrapping here at least keeps the *editor* preview readable/contained; the
+     editor-side warning (SegmentQuickFields) and the render-time stderr guard (@cuesheet/render)
+     are the actual guards against the unwrapped render output itself. */
+  overflow-wrap: anywhere;
 }
 
 /* Crop edit mode — top values/button bar */
@@ -1200,6 +1216,17 @@ body {
   font-size: 13px;
 }
 
+.keyboard-help-note {
+  margin: 0;
+  padding: 8px 12px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  max-width: 280px;
+}
+
 .keyboard-help-list {
   list-style: none;
   margin: 0;
@@ -1358,11 +1385,24 @@ body {
   min-width: 480px;
 }
 
-/* Right column (narrow, next to the video): subtitle/speed/volume/narration/crop field panel. */
+/* Right column (narrow, next to the video): subtitle/speed/volume/narration/crop field panel.
+   max-width was 380px - at that width the Range row (In 144px slot + Out 144px slot + 16px gap
+   between them + 16px gap before + "Length X.Xs" readonly text, inside the panel's 16px side
+   padding) needs roughly 423px of column width and didn't fit on one line, wrapping the Length
+   text onto its own row (measured 2026-07-09 QA pass).
+   Raising max-width alone isn't enough: min-width was 320px, and .trim-workspace's flex-grow ratio
+   (video-col 2 : fields-col 1) meant that at plenty of realistic desktop widths (measured at
+   1440-1600px) this column only ever grew to ~330-382px - short of the ~423px the Range row
+   needs, but still "wide enough" that .trim-workspace's flex-wrap didn't kick in to stack the two
+   columns instead, so it landed in a broken in-between size. Raising min-width to match what the
+   Range row actually needs closes that gap: the column now either renders at a width that fits
+   the row on one line, or - if the viewport is too narrow for that plus the video column - wraps
+   as a whole to its own line below the video (existing, already-handled responsive behavior),
+   never at some in-between width that breaks only this one row. */
 .trim-fields-col {
-  flex: 1 1 320px;
-  min-width: 320px;
-  max-width: 380px;
+  flex: 1 1 424px;
+  min-width: 424px;
+  max-width: 440px;
 }
 
 .compact-list {
@@ -2032,6 +2072,35 @@ body {
   color: var(--warning-text);
 }
 
+/* Wraps the short error summary + the full raw ffmpeg dump's collapsible - the summary always
+   shows, the (much longer) raw dump only when expanded, so the failure reads as one message
+   instead of the toast and this area both dumping the same wall of text (screen-spec fix). */
+.render-error-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.render-error-detail summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-muted-2);
+}
+
+.render-error-detail pre {
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 6px 0 0;
+  padding: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
 
 /* Render settings dialog (RenderSettingsDialog) */
 .render-dialog {
@@ -2163,6 +2232,8 @@ body {
   border-radius: 2px;
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
+  /* Same reasoning as .video-subtitle-overlay-text above - keeps a no-space run contained in this preview. */
+  overflow-wrap: anywhere;
 }
 
 .sequence-player-ended {

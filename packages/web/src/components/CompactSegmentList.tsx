@@ -132,10 +132,17 @@ export function CompactSegmentList({
 
   const handleSubtitleKeyDown =
     (i: number) => (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Tab") {
-        e.preventDefault();
-        focusRow(i + (e.shiftKey ? -1 : 1));
+      if (e.key !== "Tab") {
+        return;
       }
+      const target = i + (e.shiftKey ? -1 : 1);
+      if (target < 0 || target >= segments.length) {
+        // At the first/last row, let native Tab traversal continue past the list (e.g. into the
+        // right-hand cut settings panel) instead of trapping focus inside it.
+        return;
+      }
+      e.preventDefault();
+      focusRow(target);
     };
 
   // --- BGM gutter geometry/drag ---
