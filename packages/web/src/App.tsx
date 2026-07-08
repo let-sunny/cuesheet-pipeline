@@ -10,26 +10,27 @@ import type {
 } from "@cuesheet/schema";
 import { validateCueSheet } from "@cuesheet/schema";
 import { useToast } from "@astryxdesign/core/Toast";
-import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { Button } from "@astryxdesign/core/Button";
 import {
   CueSheetNotFoundError,
+  fetchBgmFiles,
   fetchCueSheet,
   fetchMoments,
   fetchNarrationFiles,
   fetchRenderStatus,
   saveCueSheet,
   startRender,
+  type BgmFile,
   type ClipMoments,
   type NarrationFile,
 } from "./api.js";
 import { buildClipPath, computeClipDurations } from "./clipPaths.js";
+import { bgmCutRange, cumulativeCutStarts, cutRangeToSeconds } from "./lib/bgmCutMapping.js";
 import { computeMergeEligibility } from "./lib/segmentMerge.js";
 import { scaleCueSheetForResolution } from "./lib/subtitleScale.js";
 import { VideoPreview } from "./components/VideoPreview.js";
 import type { VideoPreviewHandle } from "./components/VideoPreview.js";
-import { BgmEditor } from "./components/BgmEditor.js";
-import { TimelineView } from "./components/TimelineView.js";
+import { BgmSettingsPanel } from "./components/BgmSettingsPanel.js";
 import { MomentPalette } from "./components/MomentPalette.js";
 import { KeyboardHelp } from "./components/KeyboardHelp.js";
 import { HeaderBar } from "./components/HeaderBar.js";
@@ -100,6 +101,15 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
   // info message for e.g. an unset/nonexistent folder.
   const [narrationFiles, setNarrationFiles] = useState<NarrationFile[]>([]);
   const [narrationNote, setNarrationNote] = useState<string | undefined>(undefined);
+  // Which BGM track (if any) is selected in the Edit step's gutter - when set, the right column
+  // shows BgmSettingsPanel instead of Cut settings (SegmentQuickFields). Independent of
+  // selectedIndex (the cut selection), since a track's cut range and the currently-inspected cut
+  // are separate things.
+  const [selectedBgmIndex, setSelectedBgmIndex] = useState<number | null>(null);
+  // List of audio files usable as background music (media/ + clipDir) - for the BGM settings
+  // panel's file picker/pre-listen. Fetched once; clipDir rarely changes mid-session.
+  const [bgmFiles, setBgmFiles] = useState<BgmFile[]>([]);
+  const [bgmFilesNote, setBgmFilesNote] = useState<string | undefined>(undefined);
   const videoPreviewRef = useRef<VideoPreviewHandle>(null);
   const sequencePlayerRef = useRef<SequencePlayerHandle>(null);
   const renderPollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -338,6 +348,19 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       cancelled = true;
     };
   }, [draft?.narration?.enabled, draft?.narration?.dir]);
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const result = await fetchBgmFiles();
+        setBgmFiles(result.files);
+        setBgmFilesNote(result.note);
+      } catch {
+        setBgmFiles([]);
+        setBgmFilesNote("Couldn't load the background music file list");
+      }
+    })();
+  }, []);
 
   // Shows the browser's default confirmation dialog on refresh/tab close while dirty.
   useEffect(() => {
@@ -931,12 +954,51 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     });
   }, [draft, recordContinuousChange]);
 
-  const addBgm = useCallback(() => {
+  // Adds a track defaulting to span just the currently selected cut (the Edit step gutter's
+  // "+ Add track" button) - immediately selects it so its settings panel opens on the right.
+  const addBgmTrack = useCallback(() => {
     if (!draft) {
       return;
     }
     recordDiscreteChange();
-    setDraft((prev) => (prev ? { ...prev, bgm: [...prev.bgm, newBgmCue()] } : prev));
+    const newIndex = draft.bgm.length;
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const cumStart = cumulativeCutStarts(prev.segments);
+      const { start, end } = cutRangeToSeconds(selectedIndex, selectedIndex, cumStart);
+      const cue: BgmCue = { file: "", start, end, volume: 1 };
+      return { ...prev, bgm: [...prev.bgm, cue] };
+    });
+    setSelectedBgmIndex(newIndex);
+  }, [draft, recordDiscreteChange, selectedIndex]);
+
+  // Moves/resizes a track by cut index (drag in the gutter, or the settings panel's numeric
+  // fields) - converts back to the seconds actually stored/rendered.
+  const changeBgmRange = useCallback((bgmIndex: number, startCutIdx: number, endCutIdx: number) => {
+    if (!draft) {
+      return;
+    }
+    recordContinuousChange();
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const cumStart = cumulativeCutStarts(prev.segments);
+      const { start, end } = cutRangeToSeconds(startCutIdx, endCutIdx, cumStart);
+      const bgm = prev.bgm.map((c, idx) => (idx === bgmIndex ? { ...c, start, end } : c));
+      return { ...prev, bgm };
+    });
+  }, [draft, recordContinuousChange]);
+
+  const removeBgmTrack = useCallback((i: number) => {
+    if (!draft) {
+      return;
+    }
+    recordDiscreteChange();
+    setDraft((prev) => (prev ? { ...prev, bgm: prev.bgm.filter((_, idx) => idx !== i) } : prev));
+    setSelectedBgmIndex(null);
   }, [draft, recordDiscreteChange]);
 
   const clearSegmentCrop = useCallback((i: number) => {
@@ -1043,16 +1105,6 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     window.location.href = "/api/subtitles.srt";
   }, [dirty, toast]);
 
-  const removeBgm = useCallback((i: number) => {
-    if (!draft) {
-      return;
-    }
-    recordDiscreteChange();
-    setDraft((prev) =>
-      prev ? { ...prev, bgm: prev.bgm.filter((_, idx) => idx !== i) } : prev,
-    );
-  }, [draft, recordDiscreteChange]);
-
   if (loadError) {
     if (loadError.kind === "not-found") {
       return <div className="status empty-state">{loadError.message}</div>;
@@ -1065,6 +1117,8 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
 
   const selectedSegment = draft.segments[selectedIndex];
   const subtitleFilled = draft.segments.filter((s) => s.subtitle.trim() !== "").length;
+  const selectedBgmCue = selectedBgmIndex != null ? draft.bgm[selectedBgmIndex] : undefined;
+  const selectedBgmRange = selectedBgmCue ? bgmCutRange(selectedBgmCue, cumulativeCutStarts(draft.segments)) : undefined;
 
   return (
     <div className="app">
@@ -1174,11 +1228,19 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
                 segments={draft.segments}
                 selectedIndex={selectedIndex}
                 moments={moments}
-                onSelect={setSelectedIndex}
+                onSelect={(i) => {
+                  setSelectedBgmIndex(null);
+                  setSelectedIndex(i);
+                }}
                 onChangeSubtitle={(i, subtitle) => updateSegment(i, { subtitle })}
                 onAdd={addSegment}
                 onRemove={removeSegment}
                 onMove={moveSegment}
+                bgm={draft.bgm}
+                selectedBgmIndex={selectedBgmIndex}
+                onSelectBgm={setSelectedBgmIndex}
+                onAddBgmTrack={addBgmTrack}
+                onChangeBgmRange={changeBgmRange}
               />
               <div className="trim-workspace">
                 <div className="trim-video-col">
@@ -1196,34 +1258,52 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
                   />
                 </div>
                 <div className="trim-fields-col">
-                  <SegmentQuickFields
-                    segment={selectedSegment}
-                    narrationEnabled={draft.narration?.enabled ?? false}
-                    narrationFiles={narrationFiles}
-                    narrationNote={narrationNote}
-                    narrationDir={draft.narration?.dir}
-                    onChange={(patch) => updateSegment(selectedIndex, patch)}
-                    clipDurationS={selectedSegment ? clipDurations[selectedSegment.clip] : undefined}
-                    onSetIntro={() =>
-                      selectedSegment && setIntroOutroFromClip("intro", selectedSegment.clip)
-                    }
-                    onSetOutro={() =>
-                      selectedSegment && setIntroOutroFromClip("outro", selectedSegment.clip)
-                    }
-                    onClearCrop={() => clearSegmentCrop(selectedIndex)}
-                    onEditCrop={() => videoPreviewRef.current?.startCropEdit()}
-                    mergeEligibility={computeMergeEligibility(draft, selectedIndex)}
-                    onMergeNext={() => mergeSegmentWithNext(selectedIndex)}
-                    onSplit={() => videoPreviewRef.current?.splitAtCurrent()}
-                    onDuplicate={addSegment}
-                    onDelete={() => removeSegment(selectedIndex)}
-                    canDelete={draft.segments.length > 1}
-                    globalSubtitleStyle={draft.subtitleStyle}
-                    onToggleStyleOverride={(enabled) => toggleSegmentStyleOverride(selectedIndex, enabled)}
-                    onChangeStyleOverride={(patch) => updateSegmentStyleOverride(selectedIndex, patch)}
-                    onPromoteStyleOverride={() => promoteSegmentStyleOverride(selectedIndex)}
-                    onClearStyleOverride={() => clearSegmentStyleOverride(selectedIndex)}
-                  />
+                  {selectedBgmIndex != null && selectedBgmCue && selectedBgmRange ? (
+                    <BgmSettingsPanel
+                      cue={selectedBgmCue}
+                      bgmIndex={selectedBgmIndex}
+                      startCutIdx={selectedBgmRange.startCutIdx}
+                      endCutIdx={selectedBgmRange.endCutIdx}
+                      startSeconds={selectedBgmCue.start}
+                      endSeconds={selectedBgmCue.end}
+                      cutCount={draft.segments.length}
+                      files={bgmFiles}
+                      filesNote={bgmFilesNote}
+                      onChangeFile={(path) => updateBgm(selectedBgmIndex, { file: path })}
+                      onChangeRange={(startCutIdx, endCutIdx) => changeBgmRange(selectedBgmIndex, startCutIdx, endCutIdx)}
+                      onChangeVolume={(volume) => updateBgm(selectedBgmIndex, { volume })}
+                      onRemove={() => removeBgmTrack(selectedBgmIndex)}
+                    />
+                  ) : (
+                    <SegmentQuickFields
+                      segment={selectedSegment}
+                      narrationEnabled={draft.narration?.enabled ?? false}
+                      narrationFiles={narrationFiles}
+                      narrationNote={narrationNote}
+                      narrationDir={draft.narration?.dir}
+                      onChange={(patch) => updateSegment(selectedIndex, patch)}
+                      clipDurationS={selectedSegment ? clipDurations[selectedSegment.clip] : undefined}
+                      onSetIntro={() =>
+                        selectedSegment && setIntroOutroFromClip("intro", selectedSegment.clip)
+                      }
+                      onSetOutro={() =>
+                        selectedSegment && setIntroOutroFromClip("outro", selectedSegment.clip)
+                      }
+                      onClearCrop={() => clearSegmentCrop(selectedIndex)}
+                      onEditCrop={() => videoPreviewRef.current?.startCropEdit()}
+                      mergeEligibility={computeMergeEligibility(draft, selectedIndex)}
+                      onMergeNext={() => mergeSegmentWithNext(selectedIndex)}
+                      onSplit={() => videoPreviewRef.current?.splitAtCurrent()}
+                      onDuplicate={addSegment}
+                      onDelete={() => removeSegment(selectedIndex)}
+                      canDelete={draft.segments.length > 1}
+                      globalSubtitleStyle={draft.subtitleStyle}
+                      onToggleStyleOverride={(enabled) => toggleSegmentStyleOverride(selectedIndex, enabled)}
+                      onChangeStyleOverride={(patch) => updateSegmentStyleOverride(selectedIndex, patch)}
+                      onPromoteStyleOverride={() => promoteSegmentStyleOverride(selectedIndex)}
+                      onClearStyleOverride={() => clearSegmentStyleOverride(selectedIndex)}
+                    />
+                  )}
                 </div>
               </div>
             </div>
@@ -1252,18 +1332,11 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
               onClear={clearIntroOutro}
             />
 
-            <div>
-              <h3>Timeline · Background music (BGM)</h3>
-              <TimelineView
-                segments={draft.segments}
-                bgm={draft.bgm}
-                selectedIndex={selectedIndex}
-                onSelectSegment={setSelectedIndex}
-                onChangeBgm={updateBgm}
-              />
-              <Collapsible trigger="Edit background music (BGM)" defaultIsOpen={false}>
-                <BgmEditor bgm={draft.bgm} onChange={updateBgm} onAdd={addBgm} onRemove={removeBgm} />
-              </Collapsible>
+            <div className="settings-group">
+              <h3>Background music</h3>
+              <p className="settings-note">
+                Background music: {draft.bgm.length} {draft.bgm.length === 1 ? "track" : "tracks"} — edit in the ② Edit step
+              </p>
             </div>
 
             <NarrationSettings narration={draft.narration} onNarrationChange={updateNarration} />
@@ -1337,12 +1410,6 @@ function withoutStyleOverride(segment: Segment): Segment {
   return rest;
 }
 
-const newBgmCue = (): BgmCue => ({
-  file: "",
-  start: 0,
-  end: 1,
-  volume: 1,
-});
 
 function loadNoBurnSubtitles(): boolean {
   try {

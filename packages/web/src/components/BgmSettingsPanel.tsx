@@ -1,0 +1,179 @@
+import { useRef, useState } from "react";
+import { Button } from "@astryxdesign/core/Button";
+import type { BgmCue } from "@cuesheet/schema";
+import { bgmFileStreamUrl, type BgmFile } from "../api.js";
+
+interface Props {
+  cue: BgmCue;
+  bgmIndex: number;
+  startCutIdx: number;
+  endCutIdx: number;
+  startSeconds: number;
+  endSeconds: number;
+  cutCount: number;
+  files: BgmFile[];
+  filesNote: string | undefined;
+  onChangeFile: (path: string) => void;
+  onChangeRange: (startCutIdx: number, endCutIdx: number) => void;
+  onChangeVolume: (volume: number) => void;
+  onRemove: () => void;
+}
+
+/**
+ * Right-column panel shown in the Edit step when a BGM track (not a cut) is selected in the
+ * gutter — same qf-group/qf-row/qf-field grid tokens as Cut settings (SegmentQuickFields), so the
+ * two panels read as siblings rather than a bolted-on extra. Range is edited/shown in cut numbers
+ * (the gutter's anchor unit) alongside the seconds they resolve to; storage stays seconds
+ * (converted by the caller via lib/bgmCutMapping.ts) - no schema change.
+ */
+export function BgmSettingsPanel({
+  cue,
+  bgmIndex,
+  startCutIdx,
+  endCutIdx,
+  startSeconds,
+  endSeconds,
+  cutCount,
+  files,
+  filesNote,
+  onChangeFile,
+  onChangeRange,
+  onChangeVolume,
+  onRemove,
+}: Props) {
+  const [playingPath, setPlayingPath] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  const togglePreview = (path: string) => {
+    const audio = audioRef.current;
+    if (!audio) {
+      return;
+    }
+    if (playingPath === path) {
+      audio.pause();
+      setPlayingPath(null);
+      return;
+    }
+    audio.src = bgmFileStreamUrl(path);
+    void audio.play();
+    setPlayingPath(path);
+  };
+
+  const currentFileKnown = cue.file !== "" && files.some((f) => f.path === cue.file);
+
+  return (
+    <div className="quick-fields">
+      <h2 className="qf-panel-title">Background music track {bgmIndex + 1}</h2>
+
+      {/* File - pre-listen before assigning: a play/stop button next to each candidate, separate
+          from picking it, so auditioning doesn't require committing first. */}
+      <div className="qf-group">
+        <div className="qf-group-label">File</div>
+        <div className="bgm-file-list">
+          {files.length === 0 ? (
+            <p className="narration-empty-note">{filesNote ?? "No audio files found under media/ or clipDir"}</p>
+          ) : (
+            files.map((f) => (
+              <div className={`bgm-file-row${f.path === cue.file ? " selected" : ""}`} key={f.path}>
+                <button
+                  type="button"
+                  className="plain-button bgm-file-play"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    togglePreview(f.path);
+                  }}
+                  title={playingPath === f.path ? "Stop preview" : "Preview"}
+                >
+                  {playingPath === f.path ? "■" : "▶"}
+                </button>
+                <button type="button" className="plain-button bgm-file-name" onClick={() => onChangeFile(f.path)}>
+                  {f.path}
+                  {f.durationS != null ? ` (${f.durationS.toFixed(1)}s)` : ""}
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+        {cue.file !== "" && !currentFileKnown ? <p className="qf-readonly">Currently assigned: {cue.file}</p> : null}
+        {/* Hidden shared player driving each candidate's play/stop button above. */}
+        <audio ref={audioRef} onEnded={() => setPlayingPath(null)} style={{ display: "none" }} />
+      </div>
+
+      {/* Range - anchored to cut numbers (the gutter's unit); seconds shown alongside since that's
+          what's actually stored/rendered. */}
+      <div className="qf-group">
+        <div className="qf-group-label">Range</div>
+        <div className="qf-row">
+          <label className="qf-field field-narrow">
+            <span>Start</span>
+            <input
+              type="number"
+              className="plain-field"
+              value={startCutIdx + 1}
+              min={1}
+              max={endCutIdx + 1}
+              onChange={(e) => {
+                const v = Math.round(e.target.valueAsNumber);
+                if (Number.isNaN(v)) {
+                  return;
+                }
+                onChangeRange(Math.min(endCutIdx, Math.max(0, v - 1)), endCutIdx);
+              }}
+            />
+            <span className="qf-suffix">cut</span>
+          </label>
+          <label className="qf-field field-narrow">
+            <span>End</span>
+            <input
+              type="number"
+              className="plain-field"
+              value={endCutIdx + 1}
+              min={startCutIdx + 1}
+              max={cutCount}
+              onChange={(e) => {
+                const v = Math.round(e.target.valueAsNumber);
+                if (Number.isNaN(v)) {
+                  return;
+                }
+                onChangeRange(startCutIdx, Math.max(startCutIdx, Math.min(cutCount - 1, v - 1)));
+              }}
+            />
+            <span className="qf-suffix">cut</span>
+          </label>
+        </div>
+        <span className="qf-readonly">
+          Cuts {startCutIdx + 1}-{endCutIdx + 1} · {startSeconds.toFixed(1)}s-{endSeconds.toFixed(1)}s
+        </span>
+      </div>
+
+      <div className="qf-group">
+        <div className="qf-group-label">Playback</div>
+        <div className="qf-row">
+          <label className="qf-field field-narrow">
+            <span>Volume</span>
+            <input
+              type="number"
+              className="plain-field"
+              value={Math.round(cue.volume * 100)}
+              min={0}
+              max={100}
+              step={1}
+              onChange={(e) => {
+                const v = e.target.valueAsNumber;
+                if (Number.isNaN(v)) {
+                  return;
+                }
+                onChangeVolume(Math.min(100, Math.max(0, v)) / 100);
+              }}
+            />
+            <span className="qf-suffix">%</span>
+          </label>
+        </div>
+      </div>
+
+      <div className="qf-danger-zone">
+        <Button label="Remove track" variant="destructive" size="sm" onClick={onRemove} />
+      </div>
+    </div>
+  );
+}

@@ -20,7 +20,8 @@ interface Props {
  * via Ctrl/Cmd+wheel or the +/- buttons, and once zoomed in, thumbnails reappear if the block
  * width is 24px or more. Shift+Z or double-clicking the background (not a block) returns to
  * fit view (1x zoom).
- * A separate, dedicated thin component from TimelineView (the full version, finishing-step only).
+ * Always-visible regardless of step (unlike the BGM gutter, which lives next to the cut list in
+ * the Edit step only — see CompactSegmentList).
  */
 export function MiniTimelineStrip({ segments, selectedIndex, onSelect, onGoToEdit }: Props) {
   const total = segments.reduce((sum, s) => sum + playbackSeconds(s), 0);

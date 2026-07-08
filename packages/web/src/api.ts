@@ -150,6 +150,32 @@ export function narrationFileUrl(name: string, dir?: string): string {
   return `/api/narration-files/${encodeURIComponent(name)}${query}`;
 }
 
+export interface BgmFile {
+  /** repo-root-relative POSIX path (or an absolute path for files outside the repo) — usable
+   * directly as bgm.file. */
+  path: string;
+  durationS: number | null;
+}
+
+export interface BgmFilesResult {
+  files: BgmFile[];
+  note?: string;
+}
+
+/** List of audio files usable as background music (media/ + clipDir), for the Edit step's BGM file picker. */
+export async function fetchBgmFiles(): Promise<BgmFilesResult> {
+  const res = await fetch("/api/bgm-files");
+  if (!res.ok) {
+    return { files: [] };
+  }
+  return (await res.json()) as BgmFilesResult;
+}
+
+/** Streaming URL for auditioning a bgm candidate file before assigning it. */
+export function bgmFileStreamUrl(path: string): string {
+  return `/api/bgm-files/stream?path=${encodeURIComponent(path)}`;
+}
+
 export interface ClipFile {
   name: string;
   /** Duration (seconds) read via ffprobe. null if unknown, e.g. an undownloaded iCloud file. */
