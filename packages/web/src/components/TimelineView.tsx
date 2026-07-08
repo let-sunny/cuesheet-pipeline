@@ -1,27 +1,8 @@
 import { useRef } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import type { BgmCue, Segment } from "@cuesheet/schema";
-
-/** Minimum length (seconds) when dragging a BGM cue. */
-const MIN_BGM_LEN = 0.5;
-/** Minimum segment block width (px) — ensures the label is visible even for short segments. */
-const MIN_BLOCK_PX = 64;
-
-function clamp(v: number, min: number, max: number): number {
-  return Math.min(Math.max(v, min), max);
-}
-
-/** Playback length (seconds) of the segment on the output timeline. Shorter as speed increases. */
-function playbackSeconds(seg: Segment): number {
-  return (seg.out - seg.in) / seg.speed;
-}
-
-/** Picks a tick interval (seconds) so roughly 6-10 ticks appear across the total length. */
-function pickTickStep(total: number): number {
-  const steps = [5, 10, 15, 30, 60, 120, 300, 600];
-  const target = total / 8;
-  return steps.find((s) => s >= target) ?? 600;
-}
+import { clamp } from "../lib/clamp.js";
+import { playbackSeconds } from "../lib/segmentTiming.js";
 
 interface MoveDrag {
   index: number;
@@ -185,3 +166,15 @@ export function TimelineView({
     </div>
   );
 }
+
+/** Picks a tick interval (seconds) so roughly 6-10 ticks appear across the total length. */
+function pickTickStep(total: number): number {
+  const steps = [5, 10, 15, 30, 60, 120, 300, 600];
+  const target = total / 8;
+  return steps.find((s) => s >= target) ?? 600;
+}
+
+/** Minimum length (seconds) when dragging a BGM cue. */
+const MIN_BGM_LEN = 0.5;
+/** Minimum segment block width (px) — ensures the label is visible even for short segments. */
+const MIN_BLOCK_PX = 64;

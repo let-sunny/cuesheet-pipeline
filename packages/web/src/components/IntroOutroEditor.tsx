@@ -16,31 +16,10 @@ interface Props {
   onClear: (role: "intro" | "outro") => void;
 }
 
-function localVideoUrl(path: string): string {
-  return `/api/local-video?path=${encodeURIComponent(path)}`;
-}
-
-/** If it's a clip under clipDir, show just the filename as the "which clip" label; otherwise use the path as-is. */
-function clipLabel(path: string, clipDir: string): string {
-  const normalizedDir = clipDir.replace(/\/+$/, "");
-  return path.startsWith(`${normalizedDir}/`) ? baseName(path) : path;
-}
-
-/** Returns the filename if the intro/outro path matches a file in clipDir's file list, otherwise undefined. */
-function matchedFileName(path: string | null, clipDir: string, files: ClipFile[]): string | undefined {
-  if (!path) {
-    return undefined;
-  }
-  const label = clipLabel(path, clipDir);
-  return files.some((f) => f.name === label) ? label : undefined;
-}
-
-function optionLabel(f: ClipFile): string {
-  if (f.durationS == null) {
-    return `${f.name} (duration unknown)`;
-  }
-  const suffix = f.durationS > INTRO_OUTRO_MAX_DURATION_S ? " · over 15s (not selectable)" : "";
-  return `${f.name} (${f.durationS.toFixed(1)}s)${suffix}`;
+interface UploadState {
+  uploading: boolean;
+  progress: number;
+  error: string | null;
 }
 
 /**
@@ -51,14 +30,6 @@ function optionLabel(f: ClipFile): string {
  * preview + a "which clip" label + a [Clear] button.
  * intro/outro are independent file paths unrelated to clipDir (see the schema comment).
  */
-interface UploadState {
-  uploading: boolean;
-  progress: number;
-  error: string | null;
-}
-
-const initialUploadState: UploadState = { uploading: false, progress: 0, error: null };
-
 export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelectClip, onClear }: Props) {
   const [introError, setIntroError] = useState(false);
   const [outroError, setOutroError] = useState(false);
@@ -326,3 +297,32 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
     </div>
   );
 }
+
+function localVideoUrl(path: string): string {
+  return `/api/local-video?path=${encodeURIComponent(path)}`;
+}
+
+/** If it's a clip under clipDir, show just the filename as the "which clip" label; otherwise use the path as-is. */
+function clipLabel(path: string, clipDir: string): string {
+  const normalizedDir = clipDir.replace(/\/+$/, "");
+  return path.startsWith(`${normalizedDir}/`) ? baseName(path) : path;
+}
+
+/** Returns the filename if the intro/outro path matches a file in clipDir's file list, otherwise undefined. */
+function matchedFileName(path: string | null, clipDir: string, files: ClipFile[]): string | undefined {
+  if (!path) {
+    return undefined;
+  }
+  const label = clipLabel(path, clipDir);
+  return files.some((f) => f.name === label) ? label : undefined;
+}
+
+function optionLabel(f: ClipFile): string {
+  if (f.durationS == null) {
+    return `${f.name} (duration unknown)`;
+  }
+  const suffix = f.durationS > INTRO_OUTRO_MAX_DURATION_S ? " · over 15s (not selectable)" : "";
+  return `${f.name} (${f.durationS.toFixed(1)}s)${suffix}`;
+}
+
+const initialUploadState: UploadState = { uploading: false, progress: 0, error: null };

@@ -46,15 +46,9 @@ import { SubtitleStyleSettings, NarrationSettings } from "./components/Finishing
 import { ProjectMetaFields } from "./components/ProjectMetaFields.js";
 import { RenderSettingsDialog } from "./components/RenderSettingsDialog.js";
 
-/** Distance moved per ← / → press (1 frame, based on 30fps). Shift+← / → moves 1 second. */
-const FRAME_SECONDS = 1 / 30;
-
-// When clearing an override, drop the styleOverride key entirely (don't leave the value as null) —
-// null is also schema-valid as "no override" (nullable), but this standardizes on omission
-// (undefined) to avoid leaving an unnecessary "styleOverride": null in the saved file.
-function withoutStyleOverride(segment: Segment): Segment {
-  const { styleOverride: _styleOverride, ...rest } = segment;
-  return rest;
+interface AppProps {
+  themeMode: ThemeModeSetting;
+  onThemeModeChange: (mode: ThemeModeSetting) => void;
 }
 
 type SaveState =
@@ -69,83 +63,14 @@ type RenderState =
   | { status: "success"; path: string }
   | { status: "error"; error: string };
 
-/** Render progress polling interval (ms). */
-const RENDER_POLL_INTERVAL_MS = 1500;
-
-const newBgmCue = (): BgmCue => ({
-  file: "",
-  start: 0,
-  end: 1,
-  volume: 1,
-});
-
-
-/** Max number of past snapshots kept in the undo history. */
-const HISTORY_LIMIT = 50;
-
-/** Debounce interval (ms) for merging continuous edits (subtitle typing, trim handle dragging, etc.) into one batch. */
-const BURST_DEBOUNCE_MS = 500;
-
 interface HistoryEntry {
   cuesheet: CueSheet;
   selectedIndex: number;
 }
 
-/** localStorage key remembering the "don't burn subtitles (clean video for CC)" checkbox state. */
-const NO_BURN_SUBTITLES_KEY = "cuesheet-render-no-burn-subtitles";
-
-function loadNoBurnSubtitles(): boolean {
-  try {
-    return localStorage.getItem(NO_BURN_SUBTITLES_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-/** localStorage key holding a temporary snapshot of unsaved edits. Separated per cuesheet (project name). */
-const DRAFT_SNAPSHOT_PREFIX = "cuesheet-draft-snapshot:";
-
-function draftSnapshotKey(projectName: string): string {
-  return `${DRAFT_SNAPSHOT_PREFIX}${projectName}`;
-}
-
 interface DraftSnapshot {
   cuesheet: CueSheet;
   savedAt: number;
-}
-
-function loadDraftSnapshot(projectName: string): DraftSnapshot | null {
-  try {
-    const raw = localStorage.getItem(draftSnapshotKey(projectName));
-    if (!raw) {
-      return null;
-    }
-    return JSON.parse(raw) as DraftSnapshot;
-  } catch {
-    return null;
-  }
-}
-
-/** Human-readable elapsed time like "3 min ago" - used in the restore banner text. */
-function minutesAgoLabel(savedAt: number): string {
-  const minutes = Math.max(0, Math.round((Date.now() - savedAt) / 60000));
-  if (minutes === 0) {
-    return "just now";
-  }
-  return `${minutes} min ago`;
-}
-
-function clearDraftSnapshot(projectName: string): void {
-  try {
-    localStorage.removeItem(draftSnapshotKey(projectName));
-  } catch {
-    // Silently ignore if localStorage is inaccessible (best-effort feature).
-  }
-}
-
-interface AppProps {
-  themeMode: ThemeModeSetting;
-  onThemeModeChange: (mode: ThemeModeSetting) => void;
 }
 
 export function App({ themeMode, onThemeModeChange }: AppProps) {
@@ -1403,3 +1328,77 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     </div>
   );
 }
+
+// When clearing an override, drop the styleOverride key entirely (don't leave the value as null) —
+// null is also schema-valid as "no override" (nullable), but this standardizes on omission
+// (undefined) to avoid leaving an unnecessary "styleOverride": null in the saved file.
+function withoutStyleOverride(segment: Segment): Segment {
+  const { styleOverride: _styleOverride, ...rest } = segment;
+  return rest;
+}
+
+const newBgmCue = (): BgmCue => ({
+  file: "",
+  start: 0,
+  end: 1,
+  volume: 1,
+});
+
+function loadNoBurnSubtitles(): boolean {
+  try {
+    return localStorage.getItem(NO_BURN_SUBTITLES_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function draftSnapshotKey(projectName: string): string {
+  return `${DRAFT_SNAPSHOT_PREFIX}${projectName}`;
+}
+
+function loadDraftSnapshot(projectName: string): DraftSnapshot | null {
+  try {
+    const raw = localStorage.getItem(draftSnapshotKey(projectName));
+    if (!raw) {
+      return null;
+    }
+    return JSON.parse(raw) as DraftSnapshot;
+  } catch {
+    return null;
+  }
+}
+
+/** Human-readable elapsed time like "3 min ago" - used in the restore banner text. */
+function minutesAgoLabel(savedAt: number): string {
+  const minutes = Math.max(0, Math.round((Date.now() - savedAt) / 60000));
+  if (minutes === 0) {
+    return "just now";
+  }
+  return `${minutes} min ago`;
+}
+
+function clearDraftSnapshot(projectName: string): void {
+  try {
+    localStorage.removeItem(draftSnapshotKey(projectName));
+  } catch {
+    // Silently ignore if localStorage is inaccessible (best-effort feature).
+  }
+}
+
+/** Distance moved per ← / → press (1 frame, based on 30fps). Shift+← / → moves 1 second. */
+const FRAME_SECONDS = 1 / 30;
+
+/** Render progress polling interval (ms). */
+const RENDER_POLL_INTERVAL_MS = 1500;
+
+/** Max number of past snapshots kept in the undo history. */
+const HISTORY_LIMIT = 50;
+
+/** Debounce interval (ms) for merging continuous edits (subtitle typing, trim handle dragging, etc.) into one batch. */
+const BURST_DEBOUNCE_MS = 500;
+
+/** localStorage key remembering the "don't burn subtitles (clean video for CC)" checkbox state. */
+const NO_BURN_SUBTITLES_KEY = "cuesheet-render-no-burn-subtitles";
+
+/** localStorage key holding a temporary snapshot of unsaved edits. Separated per cuesheet (project name). */
+const DRAFT_SNAPSHOT_PREFIX = "cuesheet-draft-snapshot:";

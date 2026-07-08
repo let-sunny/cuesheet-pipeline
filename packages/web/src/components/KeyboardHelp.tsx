@@ -5,21 +5,6 @@ interface Props {
   onToggle: () => void;
 }
 
-const SHORTCUTS: Array<[string, string]> = [
-  ["Space", "Play / pause"],
-  ["L", "Play (tap repeatedly for 1x -> 2x -> 4x speed)"],
-  ["K", "Stop"],
-  ["J", "Reverse play (tap repeatedly for 1x -> 2x -> 4x speed, muted)"],
-  ["I / O", "Set current position as range In / Out"],
-  ["← / →", "Move 1 frame"],
-  ["Shift + ← / →", "Move 1 second"],
-  ["↑ / ↓", "Select previous / next cut"],
-  ["Tab / Shift+Tab", "Next / previous cut (moves between fields in write mode)"],
-  ["Cmd/Ctrl + B", "Split at current position"],
-  ["Cmd/Ctrl + J", "Merge with next cut (only when adjacent and same clip)"],
-  ["?", "Toggle this help panel"],
-];
-
 /**
  * The keyboard shortcuts help panel that appears in a corner of the screen. The open/close
  * entry points are the header's [?] button and the ? key (a global shortcut in App.tsx); this
@@ -45,3 +30,18 @@ export function KeyboardHelp({ visible, onToggle }: Props) {
     </div>
   );
 }
+
+const SHORTCUTS: Array<[string, string]> = [
+  ["Space", "Play / pause"],
+  ["L", "Play (tap repeatedly for 1x -> 2x -> 4x speed)"],
+  ["K", "Stop"],
+  ["J", "Reverse play (tap repeatedly for 1x -> 2x -> 4x speed, muted)"],
+  ["I / O", "Set current position as range In / Out"],
+  ["← / →", "Move 1 frame"],
+  ["Shift + ← / →", "Move 1 second"],
+  ["↑ / ↓", "Select previous / next cut"],
+  ["Tab / Shift+Tab", "Next / previous cut (moves between fields in write mode)"],
+  ["Cmd/Ctrl + B", "Split at current position"],
+  ["Cmd/Ctrl + J", "Merge with next cut (only when adjacent and same clip)"],
+  ["?", "Toggle this help panel"],
+];

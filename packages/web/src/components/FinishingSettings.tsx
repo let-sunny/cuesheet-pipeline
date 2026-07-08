@@ -3,16 +3,6 @@ import { Slider } from "@astryxdesign/core/Slider";
 import type { NarrationConfig, SubtitleBackground, SubtitleStyle } from "@cuesheet/schema";
 import { toColorInputValue } from "../lib/subtitleOverlay.js";
 
-const DEFAULT_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75, padding: 8 };
-
-/**
- * Matches the schema's subtitleStyle.margin default (40) — GET /api/cuesheet serves the file
- * as-is without validation, so this is a defensive fallback to safely display this value even
- * when opening an existing cuesheet (from before the margin field was added) that hasn't been
- * saved yet.
- */
-const DEFAULT_MARGIN = 40;
-
 interface SubtitleStyleProps {
   subtitleStyle: SubtitleStyle;
   onSubtitleStyleChange: (patch: Partial<SubtitleStyle>) => void;
@@ -234,3 +224,13 @@ export function NarrationSettings({ narration, onNarrationChange }: NarrationPro
     </div>
   );
 }
+
+const DEFAULT_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75, padding: 8 };
+
+/**
+ * Matches the schema's subtitleStyle.margin default (40) — GET /api/cuesheet serves the file
+ * as-is without validation, so this is a defensive fallback to safely display this value even
+ * when opening an existing cuesheet (from before the margin field was added) that hasn't been
+ * saved yet.
+ */
+const DEFAULT_MARGIN = 40;

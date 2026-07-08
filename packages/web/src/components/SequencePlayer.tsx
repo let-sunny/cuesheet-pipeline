@@ -5,6 +5,7 @@ import { Button } from "@astryxdesign/core/Button";
 import { cropPreviewStyle } from "../lib/cropPreview.js";
 import type { ClipMoments } from "../api.js";
 import { matchSceneInfo } from "../lib/sceneInfo.js";
+import { formatClock, playbackSeconds } from "../lib/segmentTiming.js";
 import {
   mergeSubtitleStyle,
   subtitleBackgroundRgba,
@@ -40,57 +41,6 @@ interface Props {
   /** Close button — exits playthrough mode (the parent tears down the sticky player area). */
   onExit: () => void;
 }
-
-function clipUrl(clip: string): string {
-  return `/clips/${encodeURIComponent(clip)}`;
-}
-
-/**
- * Waits for metadata loading to complete. If the clip is in a format the browser can't decode
- * (e.g. HEVC — proxy generation failed/left corrupted and the original codec is served as-is),
- * loadedmetadata will never fire, so we also listen for the error event and resolve with false
- * to avoid waiting forever. If loading has already failed on this video element before
- * (video.error is set), the event won't fire again, so resolve with false immediately.
- */
-function waitForMetadata(video: HTMLVideoElement): Promise<boolean> {
-  if (video.readyState >= 1) {
-    return Promise.resolve(true);
-  }
-  if (video.error) {
-    return Promise.resolve(false);
-  }
-  return new Promise((resolve) => {
-    const cleanup = () => {
-      video.removeEventListener("loadedmetadata", onReady);
-      video.removeEventListener("error", onError);
-    };
-    const onReady = () => {
-      cleanup();
-      resolve(true);
-    };
-    const onError = () => {
-      cleanup();
-      resolve(false);
-    };
-    video.addEventListener("loadedmetadata", onReady);
-    video.addEventListener("error", onError);
-  });
-}
-
-/** Playback length (seconds) of the segment on the output timeline. Shorter as speed increases. */
-function playbackSeconds(seg: Segment): number {
-  return (seg.out - seg.in) / seg.speed;
-}
-
-function formatClock(totalSeconds: number): string {
-  const safe = Number.isFinite(totalSeconds) && totalSeconds > 0 ? totalSeconds : 0;
-  const m = Math.floor(safe / 60);
-  const s = Math.floor(safe % 60);
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
-
-/** User preview playback rate options. Applied multiplied with the segment's own speed. */
-const RATE_OPTIONS = [1, 1.5, 2] as const;
 
 /**
  * Full playthrough of the entire cut. Plays segments in order (only their in~out range) and
@@ -609,3 +559,42 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
     </div>
   );
 });
+
+function clipUrl(clip: string): string {
+  return `/clips/${encodeURIComponent(clip)}`;
+}
+
+/**
+ * Waits for metadata loading to complete. If the clip is in a format the browser can't decode
+ * (e.g. HEVC — proxy generation failed/left corrupted and the original codec is served as-is),
+ * loadedmetadata will never fire, so we also listen for the error event and resolve with false
+ * to avoid waiting forever. If loading has already failed on this video element before
+ * (video.error is set), the event won't fire again, so resolve with false immediately.
+ */
+function waitForMetadata(video: HTMLVideoElement): Promise<boolean> {
+  if (video.readyState >= 1) {
+    return Promise.resolve(true);
+  }
+  if (video.error) {
+    return Promise.resolve(false);
+  }
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      video.removeEventListener("loadedmetadata", onReady);
+      video.removeEventListener("error", onError);
+    };
+    const onReady = () => {
+      cleanup();
+      resolve(true);
+    };
+    const onError = () => {
+      cleanup();
+      resolve(false);
+    };
+    video.addEventListener("loadedmetadata", onReady);
+    video.addEventListener("error", onError);
+  });
+}
+
+/** User preview playback rate options. Applied multiplied with the segment's own speed. */
+const RATE_OPTIONS = [1, 1.5, 2] as const;

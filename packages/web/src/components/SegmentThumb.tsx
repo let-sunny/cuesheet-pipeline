@@ -1,8 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 
-/** Debounce delay (ms) for applying the t value with a delay so a request isn't fired for every frame during a drag. */
-const DEBOUNCE_MS = 250;
-
 interface Props {
   clip: string;
   /** Timestamp (seconds) to grab the thumbnail from. */
@@ -65,3 +62,6 @@ export function SegmentThumb({ clip, t, className }: Props) {
     </div>
   );
 }
+
+/** Debounce delay (ms) for applying the t value with a delay so a request isn't fired for every frame during a drag. */
+const DEBOUNCE_MS = 250;

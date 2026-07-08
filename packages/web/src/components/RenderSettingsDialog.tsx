@@ -3,22 +3,7 @@ import { Layout, LayoutContent } from "@astryxdesign/core/Layout";
 import { Button } from "@astryxdesign/core/Button";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import type { Project } from "@cuesheet/schema";
-
-/** localStorage key that remembers the resolution preset picked in the dialog (referenced next time it opens). */
-const LAST_RESOLUTION_KEY = "cuesheet-render-last-resolution";
-
-const RESOLUTION_PRESETS = [
-  { label: "1280x720", width: 1280, height: 720 },
-  { label: "1920x1080", width: 1920, height: 1080 },
-  { label: "3840x2160 (4K)", width: 3840, height: 2160 },
-] as const;
-
-function formatDuration(totalSeconds: number): string {
-  const safe = Number.isFinite(totalSeconds) && totalSeconds > 0 ? totalSeconds : 0;
-  const m = Math.floor(safe / 60);
-  const s = Math.round(safe % 60);
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
+import { formatClock } from "../lib/segmentTiming.js";
 
 interface Props {
   isOpen: boolean;
@@ -120,7 +105,7 @@ export function RenderSettingsDialog({
                 <p className="render-dialog-summary-line">Project: {project.name || "(no name)"}</p>
                 <p className="render-dialog-summary-line">Resolution: {project.width}x{project.height}</p>
                 <p className="render-dialog-summary-line">Cuts: {segmentCount}</p>
-                <p className="render-dialog-summary-line">Estimated output length: {formatDuration(outputSeconds)}</p>
+                <p className="render-dialog-summary-line">Estimated output length: {formatClock(outputSeconds, true)}</p>
               </div>
 
               {dirty ? (
@@ -145,3 +130,12 @@ export function RenderSettingsDialog({
     </Dialog>
   );
 }
+
+/** localStorage key that remembers the resolution preset picked in the dialog (referenced next time it opens). */
+const LAST_RESOLUTION_KEY = "cuesheet-render-last-resolution";
+
+const RESOLUTION_PRESETS = [
+  { label: "1280x720", width: 1280, height: 720 },
+  { label: "1920x1080", width: 1920, height: 1080 },
+  { label: "3840x2160 (4K)", width: 3840, height: 2160 },
+] as const;

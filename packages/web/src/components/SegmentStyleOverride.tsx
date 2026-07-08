@@ -5,8 +5,6 @@ import { Button } from "@astryxdesign/core/Button";
 import type { Segment, SubtitleBackground, SubtitleStyle, SubtitleStyleOverride } from "@cuesheet/schema";
 import { toColorInputValue } from "../lib/subtitleOverlay.js";
 
-const DEFAULT_OVERRIDE_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75, padding: 8 };
-
 interface Props {
   segment: Segment;
   /** The actual displayed value (global style) for fields the override omits — used as the starting edit value and the slider display. */
@@ -163,3 +161,5 @@ export function SegmentStyleOverride({
     </div>
   );
 }
+
+const DEFAULT_OVERRIDE_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75, padding: 8 };

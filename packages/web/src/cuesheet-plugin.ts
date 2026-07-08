@@ -215,6 +215,16 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
+/**
+ * Builds a Content-Disposition header value that downloads as fallbackAsciiName in browsers
+ * that only understand the plain `filename` param, and as unicodeName (URI-encoded via the
+ * `filename*` param, RFC 5987) elsewhere — this project's file names are usually Korean, so
+ * unicodeName is normally what actually shows up in the saved file.
+ */
+function contentDispositionHeader(fallbackAsciiName: string, unicodeName: string): string {
+  return `attachment; filename="${fallbackAsciiName}"; filename*=UTF-8''${encodeURIComponent(unicodeName)}`;
+}
+
 // A proxy's file name is the original file name with only the extension unified to .mp4.
 function proxyFileName(originalName: string): string {
   return `${basename(originalName, extname(originalName))}.mp4`;
@@ -906,10 +916,7 @@ export function cuesheetPlugin(): Plugin {
         const srt = buildSrt(result.data);
         const fileName = `${result.data.project.name}.srt`;
         res.setHeader("Content-Type", "application/x-subrip; charset=utf-8");
-        res.setHeader(
-          "Content-Disposition",
-          `attachment; filename="subtitles.srt"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
-        );
+        res.setHeader("Content-Disposition", contentDispositionHeader("subtitles.srt", fileName));
         res.end(srt, "utf8");
       });
 
@@ -1196,10 +1203,7 @@ export function cuesheetPlugin(): Plugin {
         const baseName = lastRenderName ?? "export";
         const fileName = lastRenderBurnSubtitles ? `${baseName}.mp4` : `${baseName} (no subtitles).mp4`;
         res.setHeader("Content-Type", "video/mp4");
-        res.setHeader(
-          "Content-Disposition",
-          `attachment; filename="export.mp4"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
-        );
+        res.setHeader("Content-Disposition", contentDispositionHeader("export.mp4", fileName));
         createReadStream(renderOutputPath).pipe(res);
       });
 

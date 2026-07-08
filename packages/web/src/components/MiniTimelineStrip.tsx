@@ -1,33 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import type { Segment } from "@cuesheet/schema";
+import { clamp } from "../lib/clamp.js";
+import { formatClock, playbackSeconds } from "../lib/segmentTiming.js";
 import { SegmentThumb } from "./SegmentThumb.js";
-
-/** Blocks narrower than this width (px) skip the thumbnail and just keep the color (too narrow to make out anyway). */
-const MIN_THUMB_BLOCK_PX = 24;
-
-/** Zoom factor lower/upper bound. 1 = fit view (matches width). */
-const MIN_ZOOM = 1;
-const MAX_ZOOM = 8;
-/** Zoom factor change per wheel step (Ctrl/Cmd+wheel). */
-const WHEEL_ZOOM_FACTOR = 1.2;
-/** Zoom factor change per +/- button click. */
-const BUTTON_ZOOM_FACTOR = 1.5;
-
-function clampZoom(z: number): number {
-  return Math.min(Math.max(z, MIN_ZOOM), MAX_ZOOM);
-}
-
-/** A segment's playback duration (seconds) on the output timeline. Shorter the faster the speed. */
-function playbackSeconds(seg: Segment): number {
-  return (seg.out - seg.in) / seg.speed;
-}
-
-function formatDuration(totalSeconds: number): string {
-  const m = Math.floor(totalSeconds / 60);
-  const s = Math.round(totalSeconds % 60);
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
 
 interface Props {
   segments: Segment[];
@@ -163,7 +139,22 @@ export function MiniTimelineStrip({ segments, selectedIndex, onSelect, onGoToEdi
           +
         </button>
       </div>
-      <span className="mini-strip-total">{formatDuration(total)}</span>
+      <span className="mini-strip-total">{formatClock(total, true)}</span>
     </div>
   );
 }
+
+function clampZoom(z: number): number {
+  return clamp(z, MIN_ZOOM, MAX_ZOOM);
+}
+
+/** Blocks narrower than this width (px) skip the thumbnail and just keep the color (too narrow to make out anyway). */
+const MIN_THUMB_BLOCK_PX = 24;
+
+/** Zoom factor lower/upper bound. 1 = fit view (matches width). */
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 8;
+/** Zoom factor change per wheel step (Ctrl/Cmd+wheel). */
+const WHEEL_ZOOM_FACTOR = 1.2;
+/** Zoom factor change per +/- button click. */
+const BUTTON_ZOOM_FACTOR = 1.5;

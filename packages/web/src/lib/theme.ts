@@ -1,8 +1,6 @@
 /** Light/dark/system three-way theme toggle state. Maps directly onto @astryxdesign/core's Theme `mode` prop. */
 export type ThemeModeSetting = "system" | "light" | "dark";
 
-const THEME_MODE_KEY = "cuesheet-theme-mode";
-
 /** Reads the theme preference stored in localStorage. Falls back to "system" if missing or corrupted. */
 export function loadThemeMode(): ThemeModeSetting {
   try {
@@ -24,3 +22,5 @@ export function saveThemeMode(mode: ThemeModeSetting): void {
     // Silently ignore if localStorage is inaccessible (best-effort feature).
   }
 }
+
+const THEME_MODE_KEY = "cuesheet-theme-mode";

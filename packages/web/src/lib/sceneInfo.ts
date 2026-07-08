@@ -9,32 +9,6 @@ export type SceneInfo =
   | { kind: "none" };
 
 /**
- * If a segment's in is outside a moment's/speed-range's [start,end] but within this tolerance
- * (seconds), it still counts as a match. Because the rough in-point found by coarse-to-fine search
- * can be off from the real highlight boundary by a few seconds (see STATUS.md), we need tolerant
- * proximity matching instead of exact matching.
- */
-const MATCH_TOLERANCE_S = 3;
-
-const SHOT_TYPE_LABEL: Record<ShotType, string> = {
-  "hand-closeup": "Hand",
-  object: "Object",
-  cat: "Cat",
-  change: "Change",
-  reveal: "Reveal",
-  wearing: "Wearing",
-  other: "Other",
-};
-
-export function shotTypeLabel(shotType: ShotType): string {
-  return SHOT_TYPE_LABEL[shotType];
-}
-
-function withinTolerance(t: number, startS: number, endS: number): boolean {
-  return t >= startS - MATCH_TOLERANCE_S && t <= endS + MATCH_TOLERANCE_S;
-}
-
-/**
  * Finds which moment/speed-range/clip summary in the rough vision reading (moments.json) a segment
  * corresponds to. Matching rule used to show "what scene is this cut" in the edit screen:
  * 1) Same clip file + in falls inside a moment's [inS,outS] (including ± tolerance) -> that memo.
@@ -76,3 +50,29 @@ export function matchSceneInfo(
 
   return { kind: "none" };
 }
+
+export function shotTypeLabel(shotType: ShotType): string {
+  return SHOT_TYPE_LABEL[shotType];
+}
+
+function withinTolerance(t: number, startS: number, endS: number): boolean {
+  return t >= startS - MATCH_TOLERANCE_S && t <= endS + MATCH_TOLERANCE_S;
+}
+
+/**
+ * If a segment's in is outside a moment's/speed-range's [start,end] but within this tolerance
+ * (seconds), it still counts as a match. Because the rough in-point found by coarse-to-fine search
+ * can be off from the real highlight boundary by a few seconds (see STATUS.md), we need tolerant
+ * proximity matching instead of exact matching.
+ */
+const MATCH_TOLERANCE_S = 3;
+
+const SHOT_TYPE_LABEL: Record<ShotType, string> = {
+  "hand-closeup": "Hand",
+  object: "Object",
+  cat: "Cat",
+  change: "Change",
+  reveal: "Reveal",
+  wearing: "Wearing",
+  other: "Other",
+};

@@ -1,8 +1,5 @@
 import type { ClipMoments } from "./api.js";
 
-/** Intro/outro are whole clips that can't have an in/out range set, so clips longer than this are blocked from being assigned. */
-export const INTRO_OUTRO_MAX_DURATION_S = 15;
-
 /** Extracts just the file name in the browser without node:path (handles both path separators). */
 export function baseName(path: string): string {
   const idx = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
@@ -44,3 +41,6 @@ export function computeClipDurations(entries: ClipMoments[]): Record<string, num
   }
   return map;
 }
+
+/** Intro/outro are whole clips that can't have an in/out range set, so clips longer than this are blocked from being assigned. */
+export const INTRO_OUTRO_MAX_DURATION_S = 15;

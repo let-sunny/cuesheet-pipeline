@@ -3,6 +3,7 @@ import type { PointerEvent as ReactPointerEvent } from "react";
 import { Button } from "@astryxdesign/core/Button";
 import type { Crop, Segment, SubtitleStyle } from "@cuesheet/schema";
 import { fetchProxyStatus, type ClipMoments, type ProxyStatus } from "../api.js";
+import { clamp } from "../lib/clamp.js";
 import { cropPreviewStyle } from "../lib/cropPreview.js";
 import { matchSceneInfo, shotTypeLabel } from "../lib/sceneInfo.js";
 import {
@@ -23,10 +24,6 @@ const MIN_GAP = 0.05;
 const SPLIT_MARGIN = 0.2;
 
 type PlayMode = "loop" | "free";
-
-function clamp(v: number, min: number, max: number): number {
-  return Math.min(Math.max(v, min), max);
-}
 
 interface Props {
   segment: Segment | undefined;
