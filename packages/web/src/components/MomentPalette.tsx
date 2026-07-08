@@ -10,16 +10,16 @@ import type { ClipMoments, ShotType } from "../api.js";
 import { INTRO_OUTRO_MAX_DURATION_S, baseName, buildClipPath, computeClipDurations, stem } from "../clipPaths.js";
 
 type Category =
-  | "뜨개구간"
-  | "뜨개"
-  | "고양이"
-  | "리빌"
-  | "재료·소품"
-  | "외출"
-  | "실수"
-  | "착용"
-  | "변화"
-  | "기타";
+  | "knit-range"
+  | "knitting"
+  | "cat"
+  | "reveal"
+  | "materials"
+  | "outing"
+  | "mistake"
+  | "wearing"
+  | "change"
+  | "other";
 
 interface MomentCard {
   key: string;
@@ -34,7 +34,9 @@ interface MomentCard {
 }
 
 /** 비전 판독자가 memo/desc에 남기는 얼굴 노출 위험 태그. 화면 표시에선 배지로
- * 대체하고 원문 텍스트는 제거한다(자막으로도 새 나가지 않게). */
+ * 대체하고 원문 텍스트는 제거한다(자막으로도 새 나가지 않게).
+ * 이 태그는 생성된(한국어) 데이터 안에 실제로 박혀 있는 문자열이라 번역하지 않는다 —
+ * UI 라벨이 아니라 콘텐츠 매칭 마커다. */
 const FACE_TAG = "[얼굴노출]";
 
 function hasFaceTag(memo: string): boolean {
@@ -46,57 +48,55 @@ function stripFaceTag(memo: string): string {
 }
 
 const SHOT_TYPE_CATEGORY: Record<ShotType, Category> = {
-  "hand-closeup": "뜨개",
-  object: "재료·소품",
-  cat: "고양이",
-  change: "변화",
-  reveal: "리빌",
-  wearing: "착용",
-  other: "기타",
+  "hand-closeup": "knitting",
+  object: "materials",
+  cat: "cat",
+  change: "change",
+  reveal: "reveal",
+  wearing: "wearing",
+  other: "other",
 };
 
 /** 카테고리 -> Badge variant. 기존 styles.css category-tag 색 의도를 그대로
- * 보존해 매핑(뜨개구간=teal, 뜨개=blue, 고양이=purple, 재료·소품=green, 실수=red,
- * 착용=pink, 변화=cyan, 기타=gray는 기존 커스텀 태그와 1:1). 리빌/외출은 기존에
+ * 보존해 매핑(knit-range=teal, knitting=blue, cat=purple, materials=green, mistake=red,
+ * wearing=pink, change=cyan, other=gray는 기존 커스텀 태그와 1:1). reveal/outing은 기존에
  * category-tag 전용 커스텀 색(각각 tag-reveal, tag-outing 변수)이었는데 Badge
  * 팔레트엔 그 두 색이 없어 남는 orange/yellow로 접었다. */
 const CATEGORY_META: Record<Category, { label: string; badgeVariant: BadgeVariant }> = {
-  "뜨개구간": { label: "뜨개구간", badgeVariant: "teal" },
-  "뜨개": { label: "뜨개", badgeVariant: "blue" },
-  "고양이": { label: "고양이", badgeVariant: "purple" },
-  "리빌": { label: "리빌", badgeVariant: "orange" },
-  "재료·소품": { label: "재료·소품", badgeVariant: "green" },
-  "외출": { label: "외출", badgeVariant: "yellow" },
-  "실수": { label: "실수", badgeVariant: "red" },
-  "착용": { label: "착용", badgeVariant: "pink" },
-  "변화": { label: "변화", badgeVariant: "cyan" },
+  "knit-range": { label: "Knit range", badgeVariant: "teal" },
+  "knitting": { label: "Knitting", badgeVariant: "blue" },
+  "cat": { label: "Cat", badgeVariant: "purple" },
+  "reveal": { label: "Reveal", badgeVariant: "orange" },
+  "materials": { label: "Materials/props", badgeVariant: "green" },
+  "outing": { label: "Outing", badgeVariant: "yellow" },
+  "mistake": { label: "Mistake", badgeVariant: "red" },
+  "wearing": { label: "Wearing", badgeVariant: "pink" },
+  "change": { label: "Change", badgeVariant: "cyan" },
   // BadgeVariantMap에는 gray가 없어(neutral/info/success/warning/error/blue/cyan/
   // green/orange/pink/purple/red/teal/yellow만 존재) 가장 가까운 neutral로 대체.
-  "기타": { label: "기타", badgeVariant: "neutral" },
+  "other": { label: "Other", badgeVariant: "neutral" },
 };
 
-type StatusFilter = "전체" | "채택만" | "탈락만";
+type StatusFilter = "all" | "in-use" | "excluded";
 
-/* 화면에 보이는 문구(PRD 4절 용어 사전) - 내부 필터 값("채택만"/"탈락만")은 카드
-   판정 로직(inUseCutNumber 등)과 이미 얽혀 있는 코드 식별자라 그대로 두고,
-   사용자에게 보이는 라벨만 "사용 중만"/"자동 제외만"으로 바꾼다. */
+/* 화면에 보이는 문구(PRD 4절 용어 사전, "[All / In use only / Excluded only]"). */
 const STATUS_FILTER_LABEL: Record<StatusFilter, string> = {
-  "전체": "전체",
-  "채택만": "사용 중만",
-  "탈락만": "자동 제외만",
+  "all": "All",
+  "in-use": "In use only",
+  "excluded": "Excluded only",
 };
 
 const CATEGORY_ORDER: Category[] = [
-  "뜨개구간",
-  "뜨개",
-  "고양이",
-  "리빌",
-  "재료·소품",
-  "외출",
-  "실수",
-  "착용",
-  "변화",
-  "기타",
+  "knit-range",
+  "knitting",
+  "cat",
+  "reveal",
+  "materials",
+  "outing",
+  "mistake",
+  "wearing",
+  "change",
+  "other",
 ];
 
 const MISTAKE_PATTERN = /풀|실수|다시\s*뜨/;
@@ -104,10 +104,10 @@ const OUTING_PATTERN = /가게|야외|밖에|거리|걷|매장/;
 
 function categoryFor(shotType: ShotType, memo: string): Category {
   if (MISTAKE_PATTERN.test(memo)) {
-    return "실수";
+    return "mistake";
   }
   if (OUTING_PATTERN.test(memo)) {
-    return "외출";
+    return "outing";
   }
   return SHOT_TYPE_CATEGORY[shotType];
 }
@@ -158,7 +158,7 @@ function buildCards(entries: ClipMoments[]): MomentCard[] {
         clipFolder,
         inS,
         outS,
-        category: "뜨개구간",
+        category: "knit-range",
         memo: r.desc,
         quality: null,
       });
@@ -204,8 +204,8 @@ export function MomentPalette({
   const [moments, setMoments] = useState<ClipMoments[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [frameMap, setFrameMap] = useState<Record<string, string[]>>({});
-  const [selectedCategory, setSelectedCategory] = useState<Category | "전체">("전체");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("전체");
+  const [selectedCategory, setSelectedCategory] = useState<Category | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -263,17 +263,17 @@ export function MomentPalette({
   }, [cards, segments]);
 
   const byCategory =
-    selectedCategory === "전체" ? cards : cards.filter((c) => c.category === selectedCategory);
+    selectedCategory === "all" ? cards : cards.filter((c) => c.category === selectedCategory);
 
   const filtered = byCategory.filter((c) => {
-    if (statusFilter === "전체") {
+    if (statusFilter === "all") {
       return true;
     }
     const inUse = inUseCutNumber.has(c.key);
-    if (statusFilter === "채택만") {
+    if (statusFilter === "in-use") {
       return inUse;
     }
-    // 탈락만: 자동 조립에서 채택되지 않았고(inUse 아님), 품질 미달이거나 얼굴 노출로
+    // excluded: 자동 조립에서 채택되지 않았고(inUse 아님), 품질 미달이거나 얼굴 노출로
     // 걸러진 카드만.
     if (inUse) {
       return false;
@@ -283,7 +283,7 @@ export function MomentPalette({
 
   const handleAdd = (card: MomentCard) => {
     if (hasFaceTag(card.memo)) {
-      const proceed = window.confirm("얼굴 정책 위반 가능 - 화면 조정이 필요할 수 있음");
+      const proceed = window.confirm("May violate the face policy - reframing might be needed");
       if (!proceed) {
         return;
       }
@@ -300,34 +300,34 @@ export function MomentPalette({
   };
 
   if (loadError) {
-    return <div className="moment-palette status">장면 후보를 불러오지 못했습니다: {loadError}</div>;
+    return <div className="moment-palette status">Couldn't load scene candidates: {loadError}</div>;
   }
   if (!moments) {
-    return <div className="moment-palette status">장면 후보를 불러오는 중…</div>;
+    return <div className="moment-palette status">Loading scene candidates…</div>;
   }
 
   return (
     <div className="moment-palette">
       <div className="moment-palette-header">
-        <span>장면 후보 {cards.length}개</span>
+        <span>Scene candidates ({cards.length})</span>
         <button type="button" onClick={() => setCollapsed((v) => !v)}>
-          {collapsed ? "펼치기" : "접기"}
+          {collapsed ? "Expand" : "Collapse"}
         </button>
       </div>
 
       {collapsed ? null : cards.length === 0 ? (
         <div className="empty-state">
-          아직 장면 후보가 없어요 - <code>pnpm episode</code>로 원본 폴더를 넣어 자동 생성해 보세요.
+          No scene candidates yet - run <code>pnpm episode</code> with a source folder to generate them automatically.
         </div>
       ) : (
         <>
           <div className="moment-filters">
             <button
               type="button"
-              className={selectedCategory === "전체" ? "active" : ""}
-              onClick={() => setSelectedCategory("전체")}
+              className={selectedCategory === "all" ? "active" : ""}
+              onClick={() => setSelectedCategory("all")}
             >
-              전체 ({cards.length})
+              All ({cards.length})
             </button>
             {CATEGORY_ORDER.filter((cat) => (counts.get(cat) ?? 0) > 0).map((cat) => (
               <button
@@ -342,7 +342,7 @@ export function MomentPalette({
           </div>
 
           <div className="moment-filters moment-status-filters">
-            {(["전체", "채택만", "탈락만"] as const).map((f) => (
+            {(["all", "in-use", "excluded"] as const).map((f) => (
               <button
                 type="button"
                 key={f}
@@ -377,7 +377,7 @@ export function MomentPalette({
               const isIntro = introPath === cardClipPath;
               const isOutro = outroPath === cardClipPath;
               const introOutroDisabledTitle = tooLongForIntroOutro
-                ? `15초를 넘는 클립(추정 ${clipDurationS?.toFixed(1) ?? "?"}s)은 인트로/아웃트로로 쓸 수 없습니다 — 구간 지정 없이 클립 전체가 통째로 삽입되므로 짧은 클립에만 적합합니다.`
+                ? `Clips over 15s (est. ${clipDurationS?.toFixed(1) ?? "?"}s) can't be used as intro/outro — since the whole clip is inserted without a range, this only works for short clips.`
                 : null;
               const statusClass = faceRejected
                 ? " status-rejected-face"
@@ -385,9 +385,9 @@ export function MomentPalette({
                   ? " status-rejected-quality"
                   : "";
               const rejectedLabel = faceRejected
-                ? "자동 제외: 얼굴 노출"
+                ? "Auto-excluded: face exposure"
                 : qualityRejected
-                  ? "자동 제외: 품질 낮음"
+                  ? "Auto-excluded: low quality"
                   : null;
               return (
                 // Card(BaseProps)는 title을 명시적으로 omit하므로(footgun 목록) 카드
@@ -424,7 +424,7 @@ export function MomentPalette({
                       {inUse ? (
                         <Badge
                           variant="success"
-                          label={`사용 중 · 컷 ${cutNumber}`}
+                          label={`In use - cut ${cutNumber}`}
                           className="moment-badge-in-use"
                         />
                       ) : null}
@@ -445,13 +445,13 @@ export function MomentPalette({
                         <Badge variant={meta.badgeVariant} label={meta.label} />
                         <span className="moment-duration">{(card.outS - card.inS).toFixed(1)}s</span>
                         {card.quality != null ? (
-                          <span className="moment-quality">품질 {card.quality}/5</span>
+                          <span className="moment-quality">Quality {card.quality}/5</span>
                         ) : null}
                       </div>
                       <div className="moment-actions-group">
                         <div className="moment-card-actions">
                           <Button
-                            label={inUse ? "담김" : "담기"}
+                            label={inUse ? "Added" : "Add"}
                             variant="primary"
                             size="sm"
                             isDisabled={inUse}
@@ -460,7 +460,7 @@ export function MomentPalette({
                           {/* 사용 안 중일 땐 빼기를 숨기되(자리는 그대로 차지해 카드 높이가
                               담기/빼기 유무와 무관하게 일정하게 유지된다). */}
                           <Button
-                            label="빼기"
+                            label="Remove"
                             variant="destructive"
                             size="sm"
                             isDisabled={!inUse}
@@ -470,26 +470,26 @@ export function MomentPalette({
                         </div>
                         <div className="moment-io-actions">
                           <Button
-                            label={isIntro ? "인트로 지정됨" : "인트로로"}
+                            label={isIntro ? "Intro set" : "Set as intro"}
                             variant="ghost"
                             size="sm"
                             className={`moment-io-button${isIntro ? " active" : ""}`}
                             isDisabled={tooLongForIntroOutro}
                             tooltip={
                               introOutroDisabledTitle ??
-                              "이 클립 전체를 인트로로 지정합니다(구간 지정 불가, 클립 전체 삽입)"
+                              "Sets this whole clip as the intro (no range - the entire clip is inserted)"
                             }
                             onClick={() => onSetIntro(card.clipFileName)}
                           />
                           <Button
-                            label={isOutro ? "아웃트로 지정됨" : "아웃트로로"}
+                            label={isOutro ? "Outro set" : "Set as outro"}
                             variant="ghost"
                             size="sm"
                             className={`moment-io-button${isOutro ? " active" : ""}`}
                             isDisabled={tooLongForIntroOutro}
                             tooltip={
                               introOutroDisabledTitle ??
-                              "이 클립 전체를 아웃트로로 지정합니다(구간 지정 불가, 클립 전체 삽입)"
+                              "Sets this whole clip as the outro (no range - the entire clip is inserted)"
                             }
                             onClick={() => onSetOutro(card.clipFileName)}
                           />

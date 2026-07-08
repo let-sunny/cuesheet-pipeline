@@ -23,7 +23,7 @@ interface Props {
 const THEME_MODE_OPTIONS: Array<{ value: ThemeModeSetting; label: string; icon: ReactNode }> = [
   {
     value: "system",
-    label: "시스템",
+    label: "System",
     icon: (
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <rect x="3" y="4" width="18" height="13" rx="2" />
@@ -33,7 +33,7 @@ const THEME_MODE_OPTIONS: Array<{ value: ThemeModeSetting; label: string; icon: 
   },
   {
     value: "light",
-    label: "라이트",
+    label: "Light",
     icon: (
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <circle cx="12" cy="12" r="4" />
@@ -46,7 +46,7 @@ const THEME_MODE_OPTIONS: Array<{ value: ThemeModeSetting; label: string; icon: 
   },
   {
     value: "dark",
-    label: "다크",
+    label: "Dark",
     icon: (
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" strokeLinejoin="round" />
@@ -65,7 +65,7 @@ function ThemeModeToggle({
   onThemeModeChange: (mode: ThemeModeSetting) => void;
 }) {
   return (
-    <div className="theme-mode-toggle" role="group" aria-label="테마">
+    <div className="theme-mode-toggle" role="group" aria-label="Theme">
       {THEME_MODE_OPTIONS.map((option) => (
         <button
           type="button"
@@ -106,33 +106,33 @@ export function HeaderBar({
   return (
     <div className="header-row">
       <div className="header-title-group">
-        <h1>{projectName || "(이름 없음)"}</h1>
+        <h1>{projectName || "(no name)"}</h1>
         {dirty ? (
-          <span className="dirty-badge" title="저장 버튼을 눌러야 디스크에 반영됩니다">
-            ● 저장 안 됨
+          <span className="dirty-badge" title="Click Save to write it to disk">
+            ● Unsaved
           </span>
         ) : null}
       </div>
       <div className="save-row">
-        <Button label="실행 취소" variant="ghost" isDisabled={!canUndo} onClick={onUndo} />
-        <Button label="다시 실행" variant="ghost" isDisabled={!canRedo} onClick={onRedo} />
+        <Button label="Undo" variant="ghost" isDisabled={!canUndo} onClick={onUndo} />
+        <Button label="Redo" variant="ghost" isDisabled={!canRedo} onClick={onRedo} />
 
         <span className="header-divider" aria-hidden="true" />
 
         <ThemeModeToggle themeMode={themeMode} onThemeModeChange={onThemeModeChange} />
-        <Button label="?" variant="ghost" tooltip="단축키 안내" onClick={onToggleShortcuts} />
+        <Button label="?" variant="ghost" tooltip="Keyboard shortcuts" onClick={onToggleShortcuts} />
 
         <span className="header-divider" aria-hidden="true" />
 
         <Button
-          label={saving ? "저장 중…" : "저장"}
+          label={saving ? "Saving…" : "Save"}
           variant="secondary"
           isDisabled={saving}
-          tooltip={dirty ? "저장 버튼을 눌러야 디스크에 반영됩니다" : undefined}
+          tooltip={dirty ? "Click Save to write it to disk" : undefined}
           onClick={onSave}
         />
         <Button
-          label={rendering ? `내보내는 중… ${renderProgress ?? 0}%` : "내보내기"}
+          label={rendering ? `Exporting… ${renderProgress ?? 0}%` : "Export"}
           variant="primary"
           isDisabled={renderDisabled}
           onClick={onRender}

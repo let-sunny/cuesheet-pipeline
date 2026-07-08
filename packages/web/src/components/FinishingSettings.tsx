@@ -37,11 +37,11 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
 
   return (
     <div className="settings-group settings-group-wide">
-      <h3>자막 스타일 (전역)</h3>
+      <h3>Subtitle style (global)</h3>
 
       {/* 크기·색·외곽선 한 그룹 */}
       <label className="settings-field">
-        <span>폰트</span>
+        <span>Font</span>
         <input
           type="text"
           value={subtitleStyle.font}
@@ -49,7 +49,7 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
         />
       </label>
       <label className="settings-field">
-        <span>크기</span>
+        <span>Size</span>
         <input
           type="number"
           value={subtitleStyle.size}
@@ -62,7 +62,7 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
       </label>
       <label className="settings-field">
         <span>
-          색상 <span className="swatch" style={{ background: subtitleStyle.color }} />
+          Color <span className="swatch" style={{ background: subtitleStyle.color }} />
         </span>
         <div className="color-field-inputs">
           <input
@@ -79,7 +79,7 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
       </label>
       <label className="settings-field">
         <span>
-          외곽선 색상{" "}
+          Outline color{" "}
           <span className="swatch" style={{ background: subtitleStyle.outlineColor }} />
         </span>
         <div className="color-field-inputs">
@@ -96,7 +96,7 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
         </div>
       </label>
       <label className="settings-field">
-        <span>외곽선 두께</span>
+        <span>Outline width</span>
         <input
           type="number"
           value={subtitleStyle.outlineWidth}
@@ -109,12 +109,12 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
       </label>
 
       {/* 배경 박스 한 그룹(토글+색+투명도+여백) */}
-      <CheckboxInput label="배경 박스" value={background != null} onChange={handleBackgroundToggle} />
+      <CheckboxInput label="Background box" value={background != null} onChange={handleBackgroundToggle} />
       {background ? (
         <>
           <label className="settings-field">
             <span>
-              배경 색상 <span className="swatch" style={{ background: background.color }} />
+              Background color <span className="swatch" style={{ background: background.color }} />
             </span>
             <div className="color-field-inputs">
               <input
@@ -130,7 +130,7 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
             </div>
           </label>
           <Slider
-            label="배경 투명도"
+            label="Background opacity"
             value={Math.round(background.opacity * 100)}
             min={0}
             max={100}
@@ -139,7 +139,7 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
             onChange={(v: number) => patchBackground({ opacity: v / 100 })}
           />
           <label className="settings-field">
-            <span>배경 여백(px)</span>
+            <span>Background padding (px)</span>
             <input
               type="number"
               min={0}
@@ -157,7 +157,7 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
       {/* 위치 + 가장자리 여백 한 행 */}
       <div className="qf-row">
         <label className="qf-field field-medium">
-          <span>위치</span>
+          <span>Position</span>
           <select
             value={subtitleStyle.position}
             onChange={(e) =>
@@ -166,13 +166,13 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
               })
             }
           >
-            <option value="bottom">아래</option>
-            <option value="top">위</option>
-            <option value="center">가운데</option>
+            <option value="bottom">Bottom</option>
+            <option value="top">Top</option>
+            <option value="center">Center</option>
           </select>
         </label>
         <Slider
-          label="가장자리 여백"
+          label="Edge margin"
           value={margin}
           min={8}
           max={600}
@@ -183,7 +183,7 @@ export function SubtitleStyleSettings({ subtitleStyle, onSubtitleStyleChange }: 
         />
       </div>
 
-      <p className="settings-note">미리보기는 ② 다듬기의 비디오에서 실시간 확인</p>
+      <p className="settings-note">Preview live in the video on the ② Edit step</p>
     </div>
   );
 }
@@ -197,20 +197,20 @@ interface NarrationProps {
 export function NarrationSettings({ narration, onNarrationChange }: NarrationProps) {
   return (
     <div className="settings-group">
-      <h3>내레이션</h3>
+      <h3>Narration</h3>
       <CheckboxInput
-        label="내레이션 사용"
+        label="Enable narration"
         value={narration?.enabled ?? false}
         onChange={(enabled) => onNarrationChange({ enabled })}
       />
       {narration?.enabled ? (
         <>
           <p className="narration-guide">
-            폴더에 음성 파일(mp3/m4a/wav)을 넣고, 각 컷에서 파일을 선택하면 그 컷 시작에
-            맞춰 믹싱됩니다.
+            Put voice files (mp3/m4a/wav) in the folder, then pick a file on each cut — it's
+            mixed in starting at that cut.
           </p>
           <label className="settings-field wide-input">
-            <span>폴더</span>
+            <span>Folder</span>
             <input
               type="text"
               value={narration.dir}
@@ -219,7 +219,7 @@ export function NarrationSettings({ narration, onNarrationChange }: NarrationPro
             />
           </label>
           <Slider
-            label="전체 볼륨"
+            label="Overall volume"
             value={Math.round(narration.volume * 100)}
             min={0}
             max={100}

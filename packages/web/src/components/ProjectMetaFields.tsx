@@ -10,7 +10,7 @@ export function ProjectMetaFields({ project, onChange }: Props) {
   return (
     <div className="settings-group">
       <label className="settings-field">
-        <span>이름</span>
+        <span>Name</span>
         <input
           type="text"
           value={project.name}
@@ -30,7 +30,7 @@ export function ProjectMetaFields({ project, onChange }: Props) {
         />
       </label>
       <label className="settings-field">
-        <span>너비</span>
+        <span>Width</span>
         <input
           type="number"
           value={project.width}
@@ -43,7 +43,7 @@ export function ProjectMetaFields({ project, onChange }: Props) {
         />
       </label>
       <label className="settings-field">
-        <span>높이</span>
+        <span>Height</span>
         <input
           type="number"
           value={project.height}

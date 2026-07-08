@@ -12,7 +12,7 @@ export function BgmEditor({ bgm, onChange, onAdd, onRemove }: Props) {
   return (
     <div className="bgm-editor">
       {bgm.length === 0 ? (
-        <div className="empty">등록된 배경음악(BGM) 없음</div>
+        <div className="empty">No background music (BGM) added</div>
       ) : (
         <div className="bgm-rows">
           {bgm.map((cue, i) => (
@@ -64,13 +64,13 @@ export function BgmEditor({ bgm, onChange, onAdd, onRemove }: Props) {
                 />
               </label>
               <div className="segment-row-actions">
-                <Button label="삭제" variant="destructive" size="sm" onClick={() => onRemove(i)} />
+                <Button label="Delete" variant="destructive" size="sm" onClick={() => onRemove(i)} />
               </div>
             </div>
           ))}
         </div>
       )}
-      <Button label="배경음악(BGM) 추가" variant="secondary" size="sm" className="add-button" onClick={onAdd} />
+      <Button label="Add background music (BGM)" variant="secondary" size="sm" className="add-button" onClick={onAdd} />
     </div>
   );
 }

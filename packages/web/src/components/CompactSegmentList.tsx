@@ -83,9 +83,9 @@ export function CompactSegmentList({
   return (
     <div className="compact-list">
       {segments.map((seg, i) => {
-        const tooltip = seg.subtitle.trim() !== "" ? `${seg.subtitle.trim()} (${seg.clip || "(파일명 없음)"})` : seg.clip || "(파일명 없음)";
+        const tooltip = seg.subtitle.trim() !== "" ? `${seg.subtitle.trim()} (${seg.clip || "(no filename)"})` : seg.clip || "(no filename)";
         const sceneInfo = matchSceneInfo(seg, moments);
-        const sceneText = sceneInfo.kind === "none" ? "장면 정보 없음" : sceneInfo.memo;
+        const sceneText = sceneInfo.kind === "none" ? "No scene info" : sceneInfo.memo;
         const sceneTooltip =
           sceneInfo.kind === "moment"
             ? `${shotTypeLabel(sceneInfo.shotType)} · ${sceneInfo.memo}`
@@ -107,7 +107,7 @@ export function CompactSegmentList({
                 className="compact-list-subtitle-input"
                 value={seg.subtitle}
                 rows={1}
-                placeholder={seg.clip || "(파일명 없음)"}
+                placeholder={seg.clip || "(no filename)"}
                 title={tooltip}
                 onFocus={() => onSelect(i)}
                 onChange={(e) => {
@@ -126,7 +126,7 @@ export function CompactSegmentList({
                   </span>
                 ) : null}
                 {sceneInfo.kind === "monotonous" ? (
-                  <span className="scene-shot-badge shot-monotonous">빨리감기 컷</span>
+                  <span className="scene-shot-badge shot-monotonous">Timelapse cut</span>
                 ) : null}
                 {sceneText}
               </span>
@@ -135,13 +135,13 @@ export function CompactSegmentList({
               {seg.in.toFixed(1)}~{seg.out.toFixed(1)}s
             </span>
             {seg.styleOverride ? (
-              <span className="compact-list-style-badge" title="이 컷만 자막 스타일이 다릅니다">
-                스타일
+              <span className="compact-list-style-badge" title="This cut has its own subtitle style">
+                Style
               </span>
             ) : null}
             <span
               className={`compact-list-subtitle-dot${seg.subtitle ? " filled" : ""}`}
-              title={seg.subtitle ? "자막 있음" : "자막 없음"}
+              title={seg.subtitle ? "Has subtitle" : "No subtitle"}
             />
             <div className="compact-list-actions">
               <button
@@ -151,7 +151,7 @@ export function CompactSegmentList({
                   onMove(i, -1);
                 }}
                 disabled={i === 0}
-                title="위로"
+                title="Move up"
               >
                 ↑
               </button>
@@ -162,7 +162,7 @@ export function CompactSegmentList({
                   onMove(i, 1);
                 }}
                 disabled={i === segments.length - 1}
-                title="아래로"
+                title="Move down"
               >
                 ↓
               </button>
@@ -173,7 +173,7 @@ export function CompactSegmentList({
                   onRemove(i);
                 }}
                 disabled={segments.length <= 1}
-                title="삭제"
+                title="Delete"
               >
                 ✕
               </button>
@@ -185,9 +185,9 @@ export function CompactSegmentList({
         type="button"
         className="add-button"
         onClick={onAdd}
-        title="선택된 컷을 그 바로 뒤에 복제합니다(같은 클립의 다른 구간을 나눠 쓸 때 유용)"
+        title="Duplicates the selected cut right after it (useful for splitting a long clip into separate cuts)"
       >
-        선택 컷 복제
+        Duplicate selected cut
       </button>
     </div>
   );

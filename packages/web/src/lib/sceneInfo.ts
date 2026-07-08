@@ -16,13 +16,13 @@ export type SceneInfo =
 const MATCH_TOLERANCE_S = 3;
 
 const SHOT_TYPE_LABEL: Record<ShotType, string> = {
-  "hand-closeup": "손",
-  object: "사물",
-  cat: "고양이",
-  change: "변화",
-  reveal: "완성",
-  wearing: "착용",
-  other: "기타",
+  "hand-closeup": "Hand",
+  object: "Object",
+  cat: "Cat",
+  change: "Change",
+  reveal: "Reveal",
+  wearing: "Wearing",
+  other: "Other",
 };
 
 export function shotTypeLabel(shotType: ShotType): string {

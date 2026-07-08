@@ -77,7 +77,7 @@ function runFfmpeg(args: string[]): Promise<{ code: number | null; stderr: strin
       stderr += chunk.toString("utf8");
     });
     proc.on("error", (e) => {
-      res({ code: null, stderr: `ffmpeg 실행 실패(설치되어 있나요?): ${e.message}` });
+      res({ code: null, stderr: `ffmpeg failed to start (is it installed?): ${e.message}` });
     });
     proc.on("exit", (code) => {
       res({ code, stderr });
@@ -270,7 +270,7 @@ async function generateProxies(clipDir: string, log: (msg: string) => void): Pro
     const target = targets[i]!;
     const name = basename(target.src);
     proxyQueueState = { pending: targets.slice(i + 1).map((t) => basename(t.src)), generating: name };
-    log(`프록시 생성 중 (${i + 1}/${total}): ${name}`);
+    log(`Generating proxy (${i + 1}/${total}): ${name}`);
 
     // 최대 2회 시도: 생성 후(rename 전) ffprobe로 duration을 검증해 손상 파일이면
     // 지우고 재시도, 두 번째도 손상이면 로그만 남기고 건너뛴다(원본으로 폴백 서빙).
@@ -302,22 +302,22 @@ async function generateProxies(clipDir: string, log: (msg: string) => void): Pro
         target.tmpPath,
       ]);
       if (code !== 0) {
-        console.error(`프록시 생성 실패, 원본으로 계속 서빙합니다: ${name}\n${stderr.slice(-500)}`);
+        console.error(`Proxy generation failed, continuing to serve the original: ${name}\n${stderr.slice(-500)}`);
         break;
       }
       if (!(await isValidVideoFile(target.tmpPath))) {
         await rm(target.tmpPath, { force: true }).catch(() => {});
         if (attempt < 2) {
-          console.error(`프록시 생성 결과가 손상됨, 재시도합니다 (${attempt}/2): ${name}`);
+          console.error(`Proxy output is corrupted, retrying (${attempt}/2): ${name}`);
           continue;
         }
-        console.error(`프록시 생성 결과가 재시도 후에도 손상됨, 건너뜁니다: ${name}`);
+        console.error(`Proxy output is still corrupted after retry, skipping: ${name}`);
         break;
       }
       try {
         await rename(target.tmpPath, target.proxyPath);
       } catch (e) {
-        console.error(`프록시 파일 이동 실패: ${name}`, e);
+        console.error(`Failed to move proxy file: ${name}`, e);
       }
       break;
     }
@@ -439,7 +439,7 @@ export function cuesheetPlugin(): Plugin {
           } catch {
             res.statusCode = 404;
             res.setHeader("Content-Type", "text/plain; charset=utf-8");
-            res.end("아직 초안이 없어요 - pnpm episode로 원본 폴더를 넣어 자동 생성해 보세요.");
+            res.end("No draft yet - run pnpm episode with a source folder to generate one automatically.");
           }
           return;
         }
@@ -452,7 +452,7 @@ export function cuesheetPlugin(): Plugin {
           } catch {
             sendJson(res, 400, {
               ok: false,
-              errors: ["(root): 요청 본문이 올바른 JSON이 아닙니다"],
+              errors: ["(root): request body is not valid JSON"],
             });
             return;
           }
@@ -474,7 +474,7 @@ export function cuesheetPlugin(): Plugin {
             sendJson(res, 400, {
               ok: false,
               errors: [
-                `저장 시스템이 갱신돼야 해요 - 서버를 재시작한 뒤 다시 시도해 주세요 (유실 필드: ${lostPaths.join(", ")})`,
+                `The save system needs an update - restart the server and try again (lost fields: ${lostPaths.join(", ")})`,
               ],
             });
             return;
@@ -489,7 +489,7 @@ export function cuesheetPlugin(): Plugin {
 
         res.statusCode = 405;
         res.setHeader("Content-Type", "text/plain; charset=utf-8");
-        res.end("허용되지 않는 메서드입니다");
+        res.end("Method not allowed");
       });
 
       server.middlewares.use("/clips", async (req, res) => {
@@ -501,7 +501,7 @@ export function cuesheetPlugin(): Plugin {
         if (!decoded || decoded !== basename(decoded)) {
           res.statusCode = 400;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("잘못된 파일명입니다");
+          res.end("Invalid filename");
           return;
         }
         // ?original=1 이면 프록시가 있어도 항상 원본을 서빙한다(렌더 검증용 escape hatch).
@@ -512,13 +512,13 @@ export function cuesheetPlugin(): Plugin {
           const raw = await readFile(filePath, "utf8");
           const cuesheet = JSON.parse(raw) as { clipDir?: unknown };
           if (typeof cuesheet.clipDir !== "string" || cuesheet.clipDir.length === 0) {
-            throw new Error("clipDir 없음");
+            throw new Error("clipDir missing");
           }
           clipDir = resolveRepoPath(cuesheet.clipDir);
         } catch {
           res.statusCode = 404;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("클립을 찾을 수 없습니다");
+          res.end("Clip not found");
           return;
         }
 
@@ -533,7 +533,7 @@ export function cuesheetPlugin(): Plugin {
         } else {
           res.statusCode = 404;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("클립을 찾을 수 없습니다");
+          res.end("Clip not found");
           return;
         }
 
@@ -579,7 +579,7 @@ export function cuesheetPlugin(): Plugin {
         if (req.method !== "GET") {
           res.statusCode = 405;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("허용되지 않는 메서드입니다");
+          res.end("Method not allowed");
           return;
         }
 
@@ -601,7 +601,7 @@ export function cuesheetPlugin(): Plugin {
           if (!narrationDir || rawSub !== basename(rawSub)) {
             res.statusCode = 404;
             res.setHeader("Content-Type", "text/plain; charset=utf-8");
-            res.end("파일을 찾을 수 없습니다");
+            res.end("File not found");
             return;
           }
           const mime = narrationAudioMimeTypes[extname(rawSub).toLowerCase()];
@@ -609,7 +609,7 @@ export function cuesheetPlugin(): Plugin {
           if (!mime || !isWithin(narrationDir, targetPath) || !existsSync(targetPath)) {
             res.statusCode = 404;
             res.setHeader("Content-Type", "text/plain; charset=utf-8");
-            res.end("파일을 찾을 수 없습니다");
+            res.end("File not found");
             return;
           }
           const stats = await stat(targetPath);
@@ -623,7 +623,7 @@ export function cuesheetPlugin(): Plugin {
         if (!narrationDir) {
           sendJson(res, 200, {
             files: [],
-            note: "내레이션 폴더가 설정되지 않았습니다(내레이션 사용을 켜고 폴더를 지정하세요)",
+            note: "Narration folder is not set (enable narration and specify a folder)",
           });
           return;
         }
@@ -633,7 +633,7 @@ export function cuesheetPlugin(): Plugin {
         } catch {
           sendJson(res, 200, {
             files: [],
-            note: `폴더를 찾을 수 없습니다: ${narrationDir} (폴더를 만들고 오디오 파일을 넣어주세요)`,
+            note: `Folder not found: ${narrationDir} (create the folder and add audio files)`,
           });
           return;
         }
@@ -655,7 +655,7 @@ export function cuesheetPlugin(): Plugin {
         if (req.method !== "GET") {
           res.statusCode = 405;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("허용되지 않는 메서드입니다");
+          res.end("Method not allowed");
           return;
         }
         let clipDir: string;
@@ -663,11 +663,11 @@ export function cuesheetPlugin(): Plugin {
           const raw = await readFile(filePath, "utf8");
           const cuesheet = JSON.parse(raw) as { clipDir?: unknown };
           if (typeof cuesheet.clipDir !== "string" || cuesheet.clipDir.length === 0) {
-            throw new Error("clipDir 없음");
+            throw new Error("clipDir missing");
           }
           clipDir = resolveRepoPath(cuesheet.clipDir);
         } catch {
-          sendJson(res, 200, { files: [], note: "clipDir이 설정되지 않았습니다" });
+          sendJson(res, 200, { files: [], note: "clipDir is not set" });
           return;
         }
         let entries: string[];
@@ -676,7 +676,7 @@ export function cuesheetPlugin(): Plugin {
         } catch {
           sendJson(res, 200, {
             files: [],
-            note: `폴더를 찾을 수 없습니다: ${clipDir} (iCloud 폴더 이름 변경/이동 등으로 경로가 끊겼을 수 있습니다)`,
+            note: `Folder not found: ${clipDir} (the path may be broken due to an iCloud folder rename/move, etc.)`,
           });
           return;
         }
@@ -708,7 +708,7 @@ export function cuesheetPlugin(): Plugin {
         if (req.method !== "GET") {
           res.statusCode = 405;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("허용되지 않는 메서드입니다");
+          res.end("Method not allowed");
           return;
         }
         const rawQuery = (req.url ?? "").split("?")[1] ?? "";
@@ -716,7 +716,7 @@ export function cuesheetPlugin(): Plugin {
         if (!requestedPath) {
           res.statusCode = 400;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("path 쿼리가 필요합니다");
+          res.end("path query parameter is required");
           return;
         }
         const mime = clipMimeTypes[extname(requestedPath).toLowerCase()];
@@ -724,7 +724,7 @@ export function cuesheetPlugin(): Plugin {
         if (!mime || !existsSync(targetPath)) {
           res.statusCode = 404;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("파일을 찾을 수 없습니다");
+          res.end("File not found");
           return;
         }
 
@@ -766,7 +766,7 @@ export function cuesheetPlugin(): Plugin {
         if (req.method !== "GET") {
           res.statusCode = 405;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("허용되지 않는 메서드입니다");
+          res.end("Method not allowed");
           return;
         }
 
@@ -777,7 +777,7 @@ export function cuesheetPlugin(): Plugin {
         } catch {
           res.statusCode = 404;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("큐시트 파일을 찾을 수 없습니다");
+          res.end("Cuesheet file not found");
           return;
         }
 
@@ -805,7 +805,7 @@ export function cuesheetPlugin(): Plugin {
         if (req.method !== "GET") {
           res.statusCode = 405;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("허용되지 않는 메서드입니다");
+          res.end("Method not allowed");
           return;
         }
         sendJson(res, 200, {
@@ -820,12 +820,12 @@ export function cuesheetPlugin(): Plugin {
         if (req.method !== "POST") {
           res.statusCode = 405;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("허용되지 않는 메서드입니다");
+          res.end("Method not allowed");
           return;
         }
 
         if (renderInProgress) {
-          sendJson(res, 409, { ok: false, error: "이미 렌더가 진행 중입니다" });
+          sendJson(res, 409, { ok: false, error: "A render is already in progress" });
           return;
         }
 
@@ -850,7 +850,7 @@ export function cuesheetPlugin(): Plugin {
         } catch {
           sendJson(res, 400, {
             ok: false,
-            error: "(root): 큐시트 파일을 읽거나 파싱할 수 없습니다",
+            error: "(root): could not read or parse the cuesheet file",
           });
           return;
         }
@@ -890,7 +890,7 @@ export function cuesheetPlugin(): Plugin {
           renderJob = {
             state: "error",
             progress: renderJob.progress,
-            error: `ffmpeg 실행 실패(설치되어 있나요?): ${e.message}`,
+            error: `ffmpeg failed to start (is it installed?): ${e.message}`,
           };
         });
         proc.on("exit", (code) => {
@@ -909,7 +909,7 @@ export function cuesheetPlugin(): Plugin {
         if (req.method !== "GET") {
           res.statusCode = 405;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("허용되지 않는 메서드입니다");
+          res.end("Method not allowed");
           return;
         }
         sendJson(res, 200, proxyQueueState);
@@ -919,7 +919,7 @@ export function cuesheetPlugin(): Plugin {
         if (req.method !== "GET") {
           res.statusCode = 405;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("허용되지 않는 메서드입니다");
+          res.end("Method not allowed");
           return;
         }
         const p = momentsPath();
@@ -930,7 +930,7 @@ export function cuesheetPlugin(): Plugin {
         } catch {
           res.statusCode = 404;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end(`순간 데이터 파일을 찾을 수 없습니다: ${p}`);
+          res.end(`Moment data file not found: ${p}`);
         }
       });
 
@@ -939,7 +939,7 @@ export function cuesheetPlugin(): Plugin {
         if (req.method !== "GET") {
           res.statusCode = 405;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("허용되지 않는 메서드입니다");
+          res.end("Method not allowed");
           return;
         }
         const rawPath = decodeURIComponent(
@@ -949,13 +949,13 @@ export function cuesheetPlugin(): Plugin {
         if (!rawPath || !isWithin(framesRoot, target) || extname(target).toLowerCase() !== ".jpg") {
           res.statusCode = 400;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("잘못된 경로입니다");
+          res.end("Invalid path");
           return;
         }
         if (!existsSync(target)) {
           res.statusCode = 404;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("프레임을 찾을 수 없습니다");
+          res.end("Frame not found");
           return;
         }
         res.setHeader("Content-Type", "image/jpeg");
@@ -967,7 +967,7 @@ export function cuesheetPlugin(): Plugin {
         if (req.method !== "GET") {
           res.statusCode = 405;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("허용되지 않는 메서드입니다");
+          res.end("Method not allowed");
           return;
         }
         const folder = decodeURIComponent(
@@ -977,7 +977,7 @@ export function cuesheetPlugin(): Plugin {
         if (!folder || folder.includes("/") || !isWithin(framesRoot, target)) {
           res.statusCode = 400;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("잘못된 클립 폴더입니다");
+          res.end("Invalid clip folder");
           return;
         }
         let entries: string[];
@@ -1003,7 +1003,7 @@ export function cuesheetPlugin(): Plugin {
         if (req.method !== "GET") {
           res.statusCode = 405;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("허용되지 않는 메서드입니다");
+          res.end("Method not allowed");
           return;
         }
         const rawQuery = (req.url ?? "").split("?")[1] ?? "";
@@ -1024,7 +1024,7 @@ export function cuesheetPlugin(): Plugin {
         ) {
           res.statusCode = 400;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("잘못된 요청입니다");
+          res.end("Invalid request");
           return;
         }
 
@@ -1043,7 +1043,7 @@ export function cuesheetPlugin(): Plugin {
         if (!existsSync(proxyPath)) {
           res.statusCode = 404;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("프록시가 없어 썸네일을 만들 수 없습니다");
+          res.end("No proxy available, can't generate thumbnail");
           return;
         }
 
@@ -1052,7 +1052,7 @@ export function cuesheetPlugin(): Plugin {
         if (!ok || !existsSync(cachePath)) {
           res.statusCode = 500;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("썸네일 생성 실패");
+          res.end("Thumbnail generation failed");
           return;
         }
 
@@ -1064,14 +1064,14 @@ export function cuesheetPlugin(): Plugin {
         if (req.method !== "GET") {
           res.statusCode = 405;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("허용되지 않는 메서드입니다");
+          res.end("Method not allowed");
           return;
         }
 
         if (!existsSync(renderOutputPath)) {
           res.statusCode = 404;
           res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.end("렌더 결과물을 찾을 수 없습니다");
+          res.end("Render output not found");
           return;
         }
 

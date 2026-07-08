@@ -6,18 +6,18 @@ interface Props {
 }
 
 const SHORTCUTS: Array<[string, string]> = [
-  ["Space", "재생 / 정지"],
-  ["L", "재생(연타 시 1x → 2x → 4x 배속)"],
-  ["K", "정지"],
-  ["J", "역재생(연타 시 1x → 2x → 4x 배속, 음소거)"],
-  ["I / O", "현재 위치를 구간 시작 / 끝으로"],
-  ["← / →", "1프레임 이동"],
-  ["Shift + ← / →", "1초 이동"],
-  ["↑ / ↓", "이전 / 다음 컷 선택"],
-  ["Tab / Shift+Tab", "다음 / 이전 컷 (몰아쓰기 모드에선 입력창 이동)"],
-  ["Cmd/Ctrl + B", "현재 위치에서 분할"],
-  ["Cmd/Ctrl + J", "다음 컷과 합치기(인접한 같은 클립일 때만)"],
-  ["?", "이 안내 접기/펼치기"],
+  ["Space", "Play / pause"],
+  ["L", "Play (tap repeatedly for 1x -> 2x -> 4x speed)"],
+  ["K", "Stop"],
+  ["J", "Reverse play (tap repeatedly for 1x -> 2x -> 4x speed, muted)"],
+  ["I / O", "Set current position as range In / Out"],
+  ["← / →", "Move 1 frame"],
+  ["Shift + ← / →", "Move 1 second"],
+  ["↑ / ↓", "Select previous / next cut"],
+  ["Tab / Shift+Tab", "Next / previous cut (moves between fields in write mode)"],
+  ["Cmd/Ctrl + B", "Split at current position"],
+  ["Cmd/Ctrl + J", "Merge with next cut (only when adjacent and same clip)"],
+  ["?", "Toggle this help panel"],
 ];
 
 /**
@@ -40,7 +40,7 @@ export function KeyboardHelp({ visible, onToggle }: Props) {
           </li>
         ))}
       </ul>
-      <Button label="닫기" variant="ghost" size="sm" className="keyboard-help-toggle" onClick={onToggle} />
+      <Button label="Close" variant="ghost" size="sm" className="keyboard-help-toggle" onClick={onToggle} />
     </div>
   );
 }

@@ -366,7 +366,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
       return;
     }
     if (currentTime >= segment.out - MIN_GAP) {
-      showNotice("IN은 OUT보다 앞서야 합니다");
+      showNotice("In must come before Out");
       return;
     }
     onChange({ in: currentTime });
@@ -377,7 +377,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
       return;
     }
     if (currentTime <= segment.in + MIN_GAP) {
-      showNotice("OUT은 IN보다 뒤여야 합니다");
+      showNotice("Out must come after In");
       return;
     }
     onChange({ out: currentTime });
@@ -388,7 +388,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
       return;
     }
     if (currentTime - segment.in < SPLIT_MARGIN || segment.out - currentTime < SPLIT_MARGIN) {
-      showNotice("경계와 너무 가까워 분할할 수 없습니다");
+      showNotice("Too close to the edge to split");
       return;
     }
     onSplit(currentTime);
@@ -475,7 +475,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   );
 
   if (!segment) {
-    return <div className="video-preview empty">컷을 선택하세요</div>;
+    return <div className="video-preview empty">Select a cut</div>;
   }
 
   const timeAtClientX = (clientX: number): number => {
@@ -523,12 +523,12 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
 
   const pct = (t: number): number => (duration > 0 ? clamp((t / duration) * 100, 0, 100) : 0);
 
-  const subtitleSummary = segment.subtitle.trim() !== "" ? segment.subtitle.trim() : "(자막 없음)";
+  const subtitleSummary = segment.subtitle.trim() !== "" ? segment.subtitle.trim() : "(no subtitle)";
   // 이 컷만의 스타일 오버라이드가 있으면 전역 subtitleStyle에 병합한 결과를 오버레이에 쓴다
   // (렌더/미리보기 모두 같은 병합 규칙 — subtitleOverlay.ts 참고).
   const effectiveSubtitleStyle = mergeSubtitleStyle(subtitleStyle, segment.styleOverride);
   const sceneInfo = matchSceneInfo(segment, moments);
-  const sceneText = sceneInfo.kind === "none" ? "장면 정보 없음" : sceneInfo.memo;
+  const sceneText = sceneInfo.kind === "none" ? "No scene info" : sceneInfo.memo;
 
   const pendingIndex = proxyStatus ? proxyStatus.pending.indexOf(segment.clip) : -1;
   const isGeneratingProxy = proxyStatus?.generating === segment.clip;
@@ -548,23 +548,23 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
             </span>
           ) : null}
           {sceneInfo.kind === "monotonous" ? (
-            <span className="scene-shot-badge shot-monotonous">빨리감기 컷</span>
+            <span className="scene-shot-badge shot-monotonous">Timelapse cut</span>
           ) : null}
-          <span className="video-context-scene-label">장면</span>
+          <span className="video-context-scene-label">Scene</span>
           <span className="video-context-scene-text">{sceneText}</span>
         </div>
         <div className="video-context-line" title={subtitleSummary}>
-          자막 {subtitleSummary} · {segment.in.toFixed(1)}s~{segment.out.toFixed(1)}s
+          Subtitle {subtitleSummary} · {segment.in.toFixed(1)}s~{segment.out.toFixed(1)}s
         </div>
       </div>
       {isPreparingProxy ? (
         <div className="notice proxy-preparing">
-          영상 준비 중이에요 - 곧 자동 재생됩니다 (
-          {isGeneratingProxy ? "지금 처리 중" : `${pendingIndex + 1}번째 순서 대기`})
+          Preparing video — will play automatically in a moment (
+          {isGeneratingProxy ? "processing now" : `#${pendingIndex + 1} in line`})
         </div>
       ) : null}
       {!isPreparingProxy && (missing || segment.clip === "") ? (
-        <div className="empty">원본을 찾을 수 없어요: {segment.clip || "(파일명 없음)"}</div>
+        <div className="empty">Can't find the source: {segment.clip || "(no filename)"}</div>
       ) : isPreparingProxy ? null : (
         <>
           {cropEditDraft ? (
@@ -574,11 +574,11 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
                 {" "}· w {(cropEditDraft.w * 100).toFixed(0)}% · h {(cropEditDraft.h * 100).toFixed(0)}%
               </span>
               <div className="crop-edit-actions">
-                <Button label="전체 프레임" variant="ghost" size="sm" onClick={resetCropEditToFullFrame} />
-                <Button label="적용" variant="primary" size="sm" onClick={applyCropEdit} />
-                <Button label="취소" variant="ghost" size="sm" onClick={cancelCropEdit} />
+                <Button label="Full frame" variant="ghost" size="sm" onClick={resetCropEditToFullFrame} />
+                <Button label="Apply" variant="primary" size="sm" onClick={applyCropEdit} />
+                <Button label="Cancel" variant="ghost" size="sm" onClick={cancelCropEdit} />
                 {segment.crop ? (
-                  <Button label="해제" variant="ghost" size="sm" onClick={clearCropEdit} />
+                  <Button label="Clear" variant="ghost" size="sm" onClick={clearCropEdit} />
                 ) : null}
               </div>
             </div>
@@ -656,15 +656,15 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
           </div>
 
           <div className="time-readout">
-            현재 {currentTime.toFixed(1)}s · 시작 {segment.in.toFixed(1)}s · 끝 {segment.out.toFixed(1)}s
+            Now {currentTime.toFixed(1)}s · In {segment.in.toFixed(1)}s · Out {segment.out.toFixed(1)}s
           </div>
 
           {/* 재생 컨트롤 — 비디오(+스크럽)에 바로 붙는 한 행(screen-spec 3절). */}
           <div className="video-controls-row">
-            <Button label="재생" variant="primary" size="sm" onClick={handlePlay} />
-            <Button label="현재 위치를 시작으로" variant="secondary" size="sm" onClick={handleSetIn} />
-            <Button label="현재 위치를 끝으로" variant="secondary" size="sm" onClick={handleSetOut} />
-            <Button label="분할" variant="secondary" size="sm" onClick={handleSplit} />
+            <Button label="Play" variant="primary" size="sm" onClick={handlePlay} />
+            <Button label="Set In here" variant="secondary" size="sm" onClick={handleSetIn} />
+            <Button label="Set Out here" variant="secondary" size="sm" onClick={handleSetOut} />
+            <Button label="Split" variant="secondary" size="sm" onClick={handleSplit} />
           </div>
 
           <div className="playmode-toggle">
@@ -673,14 +673,14 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
               className={playMode === "loop" ? "active" : ""}
               onClick={() => setPlayMode("loop")}
             >
-              구간 반복
+              Loop range
             </button>
             <button
               type="button"
               className={playMode === "free" ? "active" : ""}
               onClick={() => setPlayMode("free")}
             >
-              클립 전체
+              Full clip
             </button>
           </div>
 

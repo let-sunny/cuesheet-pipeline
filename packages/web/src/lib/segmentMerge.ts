@@ -9,22 +9,22 @@ export const MERGE_ADJACENCY_GAP_S = 2;
 
 export function computeMergeEligibility(draft: CueSheet | null, index: number): MergeEligibility {
   if (!draft) {
-    return { eligible: false, reason: "큐시트가 없습니다" };
+    return { eligible: false, reason: "No cuesheet" };
   }
   const current = draft.segments[index];
   const next = draft.segments[index + 1];
   if (!current) {
-    return { eligible: false, reason: "선택된 컷이 없습니다" };
+    return { eligible: false, reason: "No cut selected" };
   }
   if (!next) {
-    return { eligible: false, reason: "마지막 컷입니다" };
+    return { eligible: false, reason: "This is the last cut" };
   }
   if (current.clip !== next.clip) {
-    return { eligible: false, reason: "다른 클립이라 합칠 수 없습니다" };
+    return { eligible: false, reason: "Different clips can't be merged" };
   }
   const gap = next.in - current.out;
   if (gap >= MERGE_ADJACENCY_GAP_S) {
-    return { eligible: false, reason: `시간상 인접하지 않습니다(간격 ${gap.toFixed(1)}s)` };
+    return { eligible: false, reason: `Not adjacent in time (gap ${gap.toFixed(1)}s)` };
   }
   return { eligible: true };
 }

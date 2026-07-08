@@ -40,14 +40,14 @@ export function SegmentStyleOverride({
   return (
     <div className="qf-style-override">
       <div className="qf-style-override-toggle">
-        <CheckboxInput label="이 컷만 자막 스타일" value={!!override} onChange={onToggle} />
+        <CheckboxInput label="Subtitle style for this cut" value={!!override} onChange={onToggle} />
       </div>
 
       {override ? (
-        <Collapsible trigger="스타일 세부 설정" defaultIsOpen>
+        <Collapsible trigger="Style details" defaultIsOpen>
           <div className="style-override-fields">
             <label className="settings-field">
-              <span>크기</span>
+              <span>Size</span>
               <input
                 type="number"
                 min={1}
@@ -61,7 +61,7 @@ export function SegmentStyleOverride({
 
             <label className="settings-field">
               <span>
-                색상 <span className="swatch" style={{ background: override.color ?? globalStyle.color }} />
+                Color <span className="swatch" style={{ background: override.color ?? globalStyle.color }} />
               </span>
               <div className="color-field-inputs">
                 <input
@@ -79,7 +79,7 @@ export function SegmentStyleOverride({
 
             <label className="settings-field">
               <span>
-                외곽선 색상{" "}
+                Outline color{" "}
                 <span className="swatch" style={{ background: override.outlineColor ?? globalStyle.outlineColor }} />
               </span>
               <div className="color-field-inputs">
@@ -97,7 +97,7 @@ export function SegmentStyleOverride({
             </label>
 
             <CheckboxInput
-              label="배경 박스"
+              label="Background box"
               value={override.background != null}
               onChange={(checked) =>
                 onChangeOverride({
@@ -109,7 +109,7 @@ export function SegmentStyleOverride({
               <>
                 <label className="settings-field">
                   <span>
-                    배경 색상 <span className="swatch" style={{ background: override.background.color }} />
+                    Background color <span className="swatch" style={{ background: override.background.color }} />
                   </span>
                   <div className="color-field-inputs">
                     <input
@@ -129,7 +129,7 @@ export function SegmentStyleOverride({
                   </div>
                 </label>
                 <Slider
-                  label="배경 투명도"
+                  label="Background opacity"
                   value={Math.round(override.background.opacity * 100)}
                   min={0}
                   max={100}
@@ -143,7 +143,7 @@ export function SegmentStyleOverride({
             ) : null}
 
             <Slider
-              label="가장자리 여백"
+              label="Edge margin"
               value={override.margin ?? globalStyle.margin ?? 40}
               min={8}
               max={600}
@@ -153,8 +153,8 @@ export function SegmentStyleOverride({
             />
 
             <div className="style-override-actions">
-              <Button label="모든 컷에 적용" variant="secondary" size="sm" onClick={onPromote} />
-              <Button label="오버라이드 해제" variant="ghost" size="sm" onClick={onClear} />
+              <Button label="Apply to all cuts" variant="secondary" size="sm" onClick={onPromote} />
+              <Button label="Remove override" variant="ghost" size="sm" onClick={onClear} />
             </div>
           </div>
         </Collapsible>

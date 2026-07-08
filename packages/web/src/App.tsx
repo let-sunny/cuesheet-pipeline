@@ -130,9 +130,9 @@ function loadDraftSnapshot(projectName: string): DraftSnapshot | null {
 function minutesAgoLabel(savedAt: number): string {
   const minutes = Math.max(0, Math.round((Date.now() - savedAt) / 60000));
   if (minutes === 0) {
-    return "방금 전";
+    return "just now";
   }
-  return `${minutes}분 전`;
+  return `${minutes} min ago`;
 }
 
 function clearDraftSnapshot(projectName: string): void {
@@ -262,7 +262,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     setPast((p) => p.slice(0, -1));
     setDraft(last.cuesheet);
     setSelectedIndex(last.selectedIndex);
-    toast({ type: "info", body: "실행 취소됨" });
+    toast({ type: "info", body: "Undone" });
   }, [draft, past, selectedIndex, toast]);
 
   const handleRedo = useCallback(() => {
@@ -302,7 +302,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       return;
     }
     if (next.subtitle.trim() !== "" && next.subtitle.trim() !== current.subtitle.trim()) {
-      const confirmed = window.confirm("다음 컷 자막은 버려집니다. 계속할까요?");
+      const confirmed = window.confirm("The next cut's subtitle will be discarded. Continue?");
       if (!confirmed) {
         return;
       }
@@ -404,7 +404,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       } catch {
         if (!cancelled) {
           setNarrationFiles([]);
-          setNarrationNote("내레이션 파일 목록을 불러오지 못했습니다");
+          setNarrationNote("Couldn't load the narration file list");
         }
       }
     })();
@@ -448,7 +448,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     }
     setDraft(restoreSnapshot.cuesheet);
     setRestoreSnapshot(null);
-    toast({ type: "info", body: "복원됐어요 - 마음에 들면 저장을 눌러 확정하세요." });
+    toast({ type: "info", body: "Restored - click Save to confirm if this looks right." });
   }, [restoreSnapshot, toast]);
 
   const handleDiscardSnapshot = useCallback(() => {
@@ -634,7 +634,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         type: "error",
         body: (
           <div>
-            저장할 수 없어요:
+            Can't save:
             <ul>
               {localCheck.errors.map((err, i) => (
                 <li key={i}>{err}</li>
@@ -654,14 +654,14 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         setSaveState({ status: "success" });
         clearDraftSnapshot(result.data.project.name);
         setRestoreSnapshot(null);
-        toast({ type: "info", body: "저장되었습니다." });
+        toast({ type: "info", body: "Saved." });
       } else {
         setSaveState({ status: "error", errors: result.errors });
         toast({
           type: "error",
           body: (
             <div>
-              저장 실패:
+              Save failed:
               <ul>
                 {result.errors.map((err, i) => (
                   <li key={i}>{err}</li>
@@ -674,7 +674,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setSaveState({ status: "error", errors: [message] });
-      toast({ type: "error", body: `저장하지 못했어요: ${message} - 다시 시도해 주세요.` });
+      toast({ type: "error", body: `Couldn't save: ${message} - please try again.` });
     }
   }, [draft, toast]);
 
@@ -694,11 +694,11 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
           renderPollTimer.current = setTimeout(() => void tick(), RENDER_POLL_INTERVAL_MS);
         } else if (status.state === "done") {
           setRenderState({ status: "success", path: "out.mp4" });
-          toast({ type: "info", body: "내보내기가 완료되었습니다." });
+          toast({ type: "info", body: "Export complete." });
         } else if (status.state === "error") {
-          const message = status.error ?? "알 수 없는 오류";
+          const message = status.error ?? "Unknown error";
           setRenderState({ status: "error", error: message });
-          toast({ type: "error", body: `내보내기 실패: ${message}` });
+          toast({ type: "error", body: `Export failed: ${message}` });
         }
       } catch {
         // 네트워크 일시 오류는 폴링을 이어간다.
@@ -725,12 +725,12 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         pollRenderStatus();
       } else {
         setRenderState({ status: "error", error: result.error });
-        toast({ type: "error", body: `내보내기 실패: ${result.error}` });
+        toast({ type: "error", body: `Export failed: ${result.error}` });
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
       setRenderState({ status: "error", error: message });
-      toast({ type: "error", body: `내보내기 실패: ${message}` });
+      toast({ type: "error", body: `Export failed: ${message}` });
     }
   }, [toast, pollRenderStatus, noBurnSubtitles]);
 
@@ -1086,7 +1086,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       return;
     }
     const confirmed = window.confirm(
-      "이 컷의 자막 스타일을 모든 컷에 적용할까요? 이 컷만의 스타일 설정은 사라집니다.",
+      "Apply this cut's subtitle style to all cuts? This cut's individual style will be removed.",
     );
     if (!confirmed) {
       return;
@@ -1108,7 +1108,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
 
   const handleDownloadSrt = useCallback(() => {
     if (dirty) {
-      toast({ type: "info", body: "먼저 저장한 뒤 다운로드할 수 있습니다." });
+      toast({ type: "info", body: "Save first before downloading." });
       return;
     }
     window.location.href = "/api/subtitles.srt";
@@ -1128,10 +1128,10 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     if (loadError.kind === "not-found") {
       return <div className="status empty-state">{loadError.message}</div>;
     }
-    return <div className="status">불러오기 실패: {loadError.message}</div>;
+    return <div className="status">Failed to load: {loadError.message}</div>;
   }
   if (!draft) {
-    return <div className="status">큐시트를 불러오는 중…</div>;
+    return <div className="status">Loading cuesheet…</div>;
   }
 
   const selectedSegment = draft.segments[selectedIndex];
@@ -1162,16 +1162,16 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
 
       {externalChangePending ? (
         <div className="banner">
-          다른 곳에서 큐시트가 바뀌었어요 - 지금 화면의 편집 내용을 버리고 새로 불러올까요?
-          <Button label="다시 불러오기" variant="secondary" size="sm" onClick={handleReload} />
+          The cuesheet changed elsewhere - discard what's on screen and reload?
+          <Button label="Reload" variant="secondary" size="sm" onClick={handleReload} />
         </div>
       ) : null}
 
       {restoreSnapshot ? (
         <div className="banner">
-          지난 세션에서 저장하지 않은 편집이 있어요 (마지막 수정 {minutesAgoLabel(restoreSnapshot.savedAt)}).
-          <Button label="이어서 편집" variant="secondary" size="sm" onClick={handleRestoreSnapshot} />
-          <Button label="버리고 저장본으로" variant="ghost" size="sm" onClick={handleDiscardSnapshot} />
+          You have unsaved edits from the last session (last edited {minutesAgoLabel(restoreSnapshot.savedAt)}).
+          <Button label="Continue editing" variant="secondary" size="sm" onClick={handleRestoreSnapshot} />
+          <Button label="Discard and use saved" variant="ghost" size="sm" onClick={handleDiscardSnapshot} />
         </div>
       ) : null}
 
@@ -1194,7 +1194,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
           onGoToEdit={goToEdit}
         />
         <Button
-          label="전체 재생"
+          label="Play all"
           variant="secondary"
           isDisabled={draft.segments.length === 0}
           onClick={() => setSequenceMode(true)}
@@ -1316,7 +1316,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
             />
 
             <div>
-              <h3>타임라인 · 배경음악(BGM)</h3>
+              <h3>Timeline · Background music (BGM)</h3>
               <TimelineView
                 segments={draft.segments}
                 bgm={draft.bgm}
@@ -1324,7 +1324,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
                 onSelectSegment={setSelectedIndex}
                 onChangeBgm={updateBgm}
               />
-              <Collapsible trigger="배경음악(BGM) 편집" defaultIsOpen={false}>
+              <Collapsible trigger="Edit background music (BGM)" defaultIsOpen={false}>
                 <BgmEditor bgm={draft.bgm} onChange={updateBgm} onAdd={addBgm} onRemove={removeBgm} />
               </Collapsible>
             </div>
@@ -1335,8 +1335,8 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
               <Button
                 label={
                   renderState.status === "rendering"
-                    ? `내보내는 중… ${renderState.progress}%`
-                    : "내보내기"
+                    ? `Exporting… ${renderState.progress}%`
+                    : "Export"
                 }
                 variant="primary"
                 size="lg"
@@ -1347,25 +1347,25 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
               />
               {renderState.status === "success" ? (
                 <a href={`/${renderState.path}`} download>
-                  {renderState.path} 다운로드
+                  Download {renderState.path}
                 </a>
               ) : null}
               {renderState.status === "error" ? (
-                <span className="render-note render-note-error">내보내기 실패: {renderState.error}</span>
+                <span className="render-note render-note-error">Export failed: {renderState.error}</span>
               ) : null}
               <span className="render-note">
-                내보내기는 시작 시점에 저장돼 있던 큐시트 기준으로 진행됩니다 — 내보내는 중 편집·저장은 이번 내보내기에 반영되지 않습니다.
+                Export runs against the cuesheet that was saved when it started — edits/saves made while exporting won't be included in this export.
               </span>
 
               <Button
-                label="자막 다운로드 (.srt)"
+                label="Download subtitles (.srt)"
                 variant="secondary"
                 isDisabled={dirty}
                 onClick={handleDownloadSrt}
               />
               {dirty ? (
                 <span className="render-note">
-                  자막은 디스크에 저장된 큐시트 기준입니다 — 먼저 저장한 뒤 다운로드하세요.
+                  Subtitles are based on the cuesheet saved to disk — save first, then download.
                 </span>
               ) : null}
             </div>

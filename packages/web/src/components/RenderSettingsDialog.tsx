@@ -73,12 +73,12 @@ export function RenderSettingsDialog({
   return (
     <Dialog isOpen={isOpen} onOpenChange={onOpenChange} width={480}>
       <Layout
-        header={<DialogHeader title="내보내기" onOpenChange={onOpenChange} />}
+        header={<DialogHeader title="Export" onOpenChange={onOpenChange} />}
         content={
           <LayoutContent>
             <div className="render-dialog">
               <div className="settings-group">
-                <h3>해상도</h3>
+                <h3>Resolution</h3>
                 <div className="render-resolution-options">
                   {RESOLUTION_PRESETS.map((preset) => (
                     <button
@@ -95,43 +95,43 @@ export function RenderSettingsDialog({
                 </div>
                 {!RESOLUTION_PRESETS.some((p) => p.width === project.width && p.height === project.height) ? (
                   <p className="render-note">
-                    현재 설정: {project.width}x{project.height}(사용자 지정)
+                    Current setting: {project.width}x{project.height} (custom)
                   </p>
                 ) : null}
                 {project.width === 3840 && project.height === 2160 ? (
                   <p className="render-note">
-                    4K는 내보내기 시간이 크게 늘어납니다 (원본 4K 기준 약 3~5배).
+                    4K takes much longer to export (roughly 3-5x for native 4K sources).
                   </p>
                 ) : null}
               </div>
 
               <div className="settings-group">
-                <h3>자막</h3>
+                <h3>Subtitles</h3>
                 <CheckboxInput
-                  label="자막 없는 영상으로 내보내기 (CC용)"
+                  label="Export without subtitles (for CC)"
                   value={noBurnSubtitles}
                   onChange={onToggleNoBurnSubtitles}
                 />
               </div>
 
               <div className="settings-group">
-                <h3>요약</h3>
-                <p className="render-dialog-summary-line">프로젝트: {project.name || "(이름 없음)"}</p>
-                <p className="render-dialog-summary-line">해상도: {project.width}x{project.height}</p>
-                <p className="render-dialog-summary-line">컷 수: {segmentCount}개</p>
-                <p className="render-dialog-summary-line">출력 길이(예상): {formatDuration(outputSeconds)}</p>
+                <h3>Summary</h3>
+                <p className="render-dialog-summary-line">Project: {project.name || "(no name)"}</p>
+                <p className="render-dialog-summary-line">Resolution: {project.width}x{project.height}</p>
+                <p className="render-dialog-summary-line">Cuts: {segmentCount}</p>
+                <p className="render-dialog-summary-line">Estimated output length: {formatDuration(outputSeconds)}</p>
               </div>
 
               {dirty ? (
                 <p className="render-note render-note-error">
-                  저장하지 않은 편집이 있어요 — 먼저 저장한 뒤 내보낼 수 있습니다.
+                  You have unsaved edits — save first, then export.
                 </p>
               ) : null}
 
               <div className="render-dialog-actions">
-                <Button label="취소" variant="ghost" onClick={() => onOpenChange(false)} />
+                <Button label="Cancel" variant="ghost" onClick={() => onOpenChange(false)} />
                 <Button
-                  label={rendering ? "내보내는 중…" : "내보내기 시작"}
+                  label={rendering ? "Exporting…" : "Start export"}
                   variant="primary"
                   isDisabled={dirty || rendering}
                   onClick={handleStart}

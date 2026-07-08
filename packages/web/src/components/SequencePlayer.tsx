@@ -303,7 +303,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
       if (!loaded) {
         // 디코딩 자체가 불가능한 클립(코덱 미지원, 손상된 프록시 등) — loadedmetadata가
         // 영영 안 오므로 여기서 멈추지 않고 다음 컷으로 건너뛴다(무한 정지 방지).
-        console.warn(`[SequencePlayer] 재생할 수 없는 클립, 건너뜀: ${seg.clip}`);
+        console.warn(`[SequencePlayer] Clip can't be played, skipping: ${seg.clip}`);
         const next = segmentsRef.current[currentIndex + 1];
         if (next) {
           onIndexChangeRef.current(currentIndex + 1);
@@ -550,14 +550,14 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
             </span>
           </div>
         ) : null}
-        {!currentSegment ? <div className="sequence-player-ended">끝</div> : null}
+        {!currentSegment ? <div className="sequence-player-ended">End</div> : null}
       </div>
 
       <div
         className="sequence-player-progress"
         onClick={handleProgressClick}
         role="slider"
-        aria-label="전체 재생 진행"
+        aria-label="Play all progress"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(progressRatio * 100)}
@@ -567,15 +567,15 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
 
       <div className="sequence-player-controls">
         <div className="sequence-player-transport">
-          <Button label="이전 컷" variant="ghost" isDisabled={currentIndex <= 0} onClick={goToPrevCut} />
+          <Button label="Previous cut" variant="ghost" isDisabled={currentIndex <= 0} onClick={goToPrevCut} />
           <Button
-            label={playing ? "일시정지" : "재생"}
+            label={playing ? "Pause" : "Play"}
             variant="secondary"
             isDisabled={!currentSegment}
             onClick={() => setPlaying((p) => !p)}
           />
           <Button
-            label="다음 컷"
+            label="Next cut"
             variant="ghost"
             isDisabled={currentIndex >= segments.length - 1}
             onClick={goToNextCut}
@@ -596,11 +596,11 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
         </div>
 
         <span className="sequence-player-counter">
-          컷 {segments.length > 0 ? `${currentIndex + 1}/${segments.length}` : "0/0"} ·{" "}
+          Cut {segments.length > 0 ? `${currentIndex + 1}/${segments.length}` : "0/0"} ·{" "}
           {formatClock(currentOutputPosition)} / {formatClock(totalOutputSeconds)}
         </span>
 
-        <Button label="닫기" variant="ghost" onClick={onExit} />
+        <Button label="Close" variant="ghost" onClick={onExit} />
       </div>
     </div>
   );

@@ -124,7 +124,7 @@ export function MiniTimelineStrip({ segments, selectedIndex, onSelect, onGoToEdi
             const play = playbackSeconds(seg);
             // 블록이 텍스트를 담기엔 너무 좁아 라벨을 렌더하지 않으므로, 판단에 필요한
             // 내용(자막 전문 포함)은 title 툴팁으로 전달한다.
-            const label = seg.subtitle.trim() !== "" ? seg.subtitle.trim() : seg.clip || "(파일명 없음)";
+            const label = seg.subtitle.trim() !== "" ? seg.subtitle.trim() : seg.clip || "(no filename)";
             const blockWidthPx = total > 0 ? (play / total) * contentWidth : 0;
             const prevClip = segments[i - 1]?.clip;
             const isClipBoundary = i > 0 && prevClip !== undefined && prevClip !== seg.clip;
@@ -141,7 +141,7 @@ export function MiniTimelineStrip({ segments, selectedIndex, onSelect, onGoToEdi
                   e.stopPropagation();
                   onGoToEdit(i);
                 }}
-                title={`${i + 1}. ${label} · ${seg.in.toFixed(1)}s~${seg.out.toFixed(1)}s (더블클릭: 편집으로 이동)`}
+                title={`${i + 1}. ${label} · ${seg.in.toFixed(1)}s~${seg.out.toFixed(1)}s (double-click: go to Edit)`}
               >
                 {blockWidthPx >= MIN_THUMB_BLOCK_PX ? (
                   <SegmentThumb clip={seg.clip} t={seg.in + 0.3} className="mini-strip-thumb" />
@@ -152,13 +152,13 @@ export function MiniTimelineStrip({ segments, selectedIndex, onSelect, onGoToEdi
         </div>
       </div>
       <div className="mini-strip-zoom-controls">
-        <button type="button" onClick={() => setZoom((z) => clampZoom(z / BUTTON_ZOOM_FACTOR))} title="축소">
+        <button type="button" onClick={() => setZoom((z) => clampZoom(z / BUTTON_ZOOM_FACTOR))} title="Zoom out">
           −
         </button>
-        <button type="button" onClick={() => setZoom(1)} title="전체 보기(Shift+Z)">
-          전체 보기
+        <button type="button" onClick={() => setZoom(1)} title="Fit to width (Shift+Z)">
+          Fit to width
         </button>
-        <button type="button" onClick={() => setZoom((z) => clampZoom(z * BUTTON_ZOOM_FACTOR))} title="확대">
+        <button type="button" onClick={() => setZoom((z) => clampZoom(z * BUTTON_ZOOM_FACTOR))} title="Zoom in">
           +
         </button>
       </div>

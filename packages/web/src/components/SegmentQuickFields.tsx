@@ -85,25 +85,25 @@ export function SegmentQuickFields({
     : undefined;
   const narrationDurationWarning =
     selectedNarrationFile?.durationS != null && selectedNarrationFile.durationS > outputDurationS
-      ? `컷보다 ${(selectedNarrationFile.durationS - outputDurationS).toFixed(1)}초 김 - 다음 컷과 겹칩니다`
+      ? `${(selectedNarrationFile.durationS - outputDurationS).toFixed(1)}s longer than the cut - overlaps the next cut`
       : null;
 
   const tooLongForIntroOutro =
     clipDurationS === undefined || clipDurationS > INTRO_OUTRO_MAX_DURATION_S;
   const introOutroDisabledTitle =
     clipDurationS === undefined
-      ? "이 클립의 길이를 확인할 수 없어 비활성화되었습니다(초벌 하이라이트 데이터에 없는 클립)"
+      ? "Disabled because this clip's duration is unknown (not in the draft highlight data)"
       : tooLongForIntroOutro
-        ? `15초를 넘는 클립(추정 ${clipDurationS.toFixed(1)}s)은 인트로/아웃트로로 쓸 수 없습니다`
+        ? `Clips over 15s (est. ${clipDurationS.toFixed(1)}s) can't be used as intro/outro`
         : null;
 
   return (
     <div className="quick-fields">
-      <h2 className="qf-panel-title">컷 설정</h2>
+      <h2 className="qf-panel-title">Cut settings</h2>
 
       {/* G1. 구간 */}
       <div className="qf-group">
-        <div className="qf-group-label">구간</div>
+        <div className="qf-group-label">Range</div>
         <label className="qf-field field-full">
           <span>clip</span>
           <input
@@ -114,7 +114,7 @@ export function SegmentQuickFields({
         </label>
         <div className="qf-row">
           <label className="qf-field field-narrow">
-            <span>시작</span>
+            <span>In</span>
             <input
               type="number"
               value={segment.in}
@@ -126,7 +126,7 @@ export function SegmentQuickFields({
             />
           </label>
           <label className="qf-field field-narrow">
-            <span>끝</span>
+            <span>Out</span>
             <input
               type="number"
               value={segment.out}
@@ -137,16 +137,16 @@ export function SegmentQuickFields({
               }}
             />
           </label>
-          <span className="qf-readonly">길이 {(segment.out - segment.in).toFixed(1)}s</span>
+          <span className="qf-readonly">Length {(segment.out - segment.in).toFixed(1)}s</span>
         </div>
       </div>
 
       {/* G2. 재생 */}
       <div className="qf-group">
-        <div className="qf-group-label">재생</div>
+        <div className="qf-group-label">Playback</div>
         <div className="qf-row">
           <label className="qf-field field-narrow">
-            <span>배속</span>
+            <span>Speed</span>
             <input
               type="number"
               value={segment.speed}
@@ -160,7 +160,7 @@ export function SegmentQuickFields({
             <span className="qf-suffix">x</span>
           </label>
           <label className="qf-field field-narrow">
-            <span>볼륨</span>
+            <span>Volume</span>
             <input
               type="number"
               value={Math.round(segment.volume * 100)}
@@ -182,12 +182,12 @@ export function SegmentQuickFields({
 
       {/* G3. 자막 (+ 하위: 이 컷만 자막 스타일) */}
       <div className="qf-group">
-        <div className="qf-group-label">자막</div>
+        <div className="qf-group-label">Subtitle</div>
         <label className="qf-field field-full qf-subtitle-field">
           <textarea
             value={segment.subtitle}
             rows={2}
-            placeholder="자막을 입력하세요"
+            placeholder="Enter subtitle"
             onChange={(e) => onChange({ subtitle: e.target.value })}
           />
         </label>
@@ -205,16 +205,16 @@ export function SegmentQuickFields({
       {/* G4. 내레이션 (사용 중일 때만 표시) */}
       {narrationEnabled ? (
         <div className="qf-group">
-          <div className="qf-group-label">내레이션</div>
+          <div className="qf-group-label">Narration</div>
           <label className="qf-field field-medium">
-            <span>파일</span>
+            <span>File</span>
             <select
               value={segment.narration ?? ""}
               onChange={(e) =>
                 onChange({ narration: e.target.value === "" ? null : e.target.value })
               }
             >
-              <option value="">(없음)</option>
+              <option value="">(none)</option>
               {narrationFiles.map((f) => (
                 <option key={f.name} value={f.name}>
                   {f.name}
@@ -239,63 +239,63 @@ export function SegmentQuickFields({
 
       {/* G5. 화면 조정(크롭) */}
       <div className="qf-group">
-        <div className="qf-group-label">화면 조정</div>
+        <div className="qf-group-label">Reframe</div>
         <div className="qf-row">
-          <span className="qf-readonly">{segment.crop ? "적용됨" : "적용 안 함"}</span>
+          <span className="qf-readonly">{segment.crop ? "Applied" : "Not applied"}</span>
           <Button
-            label={segment.crop ? "다시 조정" : "화면 조정"}
+            label={segment.crop ? "Adjust again" : "Reframe"}
             variant="secondary"
             size="sm"
             onClick={onEditCrop}
           />
           {segment.crop ? (
-            <Button label="해제" variant="ghost" size="sm" onClick={onClearCrop} />
+            <Button label="Clear" variant="ghost" size="sm" onClick={onClearCrop} />
           ) : null}
         </div>
       </div>
 
       {/* G6. 컷 작업 */}
       <div className="qf-group">
-        <div className="qf-group-label">컷 작업</div>
+        <div className="qf-group-label">Cut actions</div>
         <div className="qf-row qf-actions-row">
-          <Button label="분할" variant="secondary" size="sm" tooltip="Cmd/Ctrl + B" onClick={onSplit} />
+          <Button label="Split" variant="secondary" size="sm" tooltip="Cmd/Ctrl + B" onClick={onSplit} />
           <Button
-            label="다음 컷과 합치기"
+            label="Merge with next cut"
             variant="secondary"
             size="sm"
             isDisabled={!mergeEligibility.eligible}
             tooltip={mergeEligibility.eligible ? "Cmd/Ctrl + J" : mergeEligibility.reason}
             onClick={onMergeNext}
           />
-          <Button label="복제" variant="secondary" size="sm" onClick={onDuplicate} />
+          <Button label="Duplicate" variant="secondary" size="sm" onClick={onDuplicate} />
           <Button
-            label="인트로로"
+            label="Set as intro"
             variant="ghost"
             size="sm"
             isDisabled={tooLongForIntroOutro}
             tooltip={
               introOutroDisabledTitle ??
-              "구간(시작/끝)은 무시되고 클립 전체가 인트로로 삽입됩니다"
+              "Range (In/Out) is ignored - the whole clip is inserted as the intro"
             }
             onClick={onSetIntro}
           />
           <Button
-            label="아웃트로로"
+            label="Set as outro"
             variant="ghost"
             size="sm"
             isDisabled={tooLongForIntroOutro}
             tooltip={
               introOutroDisabledTitle ??
-              "구간(시작/끝)은 무시되고 클립 전체가 아웃트로로 삽입됩니다"
+              "Range (In/Out) is ignored - the whole clip is inserted as the outro"
             }
             onClick={onSetOutro}
           />
           <Button
-            label="삭제"
+            label="Delete"
             variant="destructive"
             size="sm"
             isDisabled={!canDelete}
-            tooltip={canDelete ? undefined : "마지막 남은 컷은 삭제할 수 없습니다"}
+            tooltip={canDelete ? undefined : "Can't delete the last remaining cut"}
             onClick={onDelete}
           />
         </div>

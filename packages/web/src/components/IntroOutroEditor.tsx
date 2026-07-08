@@ -37,9 +37,9 @@ function matchedFileName(path: string | null, clipDir: string, files: ClipFile[]
 
 function optionLabel(f: ClipFile): string {
   if (f.durationS == null) {
-    return `${f.name} (길이 확인 불가)`;
+    return `${f.name} (duration unknown)`;
   }
-  const suffix = f.durationS > INTRO_OUTRO_MAX_DURATION_S ? " · 15초 초과(선택 불가)" : "";
+  const suffix = f.durationS > INTRO_OUTRO_MAX_DURATION_S ? " · over 15s (not selectable)" : "";
   return `${f.name} (${f.durationS.toFixed(1)}s)${suffix}`;
 }
 
@@ -86,15 +86,15 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
   return (
     <div className="intro-outro-editor">
       <div className="settings-group">
-        <h3>인트로</h3>
+        <h3>Intro</h3>
         {intro ? (
           <div className="intro-outro-current">
-            <span className="intro-outro-clip-name">클립: {clipLabel(intro, clipDir)}</span>
-            <Button label="해제" variant="ghost" size="sm" onClick={() => onClear("intro")} />
+            <span className="intro-outro-clip-name">Clip: {clipLabel(intro, clipDir)}</span>
+            <Button label="Clear" variant="ghost" size="sm" onClick={() => onClear("intro")} />
           </div>
         ) : null}
         <label className="settings-field wide-input">
-          <span>파일 선택</span>
+          <span>Choose file</span>
           <select
             value={matchedIntroFile ?? ""}
             onChange={(e) => {
@@ -104,7 +104,7 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
             }}
           >
             <option value="">
-              {filesLoading ? "불러오는 중…" : files.length === 0 ? "(clipDir에 파일 없음)" : "선택하세요"}
+              {filesLoading ? "Loading…" : files.length === 0 ? "(no files in clipDir)" : "Select…"}
             </option>
             {files.map((f) => (
               <option key={f.name} value={f.name} disabled={f.durationS == null || f.durationS > INTRO_OUTRO_MAX_DURATION_S}>
@@ -116,20 +116,20 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
         {!filesLoading && files.length === 0 && filesNote ? (
           <p className="narration-empty-note">{filesNote}</p>
         ) : null}
-        <Collapsible trigger="직접 경로 입력" defaultIsOpen={!matchedIntroFile && intro != null}>
+        <Collapsible trigger="Enter path manually" defaultIsOpen={!matchedIntroFile && intro != null}>
           <label className="settings-field wide-input">
-            <span>경로</span>
+            <span>Path</span>
             <input
               type="text"
               value={intro ?? ""}
-              placeholder="비우면 없음"
+              placeholder="Leave empty for none"
               onChange={(e) => onChangeText({ intro: e.target.value === "" ? null : e.target.value })}
             />
           </label>
         </Collapsible>
         {intro ? (
           introError ? (
-            <div className="empty intro-outro-missing">파일을 찾을 수 없습니다: {intro}</div>
+            <div className="empty intro-outro-missing">Can't find the source: {intro}</div>
           ) : (
             <video
               className="intro-outro-preview"
@@ -142,15 +142,15 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
       </div>
 
       <div className="settings-group">
-        <h3>아웃트로</h3>
+        <h3>Outro</h3>
         {outro ? (
           <div className="intro-outro-current">
-            <span className="intro-outro-clip-name">클립: {clipLabel(outro, clipDir)}</span>
-            <Button label="해제" variant="ghost" size="sm" onClick={() => onClear("outro")} />
+            <span className="intro-outro-clip-name">Clip: {clipLabel(outro, clipDir)}</span>
+            <Button label="Clear" variant="ghost" size="sm" onClick={() => onClear("outro")} />
           </div>
         ) : null}
         <label className="settings-field wide-input">
-          <span>파일 선택</span>
+          <span>Choose file</span>
           <select
             value={matchedOutroFile ?? ""}
             onChange={(e) => {
@@ -160,7 +160,7 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
             }}
           >
             <option value="">
-              {filesLoading ? "불러오는 중…" : files.length === 0 ? "(clipDir에 파일 없음)" : "선택하세요"}
+              {filesLoading ? "Loading…" : files.length === 0 ? "(no files in clipDir)" : "Select…"}
             </option>
             {files.map((f) => (
               <option key={f.name} value={f.name} disabled={f.durationS == null || f.durationS > INTRO_OUTRO_MAX_DURATION_S}>
@@ -172,20 +172,20 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
         {!filesLoading && files.length === 0 && filesNote ? (
           <p className="narration-empty-note">{filesNote}</p>
         ) : null}
-        <Collapsible trigger="직접 경로 입력" defaultIsOpen={!matchedOutroFile && outro != null}>
+        <Collapsible trigger="Enter path manually" defaultIsOpen={!matchedOutroFile && outro != null}>
           <label className="settings-field wide-input">
-            <span>경로</span>
+            <span>Path</span>
             <input
               type="text"
               value={outro ?? ""}
-              placeholder="비우면 없음"
+              placeholder="Leave empty for none"
               onChange={(e) => onChangeText({ outro: e.target.value === "" ? null : e.target.value })}
             />
           </label>
         </Collapsible>
         {outro ? (
           outroError ? (
-            <div className="empty intro-outro-missing">파일을 찾을 수 없습니다: {outro}</div>
+            <div className="empty intro-outro-missing">Can't find the source: {outro}</div>
           ) : (
             <video
               className="intro-outro-preview"
