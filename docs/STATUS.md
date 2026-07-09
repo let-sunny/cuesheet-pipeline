@@ -16,9 +16,9 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 
 | Location | Role | Status |
 |---|---|---|
-| `packages/schema` | Cuesheet types + validation (contract's center, zod) | Stable. 7 tests |
+| `packages/schema` | Cuesheet types + validation (contract's center, zod) | Stable. 42 tests |
 | `packages/bridge` | MCP server for Claude Code connection (natural-language editing) | Stable. 4 tests |
-| `packages/render` | Cuesheet -> ffmpeg render (CLI + buildRenderPlan) | Stable. 8 tests, verified with a real render |
+| `packages/render` | Cuesheet -> ffmpeg render (CLI + buildRenderPlan) | Stable. 50 tests, verified with a real render |
 | `packages/web` | Touch-up editor: cut editing, timeline trimming (scrub/handles/split), full timeline + BGM drag, proxy playback, export button | Actively evolving |
 | `packages/draft` | **Core**: raw footage folder -> automatic rough-cut cuesheet generation (CLI `cuesheet-draft`: scan for inventory + frame extraction -> assemble for assembly; vision judgment handled by Claude) | Promoted to a proper package. 7 tests, scan/assemble E2E verified against a real footage folder |
 | `media/proxies/` | 720p H.264 proxies for web preview (auto-generated, git-ignored) | Automatic |
@@ -34,6 +34,65 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 - **User editing grammar constants**: cut average 2.9s, finished length 4:30-5:30, coverage ~90%, shot vocabulary (hand closeup/object/cat/reveal/wearing) — reverse-engineered from 2 real edits
 - **Proxy playback**: original 4K HEVC can't play in-browser -> 720p H.264 proxy for preview, render uses the original
 - **iCloud rule**: must check `stat blocks=0` before reading source footage (reading a placeholder hangs forever), manage space with `brctl download/evict`
+
+## 2026-07-09: named subtitle style presets + title cards (PRD backlog #1+#2)
+
+- **Schema (additive-only)**: `subtitleStylePresets?: Record<name, subtitleStyleOverride-shape>`
+  at the cuesheet level, `segment.stylePreset?: string` (cross-validated against
+  `subtitleStylePresets` in the sheet-level `superRefine` - a bad reference fails with
+  `segments[i].stylePreset: ...`), `segment.title?: {text(1-80), preset:
+  gooey|melt|particle|typing, durationS?(0.5-10, default 3), backdrop?: {dim(0-1)}}`. Effective
+  subtitle style merge order (render + web preview, kept identical by design): global
+  `subtitleStyle` < preset < per-cut `styleOverride`.
+- **Render**: `resolveSubtitleStyle` (renamed from `effectiveSubtitleStyle`) implements the
+  3-way merge. Title cards: `typing` compiles to an ASS file (per-character `\k` karaoke reveal
+  + whole-line `\fad`) wired in via the `subtitles=` filter; `gooey`/`melt`/`particle` headless-
+  capture a deterministic `seekAnimation(frame)`-driven HTML animation (Playwright chromium,
+  new `dependencies` entry) into a `frame_%04d.png` sequence, composited via `overlay=...
+  :enable='between(t,0,durationS)'`. Content-addressed cache under `media/title-cache/`
+  (gitignored) keyed by `titleCacheKey(text, preset, durationS, project dims/fps)`.
+  `prepareTitleAssets` (async, does all the disk/browser I/O) runs before the now-still-pure/
+  sync `buildRenderPlan`, which throws a `segments[i].title: ...` error if an asset wasn't
+  prepared - wired into both the CLI and `/api/render`. Backdrop dim renders as a
+  `color=black,fade=...:alpha=1,colorchannelmixer=aa=<dim>` layer alpha-composited under the
+  title. 50 render tests (up from ~34), including buildRenderPlan wiring tests using fixture
+  TitleAsset objects (no live Playwright in the unit suite - too slow/flaky for CI; verified
+  separately with real renders, see below).
+- **Web**: Export step gains a **Subtitle style presets** section (create/rename/delete, edit
+  reuses the same size/color/outline/margin fields as the per-cut override, compact preview
+  chip per preset); Cut settings SUBTITLE group (G3) gains a Style preset select above the
+  per-cut override; new **G4. Title** group (Cut settings, screen-spec section 4 renumbered
+  G4-G7) - toggle, text/preset/duration/backdrop-dim fields. New `components/TitleOverlay/` -
+  the repo's first full component-anatomy exemplar (folder + co-located `.styles.ts` +
+  co-located `.test.tsx` + `index.ts`, per CLAUDE.md "component layering") - live preview of all
+  4 presets (CSS reveal for typing, SVG goo-filter circles for gooey/melt, canvas point-cloud
+  for particle), wired into both `VideoPreview` (Edit step) and `SequencePlayer` (Play all).
+  150 web tests (up from ~138), incl. 12 new for TitleOverlay. `vitest.config.ts` now also runs
+  the `astryxStylex()` Vite plugin so `stylex.create()`-using components can be tested at all
+  (this was the first component using both stylex.create AND a test).
+- **Docs**: ARCHITECTURE.md (schema/render/web public-surface sections + key-design-decisions +
+  pipeline-contracts updated for the merge order, title render paths, and `media/title-cache/`
+  contract), screen-spec.md (section 4 G4 Title + renumbering, section 5 Subtitle style presets
+  placement).
+- **Verification**: `pnpm -r typecheck` and `pnpm -r test` green across all 5 packages (293
+  tests total); real ffmpeg renders per preset with 3-timestamp frame evidence, plus UI
+  screenshots (light+dark) of the new Cut settings TITLE group and Export subtitle-style-presets
+  section. Two real bugs found and fixed during this verification pass (not assumed - both
+  reproduced and confirmed fixed via actual renders):
+  - **Particle capture race**: the first ~30 of 90 captured frames were byte-identical blanks -
+    a `<canvas>` 2D-context draw doesn't itself force the browser to paint/composite before
+    Playwright's next screenshot, so the compositor was racing behind the capture loop (SVG-based
+    gooey/melt weren't affected - DOM mutations are always in sync with the next paint). Fixed by
+    awaiting two `requestAnimationFrame` ticks after each `seekAnimation` call, before the
+    screenshot (`title.ts`'s capture loop).
+  - **ffmpeg filter-graph deadlock with 3+ captured-frames titles in one render**: combining
+    typing+dim, gooey, melt, and particle titles in a single 4-cut cuesheet reliably deadlocked
+    ffmpeg's default multi-threaded filter scheduler (CPU flatlines mid-encode, no forward
+    progress - reproduced 3 times, isolated to the captured-frames overlay+concat combination by
+    testing 2-combo/3-combo/4-combo and with/without backdrop dim). Fixed by adding
+    `-filter_complex_threads 1` to the ffmpeg args whenever any segment wires in a captured-frames
+    title asset (scoped narrowly - cuesheets without one are unaffected); confirmed the 4-title
+    combo renders correctly end-to-end afterward.
 
 ## 2026-07-09 overnight: release-readiness chain (autonomous loop)
 

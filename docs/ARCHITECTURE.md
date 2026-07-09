@@ -64,13 +64,31 @@ every other package imports instead of redefining types.
 
 **Public surface**: schemas (`cueSheetSchema`, `projectSchema`, `segmentSchema`,
 `bgmCueSchema`, `cropSchema`, `subtitleStyleSchema`, `subtitleStyleOverrideSchema`,
-`subtitleBackgroundSchema`, `narrationConfigSchema`), types derived via `z.infer`
+`subtitleStylePresetsSchema`, `subtitleBackgroundSchema`, `narrationConfigSchema`,
+`titleSchema`, `titleBackdropSchema`, `titlePresetSchema`), types derived via `z.infer`
 (`CueSheet`, `CueSheetInput`, `Segment`, `Project`, `BgmCue`, `Crop`, `SubtitleStyle`,
-`SubtitleStyleOverride`, `SubtitleBackground`, `NarrationConfig`), `validateCueSheet` (returns
+`SubtitleStyleOverride`, `SubtitleStylePresets`, `SubtitleBackground`, `NarrationConfig`,
+`Title`, `TitleBackdrop`, `TitlePreset`), `validateCueSheet` (returns
 `{ok:true, data}` or `{ok:false, errors: string[]}`, one `fieldpath: reason` string per
 issue), and `findLostFieldPaths(original, serialized)` — the save-time guard that detects
 when a zod object silently stripped a field the server doesn't know about yet (e.g. a client
 sends `crop` to a server still running an old schema build).
+
+`cueSheetSchema.subtitleStylePresets?: Record<name, subtitleStyleOverride-shape>` (PRD backlog
+#1) is a project-level dictionary of reusable named subtitle style overrides;
+`segment.stylePreset?: string` opts a cut into one of them, cross-validated in the sheet-level
+`superRefine` (a segment alone can't see its sheet's presets) — a `stylePreset` that doesn't
+resolve to an existing key fails with `segments[i].stylePreset: ...` even though the segment
+schema itself would accept any non-empty string. **Effective subtitle style merge order (used
+identically by render and the web preview): global `subtitleStyle` < named preset (if
+`stylePreset` resolves) < segment `styleOverride`** — each step is a shallow merge (background
+replaced wholesale, not partially merged, at each step) applied in that order, so a per-cut
+override always has the final say over a preset, which always has the final say over the
+global style.
+
+`segment.title?: {text, preset: "gooey"|"melt"|"particle"|"typing", durationS?, backdrop?:
+{dim}}` (PRD backlog #2) is an optional title card shown at the cut's start (there is no
+separate `start` field — a title always begins at the segment's own local t=0).
 
 **Deliberately does not**: know about ffmpeg, files on disk, HTTP, or React. It has zero
 runtime dependencies besides zod.
@@ -108,17 +126,46 @@ decision log — measured on real footage and excluded).
 **Responsibility**: turns a validated cuesheet into an actual video (and/or subtitle file)
 via ffmpeg. The only package that ever shells out to ffmpeg for final output.
 
-**Public surface**: `buildRenderPlan(cue, outputPath, {burnSubtitles?})` — pure function
-returning `{args, filterComplex, outputPath}` (trim via `-ss`/`-t`, `setpts` for speed,
-`crop` filter from `segment.crop` ratios, always `scale=W:H` + `setsar=1` + `fps=N`,
-`drawtext` per-segment when `burnSubtitles` and the segment has subtitle text, `atempo` chain
-for out-of-range speeds, `concat`, then `bgm`/`narration` via `adelay`+`volume` into `amix`).
-`buildSrt(cue)` / `secondsToSrtTimestamp` — walks segments in order accumulating
-`(out-in)/speed` as the output timeline, skips blank-subtitle cuts, renumbers sequentially.
-CLI `cuesheet-render [cuesheet.json] [out.mp4] [--no-subtitles] [--srt <path>]`.
+**Public surface**: `buildRenderPlan(cue, outputPath, {burnSubtitles?, sourceDimensions?,
+titleAssets?})` — pure, synchronous function returning `{args, filterComplex, outputPath,
+warnings}` (trim via `-ss`/`-t`, `setpts` for speed, `crop` filter from `segment.crop` ratios,
+always `scale=W:H` + `setsar=1` + `fps=N`, `drawtext` per-segment when `burnSubtitles` and the
+segment has subtitle text using `resolveSubtitleStyle`'s merge result, `atempo` chain for
+out-of-range speeds, `concat`, then `bgm`/`narration` via `adelay`+`volume` into `amix`).
+`resolveSubtitleStyle(cue, segment)` implements the global-preset-override merge order (see
+schema section above). `buildSrt(cue)` / `secondsToSrtTimestamp` — walks segments in order
+accumulating `(out-in)/speed` as the output timeline, skips blank-subtitle cuts, renumbers
+sequentially. CLI `cuesheet-render [cuesheet.json] [out.mp4] [--no-subtitles] [--srt <path>]`.
+
+**Title cards (PRD backlog #2, see docs/research/title-render-spike.md)**: `buildRenderPlan`
+itself stays pure/synchronous — it only *wires in* an already-prepared `TitleAsset` per segment
+index (passed via `opts.titleAssets`), throwing a `segments[i].title: ...` fieldpath error if a
+segment has a `title` but no matching entry. The actual disk/browser work lives in
+`title.ts`'s `prepareTitleAssets(cue, {cacheDir?})` (async, called by the CLI and by
+`@cuesheet/web`'s `/api/render` route *before* `buildRenderPlan`): for `preset: "typing"` it
+writes an ASS file (`buildTitleAssContent` — per-character `\k` karaoke reveal + a whole-line
+`\fad`, wired into the segment's filter chain via `subtitles=<path>`, no caching needed since
+ASS generation is instant); for `"gooey"/"melt"/"particle"` it computes a content-addressed
+`titleCacheKey(text, preset, durationS, project dims/fps)`, and on a cache miss, dynamically
+imports `playwright` (a `dependencies` entry, imported dynamically so a typing-only render still
+works in an environment where it failed to install) to headless-capture a deterministic
+`window.seekAnimation(frame)`-driven HTML animation (`titleAnimations.ts`) into a
+`frame_%04d.png` sequence under `media/title-cache/<hash>/` (gitignored); `buildRenderPlan` then
+adds that PNG sequence as an extra `-framerate <fps> -i frame_%04d.png` input and composites it
+via `overlay=...:enable='between(t,0,durationS)'`. `title.backdrop.dim` (either preset) becomes
+a `color=black...,fade=...:alpha=1,colorchannelmixer=aa=<dim>` layer alpha-composited under the
+title, faded in/out with the same envelope the web preview's `TitleOverlay` component computes
+(`backdropOpacity`), so the two never visually drift apart. `buildRenderPlan` also adds
+`-filter_complex_threads 1` whenever any segment wires in a captured-frames title - empirically
+required (2026-07-09): 3+ simultaneous captured-frames overlay branches feeding one `concat` in a
+single ffmpeg invocation reliably deadlocks ffmpeg's default multi-threaded filter scheduler
+(reproduced; forcing single-threaded filter execution fixes it at a negligible cost, since encode,
+not filtering, is the actual bottleneck).
 
 **Deliberately does not**: touch the cuesheet file (read-only consumer), or know about the
-editor's undo/save state — it only ever sees whatever `@cuesheet/schema` validated.
+editor's undo/save state — it only ever sees whatever `@cuesheet/schema` validated. Title
+capture is the one exception to "buildRenderPlan has no I/O" — kept out of that function
+entirely and pushed into the separate `prepareTitleAssets` step for exactly that reason.
 
 ### `@cuesheet/bridge`
 
@@ -147,8 +194,9 @@ integration (proxies, thumbnails, moments palette, narration/clip file pickers).
 - `GET/POST /api/cuesheet` — read/write the cuesheet file; POST re-validates, runs the lost-
   field guard, and only then writes.
 - `POST /api/render` (+`GET /api/render/status`) — re-reads the saved cuesheet, calls
-  `buildRenderPlan`, runs ffmpeg in the background reporting parsed `time=` progress; 409 if
-  a render is already running (single in-flight job, no queue).
+  `prepareTitleAssets` first if any segment has a `title` (populating/reading
+  `media/title-cache/`), then `buildRenderPlan`, runs ffmpeg in the background reporting parsed
+  `time=` progress; 409 if a render is already running (single in-flight job, no queue).
 - `GET /api/subtitles.srt` — `buildSrt` over the saved cuesheet, downloadable.
 - `GET /clips/*` — serves clip video, preferring the generated 720p proxy over the original
   unless `?original=1`; range-request aware.
@@ -168,11 +216,25 @@ Editor UI: three steps — **Scenes** (`MomentPalette.tsx`, scene candidate card
 in-use/auto-excluded state, category/status filters, add/remove, set intro/outro),
 **Edit** (`CompactSegmentList.tsx` + `TimelineView.tsx`/`MiniTimelineStrip.tsx` +
 `VideoPreview.tsx`/`SequencePlayer.tsx` + `SegmentQuickFields.tsx`/
-`SegmentStyleOverride.tsx`/`CropEditOverlay.tsx`/`IntroOutroEditor.tsx` — single screen, no
-modes, per screen-spec section 3-4), **Export** (`FinishingSettings.tsx` +
-`RenderSettingsDialog.tsx` — project metadata, global subtitle style, intro/outro, BGM,
-narration, resolution presets 720p/1080p/4K with proportional subtitle-metric scaling,
-burn-in toggle, SRT download).
+`SegmentStyleOverride.tsx`/`CropEditOverlay.tsx`/`IntroOutroEditor.tsx`/`TitleOverlay/` —
+single screen, no modes, per screen-spec section 3-4), **Export** (`FinishingSettings.tsx` +
+`SubtitleStylePresetsSettings.tsx` + `RenderSettingsDialog.tsx` — project metadata, global
+subtitle style, named subtitle style presets (PRD backlog #1), intro/outro, BGM, narration,
+resolution presets 720p/1080p/4K with proportional subtitle-metric scaling, burn-in toggle,
+SRT download).
+
+`components/TitleOverlay/` (`TitleOverlay.tsx` + co-located `TitleOverlay.styles.ts` +
+co-located `TitleOverlay.test.tsx` + `index.ts`) is the repo's first full component-anatomy
+exemplar (CLAUDE.md "component layering") — it renders the same 4 title presets `VideoPreview`
+and `SequencePlayer` need live, driven purely by `localTimeS` (playback time relative to the
+segment's own start): `typing` reveals characters via CSS opacity (mirroring the ASS `\k`
+timing), `gooey`/`melt` render SVG circles under a CSS goo filter (ported from
+`packages/render/src/titleAnimations.ts`'s capture math, just driven by a continuous `progress`
+fraction instead of a discrete frame index), `particle` samples the text into a canvas point
+cloud once per text and eases particles in. This is a second, independent implementation of the
+same visual (same intentional duplication pattern as `subtitleOverlay.ts` vs `plan.ts`'s
+drawtext) — real-time DOM/canvas for live preview vs. frame-stepped headless capture for the
+render, because the two run under fundamentally different timing models.
 
 **Deliberately does not**: call any LLM itself, or run ffmpeg for anything except its own
 render/proxy/thumbnail jobs (final render logic is entirely `buildRenderPlan` imported from
@@ -206,9 +268,9 @@ depend only on `@cuesheet/schema` (+ zod). `web` depends on both `@cuesheet/sche
 ffmpeg command graph or the SRT-timing logic a second time — `cuesheet-plugin.ts` imports
 `buildRenderPlan` and `buildSrt` directly from `@cuesheet/render` and calls them against the
 cuesheet the user just saved. This is also why the live preview in the editor
-(`subtitleOverlay.ts`'s `mergeSubtitleStyle`) mirrors `plan.ts`'s `effectiveSubtitleStyle`
-merge rule by design comment, not by coincidence — same override-merge semantics, kept in
-sync deliberately.
+(`subtitleOverlay.ts`'s `mergeSubtitleStyle`) mirrors `plan.ts`'s `resolveSubtitleStyle`
+merge rule by design comment, not by coincidence — same global-preset-override merge order,
+kept in sync deliberately.
 
 ## 4. Key design decisions
 
@@ -276,9 +338,15 @@ revalidates/regenerates corrupted ones via a decode-probe check at the 70% mark)
 **Live overlay parity with render**: the preview's subtitle overlay
 (`lib/subtitleOverlay.ts::mergeSubtitleStyle`) and outline rendering
 (`subtitleOutlineStyle`, CSS `-webkit-text-stroke` approximating ffmpeg `drawtext`
-`borderw`) are written to match `render/plan.ts`'s `effectiveSubtitleStyle`/`drawtextFilter`
+`borderw`) are written to match `render/plan.ts`'s `resolveSubtitleStyle`/`drawtextFilter`
 merge and stroke-order semantics field-for-field, so what the editor shows is what the
-export produces.
+export produces. The same parity intent extends to title cards: `TitleOverlay`'s
+`backdropOpacity` envelope (fade-in/hold/fade-out shape) mirrors `title.ts`'s
+`color=...,fade=...,colorchannelmixer=aa=<dim>` construction, though the two title
+*animations themselves* (gooey/melt/particle) are deliberately separate implementations —
+one real-time (DOM/canvas, driven by continuous playback time), one frame-stepped (headless
+capture, driven by a discrete frame index) — since the two run under fundamentally different
+timing models (see `components/TitleOverlay/` in section 2 above).
 
 ## 6. Pipeline contracts
 
@@ -301,6 +369,12 @@ export produces.
   slugified (non-letter/digit runs collapsed to `_`). The default single-project workflow
   (bridge, ad hoc CLI runs) instead defaults to `project.cuesheet.json` at the repo root via
   `CUESHEET_PATH`.
+- **`media/title-cache/`** (gitignored, machine-local): `ass/<hash>.ass` for typing-preset title
+  cards, and `<hash>/frame_%04d.png` + `<hash>/meta.json` (`{frameCount, fps}`) per
+  gooey/melt/particle title, keyed by `titleCacheKey(text, preset, durationS, project
+  width/height/fps)` (`title.ts`) — content-addressed, so two cuts with the same title text and
+  preset (or a re-render of the same cut) reuse the same captured frames instead of re-running
+  Playwright.
 
 ## Verification notes / doc-vs-code mismatches found
 

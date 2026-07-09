@@ -159,24 +159,37 @@ undraggable. Fixed with two stacked bars under the video, both always visible:
   schema enforces the same cap (`speed must be <= 16`), and VideoPreview/SequencePlayer also
   defensively clamp the value actually assigned to `playbackRate` (belt-and-suspenders for
   old/hand-edited data and the J/K/L shuttle's further multiplier).
-**G3. Subtitle** — textarea (full) + collapsible sub-section **"Subtitle style for this
-  cut"** (indented/bordered to make clear it belongs under Subtitle): size, color, outline,
-  background (color + opacity in one row), margin + [Apply to all cuts] [Release]
-**G4. Narration** — select (medium) + preview + length warning (shown only when narration
+**G3. Subtitle** — textarea (full) + a **Style preset** select (medium, shown only once at
+  least one preset exists — see section 5's "Subtitle style presets") sitting above the
+  collapsible sub-section **"Subtitle style for this cut"** (indented/bordered to make clear
+  it belongs under Subtitle): size, color, outline, background (color + opacity in one row),
+  margin + [Apply to all cuts] [Release]. Merge order when both are present: global subtitle
+  style < the selected preset < this cut's own override (per-cut override always wins last —
+  see ARCHITECTURE.md's schema contracts section).
+**G4. Title** (PRD backlog #2, 2026-07-09 addition) — a **Title card for this cut** checkbox;
+  once on: text (full, 80-char cap), preset select + duration (paired row, matching the G2
+  Speed/Volume pairing pattern) and a **Backdrop dim** slider (0-100%, 0% = no dim layer).
+  Preset options: **Typing** (per-letter typewriter + cursor, ASS/libass karaoke at render
+  time), **Gooey** (organic blobs assembling into text), **Melt** (Gooey's exit variant —
+  entrance then a drip/fade departure), **Particle** (fibers/sparkles assembling, canvas) — the
+  latter three render via headless frame-capture -> alpha overlay at render time (see
+  docs/research/title-render-spike.md). Placed directly after Subtitle (both are text-overlay
+  concerns) and before Narration/Reframe.
+**G5. Narration** — select (medium) + preview + length warning (shown only when narration
   is in use)
-**G5. Reframe** — status display + [Edit] [Release] (Edit opens an overlay mode on the video)
-**G6. Cut actions** — one row of buttons: [Split Cmd+B] [Merge with next cut Cmd+J]
+**G6. Reframe** — status display + [Edit] [Release] (Edit opens an overlay mode on the video)
+**G7. Cut actions** — one row of buttons: [Split Cmd+B] [Merge with next cut Cmd+J]
   [Duplicate] [Set as intro] [Set as outro]. No primary in this row — none of these five is
   a dominant/default action, so all are `secondary`/`ghost` (2026-07-08 revision: this group
   used to also hold Delete at the end, visually pushed right by a CSS trick; that read as
   "just another cut action" and risked a misclick on a destructive operation).
-**Destructive zone (separate from G6, panel bottom)** — [Delete], alone, separated from G6 by
+**Destructive zone (separate from G7, panel bottom)** — [Delete], alone, separated from G7 by
   a divider + extra spacing and rendered `variant="destructive"`. This is not a numbered G
   group: it is deliberately isolated so it can never be mistaken for a routine action (section
   0-5 "destructive/rare actions ... last" taken literally — last and set apart, not just last
   in reading order).
 
-Rationale: G1-G3 cover 90% of the edit loop (range -> subtitle), G4-G6 are occasional.
+Rationale: G1-G3 cover 90% of the edit loop (range -> subtitle), G4-G7 are occasional.
 "Subtitle style for this cut" is a sub-property of subtitle, so it lives inside G3 — never
 its own section (this is the core fix for the current problem). The clip filename in G1 is
 read-only plain text (not an input) — the only legitimate way to change which source clip a
@@ -200,7 +213,12 @@ expected degradation, not a bug.
 Section order (the natural order of preparing output): **Project** (name, fps, resolution)
 -> **Subtitle style (global)** (compact live preview / size/color/outline as one group /
 background box as one group / position + edge margin, each its own row / note pointing at the
-(2) Edit video column for the composited-over-actual-video version) -> **Intro/outro** (select +
+(2) Edit video column for the composited-over-actual-video version) -> **Subtitle style
+presets** (PRD backlog #1, 2026-07-09 addition — immediately follows the global style since a
+preset is "another named version of the same thing"): one row per existing preset (name field,
+compact preview chip reusing the same overlay CSS as the global style's preview, a collapsible
+"Edit" with the same size/color/outline/margin fields as the per-cut override, [Delete]) plus a
+"New preset name" + [Create preset] row at the bottom -> **Intro/outro** (select +
 release, collapsible manual entry) -> **Background music** (one-line summary only — editing
 lives in the (2) Edit step, see section 3) -> **Narration** (toggle, folder, volume, help text) ->
 **Output** ([Download subtitles .srt] [Export...] — Export dialog: resolution presets /
@@ -263,6 +281,13 @@ Buttons that belong to one group render inside one container (not spread across 
 stay visually together, and action groups in banners/dialog footers are right-aligned.
 
 ## Changelog
+- 2026-07-09 — PRD backlog #1+#2 (named subtitle style presets, title cards): (1) Cut settings
+  gains **G4. Title** (section 4), renumbering the former G4-G6 (Narration/Reframe/Cut actions)
+  to G5-G7 - placed after Subtitle (both are text-overlay concerns), before Narration/Reframe;
+  (2) Subtitle (G3) gains a Style preset select above the per-cut override; (3) Export gains a
+  **Subtitle style presets** section (section 5) directly after the global subtitle style
+  section.
+
 - 2026-07-09 — four changes in one round, in priority order: (1) BGM editing moved from the
   Export step into a collapsible vertical gutter next to the (2) Edit cut list, anchored to cut
   boundaries with overlap lanes (section 3) - Export now shows a one-line summary only (section
