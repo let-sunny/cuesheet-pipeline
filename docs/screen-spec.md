@@ -77,6 +77,20 @@ padding=0, this single body container (`.moment-card-body`) owns all padding/spa
 individual children must not carry their own padding. The metadata row (category badge,
 length, quality) is baseline-aligned.
 
+**Thumbnail composition (2026-07-09 addition — rule 6's palette-card exception, narrowed)**: the
+media area (frame image + index/timestamp chip + "in use" badge) is expressed with Astryx
+components, not custom markup: `AspectRatio ratio={16/9}` wraps the frame image, wrapped in turn by
+`Overlay` (`position="top"`, `scrim={false}` so it never dims the frame) whose `content` is a single
+flex row (space-between) holding the chip and badge. Astryx `Thumbnail` doesn't fit here (it's
+fixed-square with no overlay slot at all). The index/timestamp chip stays a plain styled span, not
+a `Badge` — it names "which clip/where", carrying no status semantics, so `Badge`'s
+success/warning/error vocabulary would be a mismatch; the "in use" indicator genuinely is a status,
+so that one is a real `Badge` (`variant="success"`). The full-width exclusion-reason banner (item b
+below) stays custom, deliberately outside this Overlay composition — Overlay always renders its
+content as an overlapping layer on top of the media it wraps, but the banner must sit above the
+thumbnail in normal flow (pushing it down, covering none of the frame) and spans the whole card,
+not just the thumbnail — the opposite of what Overlay composes.
+
 **State representation rule (2026-07-08 revision — fixes the "which one is dimmed and why"
 misread)**: excluded cards (quality below threshold / face exposure) must not dim the whole
 card via opacity — full dimming reads as "disabled/loading". Instead: (a) desaturate only

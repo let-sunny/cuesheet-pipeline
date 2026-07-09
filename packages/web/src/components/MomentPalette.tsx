@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { AspectRatio } from "@astryxdesign/core/AspectRatio";
 import { Card } from "@astryxdesign/core/Card";
 import { Badge } from "@astryxdesign/core/Badge";
+import { Overlay } from "@astryxdesign/core/Overlay";
 import { Text } from "@astryxdesign/core/Text";
 import type { Segment } from "@cuesheet/schema";
 import { CardActionButton } from "./ui/CardActionButton/index.js";
@@ -216,42 +218,62 @@ export function MomentPalette({
                         more noticeable than a small corner badge over the thumbnail, removing the
                         "what's faded vs. what's solid" misreading (feedback 2026-07-08). The Add
                         button stays active even in this state - auto-exclusion isn't a "ban," it's
-                        just "what auto-assembly filtered out," so it can always be brought back. */}
+                        just "what auto-assembly filtered out," so it can always be brought back.
+                        Kept custom rather than expressed via Overlay (2026-07-09 evaluation, see
+                        docs/screen-spec.md section 2): Overlay renders its content ON TOP of the
+                        media it wraps (an overlapping layer), but this banner needs to sit ABOVE the
+                        thumbnail in normal flow, pushing it down without covering any of the frame -
+                        the opposite of what Overlay composes. It also spans the whole card, not just
+                        the thumbnail that Overlay/AspectRatio wrap. So it stays a plain full-width div
+                        outside the Overlay composition below. */}
                     {rejectedLabel ? (
                       <div className={`moment-status-banner${faceRejected ? " face" : " quality"}`}>
                         {rejectedLabel}
                       </div>
                     ) : null}
-                    <div className="moment-thumb">
-                      {frame ? (
-                        <img
-                          src={`/draft-frames/${encodeURIComponent(card.clipFolder)}/${encodeURIComponent(frame)}`}
-                          alt=""
-                        />
-                      ) : (
-                        <div className="moment-thumb-empty" />
-                      )}
-                      {/* Thumbnail (Astryx) is fixed-square with no overlay slot (no children prop
-                          at all), so it doesn't fit this overlay composition (number chip + status
-                          badge + image) — kept custom, but the status badge itself was swapped for
-                          Badge. The number chip and badge go in the same flex-wrap row
-                          (.moment-thumb-overlay) so that when the clip name is long, the badge wraps
-                          to the next line instead of overlapping the chip (both are absolutely
-                          positioned, so they'd collide at the corner) or getting its text truncated
-                          (2026-07-08 feedback - wrap over truncation/overlap). */}
-                      <div className="moment-thumb-overlay">
-                        <span className="moment-number">
-                          {card.clipFolder} · {card.inS.toFixed(1)}s
-                        </span>
-                        {inUse ? (
-                          <Badge
-                            variant="success"
-                            label={`In use - cut ${cutNumber}`}
-                            className="moment-badge-in-use"
+                    {/* Astryx composition (2026-07-09, replaces the earlier hand-rolled .moment-thumb):
+                        Thumbnail (Astryx) is fixed-square with no overlay slot at all, so it never fit this
+                        card (16:9 frame + number chip + status badge). AspectRatio(16/9) + Overlay
+                        (position="top", scrim off so it doesn't dim the frame) is the documented
+                        composition instead — Overlay's own "top" content region replaces the old
+                        absolutely-positioned .moment-thumb-overlay div, so the chip/badge row itself no
+                        longer needs position/top/left, just flex layout. The row stays flex-wrap
+                        (space-between) so a long clip folder name still wraps the badge to the next line
+                        instead of overlapping or truncating it (2026-07-08 feedback). The index/timestamp
+                        chip stays a plain styled span, not a Badge — it's a caption of "which clip/where",
+                        not a status with color semantics, so Badge would be a semantic mismatch; the "in
+                        use" indicator IS a status, so that one is a real Badge (variant="success"). */}
+                    <Overlay
+                      scrim={false}
+                      showOn="always"
+                      position="top"
+                      content={
+                        <div className="moment-overlay-row">
+                          <span className="moment-number">
+                            {card.clipFolder} · {card.inS.toFixed(1)}s
+                          </span>
+                          {inUse ? (
+                            <Badge
+                              variant="success"
+                              label={`In use - cut ${cutNumber}`}
+                              className="moment-badge-in-use"
+                            />
+                          ) : null}
+                        </div>
+                      }
+                    >
+                      <AspectRatio ratio={16 / 9}>
+                        {frame ? (
+                          <img
+                            src={`/draft-frames/${encodeURIComponent(card.clipFolder)}/${encodeURIComponent(frame)}`}
+                            alt=""
+                            style={{ objectFit: "cover", width: "100%", height: "100%" }}
                           />
-                        ) : null}
-                      </div>
-                    </div>
+                        ) : (
+                          <div className="moment-thumb-empty" />
+                        )}
+                      </AspectRatio>
+                    </Overlay>
                     {/* Card hierarchy (screen-spec section 2): thumbnail -> status badge (top,
                         thumbnail overlay) -> scene description (full text, wrapping allowed) ->
                         meta (shot type/duration/quality) -> actions. Since this screen is for

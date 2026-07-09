@@ -1093,39 +1093,24 @@ body {
   color: var(--warning-text);
 }
 
-/* Background is intentionally fixed dark regardless of theme — since this is a canvas that always
-   holds a video frame thumbnail before/after loading, it stays dark even in light theme (spec item 3). */
-.moment-thumb {
-  position: relative;
-  width: 100%;
-  height: 94px;
-  background: var(--stage-bg);
-}
-
-.moment-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
+/* Background is intentionally fixed dark regardless of theme — since this sits inside the
+   AspectRatio(16:9) box before a frame has loaded (or when there is none), it stays dark even in
+   light theme (spec item 3). Sizing/positioning to fill the box is now owned by Astryx AspectRatio
+   (its inner wrapper is absolutely inset), so this only needs to fill that wrapper. */
 .moment-thumb-empty {
   width: 100%;
   height: 100%;
   background: var(--stage-bg);
 }
 
-/* Overlay container holding the number chip (clip name + time) + "in use" badge in one flex-wrap
-   row (revised 2026-07-08) — previously both were independently absolute-positioned (top-left/
-   top-right), so a long clip folder name made the chip overlap the top-right badge (overflow) or
-   get its text clipped. Now, as two flex items on the same row, when width is insufficient the
-   badge automatically drops to the next line (wrapping is prioritized, no text clipping/overlap — per user feedback). */
-.moment-thumb-overlay {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  right: 4px;
+/* Content row rendered inside Astryx Overlay's "top" region (2026-07-09, replaces the old
+   hand-rolled, absolutely-positioned .moment-thumb-overlay) — holds the number chip (clip name +
+   time) + "in use" badge. Overlay itself now owns the absolute placement over the thumbnail, so
+   this only needs to be a flex-wrap row: when width is insufficient the badge drops to the next
+   line (wrapping is prioritized over overlap/truncation, per 2026-07-08 feedback). */
+.moment-overlay-row {
   display: flex;
+  width: 100%;
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
