@@ -108,6 +108,9 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   // A value used to force-remount <video> when a proxy has just become ready, so it re-requests
   // the newly served proxy file (also clears any missing state left over from an original load failure).
   const [reloadToken, setReloadToken] = useState(0);
+  // Guards against a double-click (or repeated clicks while the ffmpeg-backed capture is still
+  // running) firing multiple concurrent frame captures - QA-2 diagnosed fix.
+  const [capturePending, setCapturePending] = useState(false);
 
   const { cropEditDraft, lockRatio, updateCropDraft, startCropEdit, applyCropEdit, cancelCropEdit, resetCropEditToFullFrame, clearCropEdit } =
     useCropEditor({ segment, projectWidth, projectHeight, naturalSize, onChange });
@@ -209,7 +212,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     if (autoPlayRef.current) {
       video.playbackRate = Math.min(segment.speed, MAX_PLAYBACK_RATE);
       video.volume = segment.volume;
-      void video.play();
+      void video.play().catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIndex]);
@@ -235,7 +238,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
       video.volume = segment.volume;
       setCurrentTime(segment.in);
       if (autoPlayRef.current) {
-        void video.play();
+        void video.play().catch(() => {});
       }
     };
     const handleTimeUpdate = () => {
@@ -287,7 +290,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     }
     video.playbackRate = Math.min(segment.speed, MAX_PLAYBACK_RATE);
     video.volume = segment.volume;
-    void video.play();
+    void video.play().catch(() => {});
   };
 
   const handleSetIn = () => {
@@ -327,14 +330,17 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   // (currentTime already tracks the position within the clip's own timeline, unaffected by any
   // crop/reframe applied to the preview) and downloads it - PRD backlog #6.
   const handleCapture = () => {
-    if (!segment) {
+    if (!segment || capturePending) {
       return;
     }
-    void captureFrame(segment.clip, currentTime).then((result) => {
-      if (!result.ok) {
-        showNotice(result.error);
-      }
-    });
+    setCapturePending(true);
+    void captureFrame(segment.clip, currentTime)
+      .then((result) => {
+        if (!result.ok) {
+          showNotice(result.error);
+        }
+      })
+      .finally(() => setCapturePending(false));
   };
 
   useImperativeHandle(
@@ -677,9 +683,10 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
               data-testid="video-control-split"
             />
             <Button
-              label="Capture frame"
+              label={capturePending ? "Capturing…" : "Capture frame"}
               variant="secondary"
               size="sm"
+              isDisabled={capturePending}
               tooltip="Captures the original frame (crop is not applied to the capture)"
               onClick={handleCapture}
               data-testid="video-control-capture-frame"

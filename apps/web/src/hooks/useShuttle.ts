@@ -107,7 +107,7 @@ export function useShuttle({ videoRef, segment, setCurrentTime }: UseShuttleOpti
     }
     video.playbackRate = Math.min(segment.speed * shuttleLevelRef.current, MAX_PLAYBACK_RATE);
     video.volume = segment.volume;
-    void video.play();
+    void video.play().catch(() => {});
   };
 
   const shuttleBackward = () => {

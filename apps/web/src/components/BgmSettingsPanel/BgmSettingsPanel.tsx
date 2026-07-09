@@ -58,7 +58,7 @@ export function BgmSettingsPanel({
       return;
     }
     audio.src = bgmFileStreamUrl(path);
-    void audio.play();
+    void audio.play().catch(() => {});
     setPlayingPath(path);
   };
 

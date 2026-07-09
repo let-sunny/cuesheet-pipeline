@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useToast } from "@astryxdesign/core/Toast";
 import type { CueSheet } from "@cuesheet/schema";
 import { bgmFileStreamUrl, narrationFileUrl } from "../api.js";
 import type { NarrationFile } from "../api.js";
@@ -36,18 +37,31 @@ function clampRate(rate: number): number {
 interface ManagedAudio {
   audio: HTMLAudioElement;
   loadedFile: string | null;
+  /** Set once `loadedFile` fails to load/decode (e.g. the file was deleted or the path is stale) -
+   *  applyState skips retrying play() for this exact file (an unconditional retry every tick,
+   *  since this hook's effect has no dependency array, would otherwise spin forever) until a
+   *  *different* file is requested for this track. */
+  failedFile: string | null;
+  /** Whether the one-per-track toast for the current `failedFile` has already been shown. */
+  toastShown: boolean;
 }
 
 /** Creates a hidden audio element and attaches it to the document body — playback works fine
  *  fully detached, but attaching it (a) matches how other apps park background media elements and
  *  (b) makes it findable via `audio[data-sequence-audio="..."]` from devtools/e2e checks instead
- *  of only reachable through this hook's internal refs. */
+ *  of only reachable through this hook's internal refs. Also wires an `error` listener that marks
+ *  the currently-loading file as failed (see ManagedAudio.failedFile) so a missing/broken file
+ *  stops being retried instead of erroring on every tick. */
 function createManagedAudio(tag: string): ManagedAudio {
   const audio = new Audio();
   audio.dataset.sequenceAudio = tag;
   audio.style.display = "none";
   document.body.appendChild(audio);
-  return { audio, loadedFile: null };
+  const managed: ManagedAudio = { audio, loadedFile: null, failedFile: null, toastShown: false };
+  audio.addEventListener("error", () => {
+    managed.failedFile = managed.loadedFile;
+  });
+  return managed;
 }
 
 function getOrCreateManaged(map: Map<number, ManagedAudio>, index: number): ManagedAudio {
@@ -67,7 +81,9 @@ function teardown(managed: ManagedAudio): void {
 
 /** Applies one computed state onto a real audio element: (re)loads its src on a file change, then
  *  either plays (seeking on first play, or resyncing when drift exceeds DRIFT_THRESHOLD_S) or
- *  pauses. */
+ *  pauses (also skipping play() once `managed.failedFile` matches the current file). Doesn't show
+ *  the missing-file toast itself (kept a pure-ish DOM operation, no toast dependency, easier to
+ *  reason about/test) - the caller checks `managed.failedFile`/`toastShown` after calling this. */
 function applyState(
   managed: ManagedAudio,
   args: { file: string; srcUrl: string; shouldPlay: boolean; seekS: number; volume: number; rate: number },
@@ -77,11 +93,16 @@ function applyState(
     audio.pause();
     audio.src = args.srcUrl;
     managed.loadedFile = args.file;
+    // A different file than the one that previously failed - give it a fresh chance/toast budget.
+    if (managed.failedFile !== args.file) {
+      managed.failedFile = null;
+      managed.toastShown = false;
+    }
   }
   audio.volume = Math.min(1, Math.max(0, args.volume));
   audio.playbackRate = args.rate;
 
-  if (!args.shouldPlay) {
+  if (!args.shouldPlay || managed.failedFile === args.file) {
     if (!audio.paused) {
       audio.pause();
     }
@@ -90,7 +111,7 @@ function applyState(
 
   if (audio.paused) {
     audio.currentTime = Math.max(0, args.seekS);
-    void audio.play();
+    void audio.play().catch(() => {});
     return;
   }
   if (Math.abs(audio.currentTime - args.seekS) > DRIFT_THRESHOLD_S) {
@@ -112,8 +133,18 @@ function applyState(
  * per track index instead.
  */
 export function useSequenceAudio({ cue, positionS, playing, rate, narrationFiles }: UseSequenceAudioOptions): void {
+  const toast = useToast();
   const bgmAudiosRef = useRef<Map<number, ManagedAudio>>(new Map());
   const narrationAudioRef = useRef<ManagedAudio | null>(null);
+
+  // One toast per track per failed file (not per tick) - fires the first time this render's
+  // applyState call left a track newly marked failed.
+  function toastIfNewlyFailed(managed: ManagedAudio, label: string): void {
+    if (managed.failedFile && !managed.toastShown) {
+      managed.toastShown = true;
+      toast({ type: "error", body: `${label}: couldn't play "${managed.failedFile}" - skipping it.` });
+    }
+  }
 
   // Mount/unmount only - tears down every managed element so nothing keeps playing after
   // SequencePlayer itself is torn down (e.g. its "Close" button).
@@ -142,7 +173,8 @@ export function useSequenceAudio({ cue, positionS, playing, rate, narrationFiles
     const seenIndices = new Set<number>();
     for (const state of states.bgm) {
       seenIndices.add(state.bgmIndex);
-      applyState(getOrCreateManaged(bgmAudiosRef.current, state.bgmIndex), {
+      const managed = getOrCreateManaged(bgmAudiosRef.current, state.bgmIndex);
+      applyState(managed, {
         file: state.file,
         srcUrl: bgmFileStreamUrl(state.file),
         shouldPlay: playing && state.shouldPlay,
@@ -150,6 +182,7 @@ export function useSequenceAudio({ cue, positionS, playing, rate, narrationFiles
         volume: state.volume,
         rate: clampedRate,
       });
+      toastIfNewlyFailed(managed, `Background music track ${state.bgmIndex + 1}`);
     }
     // Drop/pause elements for BGM tracks that no longer exist (e.g. a track was removed mid-playback).
     for (const [index, managed] of bgmAudiosRef.current) {
@@ -171,6 +204,7 @@ export function useSequenceAudio({ cue, positionS, playing, rate, narrationFiles
         volume: activeNarration.volume,
         rate: clampedRate,
       });
+      toastIfNewlyFailed(managed, "Narration");
     } else if (narrationAudioRef.current && !narrationAudioRef.current.audio.paused) {
       narrationAudioRef.current.audio.pause();
     }

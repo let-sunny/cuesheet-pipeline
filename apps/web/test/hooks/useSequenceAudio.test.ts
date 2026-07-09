@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, renderHook } from "@testing-library/react";
+import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { BgmCue, CueSheet, Segment } from "@cuesheet/schema";
+
+const toastMock = vi.fn();
+vi.mock("@astryxdesign/core/Toast", () => ({ useToast: () => toastMock }));
+
 import { useSequenceAudio } from "../../src/hooks/useSequenceAudio.js";
 
 // jsdom doesn't implement HTMLMediaElement.play()/load() - stub them so assigning .src / calling
@@ -19,9 +23,9 @@ beforeAll(() => {
 
 afterEach(() => {
   cleanup();
-  // play/pause are shared vi.fn()s on the prototype (every HTMLAudioElement instance/test reads
-  // the same mock's call history) - clear call counts between tests so each test only sees its
-  // own calls. (Only calls/results are cleared; the custom implementation set in beforeAll stays.)
+  // play/pause (and toastMock) are shared vi.fn()s (every HTMLAudioElement instance/test reads the
+  // same mock's call history) - clear call counts between tests so each test only sees its own
+  // calls. (Only calls/results are cleared; the custom implementation set in beforeAll stays.)
   vi.clearAllMocks();
 });
 
@@ -173,6 +177,61 @@ describe("useSequenceAudio - bgm", () => {
     unmount();
     expect(audio!.pause).toHaveBeenCalled();
     expect(audio!.getAttribute("src")).toBe("");
+    AudioSpy.mockRestore();
+  });
+
+  it("stops retrying and shows exactly one toast once a track's file errors (e.g. the file was deleted)", () => {
+    const AudioSpy = vi.spyOn(globalThis, "Audio");
+    const cue = baseCue({ bgm: [bgmCue({ file: "media/bgm/missing.mp3", start: 0, end: 20 })] });
+
+    const { rerender } = renderHook(
+      ({ positionS }: { positionS: number }) =>
+        useSequenceAudio({ cue, positionS, playing: true, rate: 1, narrationFiles: [] }),
+      { initialProps: { positionS: 5 } },
+    );
+    const [audio] = allAudioInstances(AudioSpy);
+    const playCallsBeforeError = (audio!.play as ReturnType<typeof vi.fn>).mock.calls.length;
+    expect(playCallsBeforeError).toBeGreaterThan(0);
+    expect(toastMock).not.toHaveBeenCalled();
+
+    // Simulate the browser discovering the src is broken (deleted file / decode failure) - this
+    // is a real 'error' event on the media element, independent of whether play() itself resolved.
+    act(() => {
+      audio!.dispatchEvent(new Event("error"));
+    });
+
+    // Several more ticks (the hook's effect has no dependency array, so every position/playing/
+    // rate change re-runs it) - none of them should call play() again, and only one toast total.
+    rerender({ positionS: 6 });
+    rerender({ positionS: 7 });
+    rerender({ positionS: 8 });
+
+    expect((audio!.play as ReturnType<typeof vi.fn>).mock.calls.length).toBe(playCallsBeforeError);
+    expect(toastMock).toHaveBeenCalledTimes(1);
+    expect(toastMock.mock.calls[0]?.[0]?.body).toContain("media/bgm/missing.mp3");
+    AudioSpy.mockRestore();
+  });
+
+  it("gives a track a fresh chance (and a fresh toast budget) once its file changes", () => {
+    const AudioSpy = vi.spyOn(globalThis, "Audio");
+    const cue1 = baseCue({ bgm: [bgmCue({ file: "media/bgm/missing.mp3", start: 0, end: 20 })] });
+
+    const { rerender } = renderHook(
+      ({ cue }: { cue: CueSheet }) => useSequenceAudio({ cue, positionS: 5, playing: true, rate: 1, narrationFiles: [] }),
+      { initialProps: { cue: cue1 } },
+    );
+    const [audio] = allAudioInstances(AudioSpy);
+    act(() => {
+      audio!.dispatchEvent(new Event("error"));
+    });
+    rerender({ cue: cue1 });
+    expect(toastMock).toHaveBeenCalledTimes(1);
+
+    const playCallsAfterFirstFailure = (audio!.play as ReturnType<typeof vi.fn>).mock.calls.length;
+    const cue2 = baseCue({ bgm: [bgmCue({ file: "media/bgm/other.mp3", start: 0, end: 20 })] });
+    rerender({ cue: cue2 });
+
+    expect((audio!.play as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(playCallsAfterFirstFailure);
     AudioSpy.mockRestore();
   });
 });

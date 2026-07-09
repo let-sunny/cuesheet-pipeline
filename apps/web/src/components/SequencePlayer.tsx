@@ -223,7 +223,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
     video.playbackRate = Math.min(seg.speed * shuttleLevelRef.current, MAX_PLAYBACK_RATE);
     video.volume = seg.volume;
     setPlaying(true);
-    void video.play();
+    void video.play().catch(() => {});
   }
 
   /** J: reverse playback (approximate). Repeated presses go 1x -> 2x -> 4x. Audio is meaningless
@@ -302,7 +302,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
         video.volume = seg.volume;
         setVideoNow(video.currentTime);
         if (playingRef.current) {
-          void video.play();
+          void video.play().catch(() => {});
         }
       }
 
@@ -329,7 +329,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
       return;
     }
     if (playing) {
-      void video.play();
+      void video.play().catch(() => {});
     } else {
       video.pause();
     }
