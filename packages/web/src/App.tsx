@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import * as stylex from "@stylexjs/stylex";
 import type {
   BgmCue,
   NarrationConfig,
@@ -50,6 +51,8 @@ import { SubtitleStyleSettings, NarrationSettings } from "./components/Finishing
 import { SubtitleStylePresetsSettings } from "./components/SubtitleStylePresetsSettings.js";
 import { ProjectMetaFields } from "./components/ProjectMetaFields/index.js";
 import { RenderSettingsDialog } from "./components/RenderSettingsDialog/index.js";
+import { Banner } from "./components/Banner/index.js";
+import { styles } from "./App.styles.js";
 
 interface AppProps {
   themeMode: ThemeModeSetting;
@@ -944,7 +947,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
   const selectedBgmRange = selectedBgmCue ? bgmCutRange(selectedBgmCue, cumulativeCutStarts(draft.segments)) : undefined;
 
   return (
-    <div className="app">
+    <div {...stylex.props(styles.app)}>
       <HeaderBar
         projectName={draft.project.name}
         dirty={dirty}
@@ -967,25 +970,27 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       />
 
       {externalChangePending ? (
-        <div className="banner">
+        <Banner actions={<Button label="Reload" variant="secondary" size="sm" onClick={handleReload} />}>
           The cuesheet changed elsewhere - discard what's on screen and reload?
-          <Button label="Reload" variant="secondary" size="sm" onClick={handleReload} />
-        </div>
+        </Banner>
       ) : null}
 
+      {/* screen-spec section 6: only one primary per group - "continue editing" is the
+          recommended default action so it's primary, and reverting is secondary (revised
+          2026-07-08). The two buttons are grouped into one action group (Banner's actions slot),
+          separated from the text, and right-aligned - previously this div had 3 flex items
+          (text + button + button), so space-between spread the buttons apart into a "disjointed" layout. */}
       {restoreSnapshot ? (
-        <div className="banner">
+        <Banner
+          actions={
+            <>
+              <Button label="Continue editing" variant="primary" size="sm" onClick={handleRestoreSnapshot} />
+              <Button label="Discard and use saved" variant="secondary" size="sm" onClick={handleDiscardSnapshot} />
+            </>
+          }
+        >
           You have unsaved edits from the last session (last edited {minutesAgoLabel(restoreSnapshot.savedAt)}).
-          {/* screen-spec section 6: only one primary per group - "continue editing" is the
-              recommended default action so it's primary, and reverting is secondary (revised
-              2026-07-08). The two buttons are grouped into one action group (.banner-actions),
-              separated from the text, and right-aligned - previously this div had 3 flex items
-              (text + button + button), so space-between spread the buttons apart into a "disjointed" layout. */}
-          <div className="banner-actions">
-            <Button label="Continue editing" variant="primary" size="sm" onClick={handleRestoreSnapshot} />
-            <Button label="Discard and use saved" variant="secondary" size="sm" onClick={handleDiscardSnapshot} />
-          </div>
-        </div>
+        </Banner>
       ) : null}
 
       <StepNav
@@ -1048,8 +1053,8 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         ) : null}
 
         {step === "edit" ? (
-          <div className="edit-layout">
-            <div className="trim-layout">
+          <div {...stylex.props(styles.editLayout)}>
+            <div {...stylex.props(styles.trimLayout)}>
               <CompactSegmentList
                 segments={draft.segments}
                 selectedIndex={selectedIndex}
@@ -1068,8 +1073,8 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
                 onAddBgmTrack={addBgmTrack}
                 onChangeBgmRange={changeBgmRange}
               />
-              <div className="trim-workspace">
-                <div className="trim-video-col">
+              <div {...stylex.props(styles.trimWorkspace)}>
+                <div {...stylex.props(styles.trimVideoCol)}>
                   <VideoPreview
                     ref={videoPreviewRef}
                     segment={selectedSegment}
@@ -1084,7 +1089,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
                     projectWidth={draft.project.width}
                   />
                 </div>
-                <div className="trim-fields-col">
+                <div {...stylex.props(styles.trimFieldsCol)}>
                   {selectedBgmIndex != null && selectedBgmCue && selectedBgmRange ? (
                     <BgmSettingsPanel
                       cue={selectedBgmCue}
