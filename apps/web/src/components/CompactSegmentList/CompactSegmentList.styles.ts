@@ -113,10 +113,16 @@ export const styles = stylex.create({
     padding: "4px 2px",
     pointerEvents: "none",
   },
+  // 480 -> 300 (13-inch density pass, 2026-07-10): freed width is what lets the video + cut
+  // settings columns sit beside this list instead of wrapping below the video (see
+  // EditStep.styles.ts's trimVideoCol/trimFieldsCol and docs/screen-spec.md's baseline-viewport
+  // section). The row's time/badge/actions moved off the main row onto their own `metaRow` line
+  // (below) to compensate - at the old single-row layout, this narrower width would have
+  // squeezed the subtitle textarea down to an unreadable sliver.
   list: {
     flexGrow: 0,
     flexShrink: 0,
-    flexBasis: 480,
+    flexBasis: 300,
     minWidth: 0,
     overflow: "hidden",
     display: "flex",
@@ -185,6 +191,17 @@ export const styles = stylex.create({
     fontStyle: "italic",
     color: "var(--text-faint)",
   },
+  // Second line under the scene text (13-inch density pass, 2026-07-10) - time/style badge/
+  // subtitle dot/reorder+delete actions used to sit beside `text` as direct row siblings, which
+  // only worked at the row's old 480px-wide list column. Stacking them onto their own line here
+  // (a common two-line list-row convention - title line + metadata line, e.g. Premiere's/Resolve's
+  // bin rows) is what lets `text` keep a usable width at the narrower 300px column.
+  metaRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 2,
+  },
   time: {
     flexGrow: 0,
     flexShrink: 0,
@@ -226,6 +243,9 @@ export const styles = stylex.create({
     flexBasis: "auto",
     display: "flex",
     gap: 4,
+    // Pushes the reorder/delete icons to the far end of `metaRow` (2026-07-10), matching the
+    // row's old right-aligned position now that they've moved off the main row.
+    marginLeft: "auto",
   },
   addButton: {
     marginTop: 10,

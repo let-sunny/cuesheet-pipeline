@@ -61,19 +61,20 @@ export function HeaderBar({
         ) : null}
       </div>
       <div {...stylex.props(styles.saveRow)}>
-        <Button label="Undo" variant="ghost" isDisabled={!canUndo} onClick={onUndo} data-testid="header-undo" />
-        <Button label="Redo" variant="ghost" isDisabled={!canRedo} onClick={onRedo} data-testid="header-redo" />
+        <Button label="Undo" variant="ghost" size="sm" isDisabled={!canUndo} onClick={onUndo} data-testid="header-undo" />
+        <Button label="Redo" variant="ghost" size="sm" isDisabled={!canRedo} onClick={onRedo} data-testid="header-redo" />
 
         <span {...stylex.props(styles.divider)} aria-hidden="true" />
 
         <ThemeModeToggle themeMode={themeMode} onThemeModeChange={onThemeModeChange} />
-        <Button label="?" variant="ghost" tooltip="Keyboard shortcuts" onClick={onToggleShortcuts} />
+        <Button label="?" variant="ghost" size="sm" tooltip="Keyboard shortcuts" onClick={onToggleShortcuts} />
 
         <span {...stylex.props(styles.divider)} aria-hidden="true" />
 
         <Button
           label={saving ? "Saving…" : "Save"}
           variant={dirty ? "primary" : "secondary"}
+          size="sm"
           isDisabled={saving}
           tooltip={dirty ? "Click Save to write it to disk" : undefined}
           onClick={onSave}
@@ -82,6 +83,7 @@ export function HeaderBar({
         <Button
           label={rendering ? `Exporting… ${renderProgress ?? 0}%` : "Export"}
           variant={dirty ? "secondary" : "primary"}
+          size="sm"
           isDisabled={renderDisabled}
           onClick={onRender}
           data-testid="header-render"

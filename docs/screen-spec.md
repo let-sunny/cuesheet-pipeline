@@ -194,6 +194,46 @@ zooming that same surface), plus a scrollbar-styled pan control that only appear
   from `project.fps`) and Shift+Up/Down = ±1s, committing immediately; typed text accepts `M:SS.s`
   shorthand and a leading `+`/`-` as a delta from the current value.
 
+**Baseline viewports and column-width tokens (2026-07-10, 13-inch density pass)**: this app's
+supported baseline viewports are **1280x800 and 1440x900** (a 13-inch MacBook at 100% browser
+zoom) — the (2) Edit step's three columns (cut list, video, cut settings) must sit **side by
+side** at both, not wrap, and the cut settings column must fit within the viewport (reachable via
+its own internal scroll, section 3's `trimFieldsCol` mechanism below — not by scrolling the whole
+page first). The fix here was **arrangement, not sizing**: no root font-size/rem scaling, no
+global token shrink, and no restyling of Astryx components' own sizing — Astryx components keep
+their designed size as-is. Only this app's own column-width tokens and the cut list row's internal
+layout changed:
+- **Cut list column** (`CompactSegmentList.styles.ts`'s `list`) — 480px -> **300px**. At the old
+  480px, the row's time range/style badge/subtitle dot/reorder+delete actions sat beside the
+  subtitle text as row-level siblings; narrowing to 300px directly would have squeezed that text
+  column down to an unreadable sliver. Fixed by moving those elements onto **their own line**
+  below the subtitle (`metaRow`), a common two-line list-row convention (title line + metadata
+  line, matching Premiere's/Resolve's own bin/list rows) — not an invented pattern.
+- **Cut settings column** (`EditStep.styles.ts`'s `trimFieldsCol`) — 424-440px (flexible) ->
+  a **fixed 344px** (flexGrow/flexShrink both 0). 344px keeps ~312px of usable width after the
+  panel's own padding, comfortably fitting the Range/Playback grid's existing 144px-slot x2 + 16px
+  gap = 304px requirement (section 4's G1/G2 tokens themselves are unchanged) — this column no
+  longer grows to fill leftover space, so any width it doesn't need goes to the video column
+  instead (see below).
+- **Video column** (`EditStep.styles.ts`'s `trimVideoCol`) — left **unchanged** (480px min,
+  `flexGrow: 2`). The freed width from the two narrower columns above is exactly what lets it grow
+  wider at 1440x900 (and beyond) — the point of narrowing the chrome is to hand width back to the
+  video/preview area, never to shrink it.
+- **Sticky column max-height, corrected for the pre-scroll case** (`hooks/useStickyColumnMaxHeight.ts`) —
+  `trimFieldsCol`'s `max-height: calc(100vh - 32px)` (task #21's original fix) assumed the sticky
+  workspace was already pinned to its stuck `top: 12px` offset, which is only true *after* the user
+  scrolls past its natural in-flow position (page header + step nav + mini timeline strip above
+  it, measured ~178px at both baseline viewports). Landing on the Edit step and selecting a cut —
+  the common case — renders the column at that larger, natural offset instead, so the old fixed
+  calc() left the column's bottom edge below the fold even though the cap looked correct on paper.
+  The column's max-height is now computed from its actual measured offset (on mount + window
+  resize), closing that gap without touching the underlying sticky/internal-scroll mechanism
+  itself.
+
+With these three changes, at 1280x800 the cut list (300px) + video (480px min) + cut settings
+(344px) + gaps/padding total ~1246px (34px slack); at 1440x900 the extra ~194px goes entirely to
+the video column via its own `flexGrow`.
+
 ## 4. Cut settings group definitions (fixed order and layout)
 
 **G1. Range** — one row: `In [narrow] Out [narrow] Length 12.3s (read-only)`
@@ -346,6 +386,16 @@ Buttons that belong to one group render inside one container (not spread across 
 stay visually together, and action groups in banners/dialog footers are right-aligned.
 
 ## Changelog
+- 2026-07-10 — 13-inch density pass (section 3): established **1280x800/1440x900** as this app's
+  baseline viewports. The (2) Edit step's cut list column narrowed 480px -> 300px (its row's
+  time/badge/actions moved onto a second line to compensate) and the cut settings column narrowed
+  424-440px -> a fixed 344px, so all three columns fit side by side at both baseline viewports
+  instead of the cut settings column wrapping below the video (previously effectively invisible
+  until scrolling past the whole video block). The video column's own size is unchanged - freed
+  width goes to it via its existing `flexGrow`. Also fixed a related latent bug in the cut settings
+  column's internal-scroll max-height (task #21): it assumed the sticky workspace was already
+  pinned to its stuck position, which undercounted the column's real pre-scroll offset. Arrangement
+  only - no root font-size/rem scaling, no global token shrink, no Astryx component restyling.
 - 2026-07-09 — Section 3's trim UI replaced: the "two-level trim" (overview bar + detail bar,
   which read as an inert box - see CLAUDE.md's "no invented UI patterns" rule) is now **TrimStrip**,
   a single zoomable filmstrip strip plus a scrollbar-styled pan control, adopted from

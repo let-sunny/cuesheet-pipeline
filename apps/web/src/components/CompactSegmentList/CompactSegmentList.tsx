@@ -365,62 +365,69 @@ export function CompactSegmentList({
                     ) : null}
                     {sceneText}
                   </span>
-                </div>
-                <span {...stylex.props(styles.time)}>
-                  {seg.in.toFixed(1)}~{seg.out.toFixed(1)}s
-                </span>
-                {seg.styleOverride ? (
-                  <span {...stylex.props(styles.styleBadge)} title="This cut has its own subtitle style">
-                    Style
-                  </span>
-                ) : null}
-                <span
-                  {...stylex.props(styles.subtitleDot, !!seg.subtitle && styles.subtitleDotFilled)}
-                  title={seg.subtitle ? "Has subtitle" : "No subtitle"}
-                />
-                <div
-                  className={`compact-list-actions ${actionsWrapperProps.className ?? ""}`}
-                  style={actionsWrapperProps.style}
-                >
-                  <button
-                    type="button"
-                    className="plain-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onMove(i, -1);
-                    }}
-                    disabled={i === 0}
-                    title="Move up"
-                    data-testid={`cut-row-move-up-${i}`}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    className="plain-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onMove(i, 1);
-                    }}
-                    disabled={i === segments.length - 1}
-                    title="Move down"
-                    data-testid={`cut-row-move-down-${i}`}
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    className="plain-button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRemove(i);
-                    }}
-                    disabled={segments.length <= 1}
-                    title="Delete"
-                    data-testid={`cut-row-delete-${i}`}
-                  >
-                    ✕
-                  </button>
+                  {/* Second line (13-inch density pass, 2026-07-10) - time/style badge/subtitle
+                      dot/reorder+delete used to sit beside `text` as row-level siblings, which only
+                      worked at the list column's old, wider 480px basis. Moved inside `text`'s own
+                      column onto their own line so the row stays usable at the narrower 300px
+                      column (see CompactSegmentList.styles.ts's `list`/`metaRow` comments). */}
+                  <div {...stylex.props(styles.metaRow)}>
+                    <span {...stylex.props(styles.time)}>
+                      {seg.in.toFixed(1)}~{seg.out.toFixed(1)}s
+                    </span>
+                    {seg.styleOverride ? (
+                      <span {...stylex.props(styles.styleBadge)} title="This cut has its own subtitle style">
+                        Style
+                      </span>
+                    ) : null}
+                    <span
+                      {...stylex.props(styles.subtitleDot, !!seg.subtitle && styles.subtitleDotFilled)}
+                      title={seg.subtitle ? "Has subtitle" : "No subtitle"}
+                    />
+                    <div
+                      className={`compact-list-actions ${actionsWrapperProps.className ?? ""}`}
+                      style={actionsWrapperProps.style}
+                    >
+                      <button
+                        type="button"
+                        className="plain-button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onMove(i, -1);
+                        }}
+                        disabled={i === 0}
+                        title="Move up"
+                        data-testid={`cut-row-move-up-${i}`}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className="plain-button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onMove(i, 1);
+                        }}
+                        disabled={i === segments.length - 1}
+                        title="Move down"
+                        data-testid={`cut-row-move-down-${i}`}
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        className="plain-button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onRemove(i);
+                        }}
+                        disabled={segments.length <= 1}
+                        title="Delete"
+                        data-testid={`cut-row-delete-${i}`}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             );

@@ -1,10 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
+import { useRef } from "react";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import type { CueSheet } from "@cuesheet/schema";
 import type { BgmFile, ClipMoments, NarrationFile } from "../../api.js";
 import { bgmCutRange, cumulativeCutStarts } from "../../lib/bgmCutMapping.js";
 import { computeMergeEligibility } from "../../lib/segmentMerge.js";
 import type { UseEditStepActionsResult } from "../../hooks/useEditStepActions.js";
+import { useStickyColumnMaxHeight } from "../../hooks/useStickyColumnMaxHeight.js";
 import { VideoPreview } from "../../components/VideoPreview.js";
 import type { VideoPreviewHandle } from "../../components/VideoPreview.js";
 import { BgmSettingsPanel } from "../../components/BgmSettingsPanel/index.js";
@@ -60,6 +62,17 @@ export function EditStep({
     ? bgmCutRange(selectedBgmCue, cumulativeCutStarts(draft.segments))
     : undefined;
 
+  // The fields column's max-height (EditStep.styles.ts's trimFieldsCol) is a static calc(100vh -
+  // 32px), which assumes trimWorkspace is already pinned to its stuck `top` - only true once the
+  // user has scrolled past its natural in-flow position. Measuring the real (pre-stick) offsetTop
+  // here and passing it down as an inline max-height override (screen-spec rule 8's "style is the
+  // escape hatch for anything dynamic") is what makes the column actually fit within the viewport
+  // from the very first render, not just after a scroll (docs/screen-spec.md's baseline-viewport
+  // section, 13-inch density pass).
+  const trimWorkspaceRef = useRef<HTMLDivElement | null>(null);
+  const fieldsColMaxHeight = useStickyColumnMaxHeight(trimWorkspaceRef);
+  const trimFieldsColProps = stylex.props(styles.trimFieldsCol);
+
   return (
     <div {...stylex.props(styles.editLayout)}>
       <div {...stylex.props(styles.trimLayout)}>
@@ -81,7 +94,7 @@ export function EditStep({
           onAddBgmTrack={actions.addBgmTrack}
           onChangeBgmRange={actions.changeBgmRange}
         />
-        <div {...stylex.props(styles.trimWorkspace)} data-testid="edit-trim-workspace">
+        <div ref={trimWorkspaceRef} {...stylex.props(styles.trimWorkspace)} data-testid="edit-trim-workspace">
           <div {...stylex.props(styles.trimVideoCol)}>
             <VideoPreview
               ref={videoPreviewRef}
@@ -97,7 +110,15 @@ export function EditStep({
               projectWidth={draft.project.width}
             />
           </div>
-          <div {...stylex.props(styles.trimFieldsCol)} data-testid="edit-trim-fields-col">
+          <div
+            {...trimFieldsColProps}
+            style={
+              fieldsColMaxHeight !== undefined
+                ? { ...trimFieldsColProps.style, maxHeight: fieldsColMaxHeight }
+                : trimFieldsColProps.style
+            }
+            data-testid="edit-trim-fields-col"
+          >
             {selectedBgmIndex != null && selectedBgmCue && selectedBgmRange ? (
               <BgmSettingsPanel
                 cue={selectedBgmCue}

@@ -15,8 +15,18 @@ test("add a BGM track, the gutter bar appears, and its settings panel opens", as
   await expect(page.getByTestId("bgm-field-volume")).toHaveValue("100");
 });
 
+// Raw page.mouse.move/down/up (needed here for a custom drag gesture - a plain .click() won't do)
+// operate on absolute viewport coordinates and do *not* auto-scroll the way locator actions
+// (.click(), .hover()) do, so any row this test targets must be scrolled into view first -
+// otherwise its boundingBox() coordinates can land partially or fully outside the viewport,
+// where synthetic mouse events aren't reliably delivered to the right element. This only
+// started to matter once the cut list grew tall enough (2026-07-10 13-inch density pass, see
+// docs/screen-spec.md - CompactSegmentList rows moved their time/actions onto a second line,
+// making each row taller) for row 4+ to fall outside the default 1280x720 test viewport.
 async function rowCenter(page: Page, i: number): Promise<{ x: number; y: number }> {
-  const box = (await page.getByTestId(`cut-row-${i}`).boundingBox())!;
+  const locator = page.getByTestId(`cut-row-${i}`);
+  await locator.scrollIntoViewIfNeeded();
+  const box = (await locator.boundingBox())!;
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
 
@@ -41,6 +51,7 @@ test("a new track starts at cut 1, and its bar can be dragged (default placement
 
   // Drag the end handle down to cut row 4 (index 4, cut 5) - the range readout should extend.
   const endHandle = page.getByTestId("bgm-bar-0-handle-end");
+  await endHandle.scrollIntoViewIfNeeded();
   const handleBox = (await endHandle.boundingBox())!;
   await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
   await page.mouse.down();
@@ -58,6 +69,10 @@ test("a new track starts at cut 1, and its bar can be dragged (default placement
   const startBefore = Number(await page.getByTestId("bgm-field-start").inputValue());
   const endBefore = Number(await page.getByTestId("bgm-field-end").inputValue());
 
+  // Scroll the bottommost row into view first so the drag target (2 row-heights below the bar,
+  // computed below) is guaranteed to land inside the viewport too - see rowCenter's comment above
+  // on why raw page.mouse coordinates need this.
+  await page.getByTestId("cut-row-6").scrollIntoViewIfNeeded();
   const bar = page.getByTestId("bgm-bar-0");
   const barBox = (await bar.boundingBox())!;
   const rowHeight = (await page.getByTestId("cut-row-0").boundingBox())!.height;

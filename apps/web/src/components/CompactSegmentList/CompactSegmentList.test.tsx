@@ -59,11 +59,8 @@ describe("CompactSegmentList", () => {
 
   it("marks the selected row (className carries the selected variant)", () => {
     render(<CompactSegmentList {...baseProps({ selectedIndex: 1 })} />);
-    const rows = document.querySelectorAll('[title="Move up"]');
-    // Row 2's Move-up button lives inside `.compact-list-actions`, whose parent is the row div -
-    // check that div's class differs between the selected and unselected row.
-    const selectedRow = rows[1]!.closest("div")!.parentElement!;
-    const unselectedRow = rows[0]!.closest("div")!.parentElement!;
+    const selectedRow = screen.getByTestId("cut-row-1");
+    const unselectedRow = screen.getByTestId("cut-row-0");
     expect(selectedRow.className).not.toEqual(unselectedRow.className);
   });
 
