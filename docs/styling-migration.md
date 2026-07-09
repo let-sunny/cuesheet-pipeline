@@ -179,3 +179,41 @@ The 6 visual stages are intentionally kept in plain CSS because they represent a
 
 
 > Batch 4 (2026-07-09): complete — category (f) migrated or deleted-as-dead; styles.css at 1745 lines. Remaining: category (d) domain-custom (batch 5, deferred) + documented exceptions.
+
+> Batch 5 (2026-07-10): complete — the deferred category (d) domain-custom remainder. VideoPreview,
+> CropEditOverlay, SequencePlayer, MomentPalette, and MiniTimelineStrip all migrated to full
+> component anatomy (folder + `.styles.ts` + co-located test + `index.ts`); App.tsx's own
+> `.mini-strip-row`/`.sequence-player-sticky`/`.step-body` container rules folded into
+> App.styles.ts alongside its existing `.app` rule. CropEditOverlay was given its own standalone
+> anatomy folder (not nested inside VideoPreview) — same precedent as TrimStrip/SegmentThumb, both
+> single-consumer components that still get their own folder.
+>
+> New documented exceptions discovered during this batch (same root cause each time — a descendant
+> selector or same-specificity override beats `.plain-button`/`.plain-field`, which StyleX's
+> injected-before-styles.css output can't replicate): `.playmode-toggle button.active`
+> (VideoPreview), `.moment-filters button`(+`.active`) (MomentPalette), `.mini-strip-block`
+> (+`.selected`/`.clip-boundary`, base properties too — not just an `.active` variant, see
+> MiniTimelineStrip.styles.ts's comment) and `.mini-strip-zoom-controls button` (MiniTimelineStrip),
+> `.sequence-player-speed-toggle button`(+`.active`) (SequencePlayer). `.video-subtitle-overlay`
+> (+ position/text variants) stays shared plain CSS — confirmed used by VideoPreview.tsx *and*
+> SubtitleStyleSettings.tsx *and* SubtitleStylePresetsSettings.tsx (deliberately identical preview
+> CSS), not owned by any single component. `.moment-palette.status` (MomentPalette's loading/error
+> message, itself composed from the shared `.status` class + a component-specific override) is
+> fully absorbed into MomentPalette.styles.ts's own `paletteStatus` instead, since it no longer
+> needs the shared class at all. A few dead marker classes with no CSS rule at all turned up along
+> the way (`.crop-edit-readout`, `.moment-duration`, `.moment-status-filters`, `.sequence-video`'s
+> `.visible` modifier) — left as-is in the JSX (harmless, out of scope for a pure styling move).
+>
+> **Final state**: styles.css at 1110 lines (down from 1745 after batch 4). This is above the
+> original ~370-line residue-map projection from the 2026-07-09 audit — that number predates batch
+> 5 and only ever counted categories (a)+(b)+(c)+(e) as then understood; the newly-documented
+> exceptions above (discovered only once the domain-custom components actually got their anatomy
+> folders) plus category (c) shared layout tokens (never in scope for batch 4/5) account for the
+> gap. All of it is now classified (shared token, documented specificity exception, or tokens/base)
+> — nothing left is an unexamined leftover.
+>
+> Verification: `pnpm --filter @cuesheet/web test` (56 files / 441 tests), `pnpm -r typecheck`,
+> `pnpm e2e` (12/12) all green; visual regression screenshots (Edit step with a cut selected,
+> Finish step, Compose step, Play all/SequencePlayer — 1280x800, light + dark) matched the
+> pre-migration baseline pixel-for-pixel (chrome only differs by the live playhead timestamp and
+> whichever theme-toggle button is active, both expected).
