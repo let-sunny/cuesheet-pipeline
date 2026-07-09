@@ -1,26 +1,28 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
 import type { Segment, SubtitleStyle, SubtitleStylePresets } from "@cuesheet/schema";
-import { ToolbarButton } from "./ui/ToolbarButton/index.js";
-import { TitleOverlay } from "./TitleOverlay/index.js";
-import { captureFrame, fetchProxyStatus, type ClipMoments, type ProxyStatus } from "../api.js";
-import { clamp } from "../lib/clamp.js";
-import { cropPreviewStyle } from "../lib/cropPreview.js";
-import { useCropEditor } from "../hooks/useCropEditor.js";
-import { MAX_PLAYBACK_RATE, useShuttle } from "../hooks/useShuttle.js";
-import { matchSceneInfo, shotTypeLabel } from "../lib/sceneInfo.js";
+import { ToolbarButton } from "../ui/ToolbarButton/index.js";
+import { TitleOverlay } from "../TitleOverlay/index.js";
+import { captureFrame, fetchProxyStatus, type ClipMoments, type ProxyStatus } from "../../api.js";
+import { clamp } from "../../lib/clamp.js";
+import { cropPreviewStyle } from "../../lib/cropPreview.js";
+import { useCropEditor } from "../../hooks/useCropEditor.js";
+import { MAX_PLAYBACK_RATE, useShuttle } from "../../hooks/useShuttle.js";
+import { matchSceneInfo, shotTypeLabel } from "../../lib/sceneInfo.js";
 import {
   mergeSubtitleStyle,
   subtitleBackgroundRgba,
   subtitleOutlineStyle,
   subtitlePositionStyle,
   toCqw,
-} from "../lib/subtitleOverlay.js";
-import { transitionOpacity } from "../lib/transitionOverlay.js";
-import { MIN_GAP_S } from "../lib/trimWindow.js";
-import type { TrimWindow } from "../lib/trimWindow.js";
-import { CropEditOverlay } from "./CropEditOverlay.js";
-import { TrimStrip } from "./TrimStrip/index.js";
+} from "../../lib/subtitleOverlay.js";
+import { transitionOpacity } from "../../lib/transitionOverlay.js";
+import { MIN_GAP_S } from "../../lib/trimWindow.js";
+import type { TrimWindow } from "../../lib/trimWindow.js";
+import { CropEditOverlay } from "../CropEditOverlay/index.js";
+import { TrimStrip } from "../TrimStrip/index.js";
+import { styles } from "./VideoPreview.styles.js";
 
 type PlayMode = "loop" | "free";
 
@@ -354,7 +356,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
 
   if (!segment) {
     return (
-      <div className="video-preview empty" data-testid="video-preview">
+      <div {...stylex.props(styles.videoPreview, styles.videoPreviewEmpty)} data-testid="video-preview">
         Select a cut
       </div>
     );
@@ -377,13 +379,14 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   const isPreparingProxy = segment.clip !== "" && (isGeneratingProxy || pendingIndex !== -1);
 
   return (
-    <div className="video-preview" data-testid="video-preview">
-      <div className="video-context-header">
+    <div {...stylex.props(styles.videoPreview)} data-testid="video-preview">
+      <div {...stylex.props(styles.contextHeader)}>
         <div
-          className={`video-context-scene${sceneInfo.kind === "none" ? " empty" : ""}`}
+          {...stylex.props(styles.contextScene, sceneInfo.kind === "none" && styles.contextSceneEmpty)}
           title={sceneText}
+          data-testid="video-context-scene"
         >
-          <span className="video-context-index" data-testid="video-context-index">
+          <span {...stylex.props(styles.contextIndex)} data-testid="video-context-index">
             #{selectedIndex + 1}
           </span>
           {sceneInfo.kind === "moment" ? (
@@ -394,15 +397,15 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
           {sceneInfo.kind === "monotonous" ? (
             <span className="scene-shot-badge shot-monotonous">Timelapse cut</span>
           ) : null}
-          <span className="video-context-scene-label">Scene</span>
-          <span className="video-context-scene-text">{sceneText}</span>
+          <span {...stylex.props(styles.contextSceneLabel)}>Scene</span>
+          <span {...stylex.props(styles.contextSceneText)}>{sceneText}</span>
         </div>
-        <div className="video-context-line" title={subtitleSummary}>
+        <div {...stylex.props(styles.contextLine)} title={subtitleSummary}>
           Subtitle {subtitleSummary} · {segment.in.toFixed(1)}s~{segment.out.toFixed(1)}s
         </div>
       </div>
       {isPreparingProxy ? (
-        <div className="notice proxy-preparing">
+        <div {...stylex.props(styles.notice, styles.noticeProxyPreparing)}>
           Preparing video — will play automatically in a moment (
           {isGeneratingProxy ? "processing now" : `#${pendingIndex + 1} in line`})
         </div>
@@ -412,12 +415,12 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
       ) : isPreparingProxy ? null : (
         <>
           {cropEditDraft ? (
-            <div className="crop-edit-toolbar">
+            <div {...stylex.props(styles.cropEditToolbar)}>
               <span className="crop-edit-readout">
                 x {(cropEditDraft.x * 100).toFixed(0)}% · y {(cropEditDraft.y * 100).toFixed(0)}%
                 {" "}· w {(cropEditDraft.w * 100).toFixed(0)}% · h {(cropEditDraft.h * 100).toFixed(0)}%
               </span>
-              <div className="crop-edit-actions">
+              <div {...stylex.props(styles.cropEditActions)}>
                 <ToolbarButton label="Full frame" variant="ghost" size="sm" onClick={resetCropEditToFullFrame} />
                 <ToolbarButton label="Apply" variant="primary" size="sm" onClick={applyCropEdit} />
                 <ToolbarButton label="Cancel" variant="ghost" size="sm" onClick={cancelCropEdit} />
@@ -427,10 +430,11 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
               </div>
             </div>
           ) : null}
-          <div className="video-crop-frame" ref={cropFrameRef}>
+          <div {...stylex.props(styles.cropFrame)} ref={cropFrameRef}>
             <video
               key={`${segment.clip}:${reloadToken}`}
               ref={videoRef}
+              {...stylex.props(styles.video)}
               src={`/clips/${encodeURIComponent(segment.clip)}`}
               onError={() => setMissing(true)}
               style={
@@ -509,7 +513,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
             onViewportChange={setViewport}
           />
 
-          <div className="time-readout">
+          <div {...stylex.props(styles.timeReadout)}>
             Now {currentTime.toFixed(1)}s · In {segment.in.toFixed(1)}s · Out {segment.out.toFixed(1)}s
             {duration > 0 && viewport.end - viewport.start < duration - 0.01
               ? ` · Viewing ${viewport.start.toFixed(1)}s–${viewport.end.toFixed(1)}s`
@@ -517,7 +521,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
           </div>
 
           {/* Playback controls — a single row attached directly below the video(+scrub) (screen-spec section 3). */}
-          <div className="video-controls-row">
+          <div {...stylex.props(styles.videoControlsRow)}>
             <Button label="Play" variant="primary" size="sm" onClick={handlePlay} data-testid="video-control-play" />
             <Button
               label="Set In here"
@@ -551,11 +555,15 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
             />
           </div>
 
-          <div className="playmode-toggle">
+          {/* `playmode-toggle` stays alongside the StyleX class as a marker so the
+              `.playmode-toggle button.active` descendant-selector exception (styles.css) keeps
+              matching - see VideoPreview.styles.ts's file comment. */}
+          <div className={`playmode-toggle ${stylex.props(styles.playModeToggle).className}`}>
             <button
               type="button"
               className={`plain-button${playMode === "loop" ? " active" : ""}`}
               onClick={() => setPlayMode("loop")}
+              data-testid="video-playmode-loop"
             >
               Loop range
             </button>
@@ -563,12 +571,13 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
               type="button"
               className={`plain-button${playMode === "free" ? " active" : ""}`}
               onClick={() => setPlayMode("free")}
+              data-testid="video-playmode-free"
             >
               Full clip
             </button>
           </div>
 
-          {notice ? <div className="notice">{notice}</div> : null}
+          {notice ? <div {...stylex.props(styles.notice)}>{notice}</div> : null}
         </>
       )}
     </div>
