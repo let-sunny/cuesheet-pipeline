@@ -94,6 +94,37 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
     title asset (scoped narrowly - cuesheets without one are unaffected); confirmed the 4-title
     combo renders correctly end-to-end afterward.
 
+## 2026-07-09 daytime: standing QA + structure rounds + table-stakes features (autonomous loop)
+
+- **Standing QA established** (user mandate: detect, don't wait to be told): persona
+  walkthrough + adversarial inputs + wrongness screenshot review found 9 real defects in
+  one sweep — incl. numeric clear-then-type data corruption (typed 2.5 committed 12.5),
+  dialog keydown leak silently mutating cuts, odd-resolution render failure with a
+  4000-char error dump. All 9 fixed same day (useNumericField hook, modalStack guard,
+  even-dimension refine, wrap guards, scrim fix, frames-root fix).
+- **Structure round A**: cuesheet-plugin (~1300L) split into server/{routes,media,watch,
+  shared}; web test harness stood up (vitest+RTL); render output moved to
+  out/<project-name>.mp4. Found a real bug wiring tests: oversize-upload guard destroyed
+  the socket so its 413 never reached clients.
+- **Structure round B**: App.tsx 1499→1072 via hooks (useCueSheetHistory/Server/
+  KeyboardShortcuts), VideoPreview/SequencePlayer/MomentPalette logic extracted into
+  pure tested modules (+105 tests). StyleX mass-migration deferred; recipe established
+  later same day (docs/styling-migration.md) with StepNav as the 0-pixel-diff exemplar
+  and TitleOverlay as the new-component anatomy exemplar.
+- **Features**: named subtitle style presets (global < preset < per-cut merge, validated
+  references) + title cards (Gooey/Melt/Particle/Typing + backdrop dim) working in BOTH
+  preview and real renders (ASS karaoke for typing; headless PNG-sequence capture +
+  overlay for the rest, content-addressed cache). Two render-path bugs found via real
+  renders (canvas paint race blanking early frames; ffmpeg filter-scheduler deadlock at
+  3+ overlays). Palette card media area now uses the Astryx AspectRatio+Overlay
+  composition. Tests: 297 across 5 packages.
+- **Astryx candidate verdicts** (dogfooding program): Toast fallback = REAL bug
+  (context-severed fallback tree -> invisible toast; distinct from upstream #1586;
+  issue draft awaiting user approval). Thumbnail gap = our miss (AspectRatio+Overlay is
+  the documented path — adopted). TabList ARIA = real but duplicate of upstream #3335.
+- Extras: YouTube chapter prototype from editing-grammar boundaries (4 chapters on v4),
+  fades/dip design sketch in PRD, fresh-clone onboarding fixes landed in the morning.
+
 ## 2026-07-09 overnight: release-readiness chain (autonomous loop)
 
 - **English everywhere in git (complete)**: history rewritten (106 commit messages
