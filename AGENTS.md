@@ -30,6 +30,13 @@ downstream ever reads anything else.
   to frames, using `project.fps`.
 - `segment.clip` is a filename only — the folder is the separate `clipDir` field, so moving the
   footage folder doesn't invalidate every segment.
+- Beyond the basic trim/subtitle/speed/volume fields, the schema also covers: per-cut title cards
+  (`segment.title` — text/preset/durationS/backdrop dim, presets `gooey`/`melt`/`particle`/`typing`),
+  per-cut fade/dip transitions (`segment.transitionIn`/`transitionOut`), episode-level fade in/out
+  (`project.fadeInS`/`fadeOutS`), named reusable subtitle style presets (`subtitleStylePresets` +
+  `segment.stylePreset` to opt a cut into one), and BGM ducking under narration
+  (`narration.ducking` — amount/fadeS). All optional/omitted-means-off, so existing cuesheets
+  keep validating and rendering identically.
 - To see the full contract as JSON Schema instead of reading zod source, call the MCP bridge's
   `get_schema` tool (see below) — it's generated directly from the same zod schema, so it can't
   drift from what actually validates.
@@ -132,6 +139,24 @@ Every edit is "read the whole cuesheet, compute the whole new cuesheet, send it 
 defaults to `./project.cuesheet.json`) selects which file is being edited; the web editor
 watches the same file and refreshes automatically when the bridge writes to it.
 
+## Web editor HTTP endpoints (agent-callable)
+
+The web editor's dev server (`pnpm --filter @cuesheet/web dev`, default `localhost:5173`) exposes
+a few plain HTTP endpoints worth knowing about directly, beyond the cuesheet-bridge MCP tools
+above:
+
+- `GET /api/frame-capture?clip=<filename>&atS=<source-seconds>` — captures one full-resolution
+  PNG frame straight from the original clip (seek-based ffmpeg, not the 720p preview proxy) at
+  `atS` seconds into that clip. Useful for pulling a thumbnail candidate for a specific moment
+  without opening the browser.
+- `GET /api/bgm-files` — lists audio files usable as background music, recursively under repo
+  `media/` plus the current cuesheet's `clipDir`, each with a probed `durationS`.
+- `POST /api/render` runs the same render the Export step's button triggers. The output file
+  lands at `out/<project-name>.mp4` (repo-root `out/` directory, filename sanitized from
+  `project.name`) — **not** `out.mp4` at the repo root. That bare `out.mp4` name is only the
+  `cuesheet-render` CLI's own default output argument (see CLI surface above); the two are
+  independent paths that happen to share a directory choice by convention, not the same file.
+
 ## File/path conventions
 
 - `episodes/<slug>.cuesheet.json` — the per-episode cuesheet naming convention used by
@@ -146,16 +171,17 @@ watches the same file and refreshes automatically when the bridge writes to it.
   live in. Cuesheets store clip filenames only (`segment.clip`); `clipDir` is what makes moving
   the footage folder not break every segment. Keep it repo-relative (or otherwise resolvable
   from wherever the cuesheet is being read) rather than an absolute path tied to one machine.
-- Rendered/generated outputs (`out.mp4`, `*.srt`, `proto_*.mp4`, proxies, thumbnails) are
-  **never committed** — see `.gitignore`. Don't `git add` anything under `media/proxies/`,
-  `media/.thumbs/`, or a render's output path.
+- Rendered/generated outputs (`out.mp4`, `out/*.mp4`, `*.srt`, `proto_*.mp4`, proxies,
+  thumbnails) are **never committed** — see `.gitignore`. Don't `git add` anything under
+  `media/proxies/`, `media/.thumbs/`, `out/`, or a render's output path.
 
 ## Typical workflows
 
 **New episode, end to end**: `pnpm episode "<folder>"` (scans, boots the editor) -> in Claude
 Code, `/episode <folder>` (vision judgment -> assemble -> subtitle voice pass) -> open
 `http://localhost:5173`, review the rough cut, hand-edit anything -> press render in the editor
-(or run `cuesheet-render episodes/<slug>.cuesheet.json out.mp4`).
+(lands at `out/<project-name>.mp4`) (or run `cuesheet-render episodes/<slug>.cuesheet.json
+out.mp4`).
 
 **Bulk subtitle edit via MCP**: connect to `cuesheet-bridge`, call `get_cuesheet`, compute a new
 `segments` array with every `subtitle` rewritten (e.g. tone pass per `docs/voice-guide.md`),
