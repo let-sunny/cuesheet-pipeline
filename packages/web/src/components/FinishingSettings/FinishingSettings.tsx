@@ -367,8 +367,8 @@ export function NarrationSettings({ narration, onNarrationChange }: NarrationPro
                 <input type="number" className="plain-field" min={0.1} max={1} step={0.1} {...fadeField} />
               </label>
               <p className="settings-note">
-                Takes effect at export - Play all doesn't play back background music/narration
-                yet, so there's no in-editor preview of the dip.
+                Play all now plays background music/narration audio, so this dip is audible
+                in-editor too - the exported render applies the same shape via ffmpeg.
               </p>
             </>
           ) : null}
