@@ -167,28 +167,24 @@ export function CompactSegmentList({
     return Math.max(0, rows.length - 1);
   };
 
-  const startTrackDrag =
-    (bgmIndex: number, mode: "move" | "resize-start" | "resize-end") =>
-    (e: ReactPointerEvent<HTMLDivElement>) => {
-      e.stopPropagation();
-      e.currentTarget.setPointerCapture(e.pointerId);
-      const range = bgmCutRange(bgm[bgmIndex]!, cumStart);
-      dragRef.current = {
-        bgmIndex,
-        mode,
-        originStartCutIdx: range.startCutIdx,
-        originEndCutIdx: range.endCutIdx,
-        originRowIdx: rowIndexAtClientY(e.clientY),
-      };
-      onSelectBgm(bgmIndex);
-    };
+  // Drag reliability (2026-07-09 diagnosed fix): previously each bar/handle only listened to its
+  // own onPointerMove/onPointerUp (plus setPointerCapture on that same small element) - this made
+  // dragging fragile both for real users (a fast or slightly-off-target drag could leave the
+  // pointer over a sibling row instead of the ~22px-wide bar) and for automated pointer drags
+  // (synthetic move events dispatched over the page don't reliably keep landing on the captured
+  // element either). Listening on `window` for the duration of the drag instead means every
+  // pointermove/pointerup is heard regardless of what's directly under the pointer - the standard,
+  // robust pattern for drag interactions - so grabbing/dragging no longer depends on staying
+  // pixel-precise over a thin bar.
+  const trackDragMoveHandler = useRef<((e: PointerEvent) => void) | null>(null);
+  const trackDragUpHandler = useRef<(() => void) | null>(null);
 
-  const onTrackDragMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+  const applyTrackDrag = (clientY: number) => {
     const drag = dragRef.current;
-    if (!drag || e.buttons === 0) {
+    if (!drag) {
       return;
     }
-    const rowIdx = rowIndexAtClientY(e.clientY);
+    const rowIdx = rowIndexAtClientY(clientY);
     const lastIdx = segments.length - 1;
     let newStart = drag.originStartCutIdx;
     let newEnd = drag.originEndCutIdx;
@@ -209,7 +205,44 @@ export function CompactSegmentList({
   const endTrackDrag = () => {
     dragRef.current = null;
     setDragHighlight(null);
+    if (trackDragMoveHandler.current) {
+      window.removeEventListener("pointermove", trackDragMoveHandler.current);
+      trackDragMoveHandler.current = null;
+    }
+    if (trackDragUpHandler.current) {
+      window.removeEventListener("pointerup", trackDragUpHandler.current);
+      trackDragUpHandler.current = null;
+    }
   };
+
+  // Belt-and-suspenders: if this component unmounts mid-drag (e.g. switching steps), drop any
+  // still-registered window listeners rather than leaking them.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => endTrackDrag, []);
+
+  const startTrackDrag =
+    (bgmIndex: number, mode: "move" | "resize-start" | "resize-end") =>
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      e.stopPropagation();
+      endTrackDrag(); // clears any stale listeners left over from an interrupted previous drag
+
+      const range = bgmCutRange(bgm[bgmIndex]!, cumStart);
+      dragRef.current = {
+        bgmIndex,
+        mode,
+        originStartCutIdx: range.startCutIdx,
+        originEndCutIdx: range.endCutIdx,
+        originRowIdx: rowIndexAtClientY(e.clientY),
+      };
+      onSelectBgm(bgmIndex);
+
+      const onMove = (ev: PointerEvent) => applyTrackDrag(ev.clientY);
+      const onUp = () => endTrackDrag();
+      trackDragMoveHandler.current = onMove;
+      trackDragUpHandler.current = onUp;
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+    };
 
   const actionsWrapperProps = stylex.props(styles.actions);
   const addButtonProps = stylex.props(styles.addButton);
@@ -253,23 +286,19 @@ export function CompactSegmentList({
                       width: BGM_LANE_WIDTH,
                     }}
                     onPointerDown={startTrackDrag(item.bgmIndex, "move")}
-                    onPointerMove={onTrackDragMove}
-                    onPointerUp={endTrackDrag}
                     title={`${cue?.file ? baseName(cue.file) : "(no file)"} · cuts ${item.startCutIdx + 1}-${item.endCutIdx + 1}`}
                     data-testid={`bgm-bar-${item.bgmIndex}`}
                   >
                     <div
                       {...stylex.props(styles.gutterHandle)}
                       onPointerDown={startTrackDrag(item.bgmIndex, "resize-start")}
-                      onPointerMove={onTrackDragMove}
-                      onPointerUp={endTrackDrag}
+                      data-testid={`bgm-bar-${item.bgmIndex}-handle-start`}
                     />
                     <span {...stylex.props(styles.gutterBarLabel)}>{cue?.file ? baseName(cue.file) : "(no file)"}</span>
                     <div
                       {...stylex.props(styles.gutterHandle)}
                       onPointerDown={startTrackDrag(item.bgmIndex, "resize-end")}
-                      onPointerMove={onTrackDragMove}
-                      onPointerUp={endTrackDrag}
+                      data-testid={`bgm-bar-${item.bgmIndex}-handle-end`}
                     />
                   </div>
                 );
@@ -419,9 +448,12 @@ function rectsEqual(a: Array<{ top: number; height: number }>, b: Array<{ top: n
   return a.every((r, i) => r.top === b[i]?.top && r.height === b[i]?.height);
 }
 
-/** BGM gutter lane geometry (px). */
-const BGM_LANE_WIDTH = 22;
+/** BGM gutter lane geometry (px). Widened slightly (2026-07-09 diagnosed drag-reliability fix,
+ * alongside the window-level pointer listeners above) - a 22px-wide bar with 6px-tall resize
+ * handles left very little room to grab either the move area or the handles, which was reported
+ * as "hard to grab" even before accounting for the pointer-tracking bug itself. */
+const BGM_LANE_WIDTH = 26;
 const BGM_LANE_GAP = 6;
 const BGM_LANE_TOTAL_WIDTH = BGM_LANE_WIDTH + BGM_LANE_GAP;
 const BGM_GUTTER_COLLAPSED_WIDTH = 10;
-const BGM_MIN_BAR_HEIGHT = 20;
+const BGM_MIN_BAR_HEIGHT = 26;

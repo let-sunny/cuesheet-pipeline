@@ -88,11 +88,14 @@ export const styles = stylex.create({
     borderColor: "var(--accent)",
     boxShadow: "0 0 0 1px var(--accent)",
   },
+  // 6px -> 9px (2026-07-09 diagnosed drag-reliability fix) - a wider grab target for the
+  // resize-start/resize-end handles, alongside the window-level pointer listeners in
+  // CompactSegmentList.tsx that make the drag itself track reliably once grabbed.
   gutterHandle: {
     flexGrow: 0,
     flexShrink: 0,
     flexBasis: "auto",
-    height: 6,
+    height: 9,
     cursor: "ns-resize",
     backgroundColor: "var(--bgm-cue-border)",
   },
