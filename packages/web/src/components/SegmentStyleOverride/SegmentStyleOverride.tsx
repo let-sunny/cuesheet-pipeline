@@ -6,6 +6,7 @@ import { Button } from "@astryxdesign/core/Button";
 import type { Segment, SubtitleBackground, SubtitleStyle, SubtitleStyleOverride } from "@cuesheet/schema";
 import { useNumericField } from "../../hooks/useNumericField.js";
 import { toColorInputValue } from "../../lib/subtitleOverlay.js";
+import { Swatch } from "../Swatch/index.js";
 import { styles } from "./SegmentStyleOverride.styles.js";
 
 interface Props {
@@ -61,7 +62,7 @@ export function SegmentStyleOverride({
 
             <label className="settings-field">
               <span>
-                Color <span className="swatch" style={{ background: override.color ?? globalStyle.color }} />
+                Color <Swatch color={override.color ?? globalStyle.color} />
               </span>
               <div className="color-field-inputs">
                 <input
@@ -81,7 +82,7 @@ export function SegmentStyleOverride({
             <label className="settings-field">
               <span>
                 Outline color{" "}
-                <span className="swatch" style={{ background: override.outlineColor ?? globalStyle.outlineColor }} />
+                <Swatch color={override.outlineColor ?? globalStyle.outlineColor} />
               </span>
               <div className="color-field-inputs">
                 <input
@@ -111,7 +112,7 @@ export function SegmentStyleOverride({
               <>
                 <label className="settings-field">
                   <span>
-                    Background color <span className="swatch" style={{ background: override.background.color }} />
+                    Background color <Swatch color={override.background.color} />
                   </span>
                   <div className="color-field-inputs">
                     <input

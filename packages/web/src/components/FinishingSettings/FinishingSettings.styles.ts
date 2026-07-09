@@ -6,11 +6,12 @@ import * as stylex from "@stylexjs/stylex";
  * file's components - SubtitleStyleSettings/NarrationSettings/the private preview-stage helper).
  *
  * Left behind in styles.css (not migrated): `.settings-group`/`.settings-group-wide`/
- * `.settings-field`/`.field-*`/`.plain-field`/`.color-field-inputs`/`.swatch`/`.settings-note`/
- * `.wide-input` (shared width-token/marker classes used by several not-yet-migrated components)
- * and `.video-subtitle-overlay*` (shared with VideoPreview/SequencePlayer's actual video overlay -
+ * `.settings-field`/`.field-*`/`.plain-field`/`.color-field-inputs`/`.settings-note`/`.wide-input`
+ * (shared width-token/marker classes used by several not-yet-migrated components) and
+ * `.video-subtitle-overlay*` (shared with VideoPreview/SequencePlayer's actual video overlay -
  * this preview stage intentionally reuses those classes so it can never visually drift from the
- * real thing, see the component doc comment).
+ * real thing, see the component doc comment). `.swatch` was migrated separately (batch 4) into
+ * its own `components/Swatch/` component, used here via `<Swatch color={...} />`.
  */
 export const styles = stylex.create({
   previewStage: {

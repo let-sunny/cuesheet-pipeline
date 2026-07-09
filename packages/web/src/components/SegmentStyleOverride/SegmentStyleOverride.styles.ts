@@ -7,8 +7,10 @@ import * as stylex from "@stylexjs/stylex";
  *
  * Left behind in styles.css (not migrated): `.style-override-fields` (shared with
  * SubtitleStylePresetsSettings.tsx, which reuses the same field-set layout for editing a named
- * preset — out of scope for this migration batch), and `.settings-field`/`.color-field-inputs`/
- * `.swatch` (shared width-token/marker classes used by several not-yet-migrated components).
+ * preset — out of scope for this migration batch), and `.settings-field`/`.color-field-inputs`
+ * (shared width-token/marker classes used by several not-yet-migrated components). `.swatch` was
+ * migrated separately (batch 4) into its own `components/Swatch/` component, used here via
+ * `<Swatch color={...} />` instead of the raw span.
  *
  * `border` shorthand written as its longhand equivalents (`borderLeftWidth`/`borderLeftStyle`/
  * `borderLeftColor`) — see HeaderBar.styles.ts's comment for why (StyleX silently drops the

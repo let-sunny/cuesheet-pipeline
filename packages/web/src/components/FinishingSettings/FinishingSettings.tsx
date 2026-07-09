@@ -11,6 +11,7 @@ import {
   toCqw,
   toColorInputValue,
 } from "../../lib/subtitleOverlay.js";
+import { Swatch } from "../Swatch/index.js";
 import { styles } from "./FinishingSettings.styles.js";
 
 interface SubtitleStyleProps {
@@ -98,7 +99,7 @@ export function SubtitleStyleSettings({
       </label>
       <label className="settings-field">
         <span>
-          Color <span className="swatch" style={{ background: subtitleStyle.color }} />
+          Color <Swatch color={subtitleStyle.color} />
         </span>
         <div className="color-field-inputs">
           <input
@@ -117,7 +118,7 @@ export function SubtitleStyleSettings({
       <label className="settings-field">
         <span>
           Outline color{" "}
-          <span className="swatch" style={{ background: subtitleStyle.outlineColor }} />
+          <Swatch color={subtitleStyle.outlineColor} />
         </span>
         <div className="color-field-inputs">
           <input
@@ -144,7 +145,7 @@ export function SubtitleStyleSettings({
         <>
           <label className="settings-field">
             <span>
-              Background color <span className="swatch" style={{ background: background.color }} />
+              Background color <Swatch color={background.color} />
             </span>
             <div className="color-field-inputs">
               <input

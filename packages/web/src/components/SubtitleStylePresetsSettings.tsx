@@ -4,6 +4,7 @@ import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { Slider } from "@astryxdesign/core/Slider";
 import type { SubtitleStyle, SubtitleStyleOverride, SubtitleStylePresets } from "@cuesheet/schema";
 import { mergeSubtitleStyle, subtitleBackgroundRgba, subtitleOutlineStyle, toCqw, toColorInputValue } from "../lib/subtitleOverlay.js";
+import { Swatch } from "./Swatch/index.js";
 
 interface Props {
   presets: SubtitleStylePresets | undefined;
@@ -145,7 +146,7 @@ function PresetRow({ name, override, globalStyle, onRename, onDelete, onChange }
 
           <label className="settings-field">
             <span>
-              Color <span className="swatch" style={{ background: override.color ?? globalStyle.color }} />
+              Color <Swatch color={override.color ?? globalStyle.color} />
             </span>
             <div className="color-field-inputs">
               <input
@@ -165,7 +166,7 @@ function PresetRow({ name, override, globalStyle, onRename, onDelete, onChange }
           <label className="settings-field">
             <span>
               Outline color{" "}
-              <span className="swatch" style={{ background: override.outlineColor ?? globalStyle.outlineColor }} />
+              <Swatch color={override.outlineColor ?? globalStyle.outlineColor} />
             </span>
             <div className="color-field-inputs">
               <input
