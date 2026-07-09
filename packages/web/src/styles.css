@@ -153,11 +153,6 @@ body {
   padding: 24px 32px;
 }
 
-.app h1 {
-  font-size: 20px;
-  margin: 0 0 16px;
-}
-
 .app h2 {
   font-size: 14px;
   text-transform: uppercase;
@@ -310,33 +305,16 @@ body {
   padding: 6px 8px;
 }
 
-.header-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.header-row h1 {
-  margin: 0;
-}
-
-.save-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-/* The header's system/light/dark three-way theme toggle — same "plain button + .active" pattern
-   as .playmode-toggle/.render-resolution-options. */
-.theme-mode-toggle {
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  background: var(--surface-2);
-  border-radius: 8px;
-}
-
+/* The header's system/light/dark three-way theme toggle button look (HeaderBar) — kept as plain
+   CSS deliberately (not migrated to HeaderBar.styles.ts): these buttons carry the `.plain-button`
+   marker class (screen-spec rule 8), and this app's StyleX output is injected into the document
+   *before* styles.css, so a same-specificity StyleX atomic class always loses the cascade tie to
+   a later-in-source-order `.plain-button` rule for any property they both set (measured via
+   screenshot diff - background/border/color/padding all silently reverted to .plain-button's
+   values). The compound selector below (2 classes + tag = higher specificity than
+   `.plain-button`'s 1 class) is what let the original code reliably win instead, and StyleX can't
+   express that same specificity edge - so it stays here. Same pattern as
+   .render-resolution-options button.active further down. */
 .theme-mode-toggle button {
   display: flex;
   align-items: center;
@@ -361,22 +339,6 @@ body {
 
 .theme-mode-toggle button svg {
   flex: 0 0 auto;
-}
-
-.dirty-badge {
-  font-size: 13px;
-  color: var(--warning-text);
-  border: 1px solid var(--warning-border);
-  border-radius: 4px;
-  padding: 2px 8px;
-}
-
-/* Header button cluster divider (screen-spec section 1, "|") - visually separates the three
-   groups: undo/redo | theme/? | save/export. */
-.header-divider {
-  width: 1px;
-  height: 20px;
-  background: var(--border);
 }
 
 .banner {
@@ -1187,12 +1149,6 @@ body {
 }
 
 /* ---- 4-step editing journey shell ---- */
-
-.header-title-group {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
 
 .step-body {
   margin-top: 16px;

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
+import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
-import type { ThemeModeSetting } from "../lib/theme.js";
+import type { ThemeModeSetting } from "../../lib/theme.js";
+import { styles } from "./HeaderBar.styles.js";
 
 interface Props {
   projectName: string;
@@ -49,25 +51,25 @@ export function HeaderBar({
   onToggleShortcuts,
 }: Props) {
   return (
-    <div className="header-row">
-      <div className="header-title-group">
-        <h1>{projectName || "(no name)"}</h1>
+    <div {...stylex.props(styles.row)}>
+      <div {...stylex.props(styles.titleGroup)}>
+        <h1 {...stylex.props(styles.title)}>{projectName || "(no name)"}</h1>
         {dirty ? (
-          <span className="dirty-badge" title="Click Save to write it to disk">
+          <span {...stylex.props(styles.dirtyBadge)} title="Click Save to write it to disk">
             ● Unsaved
           </span>
         ) : null}
       </div>
-      <div className="save-row">
+      <div {...stylex.props(styles.saveRow)}>
         <Button label="Undo" variant="ghost" isDisabled={!canUndo} onClick={onUndo} />
         <Button label="Redo" variant="ghost" isDisabled={!canRedo} onClick={onRedo} />
 
-        <span className="header-divider" aria-hidden="true" />
+        <span {...stylex.props(styles.divider)} aria-hidden="true" />
 
         <ThemeModeToggle themeMode={themeMode} onThemeModeChange={onThemeModeChange} />
         <Button label="?" variant="ghost" tooltip="Keyboard shortcuts" onClick={onToggleShortcuts} />
 
-        <span className="header-divider" aria-hidden="true" />
+        <span {...stylex.props(styles.divider)} aria-hidden="true" />
 
         <Button
           label={saving ? "Saving…" : "Save"}
@@ -96,20 +98,29 @@ function ThemeModeToggle({
   themeMode: ThemeModeSetting;
   onThemeModeChange: (mode: ThemeModeSetting) => void;
 }) {
+  const wrapperStyle = stylex.props(styles.themeToggle);
   return (
-    <div className="theme-mode-toggle" role="group" aria-label="Theme">
-      {THEME_MODE_OPTIONS.map((option) => (
-        <button
-          type="button"
-          key={option.value}
-          className={`plain-button${option.value === themeMode ? " active" : ""}`}
-          onClick={() => onThemeModeChange(option.value)}
-          title={option.label}
-        >
-          {option.icon}
-          <span>{option.label}</span>
-        </button>
-      ))}
+    <div
+      className={`theme-mode-toggle ${wrapperStyle.className ?? ""}`}
+      style={wrapperStyle.style}
+      role="group"
+      aria-label="Theme"
+    >
+      {THEME_MODE_OPTIONS.map((option) => {
+        const isActive = option.value === themeMode;
+        return (
+          <button
+            type="button"
+            key={option.value}
+            className={`plain-button${isActive ? " active" : ""}`}
+            onClick={() => onThemeModeChange(option.value)}
+            title={option.label}
+          >
+            {option.icon}
+            <span>{option.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

@@ -35,7 +35,7 @@ import type { VideoPreviewHandle } from "./components/VideoPreview.js";
 import { BgmSettingsPanel } from "./components/BgmSettingsPanel.js";
 import { MomentPalette } from "./components/MomentPalette.js";
 import { KeyboardHelp } from "./components/KeyboardHelp/index.js";
-import { HeaderBar } from "./components/HeaderBar.js";
+import { HeaderBar } from "./components/HeaderBar/index.js";
 import type { ThemeModeSetting } from "./lib/theme.js";
 import { StepNav } from "./components/StepNav/index.js";
 import type { Step } from "./components/StepNav/index.js";
