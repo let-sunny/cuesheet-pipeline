@@ -121,8 +121,9 @@ metadata text keep full contrast (not dimmed).
 +gu+- Cut list -----------+ +- Video column (sticky) ------------+
 |tt| row: thumbnail|       | | scene header (#n, badge, desc)     |
 |er| subtitle (inline)     | | video (reframe, subtitle overlay)  |
-|  |   |scene line|badge   | | Overview bar (full clip)           |
-|  |                        | | Zoomed-in bar (drag In/Out here)   |
+|  |   |scene line|badge   | | TrimStrip (filmstrip, drag In/Out) |
+|  |                        | |   zoom row (-/Fit cut/Fit clip/+)  |
+|  |                        | |   pan control (only while zoomed)  |
 |  |                        | | playback controls (one row: play,  |
 |  |                        | |   In, Out, split — hugs the video) |
 |  |                        | +- Cut settings OR BGM settings -----+
@@ -157,22 +158,41 @@ lines) to decide "the music changes at cut #3". Design:
 - Works alongside "Play all" so timing can be audited by ear while watching.
 - The Export step (section 5) now shows only a one-line, read-only summary — see there.
 
-**Two-level trim (2026-07-09)**: a single scrub bar mapping the *entire clip's* duration to its
-pixel width makes a short in/out range (e.g. 3s inside a 900s+ long take) sub-pixel and
-undraggable. Fixed with two stacked bars under the video, both always visible:
-- **Overview bar** — the full clip; shows the detail bar's current zoom window as a highlighted
-  box. Click or drag anywhere on it re-centers the window on that point (the window's width is
-  unchanged, only its position moves).
-- **Detail (zoomed-in) bar** — maps only the current zoom window to its width, so In/Out handles
-  get real pixel room to drag regardless of clip length. Default window: the cut's in/out range
-  padded by 30% of its own length on each side, widened to at least 20s (or the whole clip, if
-  shorter than that — so a short clip's "window" is simply the entire clip, both bars reading
-  effectively the same range). The window resets to this default when the selected cut or the
-  clip's duration changes, but deliberately *not* on every in/out edit — it holds still while
-  dragging the detail handles; only the overview bar (a separate, deliberate action) repositions
-  it.
-- Both bars show the current-time playhead; [Set In here]/[Set Out here] are unchanged (they use
-  the current playback position, independent of which bar is visible).
+**TrimStrip (2026-07-09, replaces the earlier "two-level trim" two-stacked-bars design)**: mapping
+a long clip's *entire* duration onto one scrub bar's pixel width makes a short in/out range (e.g.
+3s inside a 900s+ long take) sub-pixel and undraggable. The two-stacked-bars fix that originally
+shipped for this (an "overview" bar showing a highlighted zoom-window box above a "detail" bar)
+read as an inert, uninteractive box — neither bar rendered any content, so the window had nothing
+to communicate against, and it introduced a third abstraction (the "window") beyond the playhead
+and the in/out handles every user already tracks. Superseded by the researched convention instead
+(`docs/research/trim-ux-conventions.md` section 4 — no invented UI patterns, CLAUDE.md): **one
+zoomable filmstrip strip**, the Premiere Source Monitor model (single scrub surface, precision via
+zooming that same surface), plus a scrollbar-styled pan control that only appears once zoomed in
+(`components/TrimStrip`):
+- **The strip** — full panel width, ~48px tall, tiled with real filmstrip thumbnails of the
+  visible viewport (one `SegmentThumb` per ~64px; a per-cell ruler-tick fallback covers both "still
+  loading" and "thumbnail unavailable" so it's never a blank track). The shaded in/out range, the
+  In/Out drag handles, and the playhead are overlaid on top, unchanged from before. Default
+  viewport on selecting a cut: the cut's in/out range padded by 30% of its own length on each side,
+  widened to at least 20s (or the whole clip, if shorter — so a short clip's viewport is simply the
+  entire clip, and the pan control never appears). The viewport holds still while dragging a
+  handle; only a deliberate zoom/pan action moves it. Dragging a handle also seeks the preview to
+  that handle's frame.
+- **Zoom** — Ctrl/Cmd+wheel over the strip zooms centered on the cursor's time position (same
+  gesture as the always-visible mini timeline strip); a small button row at the strip's right end
+  (`-` / "Fit cut" / "Fit clip" / `+`) zooms centered on the playhead, where "Fit cut" restores the
+  default viewport above and "Fit clip" is `[0, duration]`; Shift+Z is the same "Fit clip" reset.
+  Max zoom is a 1s-wide viewport.
+- **Pan control** — a slim scrollbar-styled trough below the strip, shown only once zoomed in past
+  Fit clip. Its thumb's position/width mirrors the viewport within `[0, duration]`: dragging the
+  thumb body pans, dragging a thumb edge resizes the zoom (Premiere's zoom-scroll-bar convention),
+  and clicking the trough jumps the viewport there. A min-2px accent tick inside the trough always
+  marks where the cut's in/out lives in the whole clip, even at sub-pixel scale.
+- [Set In here]/[Set Out here] are unchanged (they use the current playback position, independent
+  of the strip's current zoom/pan).
+- The In/Out numeric fields (section 4, Range group) additionally take Up/Down = ±1 frame (derived
+  from `project.fps`) and Shift+Up/Down = ±1s, committing immediately; typed text accepts `M:SS.s`
+  shorthand and a leading `+`/`-` as a delta from the current value.
 
 ## 4. Cut settings group definitions (fixed order and layout)
 
@@ -326,6 +346,13 @@ Buttons that belong to one group render inside one container (not spread across 
 stay visually together, and action groups in banners/dialog footers are right-aligned.
 
 ## Changelog
+- 2026-07-09 — Section 3's trim UI replaced: the "two-level trim" (overview bar + detail bar,
+  which read as an inert box - see CLAUDE.md's "no invented UI patterns" rule) is now **TrimStrip**,
+  a single zoomable filmstrip strip plus a scrollbar-styled pan control, adopted from
+  `docs/research/trim-ux-conventions.md` section 4 (the Premiere Source Monitor model). The In/Out
+  numeric fields (section 4) also gained Up/Down frame-nudge (from `project.fps`) and M:SS.s/
+  relative (`+n`/`-n`) text entry.
+
 - 2026-07-09 — Renamed the three `ui/` wrapper components per CLAUDE.md's wrapper-naming rule
   (name states where/why it exists, never how it looks): `CompactButton` -> `ToolbarButton`,
   `CardActionButton` -> `SceneCardButton`, `IoAssignButton` -> `IntroOutroButton`. Rule 0-8 above
