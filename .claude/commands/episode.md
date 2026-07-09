@@ -211,6 +211,21 @@ anytime in the editor, so err on the aggressive side - missing one is worse.
   If nothing is up on port 5173 (curl fails), just start it fresh with the command
   above.
 
+### (6.5) YouTube chapters (optional output, cheap)
+
+Run the chapter prototype against the finished cuesheet:
+
+```bash
+node scripts/youtube-chapters.mjs episodes/<slug>.cuesheet.json
+```
+
+It derives chapter starts from the editing grammar (timelapse connectors /
+no-subtitle stretches). The raw titles are just each section's first subtitle —
+rewrite them as short section names (2-4 words, voice-guide tone does NOT apply
+here; plain descriptive Korean like "도트얀 언박싱", "몸판 뜨기"), keeping the
+timestamps. Include the final list in the report so the user can paste it into
+the YouTube description.
+
 ### (7) Report
 
 Keep it short and fact-based:
