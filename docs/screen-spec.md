@@ -65,8 +65,19 @@ steady (clean) state; the header's own group has its own state-dependent primary
 Card-internal hierarchy: thumbnail -> status badge (in-use / excluded reason) -> scene
 description (full text, not clamped — this screen exists to read the description and
 choose, so it must never be truncated) -> metadata (clip, timestamp, shot type, quality) ->
-action row ([Add]/[Remove] primary, [Set as intro]/[Set as outro] secondary — primary and
-secondary must be visually distinct).
+action row (a single state-driven [Add]/[Remove] toggle, primary; [Set intro]/[Set outro]
+secondary — primary and secondary must be visually distinct).
+
+**Single add/remove toggle (2026-07-09 revision)**: one button, not a pair - label and
+variant flip with whether the card is already added (`Add`/primary when unused, `Remove`/
+destructive when in use), instead of always rendering both buttons and disabling+hiding
+whichever doesn't apply. A card's excluded (auto-filtered) state doesn't change this - the
+same confirm-before-adding flow (face policy check) still runs regardless of which state the
+toggle is in when clicked. Set-intro/outro labels were also shortened from "Set as intro"/
+"Set as outro" to "Set intro"/"Set outro" (full meaning stays in the tooltip) - this pair
+stays a stacked (not side-by-side) row at typical card widths, since the side-by-side slot
+(~69px each) is tight enough that truncation wasn't safe to assume fixed by the shorter text
+alone without real-browser measurement (see styles.css's `.moment-io-actions` comment).
 
 **Card-internal spacing (2026-07-08 revision)**: the thumbnail is full-bleed, no padding
 (fills the card edge to edge). Everything below it (description/metadata/actions) sits in
@@ -315,6 +326,12 @@ Buttons that belong to one group render inside one container (not spread across 
 stay visually together, and action groups in banners/dialog footers are right-aligned.
 
 ## Changelog
+- 2026-07-09 — Scenes card actions (section 2): Add/Remove collapsed into a single state-driven
+  toggle button (was two buttons, one always disabled+hidden); Set-as-intro/outro labels shortened
+  ("Set intro"/"Set outro") but kept in their existing stacked (not side-by-side) row - judged the
+  stacked layout the safer, already-verified-truncation-free option over gambling the shorter text
+  fits the tighter side-by-side slot.
+
 - 2026-07-09 — PRD backlog #3 (fades/dip): Cut settings gains **G5. Transitions** (section 4),
   renumbering the former G5-G7 (Narration/Reframe/Cut actions) to G6-G8 - placed after Title,
   before Narration (both Title and Transitions are cut-frame-edge concerns); Export's Project

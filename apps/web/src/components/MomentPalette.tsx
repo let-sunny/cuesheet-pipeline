@@ -300,30 +300,33 @@ export function MomentPalette({
                         ) : null}
                       </div>
                       <div className="moment-actions-group">
+                        {/* Single state-driven toggle (2026-07-09 diagnosed fix) replaces the old
+                            Add/Remove pair (one button always visually disabled, the other hidden
+                            via a same-space "placeholder" class) - one action, one button, the
+                            label/variant flips with whether the card is already added. Excluded
+                            (auto-filtered) cards keep the same confirm-before-adding flow either
+                            way (handleAdd's face-policy check runs regardless of this button). */}
                         <div className="moment-card-actions">
                           <CardActionButton
-                            label={inUse ? "Added" : "Add"}
-                            variant="primary"
+                            label={inUse ? "Remove" : "Add"}
+                            variant={inUse ? "destructive" : "primary"}
                             size="sm"
-                            isDisabled={inUse}
-                            onClick={() => handleAdd(card)}
-                            data-testid={`palette-card-add-${card.key}`}
-                          />
-                          {/* Hide Remove while not in use (but keep its space so card height
-                              stays consistent regardless of whether Add/Remove is shown). */}
-                          <CardActionButton
-                            label="Remove"
-                            variant="destructive"
-                            size="sm"
-                            isDisabled={!inUse}
-                            className={inUse ? "" : "placeholder"}
-                            onClick={() => onRemoveSegment(card.clipFileName, card.inS, card.outS)}
-                            data-testid={`palette-card-remove-${card.key}`}
+                            onClick={() =>
+                              inUse ? onRemoveSegment(card.clipFileName, card.inS, card.outS) : handleAdd(card)
+                            }
+                            data-testid={`palette-card-toggle-${card.key}`}
                           />
                         </div>
+                        {/* Set-as-intro/outro labels shortened "Set as intro/outro" -> "Set
+                            intro/outro" (2026-07-09 diagnosed fix) - the longer phrase truncated
+                            in this row's ~equal-width slot on typical card widths; the full
+                            meaning stays available via the tooltip. Kept as a same-row pair
+                            (screen-spec rule 0-4, "pairs sit side by side") rather than icons -
+                            introducing icon glyphs with no existing icon system in this app would
+                            be a bigger, separate call. */}
                         <div className="moment-io-actions">
                           <IoAssignButton
-                            label={isIntro ? "Intro set" : "Set as intro"}
+                            label={isIntro ? "Intro set" : "Set intro"}
                             size="sm"
                             active={isIntro}
                             isDisabled={tooLongForIntroOutro}
@@ -335,7 +338,7 @@ export function MomentPalette({
                             data-testid={`palette-card-set-intro-${card.key}`}
                           />
                           <IoAssignButton
-                            label={isOutro ? "Outro set" : "Set as outro"}
+                            label={isOutro ? "Outro set" : "Set outro"}
                             size="sm"
                             active={isOutro}
                             isDisabled={tooLongForIntroOutro}

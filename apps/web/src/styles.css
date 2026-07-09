@@ -999,8 +999,9 @@ body {
   padding: 0;
 }
 
-/* Add/remove (primary action) and intro/outro (secondary action) are the same "action" group —
-   tight (6px) within the group, and separated from the meta row above by the body's gap (10px). */
+/* Add/remove (primary action, now a single state-driven toggle button - 2026-07-09) and
+   intro/outro (secondary action) are the same "action" group — tight (6px) within the group, and
+   separated from the meta row above by the body's gap (10px). */
 .moment-actions-group {
   display: flex;
   flex-direction: column;
@@ -1012,13 +1013,17 @@ body {
   gap: 6px;
 }
 
-/* Stacked (not side by side) - revised 2026-07-09. At the card's 168px width (144px after
+/* Stacked (not side by side) - revised 2026-07-09, re-evaluated the same day once the Add/Remove
+   pair collapsed into one toggle button (freeing nothing here directly, but prompting a look at
+   this row too - see screen-spec section 2 changelog). At the card's 168px width (144px after
    .moment-card-body's 12px padding), two side-by-side buttons only get ~69px each, and Button's
    label is `white-space: nowrap` + ellipsis by design (no wrap at the label level, see Astryx
    Button.tsx) - "Set as intro"/"Set as outro" truncated to unreadable fragments like "Set as in…".
-   Stacking gives each button the full 144px, which comfortably fits the longest label ("Set as
-   outro"/"Intro set"), consistent with this file's "wrap over truncate/overlap" rule used elsewhere
-   (.moment-overlay-row, .moment-info). */
+   Labels were also shortened ("Set as intro/outro" -> "Set intro/outro") in the same pass, but
+   kept this row stacked rather than gambling that the shorter text fits the tighter ~69px
+   side-by-side slot without real-browser measurement - stacking (full 144px per button) is the
+   already-verified-safe layout, consistent with this file's "wrap over truncate/overlap" rule
+   used elsewhere (.moment-overlay-row, .moment-info). */
 .moment-io-actions {
   display: flex;
   flex-direction: column;
