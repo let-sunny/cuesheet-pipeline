@@ -3,7 +3,7 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import type { Segment } from "@cuesheet/schema";
 import { clamp } from "../lib/clamp.js";
 import { formatClock, playbackSeconds } from "../lib/segmentTiming.js";
-import { SegmentThumb } from "./SegmentThumb.js";
+import { SegmentThumb } from "./SegmentThumb/index.js";
 
 interface Props {
   segments: Segment[];

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import * as stylex from "@stylexjs/stylex";
+import { styles } from "./SegmentThumb.styles.js";
 
 interface Props {
   clip: string;
@@ -46,15 +48,19 @@ export function SegmentThumb({ clip, t, className }: Props) {
     setFailed(false);
   }, [clip, debouncedT]);
 
-  const className_ = `segment-thumb${className ? ` ${className}` : ""}`;
+  // consumer classNames (MiniTimelineStrip's plain `.mini-strip-thumb`, or CompactSegmentList's
+  // already-stylex-generated className string) are appended as a plain string - see
+  // SegmentThumb.styles.ts for why this stays a concatenation instead of stylex.props(base, extra).
+  const containerClassName = `${stylex.props(styles.segmentThumb).className}${className ? ` ${className}` : ""}`;
 
   if (!clip || !visible || failed) {
-    return <div ref={containerRef} className={className_} />;
+    return <div ref={containerRef} className={containerClassName} />;
   }
 
   return (
-    <div ref={containerRef} className={className_}>
+    <div ref={containerRef} className={containerClassName}>
       <img
+        {...stylex.props(styles.img)}
         src={`/api/thumb?clip=${encodeURIComponent(clip)}&t=${debouncedT.toFixed(1)}`}
         alt=""
         onError={() => setFailed(true)}

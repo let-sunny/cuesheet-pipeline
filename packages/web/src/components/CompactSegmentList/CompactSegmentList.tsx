@@ -7,7 +7,7 @@ import { baseName } from "../../clipPaths.js";
 import { bgmCutRange, cumulativeCutStarts } from "../../lib/bgmCutMapping.js";
 import { assignBgmLanes, laneCount } from "../../lib/bgmLanes.js";
 import { matchSceneInfo, shotTypeLabel } from "../../lib/sceneInfo.js";
-import { SegmentThumb } from "../SegmentThumb.js";
+import { SegmentThumb } from "../SegmentThumb/index.js";
 import { styles } from "./CompactSegmentList.styles.js";
 
 interface Props {
