@@ -239,7 +239,18 @@ and CLI's schema versions ever drift, we choose a loud failure over silent data 
    note in UI). UI: TRANSITIONS group in cut settings after TITLE; episode-level fades in
    Export project section. Editing grammar note: chapter transitions (no-subtitle gaps)
    are the natural place for dips — the /episode pipeline may propose them there later.
-4. **Audio ducking** — BGM lowers under narration (render sidechain).
+4. **Audio ducking** — design sketch (2026-07-09): when a narration clip plays over a
+   BGM track, the BGM volume dips automatically. Contract: project-level
+   `narration.ducking?: { amount: 0-1 (default 0.6 = duck to 40%), fadeS: 0.1-1
+   (default 0.3) }` — no per-cut fields (ducking windows derive from narration
+   placements already in the cuesheet). Render: sidechaincompress is overkill for
+   known windows — use volume automation instead: for each BGM track, a volume filter
+   with enable/It expressions (or piecewise volume ramps) over the narration windows
+   projected onto output time; windows merge when narrations overlap. Preview: BGM
+   audio element volume ramp driven by the playback clock (same approximation pattern
+   as transitions). UI: one Ducking row (toggle + amount slider) inside the Narration
+   settings section in Export. Editing-grammar fit: narration is sparse and windowed —
+   automation beats a live compressor for determinism and render parity.
 5. YouTube chapter list generation from no-subtitle gaps (grammar: gaps = chapter breaks).
 6. Thumbnail frame capture (current frame -> PNG).
 
