@@ -84,6 +84,25 @@ pnpm -r typecheck  # type check
 pnpm -r test       # tests
 ```
 
+### Testing
+
+Three layers, from fastest/narrowest to slowest/broadest:
+
+1. **Unit tests** (jsdom) — `pnpm --filter @cuesheet/web test`, plus `pnpm -r test` for every
+   package. The default for component/hook/logic tests.
+2. **Vitest Browser Mode** (real Chromium, opt-in) — `pnpm --filter @cuesheet/web test:browser`.
+   Reach for this only where jsdom genuinely can't exercise the behavior (real layout/animation
+   timing, real `<input>` focus/selection/typing) — new tests opt in per file via
+   `*.browser.test.tsx`; everything else stays on the faster jsdom suite.
+3. **E2E smoke suite** (Playwright, full app) — `pnpm e2e` (or `pnpm e2e:ui` for the interactive
+   UI). Runs the web app's own dev server against a small fixture cuesheet on its own port, and
+   drives a handful of full user journeys (edit a cut, add a BGM track, export, etc.). See
+   [tests/e2e/README.md](tests/e2e/README.md).
+
+Tests always select by `data-testid` or ARIA role, never by class name (a styling refactor can
+rename or drop a class without warning; see CLAUDE.md's testing section for the incident that
+motivated this and one Astryx-component caveat).
+
 ## Docs
 
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md) — package map, data flow, dependency graph, key design decisions.
