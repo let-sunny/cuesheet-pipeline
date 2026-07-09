@@ -71,6 +71,23 @@ describe("buildTitleAssContent", () => {
     expect(content).toContain("}o{\\k");
     expect(content).toContain("})");
   });
+
+  it("substitutes a literal backslash with the fullwidth reverse solidus (U+FF3C), not silent deletion", () => {
+    // A raw ASCII "\" immediately before the next character's "{\k..}" block is read by libass as
+    // the "\{" literal-left-brace escape, corrupting the following karaoke tag into literal text
+    // (confirmed via a real render/frame-capture - see title.ts's escapeAssText doc comment).
+    // U+FF3C has no special meaning to the ASS parser, so it survives the per-character wrapping
+    // intact and renders as a visually-faithful backslash-like glyph.
+    const content = buildTitleAssContent({ text: "a\\b", preset: "typing", durationS: 1 }, project);
+    // No raw ASCII backslash immediately precedes a "{" (the exact pattern that corrupts the next
+    // override tag) - the only backslashes left are the ASS override tags' own (\k, \fad).
+    expect(content).not.toMatch(/\\\{/);
+    expect(content).toContain("}a{");
+    expect(content).toContain("}＼{");
+    expect(content).toMatch(/\}b(\r?\n|$)/);
+    // Every character (a, fullwidth backslash, b) still gets its own \k karaoke block.
+    expect(content.match(/\\k\d+/g)?.length).toBe(3);
+  });
 });
 
 describe("escapeFilterPath", () => {

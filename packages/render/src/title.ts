@@ -51,9 +51,24 @@ function assColor(alphaHex: string, bbggrr: string): string {
   return `&H${alphaHex}${bbggrr}`;
 }
 
-/** Escapes text for the ASS Dialogue Text field (literal braces would be read as override tags). */
+/**
+ * Escapes text for the ASS Dialogue Text field (literal braces would be read as override tags).
+ *
+ * Backslash: ASS has no official escape for a literal backslash. Verified directly against our
+ * libass build (2026-07-09, ffmpeg-full 8.1.2): a raw "\" character immediately followed by "{"
+ * (exactly the shape our per-character karaoke wrapping produces - each character sits between
+ * its own {\k..} block and the next one) is read by libass as the "\{" literal-left-brace escape
+ * rather than plain text + a new override block. That swallows the FOLLOWING character's {\k..}
+ * tag as literal text instead of interpreting it, corrupting the rest of the karaoke reveal (e.g.
+ * "a\b" became the literal on-screen text "a{\k100}b" - confirmed via a real render/frame capture,
+ * see packages/render/test/title.test.ts). Substituting the fullwidth reverse solidus U+FF3C
+ * ("＼", visually near-identical to "\") sidesteps this entirely - it's a different codepoint with
+ * no special meaning to the ASS parser, so it survives the same per-character {\k..} wrapping as
+ * any other character (confirmed via the same render/frame-capture method: "a＼bc" rendered and
+ * revealed correctly, all four characters intact).
+ */
 function escapeAssText(text: string): string {
-  return text.replace(/\\/g, "").replace(/\{/g, "(").replace(/\}/g, ")").replace(/\n/g, "\\N");
+  return text.replace(/\\/g, "＼").replace(/\{/g, "(").replace(/\}/g, ")").replace(/\n/g, "\\N");
 }
 
 /** Formats seconds as ASS's H:MM:SS.CC (centisecond) timestamp. */
