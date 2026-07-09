@@ -2,3 +2,6 @@ packages:
   - "packages/*"
 allowBuilds:
   esbuild: true
+  # msw (Mock Service Worker) is a transitive dependency of @vitest/browser (Vitest Browser Mode) -
+  # its postinstall just registers a service worker file used by its own tests, no native code.
+  msw: true

@@ -15,5 +15,9 @@ export default defineConfig({
     // src/**: co-located Component.test.tsx next to the component it tests (anatomy convention,
     // CLAUDE.md "Component layering").
     include: ["test/**/*.test.ts", "test/**/*.test.tsx", "src/**/*.test.ts", "src/**/*.test.tsx"],
+    // *.browser.test.tsx opts into Vitest Browser Mode instead (a real Chromium instance via
+    // vitest.browser.config.ts / `pnpm test:browser`) - excluded here so it doesn't also run
+    // (redundantly, and possibly failing on browser-only APIs) under jsdom.
+    exclude: ["**/node_modules/**", "src/**/*.browser.test.tsx"],
   },
 });
