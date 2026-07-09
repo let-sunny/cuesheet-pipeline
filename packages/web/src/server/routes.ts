@@ -680,9 +680,24 @@ export function registerRoutes(
       return;
     }
 
+    // BGM ducking (PRD backlog #4) needs each narrated segment's own clip duration up front -
+    // buildRenderPlan stays pure/sync (see plan.ts), so probing happens here, same pattern as
+    // title assets above. Only probed when ducking is actually on (nothing to skip past otherwise).
+    const narrationDurations: Record<number, number> = {};
+    if (cueForRender.narration?.enabled && cueForRender.narration.ducking) {
+      const narrationDir = resolveRepoPath(cueForRender.narration.dir);
+      await Promise.all(
+        cueForRender.segments.map(async (s, i) => {
+          if (!s.narration) return;
+          const durationS = await probeDurationSeconds(resolve(narrationDir, s.narration));
+          if (durationS != null) narrationDurations[i] = durationS;
+        }),
+      );
+    }
+
     let plan;
     try {
-      plan = buildRenderPlan(cueForRender, outputPath, { burnSubtitles, titleAssets });
+      plan = buildRenderPlan(cueForRender, outputPath, { burnSubtitles, titleAssets, narrationDurations });
     } catch (e) {
       renderInProgress = false;
       sendJson(res, 400, { ok: false, error: (e as Error).message });

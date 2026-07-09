@@ -242,9 +242,21 @@ compact preview chip reusing the same overlay CSS as the global style's preview,
 "Edit" with the same size/color/outline/margin fields as the per-cut override, [Delete]) plus a
 "New preset name" + [Create preset] row at the bottom -> **Intro/outro** (select +
 release, collapsible manual entry) -> **Background music** (one-line summary only — editing
-lives in the (2) Edit step, see section 3) -> **Narration** (toggle, folder, volume, help text) ->
-**Output** ([Download subtitles .srt] [Export...] — Export dialog: resolution presets /
-burn-in subtitles / summary / start).
+lives in the (2) Edit step, see section 3) -> **Narration** (toggle, folder, volume, **Ducking**
+sub-block, help text) -> **Output** ([Download subtitles .srt] [Export...] — Export dialog:
+resolution presets / burn-in subtitles / summary / start).
+
+**Ducking** (PRD backlog #4, 2026-07-09 addition) — a sub-toggle inside Narration, shown only
+while narration itself is enabled: a checkbox ("Duck background music during narration") that
+once on reveals a **Duck amount** slider (0-100%, default 60%) and a **Fade duration** narrow
+number field (seconds, 0.1-1, default 0.3). No per-cut field exists - ducking windows are
+derived entirely from where narration is already placed, so there's nothing to configure per
+cut. Unlike Transitions' fade/dip (which has a live opacity-ramp preview on the video element),
+there is currently no live BGM/narration audio playback anywhere in the (2) Edit step's Play
+all (BGM/narration only get a standalone audition player in their own settings panels) - so
+ducking has no in-editor preview yet, only a note under the group saying so. Wiring an actual
+preview needs a BGM/narration playback engine synced to Play all's clock first (not yet built);
+until then this is export-only, same as any other render-only feature would be.
 
 **Layout tokens (2026-07-09 revision — fixes the "inputs are tiny and right-skewed" bug)**: a
 section's form content is capped at a **readable column width** (620px; 680px for the subtitle
