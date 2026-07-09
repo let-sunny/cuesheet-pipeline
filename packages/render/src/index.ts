@@ -6,6 +6,7 @@ import { validateCueSheet } from "@cuesheet/schema";
 import { buildRenderPlan } from "./plan.js";
 import type { SourceDimensions } from "./plan.js";
 import { buildSrt } from "./srt.js";
+import { prepareTitleAssets } from "./title.js";
 
 /** Structured `cuesheet-render --json` result. */
 export interface RenderJsonResult {
@@ -98,9 +99,20 @@ for (const clip of croppedClips) {
   if (dims) sourceDimensions[clip] = dims;
 }
 
+const hasAnyTitle = result.data.segments.some((s) => s.title);
+let titleAssets: Record<number, import("./title.js").TitleAsset> = {};
+if (hasAnyTitle) {
+  try {
+    titleAssets = await prepareTitleAssets(result.data);
+  } catch (e) {
+    console.error((e as Error).message);
+    process.exit(1);
+  }
+}
+
 let plan;
 try {
-  plan = buildRenderPlan(result.data, outPath, { burnSubtitles, sourceDimensions });
+  plan = buildRenderPlan(result.data, outPath, { burnSubtitles, sourceDimensions, titleAssets });
 } catch (e) {
   console.error((e as Error).message);
   process.exit(1);

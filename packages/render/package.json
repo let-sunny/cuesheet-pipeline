@@ -15,7 +15,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@cuesheet/schema": "workspace:*"
+    "@cuesheet/schema": "workspace:*",
+    "playwright": "^1.48.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

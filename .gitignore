@@ -10,6 +10,7 @@ media/clips/*.m4a
 media/dotmix_src
 media/proxies/
 media/.thumbs/
+media/title-cache/
 media/out.mp4
 out.mp4
 out/

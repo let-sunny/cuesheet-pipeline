@@ -1,7 +1,15 @@
 import { join } from "node:path";
-import type { CueSheet, SubtitleStyleOverride } from "@cuesheet/schema";
+import type { CueSheet, Segment } from "@cuesheet/schema";
+import { escapeFilterPath, type TitleAsset } from "./title.js";
 
 export { buildSrt, secondsToSrtTimestamp } from "./srt.js";
+export {
+  buildTitleAssContent,
+  DEFAULT_TITLE_CACHE_DIR,
+  prepareTitleAssets,
+  titleCacheKey,
+} from "./title.js";
+export type { TitleAsset, TitleAssAsset, TitleFramesAsset } from "./title.js";
 
 export interface RenderPlan {
   /** Full argument list to follow "ffmpeg" */
@@ -36,6 +44,14 @@ export interface RenderPlanOptions {
    * don't actually share the project's aspect ratio.
    */
   sourceDimensions?: Record<string, SourceDimensions>;
+  /**
+   * Prepared title-card assets (ASS file paths / captured PNG-sequence directories), keyed by
+   * segment index - see title.ts's prepareTitleAssets. buildRenderPlan itself stays pure/sync (no
+   * ffprobe, no Playwright); the CLI/web server call prepareTitleAssets first and pass the result
+   * here. A segment with a `title` but no matching entry here throws a fieldpath-style error
+   * (segments[i].title: ...) rather than silently skipping the title.
+   */
+  titleAssets?: Record<number, TitleAsset>;
 }
 
 /**
@@ -61,6 +77,9 @@ export function buildRenderPlan(
   const warnings: string[] = [];
   let clipCount = 0;
   let idx = 0;
+  // Set when any segment wires in a captured-frames title (gooey/melt/particle) - see the
+  // -filter_complex_threads note near the end of this function for why.
+  let usesFrameOverlayTitle = false;
 
   function addClip(
     path: string,
@@ -71,7 +90,10 @@ export function buildRenderPlan(
       volume?: number;
       subtitle?: string;
       crop?: CueSheet["segments"][number]["crop"];
-      styleOverride?: CueSheet["segments"][number]["styleOverride"];
+      /** Already-merged style (global < preset < per-cut override) - see resolveSubtitleStyle. */
+      resolvedStyle?: CueSheet["subtitleStyle"];
+      title?: CueSheet["segments"][number]["title"];
+      titleAsset?: TitleAsset;
     },
   ): void {
     if (o.ss != null) inputs.push("-ss", String(o.ss));
@@ -94,18 +116,58 @@ export function buildRenderPlan(
     // requires SAR to match across all segments, so this forces it uniform (confirmed
     // in an actual render mixing cropped and regular cuts).
     vParts.push(`scale=${W}:${H}`, `setsar=1`, `fps=${fps}`);
-    if (burnSubtitles && o.subtitle && o.subtitle.length > 0) {
-      const style = effectiveSubtitleStyle(cue.subtitleStyle, o.styleOverride);
-      vParts.push(drawtextFilter(o.subtitle, style));
+    if (burnSubtitles && o.subtitle && o.subtitle.length > 0 && o.resolvedStyle) {
+      vParts.push(drawtextFilter(o.subtitle, o.resolvedStyle));
     }
-    filters.push(`[${i}:v]${vParts.join(",")}[v${i}]`);
+    // The base per-clip chain (trim/speed/crop/scale/fps/subtitle) always finishes on label
+    // v${i} when there's no title, keeping every existing filter string byte-identical to
+    // before (regression safety) - vLabel only diverges when a title/backdrop stage below
+    // appends further links to the chain.
+    let vLabel = `v${i}`;
+    filters.push(`[${i}:v]${vParts.join(",")}[${vLabel}]`);
+
+    if (o.title && o.titleAsset) {
+      const durationS = o.title.durationS;
+      // Backdrop dim: a black color-source layer, faded in/out via `fade ... alpha=1` (ramps the
+      // *alpha* channel 0->1->0 instead of the usual luma-to-black) and capped at the requested
+      // peak via colorchannelmixer=aa=<dim>, then alpha-composited over the base video. Title
+      // always starts at the segment's own local t=0 (no separate `start` field in the schema).
+      if (o.title.backdrop) {
+        const dim = o.title.backdrop.dim;
+        const fadeT = Math.min(durationS / 2, 0.4);
+        const fadeOutStart = Math.max(0, durationS - fadeT);
+        filters.push(
+          `color=black:size=${W}x${H}:duration=${durationS}:rate=${fps},format=yuva420p,` +
+            `fade=t=in:st=0:d=${fadeT}:alpha=1,fade=t=out:st=${fadeOutStart}:d=${fadeT}:alpha=1,` +
+            `colorchannelmixer=aa=${dim}[dim${i}]`,
+        );
+        const dimmedLabel = `vdim${i}`;
+        filters.push(`[${vLabel}][dim${i}]overlay=0:0:enable='between(t,0,${durationS})'[${dimmedLabel}]`);
+        vLabel = dimmedLabel;
+      }
+
+      if (o.titleAsset.kind === "ass") {
+        const assLabel = `vass${i}`;
+        filters.push(`[${vLabel}]subtitles=${escapeFilterPath(o.titleAsset.path)}[${assLabel}]`);
+        vLabel = assLabel;
+      } else {
+        usesFrameOverlayTitle = true;
+        inputs.push("-framerate", String(o.titleAsset.fps), "-i", join(o.titleAsset.dir, "frame_%04d.png"));
+        const titleInputIdx = idx++;
+        const titleLabel = `vtitle${i}`;
+        filters.push(
+          `[${vLabel}][${titleInputIdx}:v]overlay=0:0:format=auto:enable='between(t,0,${durationS})'[${titleLabel}]`,
+        );
+        vLabel = titleLabel;
+      }
+    }
 
     const aParts = ["asetpts=PTS-STARTPTS"];
     if (speed !== 1) aParts.push(...atempoChain(speed));
     if (vol !== 1) aParts.push(`volume=${vol}`);
     filters.push(`[${i}:a]${aParts.join(",")}[a${i}]`);
 
-    concatLabels.push(`[v${i}]`, `[a${i}]`);
+    concatLabels.push(`[${vLabel}]`, `[a${i}]`);
     clipCount++;
   }
 
@@ -115,11 +177,20 @@ export function buildRenderPlan(
   let segmentOffset = 0;
   const narrationCues: { path: string; start: number }[] = [];
   cue.segments.forEach((s, i) => {
+    const style = resolveSubtitleStyle(cue, s);
     if (burnSubtitles && s.subtitle.length > 0) {
-      const style = effectiveSubtitleStyle(cue.subtitleStyle, s.styleOverride);
       const overflow = subtitleOverflowWarning(s.subtitle, style.size, W);
       if (overflow) {
         warnings.push(`segments[${i}].subtitle: ${overflow}`);
+      }
+    }
+    if (s.title) {
+      const asset = opts?.titleAssets?.[i];
+      if (!asset) {
+        throw new Error(
+          `segments[${i}].title: no prepared asset for this cut - call prepareTitleAssets before ` +
+            `buildRenderPlan and pass its result as opts.titleAssets`,
+        );
       }
     }
     addClip(join(cue.clipDir, s.clip), {
@@ -129,7 +200,9 @@ export function buildRenderPlan(
       volume: s.volume,
       subtitle: s.subtitle,
       crop: s.crop,
-      styleOverride: s.styleOverride,
+      resolvedStyle: style,
+      title: s.title ?? undefined,
+      titleAsset: s.title ? opts?.titleAssets?.[i] : undefined,
     });
     if (cue.narration?.enabled && s.narration) {
       narrationCues.push({ path: join(cue.narration.dir, s.narration), start: segmentOffset });
@@ -174,8 +247,17 @@ export function buildRenderPlan(
   }
 
   const filterComplex = filters.join(";");
+  // Multiple simultaneous captured-frames title overlays (gooey/melt/particle) in one render -
+  // each its own image2-sequence input feeding an `overlay` branch ahead of `concat` - deadlocks
+  // ffmpeg's default multi-threaded filter graph scheduler (empirically confirmed 2026-07-09:
+  // reproducible with 3+ such branches in one filter_complex, CPU usage flatlines mid-encode with
+  // no forward progress). Forcing single-threaded filter execution serializes the graph and
+  // reliably avoids it - filter execution isn't the render's bottleneck (encode is), so this
+  // costs negligible wall-clock time. Scoped to only when it's actually needed (a captured-frames
+  // title is present) so cuesheets without one (the overwhelming majority) are unaffected.
   const args = [
     ...inputs,
+    ...(usesFrameOverlayTitle ? ["-filter_complex_threads", "1"] : []),
     "-filter_complex",
     filterComplex,
     "-map",
@@ -248,18 +330,26 @@ function atempoChain(speed: number): string[] {
 }
 
 /**
- * Effective subtitle style per segment = shallow merge of styleOverride onto the global subtitleStyle.
- * background is the one exception and is replaced wholesale (avoids ambiguous leftovers like
- * opacity from a partial merge) — since the shallow merge overwrites whole object fields anyway,
- * this rule is satisfied without any extra handling.
- * If override is absent (omitted/null), the global style is used as-is.
+ * Effective subtitle style per segment = shallow merge, in order: global subtitleStyle < named
+ * preset (if segment.stylePreset references one in cue.subtitleStylePresets) < segment.styleOverride
+ * (per-cut override always wins last). background is the one exception at each merge step and is
+ * replaced wholesale rather than partially merged (avoids ambiguous leftovers like opacity from a
+ * partial merge) — since each step is itself a shallow merge that overwrites whole object fields,
+ * this rule is satisfied without any extra handling. Mirrored field-for-field by the web editor's
+ * live preview (packages/web/src/lib/subtitleOverlay.ts's mergeSubtitleStyle) - see ARCHITECTURE.md.
  */
-function effectiveSubtitleStyle(
-  global: CueSheet["subtitleStyle"],
-  override?: SubtitleStyleOverride | null,
-): CueSheet["subtitleStyle"] {
-  if (!override) return global;
-  return { ...global, ...override };
+export function resolveSubtitleStyle(cue: CueSheet, segment: Segment): CueSheet["subtitleStyle"] {
+  let style = cue.subtitleStyle;
+  if (segment.stylePreset) {
+    const preset = cue.subtitleStylePresets?.[segment.stylePreset];
+    if (preset) {
+      style = { ...style, ...preset };
+    }
+  }
+  if (segment.styleOverride) {
+    style = { ...style, ...segment.styleOverride };
+  }
+  return style;
 }
 
 function drawtextFilter(text: string, style: CueSheet["subtitleStyle"]): string {

@@ -411,6 +411,194 @@ describe("buildRenderPlan", () => {
     expect(p.filterComplex).toContain("drawtext=text='오버라이드':fontsize=72");
   });
 
+  it("applies a named preset on top of the global style (merge order: global < preset)", () => {
+    const p = buildRenderPlan(
+      make({
+        subtitleStylePresets: { "inner-voice": { size: 30, color: "#aaaaaa" } },
+        segments: [
+          {
+            clip: "a.mp4",
+            in: 0,
+            out: 5,
+            speed: 1,
+            volume: 1,
+            subtitle: "속마음",
+            stylePreset: "inner-voice",
+          },
+        ],
+      }),
+      "out.mp4",
+    );
+    // size/color come from the preset; outlineColor/outlineWidth/font/position/margin stay global.
+    expect(p.filterComplex).toContain(
+      "drawtext=text='속마음':fontsize=30:fontcolor=#aaaaaa" +
+        ":borderw=3:bordercolor=#000000:font='Pretendard':x=(w-text_w)/2:y=h-text_h-40",
+    );
+  });
+
+  it("applies the per-cut styleOverride on top of a preset (merge order: global < preset < override)", () => {
+    const p = buildRenderPlan(
+      make({
+        subtitleStylePresets: { "inner-voice": { size: 30, color: "#aaaaaa", outlineWidth: 5 } },
+        segments: [
+          {
+            clip: "a.mp4",
+            in: 0,
+            out: 5,
+            speed: 1,
+            volume: 1,
+            subtitle: "속마음",
+            stylePreset: "inner-voice",
+            styleOverride: { color: "#ff00ff" },
+          },
+        ],
+      }),
+      "out.mp4",
+    );
+    // color comes from the override (wins over the preset); size/outlineWidth stay from the preset.
+    expect(p.filterComplex).toContain(
+      "drawtext=text='속마음':fontsize=30:fontcolor=#ff00ff" +
+        ":borderw=5:bordercolor=#000000:font='Pretendard':x=(w-text_w)/2:y=h-text_h-40",
+    );
+  });
+
+  describe("title cards", () => {
+    it("throws a fieldpath-style error when a segment has a title but no prepared titleAssets entry", () => {
+      const cue = make({
+        segments: [
+          {
+            clip: "a.mp4",
+            in: 0,
+            out: 5,
+            speed: 1,
+            volume: 1,
+            subtitle: "",
+            title: { text: "Cast on", preset: "typing", durationS: 2 },
+          },
+        ],
+      });
+      expect(() => buildRenderPlan(cue, "out.mp4")).toThrowError(/segments\[0\]\.title:/);
+    });
+
+    it("wires a typing title into a subtitles= filter step, chained after the base scale/fps chain", () => {
+      const cue = make({
+        segments: [
+          {
+            clip: "a.mp4",
+            in: 0,
+            out: 5,
+            speed: 1,
+            volume: 1,
+            subtitle: "",
+            title: { text: "Cast on", preset: "typing", durationS: 2 },
+          },
+        ],
+      });
+      const p = buildRenderPlan(cue, "out.mp4", {
+        titleAssets: { 0: { kind: "ass", path: "/tmp/title.ass" } },
+      });
+      expect(p.filterComplex).toContain("scale=1920:1080,setsar=1,fps=30[v0]");
+      expect(p.filterComplex).toContain("[v0]subtitles=/tmp/title.ass[vass0]");
+      expect(p.filterComplex).toContain("[vass0][a0]concat=");
+    });
+
+    it("wires a gooey/particle/melt title into an extra image-sequence input + overlay filter", () => {
+      const cue = make({
+        segments: [
+          {
+            clip: "a.mp4",
+            in: 0,
+            out: 5,
+            speed: 1,
+            volume: 1,
+            subtitle: "",
+            title: { text: "Cast on", preset: "gooey", durationS: 3 },
+          },
+        ],
+      });
+      const p = buildRenderPlan(cue, "out.mp4", {
+        titleAssets: { 0: { kind: "frames", dir: "/tmp/title-cache/abc123", frameCount: 90, fps: 30 } },
+      });
+      expect(p.args.join(" ")).toContain("-framerate 30 -i /tmp/title-cache/abc123/frame_%04d.png");
+      expect(p.filterComplex).toContain("[v0][1:v]overlay=0:0:format=auto:enable='between(t,0,3)'[vtitle0]");
+      expect(p.filterComplex).toContain("[vtitle0][a0]concat=");
+    });
+
+    it("adds a backdrop-dim color source + overlay before the title's own overlay/subtitles step", () => {
+      const cue = make({
+        segments: [
+          {
+            clip: "a.mp4",
+            in: 0,
+            out: 5,
+            speed: 1,
+            volume: 1,
+            subtitle: "",
+            title: { text: "Cast on", preset: "typing", durationS: 2, backdrop: { dim: 0.5 } },
+          },
+        ],
+      });
+      const p = buildRenderPlan(cue, "out.mp4", {
+        titleAssets: { 0: { kind: "ass", path: "/tmp/title.ass" } },
+      });
+      expect(p.filterComplex).toContain(
+        "color=black:size=1920x1080:duration=2:rate=30,format=yuva420p,fade=t=in:st=0:d=0.4:alpha=1,fade=t=out:st=1.6:d=0.4:alpha=1,colorchannelmixer=aa=0.5[dim0]",
+      );
+      expect(p.filterComplex).toContain("[v0][dim0]overlay=0:0:enable='between(t,0,2)'[vdim0]");
+      expect(p.filterComplex).toContain("[vdim0]subtitles=/tmp/title.ass[vass0]");
+    });
+
+    it("adds -filter_complex_threads 1 only when a captured-frames title (gooey/melt/particle) is present", () => {
+      const withAss = buildRenderPlan(
+        make({
+          segments: [
+            {
+              clip: "a.mp4",
+              in: 0,
+              out: 5,
+              speed: 1,
+              volume: 1,
+              subtitle: "",
+              title: { text: "Cast on", preset: "typing", durationS: 2 },
+            },
+          ],
+        }),
+        "out.mp4",
+        { titleAssets: { 0: { kind: "ass", path: "/tmp/title.ass" } } },
+      );
+      expect(withAss.args).not.toContain("-filter_complex_threads");
+
+      const withFrames = buildRenderPlan(
+        make({
+          segments: [
+            {
+              clip: "a.mp4",
+              in: 0,
+              out: 5,
+              speed: 1,
+              volume: 1,
+              subtitle: "",
+              title: { text: "Cast on", preset: "gooey", durationS: 2 },
+            },
+          ],
+        }),
+        "out.mp4",
+        { titleAssets: { 0: { kind: "frames", dir: "/tmp/title-cache/abc", frameCount: 60, fps: 30 } } },
+      );
+      const idx = withFrames.args.indexOf("-filter_complex_threads");
+      expect(idx).toBeGreaterThanOrEqual(0);
+      expect(withFrames.args[idx + 1]).toBe("1");
+    });
+
+    it("produces an identical filter chain to the baseline when no segment has a title (regression)", () => {
+      const withoutTitle = buildRenderPlan(make(), "out.mp4");
+      const stillWithoutTitle = buildRenderPlan(make(), "out.mp4", { titleAssets: {} });
+      expect(withoutTitle.filterComplex).toEqual(stillWithoutTitle.filterComplex);
+      expect(withoutTitle.filterComplex).not.toContain("subtitles=");
+      expect(withoutTitle.filterComplex).not.toContain("overlay=");
+    });
+  });
+
   it("includes codec and fps in the output arguments", () => {
     const p = buildRenderPlan(make(), "final.mp4");
     const s = p.args.join(" ");
