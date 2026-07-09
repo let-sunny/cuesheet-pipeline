@@ -7,7 +7,11 @@ export {
   segmentSchema,
   subtitleBackgroundSchema,
   subtitleStyleOverrideSchema,
+  subtitleStylePresetsSchema,
   subtitleStyleSchema,
+  titleBackdropSchema,
+  titlePresetSchema,
+  titleSchema,
 } from "./schema.js";
 
 export type {
@@ -21,6 +25,10 @@ export type {
   SubtitleBackground,
   SubtitleStyle,
   SubtitleStyleOverride,
+  SubtitleStylePresets,
+  Title,
+  TitleBackdrop,
+  TitlePreset,
 } from "./types.js";
 
 export { validateCueSheet, formatIssue } from "./validate.js";

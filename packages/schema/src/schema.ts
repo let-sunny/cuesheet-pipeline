@@ -115,6 +115,44 @@ export const subtitleStyleOverrideSchema = subtitleStyleSchema.partial().extend(
     .optional(),
 });
 
+/**
+ * Named, reusable subtitle style presets (project-level dictionary, keyed by name e.g.
+ * "inner-voice"/"shout"). Same shape as a per-cut override (every field optional) - a preset is
+ * just a named override that a segment can opt into via `segment.stylePreset` instead of
+ * repeating the same override fields on every cut that wants that look. Merge order (see
+ * ARCHITECTURE.md): global subtitleStyle < preset (if segment.stylePreset references one) <
+ * segment.styleOverride (per-cut override always wins last).
+ */
+export const subtitleStylePresetsSchema = z.record(
+  z.string().min(1, "preset name must not be empty"),
+  subtitleStyleOverrideSchema,
+);
+
+/** Optional dim layer behind a title card, fading in/out with it (0 = no dim, 1 = fully black). */
+export const titleBackdropSchema = z.object({
+  dim: z.number().min(0, "backdrop.dim must be >= 0").max(1, "backdrop.dim must be <= 1"),
+});
+
+/** Closed set of title-card animation presets (cozy knitting-vlog mood, user-finalized trio + Melt exit variant). */
+export const titlePresetSchema = z.enum(["gooey", "melt", "particle", "typing"]);
+
+/**
+ * A title card shown at the start of a cut (optional field - PRD backlog #2). `typing` renders via
+ * ASS/libass karaoke reveal at render time; `gooey`/`melt`/`particle` render via a headless
+ * frame-capture -> alpha-overlay composite (see docs/research/title-render-spike.md). Both paths
+ * share this one schema shape; the render-time branch is keyed off `preset`.
+ */
+export const titleSchema = z.object({
+  text: z.string().min(1, "title.text must not be empty").max(80, "title.text must be <= 80 characters"),
+  preset: titlePresetSchema,
+  durationS: z
+    .number()
+    .min(0.5, "durationS must be >= 0.5")
+    .max(10, "durationS must be <= 10")
+    .default(3),
+  backdrop: titleBackdropSchema.optional(),
+});
+
 export const segmentSchema = z
   .object({
     clip: z.string().min(1, "clip filename must not be empty"),
@@ -136,6 +174,12 @@ export const segmentSchema = z
     crop: cropSchema.nullable().optional(),
     // Partial subtitle style override for this cut only. null/omitted = use global subtitleStyle as-is.
     styleOverride: subtitleStyleOverrideSchema.nullable().optional(),
+    // References a key in the cuesheet-level subtitleStylePresets dictionary. null/omitted = no
+    // preset. Cross-field validity (the name must actually exist in subtitleStylePresets) is
+    // checked in cueSheetSchema's superRefine, since a segment alone can't see its sheet's presets.
+    stylePreset: z.string().min(1, "stylePreset must not be empty").nullable().optional(),
+    // Title card shown at this cut's start. null/omitted = no title.
+    title: titleSchema.nullable().optional(),
   })
   .refine((s) => s.in < s.out, {
     error: "in must be less than out (in < out)",
@@ -188,6 +232,9 @@ export const cueSheetSchema = z
     bgm: z.array(bgmCueSchema),
     subtitleStyle: subtitleStyleSchema,
     narration: narrationConfigSchema.optional(),
+    // Named subtitle style presets dictionary (keyed by name). Optional/omitted = no presets
+    // defined - existing cuesheets stay valid.
+    subtitleStylePresets: subtitleStylePresetsSchema.optional(),
   })
   .superRefine((cue, ctx) => {
     // crop.w and crop.h (see cropSchema) are ratios relative to the *source* frame's own
@@ -208,6 +255,19 @@ export const cueSheetSchema = z
           message:
             "crop window must match the project aspect ratio (w and h ratios must be equal for same-aspect sources)",
           path: ["segments", i, "crop"],
+        });
+      }
+    });
+    // A segment's stylePreset must reference an existing key in subtitleStylePresets - a segment
+    // alone can't validate this (it doesn't see the sheet's presets dictionary), so it's checked
+    // here at the cuesheet level instead.
+    cue.segments.forEach((segment, i) => {
+      if (!segment.stylePreset) return;
+      if (!cue.subtitleStylePresets || !(segment.stylePreset in cue.subtitleStylePresets)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `stylePreset "${segment.stylePreset}" does not reference an existing preset name`,
+          path: ["segments", i, "stylePreset"],
         });
       }
     });

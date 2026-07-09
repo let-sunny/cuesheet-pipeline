@@ -8,7 +8,11 @@ import type {
   segmentSchema,
   subtitleBackgroundSchema,
   subtitleStyleOverrideSchema,
+  subtitleStylePresetsSchema,
   subtitleStyleSchema,
+  titleBackdropSchema,
+  titlePresetSchema,
+  titleSchema,
 } from "./schema.js";
 
 /**
@@ -22,6 +26,10 @@ export type BgmCue = z.infer<typeof bgmCueSchema>;
 export type SubtitleBackground = z.infer<typeof subtitleBackgroundSchema>;
 export type SubtitleStyle = z.infer<typeof subtitleStyleSchema>;
 export type SubtitleStyleOverride = z.infer<typeof subtitleStyleOverrideSchema>;
+export type SubtitleStylePresets = z.infer<typeof subtitleStylePresetsSchema>;
+export type TitlePreset = z.infer<typeof titlePresetSchema>;
+export type TitleBackdrop = z.infer<typeof titleBackdropSchema>;
+export type Title = z.infer<typeof titleSchema>;
 export type NarrationConfig = z.infer<typeof narrationConfigSchema>;
 export type CueSheet = z.infer<typeof cueSheetSchema>;
 

@@ -191,6 +191,161 @@ describe("validateCueSheet - pass cases", () => {
     }
   });
 
+  it("an existing cuesheet without subtitleStylePresets/segment.stylePreset/segment.title remains valid", () => {
+    const result = validateCueSheet(sample);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.subtitleStylePresets).toBeUndefined();
+      expect(result.data.segments[0]?.stylePreset).toBeUndefined();
+      expect(result.data.segments[0]?.title).toBeUndefined();
+    }
+  });
+
+  it("is valid when a segment's stylePreset references an existing subtitleStylePresets key", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      subtitleStylePresets: { "inner-voice": { size: 32, color: "#cccccc" } },
+      segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", stylePreset: "inner-voice" }],
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.subtitleStylePresets?.["inner-voice"]).toEqual({ size: 32, color: "#cccccc" });
+      expect(result.data.segments[0]?.stylePreset).toBe("inner-voice");
+    }
+  });
+
+  it("fails when a segment's stylePreset references a name absent from subtitleStylePresets", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      subtitleStylePresets: { shout: { size: 60 } },
+      segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", stylePreset: "inner-voice" }],
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.startsWith("segments[0].stylePreset:"))).toBe(true);
+    }
+  });
+
+  it("fails when a segment's stylePreset is set but subtitleStylePresets is entirely absent", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", stylePreset: "shout" }],
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.startsWith("segments[0].stylePreset:"))).toBe(true);
+    }
+  });
+
+  it("is valid with a full title card (typing preset, explicit backdrop dim)", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      segments: [
+        {
+          clip: "a.mp4",
+          in: 0,
+          out: 1,
+          subtitle: "",
+          title: { text: "Cast on", preset: "typing", durationS: 2.5, backdrop: { dim: 0.4 } },
+        },
+      ],
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.segments[0]?.title).toEqual({
+        text: "Cast on",
+        preset: "typing",
+        durationS: 2.5,
+        backdrop: { dim: 0.4 },
+      });
+    }
+  });
+
+  it("defaults title.durationS to 3 when unspecified", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", title: { text: "Hi", preset: "gooey" } }],
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.segments[0]?.title?.durationS).toBe(3);
+    }
+  });
+
+  it("fails when title.preset is not one of the four closed presets", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", title: { text: "Hi", preset: "retro" } }],
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.startsWith("segments[0].title.preset:"))).toBe(true);
+    }
+  });
+
+  it("fails when title.text is empty or over 80 characters", () => {
+    const tooLong = "a".repeat(81);
+    const empty = validateCueSheet({
+      ...(sample as Record<string, unknown>),
+      segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", title: { text: "", preset: "typing" } }],
+    });
+    expect(empty.ok).toBe(false);
+    const over = validateCueSheet({
+      ...(sample as Record<string, unknown>),
+      segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", title: { text: tooLong, preset: "typing" } }],
+    });
+    expect(over.ok).toBe(false);
+  });
+
+  it("fails when title.durationS is out of the 0.5-10 range", () => {
+    const result = validateCueSheet({
+      ...(sample as Record<string, unknown>),
+      segments: [
+        { clip: "a.mp4", in: 0, out: 1, subtitle: "", title: { text: "Hi", preset: "typing", durationS: 11 } },
+      ],
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.includes("segments[0].title.durationS"))).toBe(true);
+    }
+  });
+
+  it("fails when title.backdrop.dim is out of the 0-1 range", () => {
+    const result = validateCueSheet({
+      ...(sample as Record<string, unknown>),
+      segments: [
+        {
+          clip: "a.mp4",
+          in: 0,
+          out: 1,
+          subtitle: "",
+          title: { text: "Hi", preset: "particle", backdrop: { dim: 1.2 } },
+        },
+      ],
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.includes("segments[0].title.backdrop.dim"))).toBe(true);
+    }
+  });
+
+  it("is valid when segment.title is null (treated as no title)", () => {
+    const result = validateCueSheet({
+      ...(sample as Record<string, unknown>),
+      segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", title: null }],
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.segments[0]?.title).toBeNull();
+    }
+  });
+
   it("defaults narration.volume to 1.0 when unspecified", () => {
     const input = {
       ...(sample as Record<string, unknown>),
