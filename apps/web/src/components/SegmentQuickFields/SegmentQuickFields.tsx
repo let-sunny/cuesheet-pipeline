@@ -1,7 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
-import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
-import { Slider } from "@astryxdesign/core/Slider";
 import type {
   Segment,
   SubtitleStyle,
@@ -16,7 +14,13 @@ import { useNumericField } from "../../hooks/useNumericField.js";
 import type { MergeEligibility } from "../../lib/segmentMerge.js";
 import { mergeSubtitleStyle } from "../../lib/subtitleOverlay.js";
 import { subtitleOverflowWarning } from "../../lib/subtitleOverflow.js";
-import { SegmentStyleOverride } from "../SegmentStyleOverride/index.js";
+import { RangeGroup } from "./RangeGroup.js";
+import { PlaybackGroup } from "./PlaybackGroup.js";
+import { SubtitleGroup } from "./SubtitleGroup.js";
+import { TitleGroup } from "./TitleGroup.js";
+import { TransitionsGroup } from "./TransitionsGroup.js";
+import { ReframeGroup } from "./ReframeGroup.js";
+import { ActionsGroup } from "./ActionsGroup.js";
 import { styles } from "./SegmentQuickFields.styles.js";
 
 interface Props {
@@ -79,6 +83,13 @@ interface Props {
  * doesn't specify it, making it the one element in this panel that needed a judgment call, but
  * since it determines which clip the "Range" applies to, it's placed at the top of the G1 (Range)
  * group.
+ *
+ * Composition rule (CLAUDE.md, "groups are components, panels are arrangements"): each functional
+ * group is its own component with its own tests (Range/Playback/Subtitle/Title/Transitions/
+ * Reframe/ActionsGroup) - this panel only owns the numeric-field hooks (a single source of truth
+ * per field, shared with nothing else) and cross-group derived values (warnings, disabled states),
+ * and arranges the groups in order. Narration (G6, small and conditionally shown) and the
+ * destructive-zone Delete button stay inline here rather than becoming their own group components.
  */
 export function SegmentQuickFields({
   segment,
@@ -111,6 +122,10 @@ export function SegmentQuickFields({
   onToggleTransition,
   onChangeTransition,
 }: Props) {
+  // This cut's actual output length (after speed applied) - used both for the narration-overlap
+  // warning below and to cross-validate the two transition durations against it.
+  const outputDurationS = segment ? (segment.out - segment.in) / segment.speed : 0;
+
   // These hooks must run unconditionally (before the `!segment` early return below) - they fall
   // back to placeholder values when there's no selected segment, but the actual fields only
   // render once `segment` is confirmed non-null further down.
@@ -140,14 +155,26 @@ export function SegmentQuickFields({
     coerce: (n) => Math.min(10, Math.max(0.5, n)),
     onCommit: (next) => onChangeTitle({ durationS: next }),
   });
+  // Transition durations are cross-validated against each other (their sum can't exceed this
+  // cut's own output length, e.g. a 1s cut can't fit a 0.5s transition on both ends) - each
+  // field's coerce clamps against the *other* side's current duration, not just its own 0.2-2s
+  // range, so the combined total never exceeds outputDurationS.
   const transitionInDurationField = useNumericField({
     value: segment?.transitionIn?.durationS ?? DEFAULT_TRANSITION_DURATION_S,
-    coerce: (n) => Math.min(2, Math.max(0.2, n)),
+    coerce: (n) => {
+      const otherDurationS = segment?.transitionOut?.durationS ?? 0;
+      const maxAllowed = Math.max(MIN_TRANSITION_DURATION_S, outputDurationS - otherDurationS);
+      return Math.min(MAX_TRANSITION_DURATION_S, Math.max(MIN_TRANSITION_DURATION_S, n), maxAllowed);
+    },
     onCommit: (next) => onChangeTransition("in", { durationS: next }),
   });
   const transitionOutDurationField = useNumericField({
     value: segment?.transitionOut?.durationS ?? DEFAULT_TRANSITION_DURATION_S,
-    coerce: (n) => Math.min(2, Math.max(0.2, n)),
+    coerce: (n) => {
+      const otherDurationS = segment?.transitionIn?.durationS ?? 0;
+      const maxAllowed = Math.max(MIN_TRANSITION_DURATION_S, outputDurationS - otherDurationS);
+      return Math.min(MAX_TRANSITION_DURATION_S, Math.max(MIN_TRANSITION_DURATION_S, n), maxAllowed);
+    },
     onCommit: (next) => onChangeTransition("out", { durationS: next }),
   });
 
@@ -163,14 +190,19 @@ export function SegmentQuickFields({
   ).size;
   const subtitleWarning = subtitleOverflowWarning(segment.subtitle, effectiveStyleSize, projectWidth);
 
-  // This cut's actual output length (after speed applied). If the selected narration file is longer than this, it overlaps the next cut.
-  const outputDurationS = (segment.out - segment.in) / segment.speed;
   const selectedNarrationFile = segment.narration
     ? narrationFiles.find((f) => f.name === segment.narration)
     : undefined;
   const narrationDurationWarning =
     selectedNarrationFile?.durationS != null && selectedNarrationFile.durationS > outputDurationS
       ? `${(selectedNarrationFile.durationS - outputDurationS).toFixed(1)}s longer than the cut - overlaps the next cut`
+      : null;
+
+  const combinedTransitionDurationS =
+    (segment.transitionIn?.durationS ?? 0) + (segment.transitionOut?.durationS ?? 0);
+  const transitionsCrossValidationNote =
+    segment.transitionIn && segment.transitionOut && combinedTransitionDurationS > outputDurationS
+      ? `Transition durations clamped to fit this cut's length (${outputDurationS.toFixed(1)}s)`
       : null;
 
   const tooLongForIntroOutro =
@@ -186,284 +218,47 @@ export function SegmentQuickFields({
     <div className="quick-fields" data-testid="cut-settings-panel">
       <h2 className="qf-panel-title">Cut settings</h2>
 
-      {/* G1. Range */}
-      <div className="qf-group" data-testid="cut-settings-group-range">
-        <div className="qf-group-label">Range</div>
-        {/* The clip filename is shown as read-only text only (revised 2026-07-08) - the only
-            proper way to change which source clip this cut points to is (1) picking a different
-            scene from the Scenes palette or duplicating a cut, so a free-text input was a bug
-            magnet: a typo could easily point at a file that doesn't exist. It still needs to be
-            copyable (selectable), so it's shown as plain text (a span, not a disabled input -
-            disabled inputs block selection in some browsers). */}
-        <div className="qf-field field-full">
-          <span>clip</span>
-          <span {...stylex.props(styles.readonlyValue)} title={segment.clip}>
-            {segment.clip}
-          </span>
-        </div>
-        <div className="qf-row">
-          <label className="qf-field field-narrow">
-            <span>In</span>
-            <input type="number" className="plain-field" min={0} {...inField} data-testid="cut-field-in" />
-          </label>
-          <label className="qf-field field-narrow">
-            <span>Out</span>
-            <input type="number" className="plain-field" min={0} {...outField} data-testid="cut-field-out" />
-          </label>
-          <span className="qf-readonly">Length {(segment.out - segment.in).toFixed(1)}s</span>
-        </div>
-      </div>
+      <RangeGroup
+        clip={segment.clip}
+        lengthS={segment.out - segment.in}
+        inField={inField}
+        outField={outField}
+      />
 
-      {/* G2. Playback */}
-      <div className="qf-group" data-testid="cut-settings-group-playback">
-        <div className="qf-group-label">Playback</div>
-        <div className="qf-row">
-          <label className="qf-field field-narrow">
-            <span>Speed</span>
-            <input
-              type="number"
-              className="plain-field"
-              min={0.1}
-              max={16}
-              step={0.1}
-              title="Speed is capped at 16x - browsers can't play video faster than that"
-              {...speedField}
-              data-testid="cut-field-speed"
-            />
-            <span className="qf-suffix">x</span>
-          </label>
-          <label className="qf-field field-narrow">
-            <span>Volume</span>
-            <input
-              type="number"
-              className="plain-field"
-              min={0}
-              max={100}
-              step={1}
-              {...volumeField}
-              data-testid="cut-field-volume"
-            />
-            <span className="qf-suffix">%</span>
-          </label>
-        </div>
-        {segment.speed >= 16 ? (
-          <p className="qf-note">Speed is capped at 16x - browsers can't play video faster than that.</p>
-        ) : null}
-      </div>
+      <PlaybackGroup speedField={speedField} volumeField={volumeField} speedAtCap={segment.speed >= 16} />
 
-      {/* G3. Subtitle (+ subsection: per-cut subtitle style) */}
-      <div className="qf-group" data-testid="cut-settings-group-subtitle">
-        <div className="qf-group-label">Subtitle</div>
-        <label className="qf-field field-full">
-          <textarea
-            className={`plain-field plain-field-textarea ${stylex.props(styles.subtitleTextarea).className ?? ""}`}
-            value={segment.subtitle}
-            rows={2}
-            placeholder="Enter subtitle"
-            onChange={(e) => onChange({ subtitle: e.target.value })}
-            data-testid="cut-field-subtitle"
-          />
-        </label>
-        {subtitleWarning ? <p className="qf-note">{subtitleWarning}</p> : null}
+      <SubtitleGroup
+        segment={segment}
+        subtitleWarning={subtitleWarning}
+        subtitleStylePresets={subtitleStylePresets}
+        onChangeSubtitle={(subtitle) => onChange({ subtitle })}
+        onChangeStylePreset={onChangeStylePreset}
+        globalSubtitleStyle={globalSubtitleStyle}
+        onToggleStyleOverride={onToggleStyleOverride}
+        onChangeStyleOverride={onChangeStyleOverride}
+        onPromoteStyleOverride={onPromoteStyleOverride}
+        onClearStyleOverride={onClearStyleOverride}
+      />
 
-        {/* Preset select sits above the per-cut override (screen-spec section 4) - picking a
-            preset here merges it in ahead of styleOverride (global < preset < override), so a
-            cut can use a named look (e.g. "inner-voice") without needing its own override. */}
-        {subtitleStylePresets && Object.keys(subtitleStylePresets).length > 0 ? (
-          <label className="qf-field field-medium">
-            <span>Style preset</span>
-            <select
-              className="plain-field"
-              value={segment.stylePreset ?? ""}
-              onChange={(e) => onChangeStylePreset(e.target.value === "" ? null : e.target.value)}
-            >
-              <option value="">(none)</option>
-              {Object.keys(subtitleStylePresets).map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
+      <TitleGroup
+        title={segment.title}
+        onToggle={onToggleTitle}
+        onChangeTitle={onChangeTitle}
+        titleDurationField={titleDurationField}
+      />
 
-        <SegmentStyleOverride
-          segment={segment}
-          globalStyle={globalSubtitleStyle}
-          onToggle={onToggleStyleOverride}
-          onChangeOverride={onChangeStyleOverride}
-          onPromote={onPromoteStyleOverride}
-          onClear={onClearStyleOverride}
-        />
-      </div>
+      <TransitionsGroup
+        transitionIn={segment.transitionIn}
+        transitionOut={segment.transitionOut}
+        onToggle={onToggleTransition}
+        onChangeTransition={onChangeTransition}
+        transitionInDurationField={transitionInDurationField}
+        transitionOutDurationField={transitionOutDurationField}
+        crossValidationNote={transitionsCrossValidationNote}
+      />
 
-      {/* G4. Title card (screen-spec section 4 - placed after Subtitle, before Reframe). Turning it
-          on starts with a default typing title (3s, no dim) so the preview shows something
-          immediately, matching the same "toggle starts from a sane default" pattern as the
-          per-cut subtitle style override above. */}
-      <div className="qf-group" data-testid="cut-settings-group-title">
-        <div className="qf-group-label">Title</div>
-        {/* CheckboxInput (unlike Button/Tab/Slider) doesn't forward arbitrary data-* props to the
-            DOM (no `...rest` spread in its implementation) - select this in tests by ARIA role +
-            accessible name instead: getByRole("checkbox", { name: "Title card for this cut" }). */}
-        <CheckboxInput label="Title card for this cut" value={!!segment.title} onChange={onToggleTitle} />
-        {segment.title ? (
-          <>
-            <label className="qf-field field-full">
-              <span>Text</span>
-              <input
-                type="text"
-                className="plain-field"
-                maxLength={80}
-                value={segment.title.text}
-                onChange={(e) => onChangeTitle({ text: e.target.value })}
-                data-testid="cut-field-title-text"
-              />
-            </label>
-            <div className="qf-row">
-              <label className="qf-field field-medium">
-                <span>Preset</span>
-                <select
-                  className="plain-field"
-                  value={segment.title.preset}
-                  onChange={(e) => onChangeTitle({ preset: e.target.value as Title["preset"] })}
-                  data-testid="cut-field-title-preset"
-                >
-                  <option value="typing">Typing</option>
-                  <option value="gooey">Gooey</option>
-                  <option value="melt">Melt</option>
-                  <option value="particle">Particle</option>
-                </select>
-              </label>
-              <label className="qf-field field-narrow">
-                {/* "Dur." (not "Duration") - the row's fixed 40px label column (screen-spec section 4's
-                    measured G1/G2 width tokens, reused here) was tuned for short labels like
-                    Speed/Volume; "Duration" overflowed it and visually collided with the input. */}
-                <span>Dur.</span>
-                <input type="number" className="plain-field" min={0.5} max={10} step={0.5} {...titleDurationField} />
-                <span className="qf-suffix">s</span>
-              </label>
-            </div>
-            <Slider
-              label="Backdrop dim"
-              value={Math.round((segment.title.backdrop?.dim ?? 0) * 100)}
-              min={0}
-              max={100}
-              step={5}
-              valueDisplay="text"
-              onChange={(v: number) => onChangeTitle({ backdrop: v === 0 ? undefined : { dim: v / 100 } })}
-            />
-          </>
-        ) : null}
-      </div>
-
-      {/* G5. Transitions (fade/dip, PRD backlog #3, screen-spec section 4 - placed after Title,
-          before Narration: Title and Transitions are both "what happens at/over the edges of this
-          cut's frame" concerns). Two independent optional transitions (cut start / cut end), each
-          toggled on with the same "starts from a sane default" pattern as Title above (fade,
-          0.5s). Dip amount only applies (and is only shown) when type is Dip - Fade always fades
-          fully to black. */}
-      <div className="qf-group" data-testid="cut-settings-group-transitions">
-        <div className="qf-group-label">Transitions</div>
-        <div {...stylex.props(styles.transition)}>
-          {/* Select by role/name in tests, not testid - see the Title toggle's comment above. */}
-          <CheckboxInput
-            label="Transition in"
-            value={!!segment.transitionIn}
-            onChange={(enabled) => onToggleTransition("in", enabled)}
-          />
-          {segment.transitionIn ? (
-            <>
-              <div className="qf-row">
-                <label className="qf-field field-medium">
-                  <span>Type</span>
-                  <select
-                    className="plain-field"
-                    value={segment.transitionIn.type}
-                    onChange={(e) => onChangeTransition("in", { type: e.target.value as Transition["type"] })}
-                  >
-                    <option value="fade">Fade</option>
-                    <option value="dip">Dip</option>
-                  </select>
-                </label>
-                <label className="qf-field field-narrow">
-                  <span>Dur.</span>
-                  <input
-                    type="number"
-                    className="plain-field"
-                    min={0.2}
-                    max={2}
-                    step={0.1}
-                    {...transitionInDurationField}
-                  />
-                  <span className="qf-suffix">s</span>
-                </label>
-              </div>
-              {segment.transitionIn.type === "dip" ? (
-                <Slider
-                  label="Dip amount"
-                  value={Math.round((segment.transitionIn.dim ?? 1) * 100)}
-                  min={0}
-                  max={100}
-                  step={5}
-                  valueDisplay="text"
-                  onChange={(v: number) => onChangeTransition("in", { dim: v / 100 })}
-                />
-              ) : null}
-            </>
-          ) : null}
-        </div>
-        <div {...stylex.props(styles.transition)}>
-          <CheckboxInput
-            label="Transition out"
-            value={!!segment.transitionOut}
-            onChange={(enabled) => onToggleTransition("out", enabled)}
-          />
-          {segment.transitionOut ? (
-            <>
-              <div className="qf-row">
-                <label className="qf-field field-medium">
-                  <span>Type</span>
-                  <select
-                    className="plain-field"
-                    value={segment.transitionOut.type}
-                    onChange={(e) => onChangeTransition("out", { type: e.target.value as Transition["type"] })}
-                  >
-                    <option value="fade">Fade</option>
-                    <option value="dip">Dip</option>
-                  </select>
-                </label>
-                <label className="qf-field field-narrow">
-                  <span>Dur.</span>
-                  <input
-                    type="number"
-                    className="plain-field"
-                    min={0.2}
-                    max={2}
-                    step={0.1}
-                    {...transitionOutDurationField}
-                  />
-                  <span className="qf-suffix">s</span>
-                </label>
-              </div>
-              {segment.transitionOut.type === "dip" ? (
-                <Slider
-                  label="Dip amount"
-                  value={Math.round((segment.transitionOut.dim ?? 1) * 100)}
-                  min={0}
-                  max={100}
-                  step={5}
-                  valueDisplay="text"
-                  onChange={(v: number) => onChangeTransition("out", { dim: v / 100 })}
-                />
-              ) : null}
-            </>
-          ) : null}
-        </div>
-        <p {...stylex.props(styles.noteNeutral)}>Preview approximates fades and dips (opacity ramp) - the exported video renders the real fade/dip.</p>
-      </div>
-
-      {/* G6. Narration (shown only when in use) */}
+      {/* G6. Narration (shown only when in use) - small and always conditional, kept inline rather
+          than promoted to its own group component. */}
       {narrationEnabled ? (
         <div className="qf-group" data-testid="cut-settings-group-narration">
           <div className="qf-group-label">Narration</div>
@@ -503,77 +298,18 @@ export function SegmentQuickFields({
         </div>
       ) : null}
 
-      {/* G7. Reframe (crop) */}
-      <div className="qf-group" data-testid="cut-settings-group-reframe">
-        <div className="qf-group-label">Reframe</div>
-        <div className="qf-row">
-          <span className="qf-readonly">{segment.crop ? "Applied" : "Not applied"}</span>
-          <Button
-            label={segment.crop ? "Adjust again" : "Reframe"}
-            variant="secondary"
-            size="sm"
-            onClick={onEditCrop}
-          />
-          {segment.crop ? (
-            <Button label="Clear" variant="ghost" size="sm" onClick={onClearCrop} />
-          ) : null}
-        </div>
-      </div>
+      <ReframeGroup hasCrop={!!segment.crop} onEditCrop={onEditCrop} onClearCrop={onClearCrop} />
 
-      {/* G8. Cut actions - Delete is not here (see the separate danger zone below, screen-spec section 4 revision). */}
-      <div className="qf-group" data-testid="cut-settings-group-actions">
-        <div className="qf-group-label">Cut actions</div>
-        <div className="qf-row qf-actions-row">
-          <Button
-            label="Split"
-            variant="secondary"
-            size="sm"
-            tooltip="Cmd/Ctrl + B"
-            onClick={onSplit}
-            data-testid="cut-action-split"
-          />
-          <Button
-            label="Merge with next cut"
-            variant="secondary"
-            size="sm"
-            isDisabled={!mergeEligibility.eligible}
-            tooltip={mergeEligibility.eligible ? "Cmd/Ctrl + J" : mergeEligibility.reason}
-            onClick={onMergeNext}
-            data-testid="cut-action-merge"
-          />
-          <Button
-            label="Duplicate"
-            variant="secondary"
-            size="sm"
-            onClick={onDuplicate}
-            data-testid="cut-action-duplicate"
-          />
-          <Button
-            label="Set as intro"
-            variant="ghost"
-            size="sm"
-            isDisabled={tooLongForIntroOutro}
-            tooltip={
-              introOutroDisabledTitle ??
-              "Range (In/Out) is ignored - the whole clip is inserted as the intro"
-            }
-            onClick={onSetIntro}
-            data-testid="cut-action-set-intro"
-          />
-          <Button
-            label="Set as outro"
-            variant="ghost"
-            size="sm"
-            isDisabled={tooLongForIntroOutro}
-            tooltip={
-              introOutroDisabledTitle ??
-              "Range (In/Out) is ignored - the whole clip is inserted as the outro"
-            }
-            onClick={onSetOutro}
-            data-testid="cut-action-set-outro"
-          />
-        </div>
-      </div>
+      <ActionsGroup
+        mergeEligibility={mergeEligibility}
+        onMergeNext={onMergeNext}
+        onSplit={onSplit}
+        onDuplicate={onDuplicate}
+        onSetIntro={onSetIntro}
+        onSetOutro={onSetOutro}
+        tooLongForIntroOutro={tooLongForIntroOutro}
+        introOutroDisabledTitle={introOutroDisabledTitle}
+      />
 
       {/* Danger zone: Delete is separated out (screen-spec section 4, revised 2026-07-08) - a
           divider + spacing clearly separates it from the cut actions group above, to prevent
@@ -599,3 +335,8 @@ const DEFAULT_TITLE_DURATION_S = 3;
 /** Matches the schema's transition.durationS default (0.5) - the value shown right after a
  * transition toggle is turned on, before onChangeTransition's first patch lands. */
 const DEFAULT_TRANSITION_DURATION_S = 0.5;
+
+/** Transition duration's own range (screen-spec section 4, G5) - each field's cross-validation
+ * clamp (above) additionally caps this against the cut's output length and the other side's duration. */
+const MIN_TRANSITION_DURATION_S = 0.2;
+const MAX_TRANSITION_DURATION_S = 2;

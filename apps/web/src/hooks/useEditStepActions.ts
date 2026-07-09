@@ -411,7 +411,7 @@ export function useEditStepActions({
       const segments = prev.segments.map((s, idx) =>
         idx === i
           ? enabled
-            ? { ...s, title: { text: "", preset: "typing" as const, durationS: DEFAULT_TITLE_DURATION_S } }
+            ? { ...s, title: { text: DEFAULT_TITLE_TEXT, preset: "typing" as const, durationS: DEFAULT_TITLE_DURATION_S } }
             : withoutTitle(s)
           : s,
       );
@@ -532,6 +532,12 @@ function withoutTransition(segment: Segment, side: "in" | "out"): Segment {
 
 /** Matches the schema's title.durationS default (3) - the value shown right after the toggle is turned on, before onChangeTitle's first patch lands. */
 const DEFAULT_TITLE_DURATION_S = 3;
+
+/** Default text a title card starts with when the toggle is turned on (2026-07-09 QA-2 fix) - a
+ * blank string left the preview showing nothing at all until the user typed something, which read
+ * as "did this even turn on?"; "Title" is schema-valid (any string) and visibly confirms the
+ * toggle worked, same as Title's other fields (Typing preset, 3s) already default to something. */
+const DEFAULT_TITLE_TEXT = "Title";
 
 /** Matches the schema's transition.durationS default (0.5) - the value written when a Transition
  * in/out toggle is first turned on. */
