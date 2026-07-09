@@ -1,40 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "@astryxdesign/core/Card";
 import { Badge } from "@astryxdesign/core/Badge";
-import type { BadgeVariant } from "@astryxdesign/core/Badge";
 import { Text } from "@astryxdesign/core/Text";
 import type { Segment } from "@cuesheet/schema";
 import { CardActionButton } from "./ui/CardActionButton/index.js";
 import { IoAssignButton } from "./ui/IoAssignButton/index.js";
 import { fetchDraftFrames, fetchMoments } from "../api.js";
-import type { ClipMoments, ShotType } from "../api.js";
-import { INTRO_OUTRO_MAX_DURATION_S, baseName, buildClipPath, computeClipDurations, stem } from "../clipPaths.js";
-
-type Category =
-  | "knit-range"
-  | "knitting"
-  | "cat"
-  | "reveal"
-  | "materials"
-  | "outing"
-  | "mistake"
-  | "wearing"
-  | "change"
-  | "other";
-
-interface MomentCard {
-  key: string;
-  clipFileName: string;
-  clipFolder: string;
-  inS: number;
-  outS: number;
-  category: Category;
-  memo: string;
-  /** Only set for moments entries (monotonousRanges has no notion of a quality score). */
-  quality: number | null;
-}
-
-type StatusFilter = "all" | "in-use" | "excluded";
+import type { ClipMoments } from "../api.js";
+import { INTRO_OUTRO_MAX_DURATION_S, buildClipPath, computeClipDurations } from "../clipPaths.js";
+import type { Category, MomentCard, StatusFilter } from "../lib/momentCards.js";
+import {
+  buildCards,
+  CATEGORY_META,
+  CATEGORY_ORDER,
+  STATUS_FILTER_LABEL,
+  computeCategoryCounts,
+  computeInUseCutNumbers,
+  filterCards,
+  hasFaceTag,
+  nearestFrame,
+  stripFaceTag,
+} from "../lib/momentCards.js";
 
 interface Props {
   segments: Segment[];
@@ -102,47 +88,13 @@ export function MomentPalette({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moments]);
 
-  const counts = useMemo(() => {
-    const m = new Map<Category, number>();
-    for (const c of cards) {
-      m.set(c.category, (m.get(c.category) ?? 0) + 1);
-    }
-    return m;
-  }, [cards]);
+  const counts = useMemo(() => computeCategoryCounts(cards), [cards]);
 
   // Whether a card is "in use", and if so, which cut number (timeline segment order, 1-based)
   // it was added as. Lets the same cut be tracked with the same number between the Compose and Edit steps.
-  const inUseCutNumber = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const c of cards) {
-      const idx = segments.findIndex(
-        (s) => s.clip === c.clipFileName && s.in < c.outS && s.out > c.inS,
-      );
-      if (idx !== -1) {
-        map.set(c.key, idx + 1);
-      }
-    }
-    return map;
-  }, [cards, segments]);
+  const inUseCutNumber = useMemo(() => computeInUseCutNumbers(cards, segments), [cards, segments]);
 
-  const byCategory =
-    selectedCategory === "all" ? cards : cards.filter((c) => c.category === selectedCategory);
-
-  const filtered = byCategory.filter((c) => {
-    if (statusFilter === "all") {
-      return true;
-    }
-    const inUse = inUseCutNumber.has(c.key);
-    if (statusFilter === "in-use") {
-      return inUse;
-    }
-    // excluded: only cards that weren't adopted by auto-assembly (not inUse) and were
-    // filtered out for falling short on quality or for face exposure.
-    if (inUse) {
-      return false;
-    }
-    return hasFaceTag(c.memo) || (c.quality !== null && c.quality < 3);
-  });
+  const filtered = filterCards(cards, selectedCategory, statusFilter, inUseCutNumber);
 
   const handleAdd = (card: MomentCard) => {
     if (hasFaceTag(card.memo)) {
@@ -377,141 +329,3 @@ export function MomentPalette({
   );
 }
 
-function hasFaceTag(memo: string): boolean {
-  return memo.includes(FACE_TAG);
-}
-
-function stripFaceTag(memo: string): string {
-  return memo.replace(FACE_TAG, "").trim();
-}
-
-function categoryFor(shotType: ShotType, memo: string): Category {
-  if (MISTAKE_PATTERN.test(memo)) {
-    return "mistake";
-  }
-  if (OUTING_PATTERN.test(memo)) {
-    return "outing";
-  }
-  return SHOT_TYPE_CATEGORY[shotType];
-}
-
-/** Picks the tNNNNN.jpg frame filename closest to inS. */
-function nearestFrame(frames: string[], inS: number): string | null {
-  let best: string | null = null;
-  let bestDiff = Infinity;
-  for (const f of frames) {
-    const m = /^t(\d+)\.jpg$/.exec(f);
-    const secStr = m?.[1];
-    if (!secStr) {
-      continue;
-    }
-    const diff = Math.abs(parseInt(secStr, 10) - inS);
-    if (diff < bestDiff) {
-      bestDiff = diff;
-      best = f;
-    }
-  }
-  return best;
-}
-
-function buildCards(entries: ClipMoments[]): MomentCard[] {
-  const list: MomentCard[] = [];
-  for (const entry of entries) {
-    const clipFileName = baseName(entry.clip);
-    const clipFolder = stem(clipFileName);
-    for (const m of entry.moments) {
-      list.push({
-        key: `${clipFileName}::m::${m.inS}::${m.outS}`,
-        clipFileName,
-        clipFolder,
-        inS: m.inS,
-        outS: m.outS,
-        category: categoryFor(m.shotType, m.memo),
-        memo: m.memo,
-        quality: m.quality,
-      });
-    }
-    for (const r of entry.monotonousRanges) {
-      const center = (r.startS + r.endS) / 2;
-      const inS = Math.max(r.startS, center - 1.5);
-      const outS = Math.min(r.endS, center + 1.5);
-      list.push({
-        key: `${clipFileName}::range::${r.startS}::${r.endS}`,
-        clipFileName,
-        clipFolder,
-        inS,
-        outS,
-        category: "knit-range",
-        memo: r.desc,
-        quality: null,
-      });
-    }
-  }
-  list.sort((a, b) => {
-    if (a.clipFileName !== b.clipFileName) {
-      return a.clipFileName < b.clipFileName ? -1 : 1;
-    }
-    return a.inS - b.inS;
-  });
-  return list;
-}
-
-/** The face-exposure risk tag the vision reader leaves in memo/desc. Replaced with a badge in
- * the display and the raw text is stripped out (so it doesn't leak into subtitles either).
- * This tag is not translated because it's a string literally embedded in the generated
- * (Korean) data — it's a content-matching marker, not a UI label. */
-const FACE_TAG = "[얼굴노출]";
-
-const SHOT_TYPE_CATEGORY: Record<ShotType, Category> = {
-  "hand-closeup": "knitting",
-  object: "materials",
-  cat: "cat",
-  change: "change",
-  reveal: "reveal",
-  wearing: "wearing",
-  other: "other",
-};
-
-/** Category -> Badge variant. Mapped to preserve the original styles.css category-tag color
- * intent as-is (knit-range=teal, knitting=blue, cat=purple, materials=green, mistake=red,
- * wearing=pink, change=cyan, other=gray are 1:1 with the old custom tags). reveal/outing used
- * to have their own custom category-tag colors (the tag-reveal and tag-outing variables,
- * respectively), but the Badge palette doesn't have those two colors, so they were folded into
- * the leftover orange/yellow. */
-const CATEGORY_META: Record<Category, { label: string; badgeVariant: BadgeVariant }> = {
-  "knit-range": { label: "Knit range", badgeVariant: "teal" },
-  "knitting": { label: "Knitting", badgeVariant: "blue" },
-  "cat": { label: "Cat", badgeVariant: "purple" },
-  "reveal": { label: "Reveal", badgeVariant: "orange" },
-  "materials": { label: "Materials/props", badgeVariant: "green" },
-  "outing": { label: "Outing", badgeVariant: "yellow" },
-  "mistake": { label: "Mistake", badgeVariant: "red" },
-  "wearing": { label: "Wearing", badgeVariant: "pink" },
-  "change": { label: "Change", badgeVariant: "cyan" },
-  // BadgeVariantMap has no gray (only neutral/info/success/warning/error/blue/cyan/
-  // green/orange/pink/purple/red/teal/yellow exist), so substitute the closest one, neutral.
-  "other": { label: "Other", badgeVariant: "neutral" },
-};
-
-/* On-screen copy (PRD section 4 glossary, "[All / In use only / Excluded only]"). */
-const STATUS_FILTER_LABEL: Record<StatusFilter, string> = {
-  "all": "All",
-  "in-use": "In use only",
-  "excluded": "Excluded only",
-};
-
-const CATEGORY_ORDER: Category[] = [
-  "knit-range",
-  "knitting",
-  "cat",
-  "reveal",
-  "materials",
-  "outing",
-  "mistake",
-  "wearing",
-  "change",
-  "other",
-];
-
-const MISTAKE_PATTERN = /풀|실수|다시\s*뜨/;
-const OUTING_PATTERN = /가게|야외|밖에|거리|걷|매장/;
