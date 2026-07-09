@@ -19,7 +19,7 @@ const styles = stylex.create({
  * same customization at 2+ call sites is promoted to a named wrapper instead of scattering
  * xstyle/style per instance).
  */
-export function CompactButton(props: ButtonProps) {
+export function ToolbarButton(props: ButtonProps) {
   const { xstyle, ...rest } = props;
   return <Button {...rest} xstyle={[styles.compact, xstyle]} />;
 }

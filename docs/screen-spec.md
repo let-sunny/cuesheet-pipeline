@@ -36,7 +36,7 @@
    layer) for anything cheap and static, `style` (inline `CSSProperties`) as the escape hatch for
    anything dynamic/conditional. Never repeat the same `xstyle`/`style` tweak at 2+ call sites —
    promote it to a named wrapper component instead (`apps/web/src/components/ui/`, one folder
-   per component; see `CompactButton`/`CardActionButton`/`IoAssignButton` for examples). Raw
+   per component; see `ToolbarButton`/`SceneCardButton`/`IntroOutroButton` for examples). Raw
    (non-Astryx) elements that still exist for the 4 domain-custom areas (rule 6) get an explicit
    marker class instead (e.g. `.plain-button`, `.plain-field`) and are styled via that class, never
    via the bare tag.
@@ -326,6 +326,12 @@ Buttons that belong to one group render inside one container (not spread across 
 stay visually together, and action groups in banners/dialog footers are right-aligned.
 
 ## Changelog
+- 2026-07-09 — Renamed the three `ui/` wrapper components per CLAUDE.md's wrapper-naming rule
+  (name states where/why it exists, never how it looks): `CompactButton` -> `ToolbarButton`,
+  `CardActionButton` -> `SceneCardButton`, `IoAssignButton` -> `IntroOutroButton`. Rule 0-8 above
+  was updated to the new names; earlier changelog entries below still use the old names, as of
+  when they were written.
+
 - 2026-07-09 — Scenes card actions (section 2): Add/Remove collapsed into a single state-driven
   toggle button (was two buttons, one always disabled+hidden); Set-as-intro/outro labels shortened
   ("Set intro"/"Set outro") but kept in their existing stacked (not side-by-side) row - judged the

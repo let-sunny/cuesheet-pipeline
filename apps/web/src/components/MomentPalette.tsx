@@ -5,8 +5,8 @@ import { Badge } from "@astryxdesign/core/Badge";
 import { Overlay } from "@astryxdesign/core/Overlay";
 import { Text } from "@astryxdesign/core/Text";
 import type { Segment } from "@cuesheet/schema";
-import { CardActionButton } from "./ui/CardActionButton/index.js";
-import { IoAssignButton } from "./ui/IoAssignButton/index.js";
+import { SceneCardButton } from "./ui/SceneCardButton/index.js";
+import { IntroOutroButton } from "./ui/IntroOutroButton/index.js";
 import { fetchDraftFrames, fetchMoments } from "../api.js";
 import type { ClipMoments } from "../api.js";
 import { INTRO_OUTRO_MAX_DURATION_S, buildClipPath, computeClipDurations } from "../clipPaths.js";
@@ -307,7 +307,7 @@ export function MomentPalette({
                             (auto-filtered) cards keep the same confirm-before-adding flow either
                             way (handleAdd's face-policy check runs regardless of this button). */}
                         <div className="moment-card-actions">
-                          <CardActionButton
+                          <SceneCardButton
                             label={inUse ? "Remove" : "Add"}
                             variant={inUse ? "destructive" : "primary"}
                             size="sm"
@@ -325,7 +325,7 @@ export function MomentPalette({
                             introducing icon glyphs with no existing icon system in this app would
                             be a bigger, separate call. */}
                         <div className="moment-io-actions">
-                          <IoAssignButton
+                          <IntroOutroButton
                             label={isIntro ? "Intro set" : "Set intro"}
                             size="sm"
                             active={isIntro}
@@ -337,7 +337,7 @@ export function MomentPalette({
                             onClick={() => onSetIntro(card.clipFileName)}
                             data-testid={`palette-card-set-intro-${card.key}`}
                           />
-                          <IoAssignButton
+                          <IntroOutroButton
                             label={isOutro ? "Outro set" : "Set outro"}
                             size="sm"
                             active={isOutro}

@@ -32,6 +32,6 @@ interface Props extends Omit<ButtonProps, "variant"> {
  *
  * Promoted from a tweak that was repeated at 2 call sites (CLAUDE.md "Component layering").
  */
-export function IoAssignButton({ active, xstyle, ...rest }: Props) {
+export function IntroOutroButton({ active, xstyle, ...rest }: Props) {
   return <Button {...rest} variant="ghost" xstyle={[styles.base, active && styles.active, xstyle]} />;
 }

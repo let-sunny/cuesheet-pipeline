@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "re
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { Button } from "@astryxdesign/core/Button";
 import type { Segment, SubtitleStyle, SubtitleStylePresets } from "@cuesheet/schema";
-import { CompactButton } from "./ui/CompactButton/index.js";
+import { ToolbarButton } from "./ui/ToolbarButton/index.js";
 import { TitleOverlay } from "./TitleOverlay/index.js";
 import { captureFrame, fetchProxyStatus, type ClipMoments, type ProxyStatus } from "../api.js";
 import { clamp } from "../lib/clamp.js";
@@ -519,11 +519,11 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
                 {" "}· w {(cropEditDraft.w * 100).toFixed(0)}% · h {(cropEditDraft.h * 100).toFixed(0)}%
               </span>
               <div className="crop-edit-actions">
-                <CompactButton label="Full frame" variant="ghost" size="sm" onClick={resetCropEditToFullFrame} />
-                <CompactButton label="Apply" variant="primary" size="sm" onClick={applyCropEdit} />
-                <CompactButton label="Cancel" variant="ghost" size="sm" onClick={cancelCropEdit} />
+                <ToolbarButton label="Full frame" variant="ghost" size="sm" onClick={resetCropEditToFullFrame} />
+                <ToolbarButton label="Apply" variant="primary" size="sm" onClick={applyCropEdit} />
+                <ToolbarButton label="Cancel" variant="ghost" size="sm" onClick={cancelCropEdit} />
                 {segment.crop ? (
-                  <CompactButton label="Clear" variant="ghost" size="sm" onClick={clearCropEdit} />
+                  <ToolbarButton label="Clear" variant="ghost" size="sm" onClick={clearCropEdit} />
                 ) : null}
               </div>
             </div>
