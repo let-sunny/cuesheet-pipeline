@@ -175,6 +175,13 @@ edits handled grows, schema expands along with it.
   fast jsdom unit tests. `tests/e2e/` (repo root) is a separate, thin Playwright smoke suite for
   full user journeys — see `tests/e2e/README.md`.
 
+## Wrapper naming: purpose, not appearance (user rule, 2026-07-09)
+
+ui/ wrapper names state WHERE/WHY they exist, never how they look and never
+abbreviated: ToolbarButton not CompactButton, IntroOutroButton not IoAssignButton,
+SceneCardButton not CardActionButton. If a name needs the folder open to understand,
+it is wrong.
+
 ## No invented UI patterns (user rule, 2026-07-09)
 
 Never invent a novel interaction pattern. Before designing any UI mechanism (trim,
