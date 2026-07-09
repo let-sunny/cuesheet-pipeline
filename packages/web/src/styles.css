@@ -2029,43 +2029,32 @@ body {
 }
 
 
-/* Render settings dialog (RenderSettingsDialog) */
-.render-dialog {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
+/* Render settings dialog (RenderSettingsDialog) — the dialog's own layout
+   (display/flex-direction/gap), the resolution options row's own layout, the summary line, and
+   the actions row all migrated to RenderSettingsDialog.styles.ts. */
 
 /* If this vertical column dialog directly inherited .settings-group's flex:1 1 260px (meant only
    for the horizontal flex-wrap layout of FinishingSettings, etc.), the 3 groups would be forced by
    flex-grow:1 to equally divide the dialog height and stretch out (~260px each), and there was a
    measured bug where the [Cancel]/[Start render] buttons (.render-dialog-actions), pushed down by
    that much, ended up outside a 900px viewport, unclickable — so here too, grow is turned off so a
-   group only takes up its content's height. */
+   group only takes up its content's height. `.render-dialog` stays a plain marker class on the
+   dialog's root element (alongside its migrated stylex properties) purely so this descendant
+   selector still has an ancestor to key off — `.settings-group` itself is a shared class used by
+   several not-yet-migrated components, so it isn't being touched here. */
 .render-dialog .settings-group {
   flex: 0 1 auto;
 }
 
-.render-resolution-options {
-  display: flex;
-  gap: 8px;
-}
-
+/* The resolution preset buttons' `.active` look stays plain CSS (not migrated) - see
+   HeaderBar.styles.ts's comment (theme toggle buttons) for why: these buttons carry the
+   `.plain-button` marker class, and a same-specificity StyleX atomic class can't reliably beat
+   it in this app's cascade (StyleX's CSS is injected before styles.css). `.render-resolution-
+   options` itself stays a plain marker class on the wrapper (alongside its migrated stylex
+   properties) purely so this compound selector still has an ancestor to key off. */
 .render-resolution-options button.active {
   border-color: var(--accent);
   background: var(--surface-3);
-}
-
-.render-dialog-summary-line {
-  margin: 0 0 4px;
-  font-size: 13px;
-  color: var(--text-quaternary-soft);
-}
-
-.render-dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
 }
 
 .proxy-preparing {

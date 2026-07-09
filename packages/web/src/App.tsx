@@ -48,7 +48,7 @@ import { IntroOutroEditor } from "./components/IntroOutroEditor.js";
 import { SubtitleStyleSettings, NarrationSettings } from "./components/FinishingSettings.js";
 import { SubtitleStylePresetsSettings } from "./components/SubtitleStylePresetsSettings.js";
 import { ProjectMetaFields } from "./components/ProjectMetaFields/index.js";
-import { RenderSettingsDialog } from "./components/RenderSettingsDialog.js";
+import { RenderSettingsDialog } from "./components/RenderSettingsDialog/index.js";
 
 interface AppProps {
   themeMode: ThemeModeSetting;

@@ -1,9 +1,11 @@
+import * as stylex from "@stylexjs/stylex";
 import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
 import { Layout, LayoutContent } from "@astryxdesign/core/Layout";
 import { Button } from "@astryxdesign/core/Button";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import type { Project } from "@cuesheet/schema";
-import { formatClock } from "../lib/segmentTiming.js";
+import { formatClock } from "../../lib/segmentTiming.js";
+import { styles } from "./RenderSettingsDialog.styles.js";
 
 interface Props {
   isOpen: boolean;
@@ -62,22 +64,29 @@ export function RenderSettingsDialog({
         header={<DialogHeader title="Export" onOpenChange={onOpenChange} />}
         content={
           <LayoutContent>
-            <div className="render-dialog">
+            {/* "render-dialog" stays a literal className (in addition to the migrated stylex
+                properties) because styles.css's `.render-dialog .settings-group` override still
+                needs it as an ancestor selector hook — `.settings-group` itself is a shared class
+                used by several not-yet-migrated components, so it isn't being touched here. */}
+            <div className={`render-dialog ${stylex.props(styles.dialog).className}`}>
               <div className="settings-group">
                 <h3>Resolution</h3>
-                <div className="render-resolution-options">
-                  {RESOLUTION_PRESETS.map((preset) => (
-                    <button
-                      type="button"
-                      key={preset.label}
-                      className={`plain-button${
-                        project.width === preset.width && project.height === preset.height ? " active" : ""
-                      }`}
-                      onClick={() => handlePickResolution(preset.width, preset.height)}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
+                <div
+                  className={`render-resolution-options ${stylex.props(styles.resolutionOptions).className ?? ""}`}
+                >
+                  {RESOLUTION_PRESETS.map((preset) => {
+                    const isActive = project.width === preset.width && project.height === preset.height;
+                    return (
+                      <button
+                        type="button"
+                        key={preset.label}
+                        className={`plain-button${isActive ? " active" : ""}`}
+                        onClick={() => handlePickResolution(preset.width, preset.height)}
+                      >
+                        {preset.label}
+                      </button>
+                    );
+                  })}
                 </div>
                 {!RESOLUTION_PRESETS.some((p) => p.width === project.width && p.height === project.height) ? (
                   <p className="render-note">
@@ -102,10 +111,10 @@ export function RenderSettingsDialog({
 
               <div className="settings-group">
                 <h3>Summary</h3>
-                <p className="render-dialog-summary-line">Project: {project.name || "(no name)"}</p>
-                <p className="render-dialog-summary-line">Resolution: {project.width}x{project.height}</p>
-                <p className="render-dialog-summary-line">Cuts: {segmentCount}</p>
-                <p className="render-dialog-summary-line">Estimated output length: {formatClock(outputSeconds, true)}</p>
+                <p {...stylex.props(styles.summaryLine)}>Project: {project.name || "(no name)"}</p>
+                <p {...stylex.props(styles.summaryLine)}>Resolution: {project.width}x{project.height}</p>
+                <p {...stylex.props(styles.summaryLine)}>Cuts: {segmentCount}</p>
+                <p {...stylex.props(styles.summaryLine)}>Estimated output length: {formatClock(outputSeconds, true)}</p>
               </div>
 
               {dirty ? (
@@ -114,7 +123,7 @@ export function RenderSettingsDialog({
                 </p>
               ) : null}
 
-              <div className="render-dialog-actions">
+              <div {...stylex.props(styles.actions)}>
                 <Button label="Cancel" variant="secondary" onClick={() => onOpenChange(false)} />
                 <Button
                   label={rendering ? "Exporting…" : "Start export"}
