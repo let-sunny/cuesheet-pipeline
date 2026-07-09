@@ -225,7 +225,10 @@ SRT download).
 
 `components/TitleOverlay/` (`TitleOverlay.tsx` + co-located `TitleOverlay.styles.ts` +
 co-located `TitleOverlay.test.tsx` + `index.ts`) is the repo's first full component-anatomy
-exemplar (CLAUDE.md "component layering") — it renders the same 4 title presets `VideoPreview`
+exemplar (CLAUDE.md "component layering") for a component built from scratch;
+`components/StepNav/` (2026-07-09) is the first exemplar of *migrating* an existing component
+into that same shape — see `docs/styling-migration.md` for the recipe this becomes the template
+for (the remaining ~2000 lines of `styles.css`). TitleOverlay renders the same 4 title presets `VideoPreview`
 and `SequencePlayer` need live, driven purely by `localTimeS` (playback time relative to the
 segment's own start): `typing` reveals characters via CSS opacity (mirroring the ASS `\k`
 timing), `gooey`/`melt` render SVG circles under a CSS goo filter (ported from
