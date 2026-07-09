@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
+import * as stylex from "@stylexjs/stylex";
 import type { Segment } from "@cuesheet/schema";
-import { clamp } from "../lib/clamp.js";
-import { formatClock, playbackSeconds } from "../lib/segmentTiming.js";
-import { SegmentThumb } from "./SegmentThumb/index.js";
+import { clamp } from "../../lib/clamp.js";
+import { formatClock, playbackSeconds } from "../../lib/segmentTiming.js";
+import { SegmentThumb } from "../SegmentThumb/index.js";
+import { styles } from "./MiniTimelineStrip.styles.js";
 
 interface Props {
   segments: Segment[];
@@ -92,10 +94,10 @@ export function MiniTimelineStrip({ segments, selectedIndex, onSelect, onGoToEdi
   const contentWidth = zoom > 1 ? viewportWidth * zoom : viewportWidth;
 
   return (
-    <div className="mini-strip">
-      <div className="mini-strip-viewport" ref={viewportRef} onDoubleClick={handleBackgroundDoubleClick}>
+    <div {...stylex.props(styles.root)}>
+      <div {...stylex.props(styles.viewport)} ref={viewportRef} onDoubleClick={handleBackgroundDoubleClick}>
         <div
-          className="mini-strip-track"
+          {...stylex.props(styles.track)}
           style={zoom > 1 ? { width: `${contentWidth}px`, flex: "0 0 auto" } : undefined}
         >
           {segments.map((seg, i) => {
@@ -120,16 +122,20 @@ export function MiniTimelineStrip({ segments, selectedIndex, onSelect, onGoToEdi
                   onGoToEdit(i);
                 }}
                 title={`${i + 1}. ${label} · ${seg.in.toFixed(1)}s~${seg.out.toFixed(1)}s (double-click: go to Edit)`}
+                data-testid={`mini-strip-block-${i}`}
               >
                 {blockWidthPx >= MIN_THUMB_BLOCK_PX ? (
-                  <SegmentThumb clip={seg.clip} t={seg.in + 0.3} className="mini-strip-thumb" />
+                  <SegmentThumb clip={seg.clip} t={seg.in + 0.3} className={stylex.props(styles.thumb).className} />
                 ) : null}
               </button>
             );
           })}
         </div>
       </div>
-      <div className="mini-strip-zoom-controls">
+      {/* `mini-strip-zoom-controls` stays alongside the StyleX class as a marker so the
+          `.mini-strip-zoom-controls button` descendant-selector exception (styles.css) keeps
+          matching - see MiniTimelineStrip.styles.ts's file comment. */}
+      <div className={`mini-strip-zoom-controls ${stylex.props(styles.zoomControls).className}`}>
         <button type="button" className="plain-button" onClick={() => setZoom((z) => clampZoom(z / BUTTON_ZOOM_FACTOR))} title="Zoom out">
           −
         </button>
@@ -140,7 +146,7 @@ export function MiniTimelineStrip({ segments, selectedIndex, onSelect, onGoToEdi
           +
         </button>
       </div>
-      <span className="mini-strip-total">{formatClock(total, true)}</span>
+      <span {...stylex.props(styles.total)}>{formatClock(total, true)}</span>
     </div>
   );
 }
