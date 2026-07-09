@@ -1,20 +1,31 @@
 import type { CSSProperties } from "react";
-import type { SubtitleStyle, SubtitleStyleOverride } from "@cuesheet/schema";
+import type { SubtitleStyle, SubtitleStyleOverride, SubtitleStylePresets } from "@cuesheet/schema";
 
 /**
- * Shallow-merges a segment's styleOverride onto the global subtitleStyle. Same rule as the render
- * package's effectiveSubtitleStyle (packages/render/src/plan.ts) — background is replaced wholesale
- * rather than partially merged (if override has it, override.background is used as-is).
- * Keeps the preview (VideoPreview/SequencePlayer) and the actual render always seeing the same merge result.
+ * Shallow-merges, in order: global subtitleStyle < named preset (if stylePreset references one in
+ * presets) < segment styleOverride (per-cut override always wins last). Same merge order as the
+ * render package's resolveSubtitleStyle (packages/render/src/plan.ts) — background is replaced
+ * wholesale at each step rather than partially merged (if a step has it, that step's background is
+ * used as-is). Keeps the preview (VideoPreview/SequencePlayer) and the actual render always seeing
+ * the same merge result (see ARCHITECTURE.md's contracts section).
  */
 export function mergeSubtitleStyle(
   global: SubtitleStyle,
+  presets: SubtitleStylePresets | undefined,
+  stylePreset: string | null | undefined,
   override: SubtitleStyleOverride | null | undefined,
 ): SubtitleStyle {
-  if (!override) {
-    return global;
+  let style = global;
+  if (stylePreset) {
+    const preset = presets?.[stylePreset];
+    if (preset) {
+      style = { ...style, ...preset };
+    }
   }
-  return { ...global, ...override };
+  if (override) {
+    style = { ...style, ...override };
+  }
+  return style;
 }
 
 /**

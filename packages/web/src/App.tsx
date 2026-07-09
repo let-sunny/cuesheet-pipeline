@@ -6,6 +6,8 @@ import type {
   Segment,
   SubtitleStyle,
   SubtitleStyleOverride,
+  SubtitleStylePresets,
+  Title,
 } from "@cuesheet/schema";
 import { useToast } from "@astryxdesign/core/Toast";
 import { Button } from "@astryxdesign/core/Button";
@@ -44,6 +46,7 @@ import { CompactSegmentList } from "./components/CompactSegmentList.js";
 import { SegmentQuickFields } from "./components/SegmentQuickFields.js";
 import { IntroOutroEditor } from "./components/IntroOutroEditor.js";
 import { SubtitleStyleSettings, NarrationSettings } from "./components/FinishingSettings.js";
+import { SubtitleStylePresetsSettings } from "./components/SubtitleStylePresetsSettings.js";
 import { ProjectMetaFields } from "./components/ProjectMetaFields.js";
 import { RenderSettingsDialog } from "./components/RenderSettingsDialog.js";
 
@@ -731,6 +734,146 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     });
   }, [draft, recordDiscreteChange, setDraft]);
 
+  // "Style preset" select in Cut settings (SUBTITLE group) - "" clears back to no preset (null,
+  // consistent with the schema's nullable stylePreset - the merge rule treats null the same as
+  // omitted, so there's no need to special-case it away).
+  const changeSegmentStylePreset = useCallback((i: number, presetName: string | null) => {
+    if (!draft) {
+      return;
+    }
+    recordDiscreteChange();
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const segments = prev.segments.map((s, idx) => (idx === i ? { ...s, stylePreset: presetName } : s));
+      return { ...prev, segments };
+    });
+  }, [draft, recordDiscreteChange, setDraft]);
+
+  // "Title card for this cut" toggle - turning it on starts from a sane default (typing, 3s, no
+  // dim) so the preview shows something immediately, same pattern as the subtitle style override toggle.
+  const toggleSegmentTitle = useCallback((i: number, enabled: boolean) => {
+    if (!draft) {
+      return;
+    }
+    recordDiscreteChange();
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const segments = prev.segments.map((s, idx) =>
+        idx === i
+          ? enabled
+            ? { ...s, title: { text: "", preset: "typing" as const, durationS: 3 } }
+            : withoutTitle(s)
+          : s,
+      );
+      return { ...prev, segments };
+    });
+  }, [draft, recordDiscreteChange, setDraft]);
+
+  const updateSegmentTitle = useCallback((i: number, patch: Partial<Title>) => {
+    if (!draft) {
+      return;
+    }
+    recordContinuousChange();
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const segments = prev.segments.map((s, idx) =>
+        idx === i && s.title ? { ...s, title: { ...s.title, ...patch } } : s,
+      );
+      return { ...prev, segments };
+    });
+  }, [draft, recordContinuousChange, setDraft]);
+
+  // Subtitle style presets management (Export step) - create/rename/delete/edit. Renaming and
+  // deleting also sweep every segment referencing the old name, so a cut never silently ends up
+  // pointing at a preset name that no longer exists (the schema would reject that on save).
+  const createSubtitleStylePreset = useCallback((name: string) => {
+    if (!draft) {
+      return;
+    }
+    const trimmed = name.trim();
+    if (!trimmed || draft.subtitleStylePresets?.[trimmed]) {
+      return;
+    }
+    recordDiscreteChange();
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const subtitleStylePresets: SubtitleStylePresets = { ...(prev.subtitleStylePresets ?? {}), [trimmed]: {} };
+      return { ...prev, subtitleStylePresets };
+    });
+  }, [draft, recordDiscreteChange, setDraft]);
+
+  const updateSubtitleStylePreset = useCallback((name: string, patch: Partial<SubtitleStyleOverride>) => {
+    if (!draft) {
+      return;
+    }
+    recordContinuousChange();
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const existing = prev.subtitleStylePresets?.[name] ?? {};
+      const subtitleStylePresets: SubtitleStylePresets = {
+        ...(prev.subtitleStylePresets ?? {}),
+        [name]: { ...existing, ...patch },
+      };
+      return { ...prev, subtitleStylePresets };
+    });
+  }, [draft, recordContinuousChange, setDraft]);
+
+  const renameSubtitleStylePreset = useCallback((oldName: string, newName: string) => {
+    if (!draft) {
+      return;
+    }
+    const trimmed = newName.trim();
+    if (!trimmed || trimmed === oldName || !draft.subtitleStylePresets?.[oldName] || draft.subtitleStylePresets[trimmed]) {
+      return;
+    }
+    recordDiscreteChange();
+    setDraft((prev) => {
+      const value = prev?.subtitleStylePresets?.[oldName];
+      if (!prev || !value) {
+        return prev;
+      }
+      const rest = { ...prev.subtitleStylePresets };
+      delete rest[oldName];
+      const segments = prev.segments.map((s) => (s.stylePreset === oldName ? { ...s, stylePreset: trimmed } : s));
+      const subtitleStylePresets: SubtitleStylePresets = { ...rest, [trimmed]: value };
+      return { ...prev, subtitleStylePresets, segments };
+    });
+  }, [draft, recordDiscreteChange, setDraft]);
+
+  const deleteSubtitleStylePreset = useCallback((name: string) => {
+    if (!draft) {
+      return;
+    }
+    const inUseCount = draft.segments.filter((s) => s.stylePreset === name).length;
+    if (inUseCount > 0) {
+      const confirmed = window.confirm(
+        `${inUseCount} cut(s) use the "${name}" preset - remove it from those cuts too?`,
+      );
+      if (!confirmed) {
+        return;
+      }
+    }
+    recordDiscreteChange();
+    setDraft((prev) => {
+      if (!prev?.subtitleStylePresets) {
+        return prev;
+      }
+      const { [name]: _removed, ...rest } = prev.subtitleStylePresets;
+      const segments = prev.segments.map((s) => (s.stylePreset === name ? { ...s, stylePreset: null } : s));
+      return { ...prev, subtitleStylePresets: rest, segments };
+    });
+  }, [draft, recordDiscreteChange, setDraft]);
+
   const handleDownloadSrt = useCallback(() => {
     if (dirty) {
       toast({ type: "info", body: "Save first before downloading." });
@@ -833,6 +976,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
             currentIndex={selectedIndex}
             moments={moments}
             subtitleStyle={draft.subtitleStyle}
+            subtitleStylePresets={draft.subtitleStylePresets}
             projectHeight={draft.project.height}
             projectWidth={draft.project.width}
             onIndexChange={setSelectedIndex}
@@ -887,6 +1031,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
                     autoPlay={false}
                     moments={moments}
                     subtitleStyle={draft.subtitleStyle}
+                    subtitleStylePresets={draft.subtitleStylePresets}
                     projectHeight={draft.project.height}
                     projectWidth={draft.project.width}
                   />
@@ -932,11 +1077,15 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
                       onDelete={() => removeSegment(selectedIndex)}
                       canDelete={draft.segments.length > 1}
                       globalSubtitleStyle={draft.subtitleStyle}
+                      subtitleStylePresets={draft.subtitleStylePresets}
                       projectWidth={draft.project.width}
                       onToggleStyleOverride={(enabled) => toggleSegmentStyleOverride(selectedIndex, enabled)}
                       onChangeStyleOverride={(patch) => updateSegmentStyleOverride(selectedIndex, patch)}
                       onPromoteStyleOverride={() => promoteSegmentStyleOverride(selectedIndex)}
                       onClearStyleOverride={() => clearSegmentStyleOverride(selectedIndex)}
+                      onChangeStylePreset={(name) => changeSegmentStylePreset(selectedIndex, name)}
+                      onToggleTitle={(enabled) => toggleSegmentTitle(selectedIndex, enabled)}
+                      onChangeTitle={(patch) => updateSegmentTitle(selectedIndex, patch)}
                     />
                   )}
                 </div>
@@ -960,6 +1109,15 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
               projectHeight={draft.project.height}
               previewClip={draft.segments[0]?.clip}
               previewClipTimeS={draft.segments[0] ? draft.segments[0].in + 0.3 : 0}
+            />
+
+            <SubtitleStylePresetsSettings
+              presets={draft.subtitleStylePresets}
+              globalStyle={draft.subtitleStyle}
+              onCreate={createSubtitleStylePreset}
+              onRename={renameSubtitleStylePreset}
+              onDelete={deleteSubtitleStylePreset}
+              onChangePreset={updateSubtitleStylePreset}
             />
 
             <IntroOutroEditor
@@ -1054,6 +1212,13 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
 // (undefined) to avoid leaving an unnecessary "styleOverride": null in the saved file.
 function withoutStyleOverride(segment: Segment): Segment {
   const { styleOverride: _styleOverride, ...rest } = segment;
+  return rest;
+}
+
+// Same convention as withoutStyleOverride: drop the `title` key entirely (rather than leaving it
+// null) when a cut's title card is turned off.
+function withoutTitle(segment: Segment): Segment {
+  const { title: _title, ...rest } = segment;
   return rest;
 }
 

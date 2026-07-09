@@ -1,8 +1,9 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { Button } from "@astryxdesign/core/Button";
-import type { Segment, SubtitleStyle } from "@cuesheet/schema";
+import type { Segment, SubtitleStyle, SubtitleStylePresets } from "@cuesheet/schema";
 import { CompactButton } from "./ui/CompactButton/index.js";
+import { TitleOverlay } from "./TitleOverlay/index.js";
 import { fetchProxyStatus, type ClipMoments, type ProxyStatus } from "../api.js";
 import { clamp } from "../lib/clamp.js";
 import { cropPreviewStyle } from "../lib/cropPreview.js";
@@ -30,8 +31,10 @@ interface Props {
   autoPlay?: boolean;
   /** Draft vision-analysis data — used to show "what scene is this" in the context header above the video. */
   moments: ClipMoments[];
-  /** Global subtitle style — merged with the segment's styleOverride to draw the subtitle overlay over the video. */
+  /** Global subtitle style — merged with the segment's stylePreset/styleOverride to draw the subtitle overlay over the video. */
   subtitleStyle: SubtitleStyle;
+  /** Named subtitle style presets dictionary - merged in ahead of the segment's own styleOverride. */
+  subtitleStylePresets: SubtitleStylePresets | undefined;
   /** Used to convert subtitleStyle.margin (px, relative to source resolution) into overlay position (%). */
   projectHeight: number;
   /** Used to convert subtitleStyle.size/outlineWidth (px, relative to source resolution) into cqw relative to overlay width. */
@@ -61,7 +64,18 @@ export interface VideoPreviewHandle {
  * split the segment at the current position.
  */
 export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function VideoPreview(
-  { segment, selectedIndex, onChange, onSplit, autoPlay = false, moments, subtitleStyle, projectHeight, projectWidth },
+  {
+    segment,
+    selectedIndex,
+    onChange,
+    onSplit,
+    autoPlay = false,
+    moments,
+    subtitleStyle,
+    subtitleStylePresets,
+    projectHeight,
+    projectWidth,
+  },
   ref,
 ) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -425,7 +439,12 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   const subtitleSummary = segment.subtitle.trim() !== "" ? segment.subtitle.trim() : "(no subtitle)";
   // If this cut has its own style override, use the result of merging it into the global
   // subtitleStyle for the overlay (render and preview both follow the same merge rule — see subtitleOverlay.ts).
-  const effectiveSubtitleStyle = mergeSubtitleStyle(subtitleStyle, segment.styleOverride);
+  const effectiveSubtitleStyle = mergeSubtitleStyle(
+    subtitleStyle,
+    subtitleStylePresets,
+    segment.stylePreset,
+    segment.styleOverride,
+  );
   const sceneInfo = matchSceneInfo(segment, moments);
   const sceneText = sceneInfo.kind === "none" ? "No scene info" : sceneInfo.memo;
 
@@ -498,6 +517,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
                 lockRatio={lockRatio}
               />
             ) : null}
+            {!cropEditDraft ? <TitleOverlay title={segment.title} localTimeS={currentTime - segment.in} /> : null}
             {!cropEditDraft && segment.subtitle.trim() !== "" ? (
               <div
                 className={`video-subtitle-overlay video-subtitle-overlay-${effectiveSubtitleStyle.position}`}

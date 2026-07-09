@@ -1,8 +1,9 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { MouseEvent } from "react";
-import type { Segment, SubtitleStyle } from "@cuesheet/schema";
+import type { Segment, SubtitleStyle, SubtitleStylePresets } from "@cuesheet/schema";
 import { Button } from "@astryxdesign/core/Button";
 import { cropPreviewStyle } from "../lib/cropPreview.js";
+import { TitleOverlay } from "./TitleOverlay/index.js";
 import type { ClipMoments } from "../api.js";
 import { matchSceneInfo } from "../lib/sceneInfo.js";
 import { cumulativeCutStarts } from "../lib/bgmCutMapping.js";
@@ -39,6 +40,8 @@ interface Props {
   /** Draft vision-analysis data — used to show a small scene description for the current cut over the subtitle. */
   moments: ClipMoments[];
   subtitleStyle: SubtitleStyle;
+  /** Named subtitle style presets dictionary - merged in ahead of a segment's own styleOverride. */
+  subtitleStylePresets: SubtitleStylePresets | undefined;
   /** Used to convert subtitleStyle.margin (px, relative to source resolution) into a stage ratio (%). */
   projectHeight: number;
   /** Used to convert subtitleStyle.size/outlineWidth (px, relative to source resolution) into cqw relative to stage width. */
@@ -57,7 +60,17 @@ interface Props {
  * review-purpose preview.
  */
 export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function SequencePlayer(
-  { segments, currentIndex, moments, subtitleStyle, projectHeight, projectWidth, onIndexChange, onExit },
+  {
+    segments,
+    currentIndex,
+    moments,
+    subtitleStyle,
+    subtitleStylePresets,
+    projectHeight,
+    projectWidth,
+    onIndexChange,
+    onExit,
+  },
   ref,
 ) {
   const videoRefs = [useRef<HTMLVideoElement | null>(null), useRef<HTMLVideoElement | null>(null)] as const;
@@ -371,7 +384,12 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
   const subtitle = currentSegment?.subtitle.trim() ?? "";
   // If this cut has its own style override, use the result of merging it into the global
   // subtitleStyle (render and preview both follow the same merge rule — see subtitleOverlay.ts).
-  const effectiveStyle = mergeSubtitleStyle(subtitleStyle, currentSegment?.styleOverride);
+  const effectiveStyle = mergeSubtitleStyle(
+    subtitleStyle,
+    subtitleStylePresets,
+    currentSegment?.stylePreset,
+    currentSegment?.styleOverride,
+  );
   // Show a small hint above the subtitle so even a first-time viewer can tell what scene the
   // currently playing cut is. Cuts with no match are hidden silently (to avoid breaking
   // immersion during playthrough — an explicit "no scene info" is only enforced in the cut
@@ -447,6 +465,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
             {sceneHintText}
           </div>
         ) : null}
+        <TitleOverlay title={currentSegment?.title} localTimeS={videoNow - (currentSegment?.in ?? 0)} />
         {subtitle !== "" ? (
           <div
             className={`sequence-subtitle sequence-subtitle-${effectiveStyle.position}`}

@@ -1,5 +1,7 @@
 import { Button } from "@astryxdesign/core/Button";
-import type { Segment, SubtitleStyle, SubtitleStyleOverride } from "@cuesheet/schema";
+import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
+import { Slider } from "@astryxdesign/core/Slider";
+import type { Segment, SubtitleStyle, SubtitleStyleOverride, SubtitleStylePresets, Title } from "@cuesheet/schema";
 import { INTRO_OUTRO_MAX_DURATION_S } from "../clipPaths.js";
 import { narrationFileUrl, type NarrationFile } from "../api.js";
 import { useNumericField } from "../hooks/useNumericField.js";
@@ -40,22 +42,29 @@ interface Props {
   canDelete: boolean;
   /** Global subtitle style — used as the default/display value for the override in the per-cut subtitle style section. */
   globalSubtitleStyle: SubtitleStyle;
+  /** Named subtitle style presets dictionary - lets a cut opt into one via a select above the per-cut override. */
+  subtitleStylePresets: SubtitleStylePresets | undefined;
   /** Project frame width (px) — used to estimate whether the subtitle text might overflow the frame. */
   projectWidth: number;
   onToggleStyleOverride: (enabled: boolean) => void;
   onChangeStyleOverride: (patch: Partial<SubtitleStyleOverride>) => void;
   onPromoteStyleOverride: () => void;
   onClearStyleOverride: () => void;
+  /** Assigns/clears which preset (if any) this cut uses - "" clears back to no preset. */
+  onChangeStylePreset: (presetName: string | null) => void;
+  /** Turning a title card on/off for this cut (starts as a default typing title when enabled). */
+  onToggleTitle: (enabled: boolean) => void;
+  onChangeTitle: (patch: Partial<Title>) => void;
 }
 
 /**
  * Cut settings (right-hand field panel in the touch-up step, canonical name from PRD section 4 —
- * formerly the "Inspector") - follows screen-spec section 4's G1-G6 group order as-is: Range ->
- * Playback -> Subtitle (+ per-cut subtitle style) -> Narration (shown only when in use) ->
- * Reframe -> Cut actions. The clip filename field's group membership was ambiguous - the spec
- * doesn't specify it, making it the one element in this panel that needed a judgment call, but
- * since it determines which clip the "Range" applies to, it's placed at the top of the G1
- * (Range) group.
+ * formerly the "Inspector") - follows screen-spec section 4's G1-G7 group order as-is: Range ->
+ * Playback -> Subtitle (+ per-cut subtitle style preset select/override) -> Title (title card,
+ * PRD backlog #2) -> Narration (shown only when in use) -> Reframe -> Cut actions. The clip
+ * filename field's group membership was ambiguous - the spec doesn't specify it, making it the
+ * one element in this panel that needed a judgment call, but since it determines which clip the
+ * "Range" applies to, it's placed at the top of the G1 (Range) group.
  */
 export function SegmentQuickFields({
   segment,
@@ -76,11 +85,15 @@ export function SegmentQuickFields({
   onDelete,
   canDelete,
   globalSubtitleStyle,
+  subtitleStylePresets,
   projectWidth,
   onToggleStyleOverride,
   onChangeStyleOverride,
   onPromoteStyleOverride,
   onClearStyleOverride,
+  onChangeStylePreset,
+  onToggleTitle,
+  onChangeTitle,
 }: Props) {
   // These hooks must run unconditionally (before the `!segment` early return below) - they fall
   // back to placeholder values when there's no selected segment, but the actual fields only
@@ -106,12 +119,22 @@ export function SegmentQuickFields({
     coerce: (n) => Math.min(100, Math.max(0, Math.round(n))),
     onCommit: (next) => onChange({ volume: next / 100 }),
   });
+  const titleDurationField = useNumericField({
+    value: segment?.title?.durationS ?? DEFAULT_TITLE_DURATION_S,
+    coerce: (n) => Math.min(10, Math.max(0.5, n)),
+    onCommit: (next) => onChangeTitle({ durationS: next }),
+  });
 
   if (!segment) {
     return null;
   }
 
-  const effectiveStyleSize = mergeSubtitleStyle(globalSubtitleStyle, segment.styleOverride).size;
+  const effectiveStyleSize = mergeSubtitleStyle(
+    globalSubtitleStyle,
+    subtitleStylePresets,
+    segment.stylePreset,
+    segment.styleOverride,
+  ).size;
   const subtitleWarning = subtitleOverflowWarning(segment.subtitle, effectiveStyleSize, projectWidth);
 
   // This cut's actual output length (after speed applied). If the selected narration file is longer than this, it overlaps the next cut.
@@ -207,6 +230,27 @@ export function SegmentQuickFields({
         </label>
         {subtitleWarning ? <p className="qf-note">{subtitleWarning}</p> : null}
 
+        {/* Preset select sits above the per-cut override (screen-spec section 4) - picking a
+            preset here merges it in ahead of styleOverride (global < preset < override), so a
+            cut can use a named look (e.g. "inner-voice") without needing its own override. */}
+        {subtitleStylePresets && Object.keys(subtitleStylePresets).length > 0 ? (
+          <label className="qf-field field-medium">
+            <span>Style preset</span>
+            <select
+              className="plain-field"
+              value={segment.stylePreset ?? ""}
+              onChange={(e) => onChangeStylePreset(e.target.value === "" ? null : e.target.value)}
+            >
+              <option value="">(none)</option>
+              {Object.keys(subtitleStylePresets).map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+
         <SegmentStyleOverride
           segment={segment}
           globalStyle={globalSubtitleStyle}
@@ -217,7 +261,62 @@ export function SegmentQuickFields({
         />
       </div>
 
-      {/* G4. Narration (shown only when in use) */}
+      {/* G4. Title card (screen-spec section 4 - placed after Subtitle, before Reframe). Turning it
+          on starts with a default typing title (3s, no dim) so the preview shows something
+          immediately, matching the same "toggle starts from a sane default" pattern as the
+          per-cut subtitle style override above. */}
+      <div className="qf-group">
+        <div className="qf-group-label">Title</div>
+        <CheckboxInput label="Title card for this cut" value={!!segment.title} onChange={onToggleTitle} />
+        {segment.title ? (
+          <>
+            <label className="qf-field field-full">
+              <span>Text</span>
+              <input
+                type="text"
+                className="plain-field"
+                maxLength={80}
+                value={segment.title.text}
+                onChange={(e) => onChangeTitle({ text: e.target.value })}
+              />
+            </label>
+            <div className="qf-row">
+              <label className="qf-field field-medium">
+                <span>Preset</span>
+                <select
+                  className="plain-field"
+                  value={segment.title.preset}
+                  onChange={(e) => onChangeTitle({ preset: e.target.value as Title["preset"] })}
+                >
+                  <option value="typing">Typing</option>
+                  <option value="gooey">Gooey</option>
+                  <option value="melt">Melt</option>
+                  <option value="particle">Particle</option>
+                </select>
+              </label>
+              <label className="qf-field field-narrow">
+                {/* "Dur." (not "Duration") - the row's fixed 40px label column (screen-spec section 4's
+                    measured G1/G2 width tokens, reused here) was tuned for short labels like
+                    Speed/Volume; "Duration" overflowed it and visually collided with the input. */}
+                <span>Dur.</span>
+                <input type="number" className="plain-field" min={0.5} max={10} step={0.5} {...titleDurationField} />
+                <span className="qf-suffix">s</span>
+              </label>
+            </div>
+            <Slider
+              label="Backdrop dim"
+              value={Math.round((segment.title.backdrop?.dim ?? 0) * 100)}
+              min={0}
+              max={100}
+              step={5}
+              valueDisplay="text"
+              onChange={(v: number) => onChangeTitle({ backdrop: v === 0 ? undefined : { dim: v / 100 } })}
+            />
+          </>
+        ) : null}
+      </div>
+
+      {/* G5. Narration (shown only when in use) */}
       {narrationEnabled ? (
         <div className="qf-group">
           <div className="qf-group-label">Narration</div>
@@ -253,7 +352,7 @@ export function SegmentQuickFields({
         </div>
       ) : null}
 
-      {/* G5. Reframe (crop) */}
+      {/* G6. Reframe (crop) */}
       <div className="qf-group">
         <div className="qf-group-label">Reframe</div>
         <div className="qf-row">
@@ -270,7 +369,7 @@ export function SegmentQuickFields({
         </div>
       </div>
 
-      {/* G6. Cut actions - Delete is not here (see the separate danger zone below, screen-spec section 4 revision). */}
+      {/* G7. Cut actions - Delete is not here (see the separate danger zone below, screen-spec section 4 revision). */}
       <div className="qf-group">
         <div className="qf-group-label">Cut actions</div>
         <div className="qf-row qf-actions-row">
@@ -325,3 +424,6 @@ export function SegmentQuickFields({
     </div>
   );
 }
+
+/** Matches the schema's title.durationS default (3) - the value shown right after the toggle is turned on, before onChangeTitle's first patch lands. */
+const DEFAULT_TITLE_DURATION_S = 3;
