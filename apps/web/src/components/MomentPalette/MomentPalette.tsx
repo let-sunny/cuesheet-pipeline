@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
+import * as stylex from "@stylexjs/stylex";
 import { AspectRatio } from "@astryxdesign/core/AspectRatio";
 import { Card } from "@astryxdesign/core/Card";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Overlay } from "@astryxdesign/core/Overlay";
 import { Text } from "@astryxdesign/core/Text";
 import type { Segment } from "@cuesheet/schema";
-import { SceneCardButton } from "./ui/SceneCardButton/index.js";
-import { IntroOutroButton } from "./ui/IntroOutroButton/index.js";
-import { fetchDraftFrames, fetchMoments } from "../api.js";
-import type { ClipMoments } from "../api.js";
-import { INTRO_OUTRO_MAX_DURATION_S, buildClipPath, computeClipDurations } from "../clipPaths.js";
-import type { Category, MomentCard, StatusFilter } from "../lib/momentCards.js";
+import { SceneCardButton } from "../ui/SceneCardButton/index.js";
+import { IntroOutroButton } from "../ui/IntroOutroButton/index.js";
+import { fetchDraftFrames, fetchMoments } from "../../api.js";
+import type { ClipMoments } from "../../api.js";
+import { INTRO_OUTRO_MAX_DURATION_S, buildClipPath, computeClipDurations } from "../../clipPaths.js";
+import type { Category, MomentCard, StatusFilter } from "../../lib/momentCards.js";
 import {
   buildCards,
   CATEGORY_META,
@@ -22,7 +23,8 @@ import {
   hasFaceTag,
   nearestFrame,
   stripFaceTag,
-} from "../lib/momentCards.js";
+} from "../../lib/momentCards.js";
+import { styles } from "./MomentPalette.styles.js";
 
 interface Props {
   segments: Segment[];
@@ -117,15 +119,15 @@ export function MomentPalette({
   };
 
   if (loadError) {
-    return <div className="moment-palette status">Couldn't load scene candidates: {loadError}</div>;
+    return <div {...stylex.props(styles.paletteStatus)}>Couldn't load scene candidates: {loadError}</div>;
   }
   if (!moments) {
-    return <div className="moment-palette status">Loading scene candidates…</div>;
+    return <div {...stylex.props(styles.paletteStatus)}>Loading scene candidates…</div>;
   }
 
   return (
-    <div className="moment-palette">
-      <div className="moment-palette-header">
+    <div {...stylex.props(styles.palette)}>
+      <div {...stylex.props(styles.header)}>
         <span>Scene candidates ({cards.length})</span>
         <button type="button" className="plain-button" onClick={() => setCollapsed((v) => !v)}>
           {collapsed ? "Expand" : "Collapse"}
@@ -138,7 +140,10 @@ export function MomentPalette({
         </div>
       ) : (
         <>
-          <div className="moment-filters">
+          {/* `moment-filters` stays alongside the StyleX class as a marker so the
+              `.moment-filters button` descendant-selector exception (styles.css) keeps matching -
+              see MomentPalette.styles.ts's file comment. */}
+          <div className={`moment-filters ${stylex.props(styles.filters).className}`}>
             <button
               type="button"
               className={`plain-button${selectedCategory === "all" ? " active" : ""}`}
@@ -158,7 +163,9 @@ export function MomentPalette({
             ))}
           </div>
 
-          <div className="moment-filters moment-status-filters">
+          <div
+            className={`moment-filters moment-status-filters ${stylex.props(styles.filters).className}`}
+          >
             {(["all", "in-use", "excluded"] as const).map((f) => (
               <button
                 type="button"
@@ -171,7 +178,7 @@ export function MomentPalette({
             ))}
           </div>
 
-          <div className="moment-grid">
+          <div {...stylex.props(styles.grid)}>
             {filtered.map((card) => {
               const meta = CATEGORY_META[card.category];
               const frames = frameMap[card.clipFolder] ?? [];
@@ -196,11 +203,6 @@ export function MomentPalette({
               const introOutroDisabledTitle = tooLongForIntroOutro
                 ? `Clips over 15s (est. ${clipDurationS?.toFixed(1) ?? "?"}s) can't be used as intro/outro — since the whole clip is inserted without a range, this only works for short clips.`
                 : null;
-              const statusClass = faceRejected
-                ? " status-rejected-face"
-                : qualityRejected
-                  ? " status-rejected-quality"
-                  : "";
               const rejectedLabel = faceRejected
                 ? "Auto-excluded: face exposure"
                 : qualityRejected
@@ -210,14 +212,20 @@ export function MomentPalette({
                 // Card(BaseProps) explicitly omits title (it's on the footgun list), so this
                 // plain wrapper div takes over the card's full-info tooltip instead.
                 <div
-                  className="moment-card-wrap"
+                  {...stylex.props(styles.cardWrap)}
                   key={card.key}
                   title={fullInfo}
                   data-testid={`palette-card-${card.key}`}
                 >
                   <Card
                     padding={0}
-                    className={`moment-card${inUse ? " in-use" : ""}${statusClass}`}
+                    className={
+                      stylex.props(
+                        styles.card,
+                        faceRejected && styles.cardStatusRejectedFace,
+                        qualityRejected && styles.cardStatusRejectedQuality,
+                      ).className
+                    }
                   >
                     {/* The auto-exclusion reason is a full-width banner at the top of the card - much
                         more noticeable than a small corner badge over the thumbnail, removing the
@@ -232,7 +240,12 @@ export function MomentPalette({
                         the thumbnail that Overlay/AspectRatio wrap. So it stays a plain full-width div
                         outside the Overlay composition below. */}
                     {rejectedLabel ? (
-                      <div className={`moment-status-banner${faceRejected ? " face" : " quality"}`}>
+                      <div
+                        {...stylex.props(
+                          styles.statusBanner,
+                          faceRejected ? styles.statusBannerFace : styles.statusBannerQuality,
+                        )}
+                      >
                         {rejectedLabel}
                       </div>
                     ) : null}
@@ -253,15 +266,15 @@ export function MomentPalette({
                       showOn="always"
                       position="top"
                       content={
-                        <div className="moment-overlay-row">
-                          <span className="moment-number">
+                        <div {...stylex.props(styles.overlayRow)}>
+                          <span {...stylex.props(styles.number)}>
                             {card.clipFolder} · {card.inS.toFixed(1)}s
                           </span>
                           {inUse ? (
                             <Badge
                               variant="success"
                               label={`In use - cut ${cutNumber}`}
-                              className="moment-badge-in-use"
+                              className={stylex.props(styles.badgeInUse).className}
                             />
                           ) : null}
                         </div>
@@ -275,7 +288,7 @@ export function MomentPalette({
                             style={{ objectFit: "cover", width: "100%", height: "100%" }}
                           />
                         ) : (
-                          <div className="moment-thumb-empty" />
+                          <div {...stylex.props(styles.thumbEmpty)} />
                         )}
                       </AspectRatio>
                     </Overlay>
@@ -285,28 +298,28 @@ export function MomentPalette({
                         "reading and picking" scenes, the description clamp was removed
                         (maxLines={0} = no clamp). Card-internal spacing rules (screen-spec 0-1/0-2):
                         consistent 12px padding plus a clear gap between groups (description/meta/
-                        actions) are handled entirely by .moment-card-body. */}
-                    <div className="moment-card-body">
-                      <div className="moment-memo-wrap">
+                        actions) are handled entirely by cardBody. */}
+                    <div {...stylex.props(styles.cardBody)}>
+                      <div {...stylex.props(styles.memoWrap)}>
                         <Text type="supporting" maxLines={0}>
                           {displayMemo}
                         </Text>
                       </div>
-                      <div className="moment-info">
+                      <div {...stylex.props(styles.info)}>
                         <Badge variant={meta.badgeVariant} label={meta.label} />
                         <span className="moment-duration">{(card.outS - card.inS).toFixed(1)}s</span>
                         {card.quality != null ? (
-                          <span className="moment-quality">Quality {card.quality}/5</span>
+                          <span {...stylex.props(styles.quality)}>Quality {card.quality}/5</span>
                         ) : null}
                       </div>
-                      <div className="moment-actions-group">
+                      <div {...stylex.props(styles.actionsGroup)}>
                         {/* Single state-driven toggle (2026-07-09 diagnosed fix) replaces the old
                             Add/Remove pair (one button always visually disabled, the other hidden
                             via a same-space "placeholder" class) - one action, one button, the
                             label/variant flips with whether the card is already added. Excluded
                             (auto-filtered) cards keep the same confirm-before-adding flow either
                             way (handleAdd's face-policy check runs regardless of this button). */}
-                        <div className="moment-card-actions">
+                        <div {...stylex.props(styles.cardActions)}>
                           <SceneCardButton
                             label={inUse ? "Remove" : "Add"}
                             variant={inUse ? "destructive" : "primary"}
@@ -324,7 +337,7 @@ export function MomentPalette({
                             (screen-spec rule 0-4, "pairs sit side by side") rather than icons -
                             introducing icon glyphs with no existing icon system in this app would
                             be a bigger, separate call. */}
-                        <div className="moment-io-actions">
+                        <div {...stylex.props(styles.ioActions)}>
                           <IntroOutroButton
                             label={isIntro ? "Intro set" : "Set intro"}
                             size="sm"

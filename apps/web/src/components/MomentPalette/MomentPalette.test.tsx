@@ -2,15 +2,15 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Segment } from "@cuesheet/schema";
-import type { ClipMoments } from "../api.js";
+import type { ClipMoments } from "../../api.js";
 import { MomentPalette } from "./MomentPalette.js";
 
-vi.mock("../api.js", () => ({
+vi.mock("../../api.js", () => ({
   fetchMoments: vi.fn(),
   fetchDraftFrames: vi.fn(async () => [] as string[]),
 }));
 
-import { fetchMoments } from "../api.js";
+import { fetchMoments } from "../../api.js";
 
 afterEach(cleanup);
 
@@ -92,5 +92,72 @@ describe("MomentPalette card action toggle", () => {
     expect(screen.getByText("Set outro")).not.toBeNull();
     expect(screen.queryByText("Set as intro")).toBeNull();
     expect(screen.queryByText("Set as outro")).toBeNull();
+  });
+});
+
+describe("MomentPalette load states", () => {
+  it("shows a loading message before moments resolve", () => {
+    vi.mocked(fetchMoments).mockReturnValue(new Promise(() => {}));
+    render(<MomentPalette {...baseProps()} />);
+    expect(screen.getByText("Loading scene candidates…")).not.toBeNull();
+  });
+
+  it("shows an error message if moments fail to load", async () => {
+    vi.mocked(fetchMoments).mockRejectedValue(new Error("network down"));
+    render(<MomentPalette {...baseProps()} />);
+    await waitFor(() => expect(screen.getByText(/Couldn't load scene candidates/)).not.toBeNull());
+    expect(screen.getByText(/network down/)).not.toBeNull();
+  });
+
+  it("shows the empty-state guidance when there are no scene candidates", async () => {
+    vi.mocked(fetchMoments).mockResolvedValue([]);
+    render(<MomentPalette {...baseProps()} />);
+    await waitFor(() => expect(screen.getByText(/No scene candidates yet/)).not.toBeNull());
+  });
+});
+
+describe("MomentPalette collapse toggle", () => {
+  it("hides the card grid once collapsed, and restores it on Expand", async () => {
+    vi.mocked(fetchMoments).mockResolvedValue(oneCard);
+    render(<MomentPalette {...baseProps()} />);
+    await waitFor(() => expect(screen.getByText("Add")).not.toBeNull());
+
+    fireEvent.click(screen.getByText("Collapse"));
+    expect(screen.queryByText("Add")).toBeNull();
+    expect(screen.getByText("Expand")).not.toBeNull();
+
+    fireEvent.click(screen.getByText("Expand"));
+    expect(screen.getByText("Add")).not.toBeNull();
+  });
+});
+
+describe("MomentPalette auto-exclusion banner", () => {
+  it("shows a face-exposure banner for a face-tagged card and still allows Add", async () => {
+    const faceCard: ClipMoments[] = [
+      {
+        clip: "cut_02.mp4",
+        clipSummary: "",
+        moments: [{ inS: 0, outS: 2, shotType: "hand-closeup", memo: "[얼굴노출] face visible", quality: 4 }],
+        monotonousRanges: [],
+      },
+    ];
+    vi.mocked(fetchMoments).mockResolvedValue(faceCard);
+    render(<MomentPalette {...baseProps()} />);
+    await waitFor(() => expect(screen.getByText("Auto-excluded: face exposure")).not.toBeNull());
+    expect(screen.getByText("Add")).not.toBeNull();
+  });
+
+  it("shows a low-quality banner for a card below the quality threshold", async () => {
+    const lowQualityCard: ClipMoments[] = [
+      {
+        clip: "cut_03.mp4",
+        clipSummary: "",
+        moments: [{ inS: 0, outS: 2, shotType: "object", memo: "blurry shot", quality: 2 }],
+        monotonousRanges: [],
+      },
+    ];
+    vi.mocked(fetchMoments).mockResolvedValue(lowQualityCard);
+    render(<MomentPalette {...baseProps()} />);
+    await waitFor(() => expect(screen.getByText("Auto-excluded: low quality")).not.toBeNull());
   });
 });
