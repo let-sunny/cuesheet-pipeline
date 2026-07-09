@@ -176,3 +176,6 @@ The 6 visual stages are intentionally kept in plain CSS because they represent a
 2. **Category (d)** — batch 5+: Migrate VideoPreview + CropEditOverlay (~238 lines), then MomentPalette (~217), MiniTimelineStrip (~71), SequencePlayer (~169)
 3. **Remaining** — Category (d) BGM gutter is already documented as an exception in CompactSegmentList.styles.ts; keep its plain-CSS stub unless CompactSegmentList refactor necessitates absorption
 
+
+
+> Batch 4 (2026-07-09): complete — category (f) migrated or deleted-as-dead; styles.css at 1745 lines. Remaining: category (d) domain-custom (batch 5, deferred) + documented exceptions.
