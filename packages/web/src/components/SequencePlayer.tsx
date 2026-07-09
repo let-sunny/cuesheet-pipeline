@@ -5,7 +5,14 @@ import { Button } from "@astryxdesign/core/Button";
 import { cropPreviewStyle } from "../lib/cropPreview.js";
 import type { ClipMoments } from "../api.js";
 import { matchSceneInfo } from "../lib/sceneInfo.js";
-import { formatClock, playbackSeconds } from "../lib/segmentTiming.js";
+import { cumulativeCutStarts } from "../lib/bgmCutMapping.js";
+import { formatClock } from "../lib/segmentTiming.js";
+import {
+  computeCurrentOutputPosition,
+  pickActiveSlot,
+  pickPreloadSlot,
+  resolveProgressClickTarget,
+} from "../lib/sequenceScheduling.js";
 import {
   mergeSubtitleStyle,
   subtitleBackgroundRgba,
@@ -233,16 +240,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
         return;
       }
       const oldFront = frontRef.current;
-      const back = oldFront === 0 ? 1 : 0;
-      let activeSlot: 0 | 1;
-
-      if (clipOfSlot.current[oldFront] === seg.clip) {
-        activeSlot = oldFront;
-      } else if (clipOfSlot.current[back] === seg.clip) {
-        activeSlot = back;
-      } else {
-        activeSlot = oldFront;
-      }
+      const activeSlot = pickActiveSlot(clipOfSlot.current, oldFront, seg.clip);
       // Even for a slot that was preloaded, there's no guarantee loadedmetadata actually finished
       // (preload is fire-and-forget) — calling play() as-is can throw NotSupportedError at
       // readyState 0 when the cut is short. Always wait for it
@@ -287,11 +285,9 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
 
       // Preload the next cut into the idle slot (only when it's a different clip).
       const nextSeg = segmentsRef.current[currentIndex + 1];
-      if (nextSeg) {
-        const idleSlot = activeSlot === 0 ? 1 : 0;
-        if (clipOfSlot.current[idleSlot] !== nextSeg.clip && clipOfSlot.current[activeSlot] !== nextSeg.clip) {
-          void loadClipInto(idleSlot, nextSeg.clip);
-        }
+      const preloadSlot = pickPreloadSlot(clipOfSlot.current, activeSlot, nextSeg?.clip);
+      if (nextSeg && preloadSlot !== null) {
+        void loadClipInto(preloadSlot, nextSeg.clip);
       }
     })();
 
@@ -383,16 +379,18 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
   const sceneHint = currentSegment ? matchSceneInfo(currentSegment, moments) : { kind: "none" as const };
   const sceneHintText = sceneHint.kind !== "none" ? sceneHint.memo : null;
 
-  // Cumulative offset (seconds) on the output timeline — the progress bar, time display, and click-seeking all use this basis.
-  const cumulativeStart: number[] = [];
-  let totalOutputSeconds = 0;
-  for (const seg of segments) {
-    cumulativeStart.push(totalOutputSeconds);
-    totalOutputSeconds += playbackSeconds(seg);
-  }
-  const currentOutputPosition = currentSegment
-    ? (cumulativeStart[currentIndex] ?? 0) + Math.max(0, videoNow - currentSegment.in) / currentSegment.speed
-    : totalOutputSeconds;
+  // Cumulative offset (seconds) on the output timeline — the progress bar, time display, and
+  // click-seeking all use this basis. cumulativeStart has one trailing entry equal to the total
+  // (see lib/bgmCutMapping.ts), so totalOutputSeconds is just its last element.
+  const cumulativeStart = cumulativeCutStarts(segments);
+  const totalOutputSeconds = cumulativeStart[cumulativeStart.length - 1] ?? 0;
+  const currentOutputPosition = computeCurrentOutputPosition(
+    cumulativeStart,
+    currentIndex,
+    currentSegment,
+    videoNow,
+    totalOutputSeconds,
+  );
   const progressRatio = totalOutputSeconds > 0 ? Math.min(1, currentOutputPosition / totalOutputSeconds) : 0;
 
   function goToPrevCut() {
@@ -409,31 +407,13 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
 
   // Progress bar click seek — click position (ratio on the output timeline) -> corresponding cut index + source offset within the cut.
   function handleProgressClick(e: MouseEvent<HTMLDivElement>) {
-    if (totalOutputSeconds <= 0 || segments.length === 0) {
-      return;
-    }
     const rect = e.currentTarget.getBoundingClientRect();
-    const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
-    const targetOutput = ratio * totalOutputSeconds;
-
-    let targetIndex = segments.length - 1;
-    for (let i = 0; i < segments.length; i += 1) {
-      const seg = segments[i];
-      if (!seg) {
-        continue;
-      }
-      const start = cumulativeStart[i] ?? 0;
-      if (targetOutput < start + playbackSeconds(seg)) {
-        targetIndex = i;
-        break;
-      }
-    }
-    const targetSeg = segments[targetIndex];
-    if (!targetSeg) {
+    const ratio = (e.clientX - rect.left) / rect.width;
+    const target = resolveProgressClickTarget(segments, cumulativeStart, totalOutputSeconds, ratio);
+    if (!target) {
       return;
     }
-    const offsetOutput = Math.max(0, targetOutput - (cumulativeStart[targetIndex] ?? 0));
-    const sourceTime = Math.min(targetSeg.out, targetSeg.in + offsetOutput * targetSeg.speed);
+    const { index: targetIndex, sourceTime } = target;
 
     if (targetIndex === currentIndex) {
       const video = videoRefs[frontRef.current].current;
