@@ -43,7 +43,7 @@ import type { Step } from "./components/StepNav/index.js";
 import { MiniTimelineStrip } from "./components/MiniTimelineStrip.js";
 import { SequencePlayer } from "./components/SequencePlayer.js";
 import type { SequencePlayerHandle } from "./components/SequencePlayer.js";
-import { CompactSegmentList } from "./components/CompactSegmentList.js";
+import { CompactSegmentList } from "./components/CompactSegmentList/index.js";
 import { SegmentQuickFields } from "./components/SegmentQuickFields.js";
 import { IntroOutroEditor } from "./components/IntroOutroEditor/index.js";
 import { SubtitleStyleSettings, NarrationSettings } from "./components/FinishingSettings/index.js";

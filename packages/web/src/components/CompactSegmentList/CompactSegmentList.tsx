@@ -1,12 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
+import * as stylex from "@stylexjs/stylex";
 import type { BgmCue, Segment } from "@cuesheet/schema";
-import type { ClipMoments } from "../api.js";
-import { baseName } from "../clipPaths.js";
-import { bgmCutRange, cumulativeCutStarts } from "../lib/bgmCutMapping.js";
-import { assignBgmLanes, laneCount } from "../lib/bgmLanes.js";
-import { matchSceneInfo, shotTypeLabel } from "../lib/sceneInfo.js";
-import { SegmentThumb } from "./SegmentThumb.js";
+import type { ClipMoments } from "../../api.js";
+import { baseName } from "../../clipPaths.js";
+import { bgmCutRange, cumulativeCutStarts } from "../../lib/bgmCutMapping.js";
+import { assignBgmLanes, laneCount } from "../../lib/bgmLanes.js";
+import { matchSceneInfo, shotTypeLabel } from "../../lib/sceneInfo.js";
+import { SegmentThumb } from "../SegmentThumb.js";
+import { styles } from "./CompactSegmentList.styles.js";
 
 interface Props {
   segments: Segment[];
@@ -209,9 +211,12 @@ export function CompactSegmentList({
     setDragHighlight(null);
   };
 
+  const actionsWrapperProps = stylex.props(styles.actions);
+  const addButtonProps = stylex.props(styles.addButton);
+
   return (
-    <div className="compact-list-panel">
-      <div className="bgm-gutter-header">
+    <div {...stylex.props(styles.panel)}>
+      <div {...stylex.props(styles.gutterHeader)}>
         <button
           type="button"
           className="plain-button bgm-gutter-toggle"
@@ -219,7 +224,7 @@ export function CompactSegmentList({
           title={bgmGutterCollapsed ? "Expand the background music gutter" : "Collapse the background music gutter"}
         >
           {bgmGutterCollapsed ? "▸" : "▾"} Background music
-          {bgm.length > 0 ? <span className="bgm-gutter-count-badge">{bgm.length}</span> : null}
+          {bgm.length > 0 ? <span {...stylex.props(styles.gutterCountBadge)}>{bgm.length}</span> : null}
         </button>
         {!bgmGutterCollapsed ? (
           <button type="button" className="plain-button" onClick={onAddBgmTrack}>
@@ -228,8 +233,8 @@ export function CompactSegmentList({
         ) : null}
       </div>
 
-      <div className="compact-list-body">
-        <div className="bgm-gutter" style={{ width: gutterWidth }}>
+      <div {...stylex.props(styles.listBody)}>
+        <div {...stylex.props(styles.gutter)} style={{ width: gutterWidth }}>
           {!bgmGutterCollapsed
             ? laneItems.map((item) => {
                 const top = rowRects[item.startCutIdx]?.top ?? 0;
@@ -239,7 +244,7 @@ export function CompactSegmentList({
                 return (
                   <div
                     key={item.bgmIndex}
-                    className={`bgm-gutter-bar${item.bgmIndex === selectedBgmIndex ? " selected" : ""}`}
+                    {...stylex.props(styles.gutterBar, item.bgmIndex === selectedBgmIndex && styles.gutterBarSelected)}
                     style={{
                       top,
                       height: Math.max(bottom - top, BGM_MIN_BAR_HEIGHT),
@@ -252,14 +257,14 @@ export function CompactSegmentList({
                     title={`${cue?.file ? baseName(cue.file) : "(no file)"} · cuts ${item.startCutIdx + 1}-${item.endCutIdx + 1}`}
                   >
                     <div
-                      className="bgm-gutter-handle top"
+                      {...stylex.props(styles.gutterHandle)}
                       onPointerDown={startTrackDrag(item.bgmIndex, "resize-start")}
                       onPointerMove={onTrackDragMove}
                       onPointerUp={endTrackDrag}
                     />
-                    <span className="bgm-gutter-bar-label">{cue?.file ? baseName(cue.file) : "(no file)"}</span>
+                    <span {...stylex.props(styles.gutterBarLabel)}>{cue?.file ? baseName(cue.file) : "(no file)"}</span>
                     <div
-                      className="bgm-gutter-handle bottom"
+                      {...stylex.props(styles.gutterHandle)}
                       onPointerDown={startTrackDrag(item.bgmIndex, "resize-end")}
                       onPointerMove={onTrackDragMove}
                       onPointerUp={endTrackDrag}
@@ -270,7 +275,7 @@ export function CompactSegmentList({
             : null}
         </div>
 
-        <div className="compact-list">
+        <div {...stylex.props(styles.list)}>
           {segments.map((seg, i) => {
             const tooltip = seg.subtitle.trim() !== "" ? `${seg.subtitle.trim()} (${seg.clip || "(no filename)"})` : seg.clip || "(no filename)";
             const sceneInfo = matchSceneInfo(seg, moments);
@@ -282,16 +287,20 @@ export function CompactSegmentList({
             const bgmHighlighted = dragHighlight != null && i >= dragHighlight.start && i <= dragHighlight.end;
             return (
               <div
-                className={`compact-list-row${i === selectedIndex ? " selected" : ""}${bgmHighlighted ? " bgm-drag-highlight" : ""}`}
+                {...stylex.props(
+                  styles.row,
+                  i === selectedIndex && styles.rowSelected,
+                  bgmHighlighted && styles.rowBgmDragHighlight,
+                )}
                 key={i}
                 ref={(el) => {
                   rowDivRefs.current[i] = el;
                 }}
                 onClick={() => onSelect(i)}
               >
-                <span className="compact-list-index">{i + 1}</span>
-                <SegmentThumb clip={seg.clip} t={seg.in + 0.3} className="compact-list-thumb" />
-                <div className="compact-list-text">
+                <span {...stylex.props(styles.index)}>{i + 1}</span>
+                <SegmentThumb clip={seg.clip} t={seg.in + 0.3} className={stylex.props(styles.thumb).className} />
+                <div {...stylex.props(styles.text)}>
                   <textarea
                     ref={(el) => {
                       rowRefs.current[i] = el;
@@ -310,7 +319,7 @@ export function CompactSegmentList({
                     onKeyDown={handleSubtitleKeyDown(i)}
                   />
                   <span
-                    className={`compact-list-scene${sceneInfo.kind === "none" ? " empty" : ""}`}
+                    {...stylex.props(styles.scene, sceneInfo.kind === "none" && styles.sceneEmpty)}
                     title={sceneTooltip}
                   >
                     {sceneInfo.kind === "moment" ? (
@@ -324,19 +333,22 @@ export function CompactSegmentList({
                     {sceneText}
                   </span>
                 </div>
-                <span className="compact-list-time">
+                <span {...stylex.props(styles.time)}>
                   {seg.in.toFixed(1)}~{seg.out.toFixed(1)}s
                 </span>
                 {seg.styleOverride ? (
-                  <span className="compact-list-style-badge" title="This cut has its own subtitle style">
+                  <span {...stylex.props(styles.styleBadge)} title="This cut has its own subtitle style">
                     Style
                   </span>
                 ) : null}
                 <span
-                  className={`compact-list-subtitle-dot${seg.subtitle ? " filled" : ""}`}
+                  {...stylex.props(styles.subtitleDot, !!seg.subtitle && styles.subtitleDotFilled)}
                   title={seg.subtitle ? "Has subtitle" : "No subtitle"}
                 />
-                <div className="compact-list-actions">
+                <div
+                  className={`compact-list-actions ${actionsWrapperProps.className ?? ""}`}
+                  style={actionsWrapperProps.style}
+                >
                   <button
                     type="button"
                     className="plain-button"
@@ -379,7 +391,8 @@ export function CompactSegmentList({
           })}
           <button
             type="button"
-            className="plain-button add-button"
+            className={`plain-button ${addButtonProps.className ?? ""}`}
+            style={addButtonProps.style}
             onClick={onAdd}
             title="Duplicates the selected cut right after it (useful for splitting a long clip into separate cuts)"
           >

@@ -1267,49 +1267,6 @@ body {
   max-width: 440px;
 }
 
-.compact-list {
-  /* After the thumbnail (40px) was introduced, the subtitle/file name label (.compact-list-clip)
-     got squeezed down to showing only one or two characters — widening by that much
-     (thumbnail+gap) lets the label be readable again.
-     At 360px, the inline subtitle textarea (.compact-list-text) got pushed by the time/dot/action
-     buttons down to an actual usable width of only ~70px, causing Korean text to wrap every 4-5
-     characters (hurting readability during batch subtitle writing) — widened to 480px to secure
-     the textarea's actual usable width up to ~190px. */
-  flex: 0 0 480px;
-  /* Leaving the full subtitle text (a long nowrap text) as-is would let its min-content width
-     propagate up to the ancestor, growing the column itself — cut this off with min-width:0 so it
-     only overflows within the specified 300px, and let the child's ellipsis handle the overflowing part. */
-  min-width: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.compact-list-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 10px;
-  background: var(--surface-1);
-  border: 1px solid var(--border-soft);
-  border-radius: 6px;
-  cursor: pointer;
-  min-width: 0;
-}
-
-.compact-list-row.selected {
-  border-color: var(--accent);
-  background: var(--surface-3-soft);
-}
-
-.compact-list-index {
-  flex: 0 0 auto;
-  width: 20px;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
 /* Common shell for segment thumbnails — size is set by the consumer class (compact-list-thumb, etc).
    Background is intentionally fixed dark regardless of theme — a video frame thumbnail canvas (spec item 3). */
 .segment-thumb {
@@ -1323,21 +1280,22 @@ body {
   display: block;
 }
 
-.compact-list-thumb {
-  flex: 0 0 auto;
-  width: 40px;
-  height: 23px;
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.compact-list-text {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
+/* CompactSegmentList migration (docs/styling-migration.md, StyleX migration batch 3) -
+   `.compact-list`/`.compact-list-row`(+`.selected`)/`.compact-list-index`/`.compact-list-thumb`/
+   `.compact-list-text`/`.compact-list-scene`(+`.empty`)/`.compact-list-time`/
+   `.compact-list-subtitle-dot`(+`.filled`)/`.compact-list-actions`(own layout) all moved to
+   CompactSegmentList.styles.ts (no property conflicts with any marker class). Kept here as
+   documented exceptions (see CompactSegmentList.styles.ts's file comment for the full reasoning):
+   - `.compact-list-subtitle-input` (+ `:focus`) below - overrides `.plain-field`/
+     `.plain-field-textarea` at equal (single-class) specificity, winning today only via being
+     later in this file's source order; StyleX's injected-before-this-file output would lose that
+     tie.
+   - `.scene-shot-badge` (+ `.shot-*`) further down - shared with VideoPreview.tsx, not owned
+     solely by this component.
+   - `.compact-list-actions button` further down - a descendant selector (1 class + tag) with
+     higher specificity than `.plain-button` that StyleX can't replicate; the div's own layout
+     still migrated (see `actions` in CompactSegmentList.styles.ts), keeping the `compact-list-actions`
+     className alongside the StyleX class so this selector keeps matching. */
 
 /* Inline input for fixing subtitles right in place on a cut list row — the core of merging
    trim/batch-writing. Starts at rows=1 and its height auto-grows to fit content (handled in JS). */
@@ -1359,26 +1317,6 @@ body {
 .compact-list-subtitle-input:focus {
   outline: none;
   border-color: var(--accent);
-}
-
-/* Second line: the rough vision-reading scene description (memo), letting even a first-time viewer
-   understand what scene this cut is. Toned down (achromatic, small text) relative to the subtitle
-   (first line) and truncated to a single line. */
-.compact-list-scene {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
-  color: var(--text-tertiary);
-}
-
-.compact-list-scene.empty {
-  font-style: italic;
-  color: var(--text-faint);
 }
 
 .scene-shot-badge {
@@ -1432,55 +1370,22 @@ body {
   color: var(--tag-teal-text);
 }
 
-.compact-list-time {
-  flex: 0 0 auto;
-  font-size: 13px;
-  color: var(--text-tertiary);
-  white-space: nowrap;
-}
-
-.compact-list-subtitle-dot {
-  flex: 0 0 auto;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  border: 1px solid var(--accent);
-  background: transparent;
-}
-
-.compact-list-subtitle-dot.filled {
-  background: var(--accent);
-}
-
-.compact-list-actions {
-  flex: 0 0 auto;
-  display: flex;
-  gap: 4px;
-}
-
 .compact-list-actions button {
   padding: 2px 8px;
 }
 
-/* BGM gutter (screen-spec section 3) — a collapsible column to the left of the cut list, one
-   header shared above both so the gutter's bars and the list's rows start at the same y (the
-   bars' top/height are read directly off the row elements' offsetTop/offsetHeight, so they only
-   line up if both columns share that same origin). */
-.compact-list-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  flex: 0 0 auto;
-  min-width: 0;
-}
-
-.bgm-gutter-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
+/* CompactSegmentList migration (docs/styling-migration.md, StyleX migration batch 3) -
+   `.compact-list-panel`/`.bgm-gutter-header`/`.bgm-gutter-count-badge`/`.compact-list-body`/
+   `.bgm-gutter`/`.bgm-gutter-bar`(+`.selected`)/`.bgm-gutter-handle`/`.bgm-gutter-bar-label`/
+   `.compact-list-row.bgm-drag-highlight` all moved to CompactSegmentList.styles.ts (no property
+   conflicts with any marker class). Kept here as documented exceptions (see
+   CompactSegmentList.styles.ts's file comment for the full reasoning):
+   - `.bgm-gutter-toggle` below - this button also carries `.plain-button`, and overrides several
+     of its properties (background/border/padding, plus font-size/font-weight via `.plain-button`'s
+     `font: inherit` shorthand) at equal specificity; moving it into StyleX (injected before this
+     file) would lose that cascade tie.
+   - `.compact-list-actions button` (further down, with `.compact-list-style-badge`) - a descendant
+     selector with higher specificity than `.plain-button` that StyleX can't replicate. */
 .bgm-gutter-toggle {
   display: flex;
   align-items: center;
@@ -1493,73 +1398,6 @@ body {
   background: none;
   border: none;
   padding: 2px 0;
-}
-
-.bgm-gutter-count-badge {
-  padding: 0 5px;
-  border-radius: 8px;
-  font-size: 11px;
-  font-weight: 600;
-  background: var(--bgm-cue-bg);
-  color: var(--text-primary);
-}
-
-.compact-list-body {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  min-width: 0;
-}
-
-.bgm-gutter {
-  position: relative;
-  flex: 0 0 auto;
-  align-self: stretch;
-  touch-action: none;
-}
-
-.bgm-gutter-bar {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  overflow: hidden;
-  background: var(--bgm-cue-bg);
-  border: 1px solid var(--bgm-cue-border);
-  border-radius: 4px;
-  cursor: grab;
-}
-
-.bgm-gutter-bar.selected {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent);
-}
-
-.bgm-gutter-handle {
-  flex: 0 0 auto;
-  height: 6px;
-  cursor: ns-resize;
-  background: var(--bgm-cue-border);
-}
-
-.bgm-gutter-bar-label {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: hidden;
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 11px;
-  padding: 4px 2px;
-  pointer-events: none;
-}
-
-/* Drag feedback (screen-spec section 3) — while dragging a bar, the cut rows it currently covers
-   highlight so the alignment between "which bar" and "which cuts" stays legible. */
-.compact-list-row.bgm-drag-highlight {
-  border-color: var(--bgm-cue-border);
-  background: var(--bgm-cue-bg);
 }
 
 /* BgmSettingsPanel migration (docs/styling-migration.md, StyleX migration batch 2) -
@@ -1767,17 +1605,6 @@ body {
   height: 32px;
 }
 
-/* The "this cut has a different subtitle style" badge on a cut list row. */
-.compact-list-style-badge {
-  flex: 0 0 auto;
-  padding: 1px 5px;
-  border-radius: 3px;
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-  background: var(--tag-pink-bg);
-  color: var(--tag-pink-text);
-}
 
 /* Subtitle style presets (Export step) */
 
