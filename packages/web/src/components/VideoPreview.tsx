@@ -4,7 +4,7 @@ import { Button } from "@astryxdesign/core/Button";
 import type { Segment, SubtitleStyle, SubtitleStylePresets } from "@cuesheet/schema";
 import { CompactButton } from "./ui/CompactButton/index.js";
 import { TitleOverlay } from "./TitleOverlay/index.js";
-import { fetchProxyStatus, type ClipMoments, type ProxyStatus } from "../api.js";
+import { captureFrame, fetchProxyStatus, type ClipMoments, type ProxyStatus } from "../api.js";
 import { clamp } from "../lib/clamp.js";
 import { cropPreviewStyle } from "../lib/cropPreview.js";
 import { useCropEditor } from "../hooks/useCropEditor.js";
@@ -323,6 +323,20 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     onSplit(currentTime);
   };
 
+  // Captures a full-resolution PNG of the current preview position from the ORIGINAL clip
+  // (currentTime already tracks the position within the clip's own timeline, unaffected by any
+  // crop/reframe applied to the preview) and downloads it - PRD backlog #6.
+  const handleCapture = () => {
+    if (!segment) {
+      return;
+    }
+    void captureFrame(segment.clip, currentTime).then((result) => {
+      if (!result.ok) {
+        showNotice(result.error);
+      }
+    });
+  };
+
   useImperativeHandle(
     ref,
     () => ({
@@ -638,6 +652,13 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
             <Button label="Set In here" variant="secondary" size="sm" onClick={handleSetIn} />
             <Button label="Set Out here" variant="secondary" size="sm" onClick={handleSetOut} />
             <Button label="Split" variant="secondary" size="sm" onClick={handleSplit} />
+            <Button
+              label="Capture frame"
+              variant="secondary"
+              size="sm"
+              tooltip="Captures the original frame (crop is not applied to the capture)"
+              onClick={handleCapture}
+            />
           </div>
 
           <div className="playmode-toggle">

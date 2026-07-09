@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -180,5 +181,128 @@ describe("routes", () => {
       expect(body.files.map((f) => f.path)).toEqual([join(mediaRoot, "bgm", "lofi.mp3")]);
       expect(body.note).toBeUndefined();
     });
+  });
+
+  describe("GET /api/frame-capture", () => {
+    it("rejects a missing clip query param", async () => {
+      const { baseUrl } = await start();
+
+      const res = await fetch(`${baseUrl}/api/frame-capture?atS=1`);
+
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { ok: boolean; error: string };
+      expect(body.ok).toBe(false);
+      expect(body.error).toMatch(/plain file name/);
+    });
+
+    it("rejects a path-traversal clip filename", async () => {
+      const { baseUrl } = await start();
+
+      const res = await fetch(
+        `${baseUrl}/api/frame-capture?clip=${encodeURIComponent("../evil.mp4")}&atS=1`,
+      );
+
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { ok: boolean; error: string };
+      expect(body.error).toMatch(/plain file name/);
+    });
+
+    it("rejects a negative atS", async () => {
+      const { baseUrl } = await start();
+
+      const res = await fetch(`${baseUrl}/api/frame-capture?clip=a.mp4&atS=-1`);
+
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { ok: boolean; error: string };
+      expect(body.error).toMatch(/non-negative number/);
+    });
+
+    it("rejects a non-numeric atS", async () => {
+      const { baseUrl } = await start();
+
+      const res = await fetch(`${baseUrl}/api/frame-capture?clip=a.mp4&atS=notanumber`);
+
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { ok: boolean; error: string };
+      expect(body.error).toMatch(/non-negative number/);
+    });
+
+    it("returns 400 when clipDir is not set", async () => {
+      const { baseUrl } = await start();
+
+      const res = await fetch(`${baseUrl}/api/frame-capture?clip=a.mp4&atS=1`);
+
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { ok: boolean; error: string };
+      expect(body.error).toMatch(/clipDir is not set/);
+    });
+
+    it("returns 404 when the clip doesn't exist in clipDir", async () => {
+      const clipDir = mkdtempSync(join(tmpdir(), "cuesheet-web-clips-"));
+      writeFileSync(cuesheetPath, JSON.stringify(makeCueSheet({ clipDir })));
+      const { baseUrl } = await start();
+
+      const res = await fetch(`${baseUrl}/api/frame-capture?clip=missing.mp4&atS=1`);
+
+      expect(res.status).toBe(404);
+      const body = (await res.json()) as { ok: boolean; error: string };
+      expect(body.error).toMatch(/Clip not found/);
+    });
+
+    it("extracts a full-resolution PNG from the original clip via seek-based ffmpeg", async () => {
+      const clipDir = mkdtempSync(join(tmpdir(), "cuesheet-web-clips-"));
+      const clipPath = join(clipDir, "sample.mp4");
+      execFileSync(
+        "ffmpeg",
+        [
+          "-y",
+          "-f",
+          "lavfi",
+          "-i",
+          "testsrc2=size=320x240:rate=10:duration=2",
+          "-c:v",
+          "libx264",
+          "-pix_fmt",
+          "yuv420p",
+          clipPath,
+        ],
+        { stdio: "ignore" },
+      );
+      writeFileSync(
+        cuesheetPath,
+        JSON.stringify(
+          makeCueSheet({
+            clipDir,
+            project: { name: "Test Project", fps: 30, width: 320, height: 240 },
+          }),
+        ),
+      );
+      const { baseUrl } = await start();
+
+      const res = await fetch(`${baseUrl}/api/frame-capture?clip=sample.mp4&atS=1`);
+
+      expect(res.status).toBe(200);
+      expect(res.headers.get("Content-Type")).toBe("image/png");
+      const disposition = res.headers.get("Content-Disposition") ?? "";
+      expect(disposition).toContain(encodeURIComponent("Test Project 0.01.png"));
+
+      const buf = Buffer.from(await res.arrayBuffer());
+      const pngPath = join(clipDir, "captured.png");
+      writeFileSync(pngPath, buf);
+      const dims = execFileSync("ffprobe", [
+        "-v",
+        "error",
+        "-select_streams",
+        "v:0",
+        "-show_entries",
+        "stream=width,height",
+        "-of",
+        "csv=s=x:p=0",
+        pngPath,
+      ])
+        .toString()
+        .trim();
+      expect(dims).toBe("320x240");
+    }, 20000);
   });
 });

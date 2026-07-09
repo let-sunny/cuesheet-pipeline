@@ -233,3 +233,37 @@ export function uploadClip(file: File, onProgress?: (pct: number) => void): Prom
     xhr.send(file);
   });
 }
+
+export type FrameCaptureResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Requests a full-resolution PNG frame capture from the original clip at atS (source seconds,
+ * not affected by any crop/reframe) and triggers a browser download of it. Returns { ok: false }
+ * with a message on failure instead of throwing, so the caller can show it inline (e.g. VideoPreview's notice).
+ */
+export async function captureFrame(clip: string, atS: number): Promise<FrameCaptureResult> {
+  const res = await fetch(`/api/frame-capture?clip=${encodeURIComponent(clip)}&atS=${atS}`);
+  if (!res.ok) {
+    try {
+      const body = (await res.json()) as { error?: string };
+      return { ok: false, error: body.error ?? "Frame capture failed" };
+    } catch {
+      return { ok: false, error: "Frame capture failed" };
+    }
+  }
+
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const match = disposition.match(/filename\*=UTF-8''([^;]+)/);
+  const fileName = match ? decodeURIComponent(match[1]!) : "frame.png";
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  return { ok: true };
+}
