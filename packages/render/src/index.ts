@@ -137,21 +137,35 @@ try {
 for (const warning of plan.warnings) {
   console.error(`Warning: ${warning}`);
 }
-console.error(`ffmpeg ${plan.args.join(" ")}`);
 
-const proc = spawn("ffmpeg", plan.args, { stdio: "inherit" });
-proc.on("error", (e) => {
-  console.error(`Failed to run ffmpeg (is it installed?): ${e.message}`);
-  process.exit(1);
-});
-proc.on("exit", (code) => {
-  if (jsonMode && (code ?? 0) === 0) {
-    const result: RenderJsonResult = {
-      outputPath: outPath,
-      durationS: probeDurationS(outPath),
-      srtPath: srtOutPath,
-    };
-    console.log(JSON.stringify(result));
+/** Runs one ffmpeg invocation to completion, resolving with its exit code (130 on spawn failure). */
+function runFfmpeg(args: string[]): Promise<number> {
+  return new Promise((resolve) => {
+    const proc = spawn("ffmpeg", args, { stdio: "inherit" });
+    proc.on("error", (e) => {
+      console.error(`Failed to run ffmpeg (is it installed?): ${e.message}`);
+      resolve(130);
+    });
+    proc.on("exit", (code) => resolve(code ?? 0));
+  });
+}
+
+// A two-pass plan (captured-frames title + large HEVC concat - see @cuesheet/render's
+// needsTwoPassRender) has more than one command; each must run to completion before the next
+// starts (pass 2 reads pass 1's intermediate file as its sole input).
+for (const command of plan.commands) {
+  console.error(`[${command.label}] ffmpeg ${command.args.join(" ")}`);
+  const code = await runFfmpeg(command.args);
+  if (code !== 0) {
+    process.exit(code);
   }
-  process.exit(code ?? 0);
-});
+}
+
+if (jsonMode) {
+  const jsonResult: RenderJsonResult = {
+    outputPath: outPath,
+    durationS: probeDurationS(outPath),
+    srtPath: srtOutPath,
+  };
+  console.log(JSON.stringify(jsonResult));
+}

@@ -18,7 +18,7 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 |---|---|---|
 | `packages/schema` | Cuesheet types + validation (contract's center, zod) | Stable. 42 tests |
 | `packages/bridge` | MCP server for Claude Code connection (natural-language editing) | Stable. 4 tests |
-| `packages/render` | Cuesheet -> ffmpeg render (CLI + buildRenderPlan) | Stable. 50 tests, verified with a real render |
+| `packages/render` | Cuesheet -> ffmpeg render (CLI + buildRenderPlan, incl. two-pass title fallback) | Stable. 110 tests, verified with a real render |
 | `apps/web` | Touch-up editor: cut editing, timeline trimming (scrub/handles/split), full timeline + BGM drag, proxy playback, export button | Actively evolving |
 | `packages/draft` | **Core**: raw footage folder -> automatic rough-cut cuesheet generation (CLI `cuesheet-draft`: scan for inventory + frame extraction -> assemble for assembly; vision judgment handled by Claude) | Promoted to a proper package. 7 tests, scan/assemble E2E verified against a real footage folder |
 | `media/proxies/` | 720p H.264 proxies for web preview (auto-generated, git-ignored) | Automatic |
@@ -34,6 +34,61 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 - **User editing grammar constants**: cut average 2.9s, finished length 4:30-5:30, coverage ~90%, shot vocabulary (hand closeup/object/cat/reveal/wearing) — reverse-engineered from 2 real edits
 - **Proxy playback**: original 4K HEVC can't play in-browser -> 720p H.264 proxy for preview, render uses the original
 - **iCloud rule**: must check `stat blocks=0` before reading source footage (reading a placeholder hangs forever), manage space with `brctl download/evict`
+
+## 2026-07-10: two-pass render fallback (captured-frames title + large HEVC concat deadlock)
+
+- **Bug**: the demo bisection found combining a captured-frames title overlay (gooey/melt/particle -
+  see the 2026-07-09 title-cards entry below) with a concat of 10+ HEVC clips in one
+  `filter_complex` reproducibly deadlocked ffmpeg (hangs forever, no error) - fewer clips or no
+  titles rendered fine. Suspected cause: filter-graph buffer starvation from many demuxed inputs
+  plus an overlay branch feeding `concat` (a distinct, more severe case than the 2026-07-09
+  "3+ titles in one render" deadlock, whose fix - forcing `-filter_complex_threads 1` - stays in
+  place for that narrower case but wasn't trusted to also cover this one).
+- **Fix: two-pass render**, added to `buildRenderPlan` (`packages/render`) - dispatches
+  automatically, no caller-visible new function. Pass 1 renders the base cut (concat/trim/speed/
+  subtitles/audio, everything unchanged from before) to a near-lossless intermediate
+  (`libx264 -preset veryfast -crf 10`, colocated next to the output as
+  `<name>.pass1-intermediate.<ext>`, not auto-deleted - same precedent as `media/title-cache/`,
+  costs meaningfully more disk than a normal delivery encode). Pass 2 takes that ONE intermediate
+  as its sole input and chains an `overlay` per captured-frames title at its absolute output-
+  timeline offset (`setpts=PTS+offset/TB` then `enable='between(t,offset,offset+durationS)'` - the
+  same idiom `adelay` already uses for audio elsewhere in this package) - one real decode + N
+  small PNG-sequence inputs chained sequentially, structurally the same shape as the demo's
+  already-working "solo title" render, so it never re-enters the deadlocking shape. An ASS-based
+  "typing" title (no extra ffmpeg input, no overlay branch) was never implicated and always stays
+  in pass 1 unconditionally.
+- **Threshold**: `TWO_PASS_INPUT_THRESHOLD = 10` total concat inputs (segments + intro + outro),
+  gated on at least one captured-frames title being present. **Not bisected against a live repro**
+  in this environment - an extensive attempt (12-100 synthetic HEVC clips, 720p through 4K, 1-8
+  captured-frames titles with/without backdrop dim, with the existing `-filter_complex_threads 1`
+  mitigation both present and stripped) never reproduced a hang on this machine's ffmpeg build
+  (8.1.2). The original demo bisection used real 4K HEVC raw footage (not committed to this repo,
+  evicted to iCloud) - the deadlock is plausibly sensitive to real decode-timing variance that flat
+  synthetic clips don't have. The threshold is set directly from the demo's own given fact ("10+
+  HEVC clips" deadlocks, fewer is fine) rather than invented; **follow up with a real-footage
+  validation run if the deadlock resurfaces at a different count.**
+- **Shared offset math extracted**: `computeSegmentOutputTimings` (`packages/render/src/timeline.ts`,
+  new, unit tested) replaces what used to be two independent, hand-duplicated copies of the same
+  cumulative-(out-in)/speed-sum loop (`plan.ts`'s narration placement, `ducking.ts`'s
+  `deriveDuckingWindows`) - both now call the one shared function, and pass 2's title placement
+  reuses it too.
+- **API compatibility**: `RenderPlan` gained an additive `commands: RenderCommand[]` field (one
+  entry for a single-pass cuesheet - the overwhelming majority - two for a two-pass one); `args`/
+  `filterComplex`/`outputPath` stay as before for single-pass (byte-identical, regression-tested)
+  and are DERIVED from pass 2 (the final pass) when two-pass triggers - a caller that only reads
+  `args` directly (rather than running every entry in `commands` in order) gets a fast, clear
+  ffmpeg error (missing intermediate input) instead of silently shipping a video with no titles.
+  **Follow-up needed**: `apps/web`'s `POST /api/render` route currently runs `buildRenderPlan`'s
+  top-level `args` directly - it needs to iterate `plan.commands` in order instead to actually
+  support two-pass cuesheets (not changed here per this task's scope - apps/web was off limits,
+  concurrent work in progress there).
+- **Verified**: `pnpm --filter @cuesheet/render typecheck`/`test` green (110 tests, up from 89 -
+  21 new: `timeline.test.ts`, `twoPass.test.ts`, plus new dispatch cases in `plan.test.ts`).
+  End-to-end: a real two-pass render (12 synthetic HEVC 720p clips + 1 gooey title) completed in
+  ~6.5s total (pass 1 2.5s, pass 2 4.0s) and the title was confirmed visible only inside its
+  [0s, 2s) window (frame-extracted and inspected at t=1 vs t=5). The existing CLI's single-pass
+  path (`project.cuesheet.json`, no title) re-verified unaffected (13s output, matching the
+  earlier real-render figure).
 
 ## 2026-07-09: named subtitle style presets + title cards (PRD backlog #1+#2)
 

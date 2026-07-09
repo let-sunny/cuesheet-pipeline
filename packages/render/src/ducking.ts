@@ -1,4 +1,5 @@
 import type { CueSheet } from "@cuesheet/schema";
+import { computeSegmentOutputTimings } from "./timeline.js";
 
 /** A BGM ducking window, in OUTPUT time (seconds). */
 export interface DuckingWindow {
@@ -9,11 +10,12 @@ export interface DuckingWindow {
 /**
  * Derives BGM ducking windows (PRD backlog #4) from narration placements already in the
  * cuesheet - no per-cut ducking field exists, so this is the only source of windows. One raw
- * window per narrated segment: its cut's OUTPUT start time (cumulative sum of prior segments'
- * (out-in)/speed, matching exactly how buildRenderPlan places narration audio via adelay - see
- * plan.ts's segmentOffset) extended by that narration clip's own duration. Reuses the same v1
- * constraint as narration placement itself: intro duration isn't probed, so this offset doesn't
- * account for an intro's length (pre-existing limitation, not introduced here).
+ * window per narrated segment: its cut's OUTPUT start time (computeSegmentOutputTimings -
+ * matching exactly how buildRenderPlan places narration audio via adelay, and how a two-pass
+ * render places title overlays - see timeline.ts) extended by that narration clip's own
+ * duration. Reuses the same v1 constraint as narration placement itself: intro duration isn't
+ * probed, so this offset doesn't account for an intro's length (pre-existing limitation, not
+ * introduced here).
  *
  * narrationDurations is keyed by segment index (mirrors RenderPlanOptions.titleAssets) - the
  * caller (CLI/web server) ffprobes each narration file up front since buildRenderPlan itself
@@ -33,19 +35,19 @@ export function deriveDuckingWindows(
 ): { windows: DuckingWindow[]; warnings: string[] } {
   const warnings: string[] = [];
   const raw: DuckingWindow[] = [];
-  let segmentOffset = 0;
+  const timings = computeSegmentOutputTimings(cue);
   cue.segments.forEach((s, i) => {
     if (cue.narration?.enabled && s.narration) {
       const durationS = narrationDurations?.[i];
       if (durationS != null && durationS > 0) {
-        raw.push({ start: segmentOffset, end: segmentOffset + durationS });
+        const start = timings[i]!.startS;
+        raw.push({ start, end: start + durationS });
       } else {
         warnings.push(
           `segments[${i}].narration: could not determine this narration clip's duration - ducking skipped for this cut`,
         );
       }
     }
-    segmentOffset += (s.out - s.in) / s.speed;
   });
   return { windows: mergeDuckingWindows(raw), warnings };
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { validateCueSheet } from "@cuesheet/schema";
 import type { CueSheet } from "@cuesheet/schema";
 import { buildRenderPlan } from "../src/plan.js";
+import { TWO_PASS_INPUT_THRESHOLD } from "../src/twoPass.js";
 
 function make(overrides: Record<string, unknown> = {}): CueSheet {
   const base = {
@@ -1016,5 +1017,77 @@ describe("buildRenderPlan", () => {
     expect(s).toContain("-c:v libx264");
     expect(s).toContain("-c:a aac");
     expect(s).toContain("-y final.mp4");
+  });
+
+  it("commands has exactly one byte-identical entry for a plain single-pass cuesheet", () => {
+    const p = buildRenderPlan(make(), "final.mp4");
+    expect(p.commands).toHaveLength(1);
+    expect(p.commands[0]).toEqual({
+      args: p.args,
+      filterComplex: p.filterComplex,
+      outputPath: p.outputPath,
+      label: "single-pass",
+    });
+  });
+});
+
+describe("buildRenderPlan two-pass dispatch (needsTwoPassRender)", () => {
+  function makeSegments(count: number, titleIndex?: number) {
+    return Array.from({ length: count }, (_, i) =>
+      i === titleIndex
+        ? {
+            clip: `c${i}.mp4`,
+            in: 0,
+            out: 3,
+            speed: 1,
+            volume: 1,
+            subtitle: "",
+            title: { text: "Hi", preset: "gooey", durationS: 2 },
+          }
+        : { clip: `c${i}.mp4`, in: 0, out: 3, speed: 1, volume: 1, subtitle: "" },
+    );
+  }
+
+  it("stays single-pass below TWO_PASS_INPUT_THRESHOLD even with a captured-frames title", () => {
+    const cue = make({ segments: makeSegments(TWO_PASS_INPUT_THRESHOLD - 1, 0) });
+    const p = buildRenderPlan(cue, "out.mp4", {
+      titleAssets: { 0: { kind: "frames", dir: "/tmp/tc", frameCount: 60, fps: 30 } },
+    });
+    expect(p.commands).toHaveLength(1);
+    expect(p.filterComplex).toContain("overlay=0:0:format=auto:enable='between(t,0,2)'");
+  });
+
+  it("dispatches to a two-pass plan at/above TWO_PASS_INPUT_THRESHOLD with a captured-frames title", () => {
+    const cue = make({ segments: makeSegments(TWO_PASS_INPUT_THRESHOLD, 0) });
+    const p = buildRenderPlan(cue, "out.mp4", {
+      titleAssets: { 0: { kind: "frames", dir: "/tmp/tc", frameCount: 60, fps: 30 } },
+    });
+    expect(p.commands).toHaveLength(2);
+    const [pass1, pass2] = p.commands;
+    expect(pass1?.label).toBe("pass1-base");
+    expect(pass2?.label).toBe("pass2-titles");
+    // Pass 1 defers the title overlay entirely (it's applied in pass 2 instead) and encodes
+    // near-lossless (crf 10) since it's a temporary intermediate, not the delivered output.
+    expect(pass1?.filterComplex).not.toContain("overlay=0:0:format=auto");
+    expect(pass1?.args.join(" ")).toContain("-crf 10");
+    expect(pass1?.outputPath).toBe("out.pass1-intermediate.mp4");
+    // Pass 2 reads the intermediate as its sole input and applies the overlay at the segment's
+    // output-timeline offset (segment 0 starts at t=0 here).
+    expect(pass2?.args).toEqual(expect.arrayContaining(["-i", "out.pass1-intermediate.mp4"]));
+    expect(pass2?.filterComplex).toContain("overlay=0:0:format=auto:enable='between(t,0,2)'");
+    expect(pass2?.outputPath).toBe("out.mp4");
+    // Top-level fields are derived from the FINAL pass (pass 2) - see RenderPlan.commands's doc.
+    expect(p.args).toEqual(pass2?.args);
+    expect(p.outputPath).toBe("out.mp4");
+  });
+
+  it("never triggers two-pass for an ASS (typing) title, regardless of input count", () => {
+    const segments = makeSegments(TWO_PASS_INPUT_THRESHOLD + 5, 0).map((s, i) =>
+      i === 0 ? { ...s, title: { text: "Hi", preset: "typing", durationS: 2 } } : s,
+    );
+    const p = buildRenderPlan(make({ segments }), "out.mp4", {
+      titleAssets: { 0: { kind: "ass", path: "/tmp/t.ass" } },
+    });
+    expect(p.commands).toHaveLength(1);
   });
 });

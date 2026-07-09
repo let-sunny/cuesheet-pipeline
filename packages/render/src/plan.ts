@@ -1,7 +1,16 @@
 import { join } from "node:path";
 import type { CueSheet, Segment } from "@cuesheet/schema";
 import { buildDuckingGainExpression, deriveDuckingWindows } from "./ducking.js";
+import { computeSegmentOutputTimings } from "./timeline.js";
 import { escapeFilterPath, type TitleAsset } from "./title.js";
+import {
+  buildTitleOverlayPass,
+  deriveIntermediatePath,
+  frameTitleSegmentIndices,
+  INTERMEDIATE_VIDEO_ENCODE_ARGS,
+  needsTwoPassRender,
+  type RenderCommand,
+} from "./twoPass.js";
 
 export { buildDuckingGainExpression, deriveDuckingWindows, mergeDuckingWindows } from "./ducking.js";
 export type { DuckingWindow } from "./ducking.js";
@@ -15,12 +24,42 @@ export {
 } from "./title.js";
 export type { TitleAsset, TitleAssAsset, TitleFramesAsset } from "./title.js";
 
+export { computeSegmentOutputTimings } from "./timeline.js";
+export type { SegmentOutputTiming } from "./timeline.js";
+
+export {
+  deriveIntermediatePath,
+  frameTitleSegmentIndices,
+  needsTwoPassRender,
+  totalConcatInputCount,
+  TWO_PASS_INPUT_THRESHOLD,
+} from "./twoPass.js";
+export type { RenderCommand } from "./twoPass.js";
+
 export interface RenderPlan {
-  /** Full argument list to follow "ffmpeg" */
+  /**
+   * Full argument list to follow "ffmpeg" - for a two-pass render (see `commands`), this is the
+   * FINAL pass's args (pass 2, titles-onto-intermediate), not pass 1's. A caller that only reads
+   * `args` (rather than checking `commands`) and runs it directly will get a fast, clear ffmpeg
+   * error (missing intermediate input file) instead of silently producing a video with no titles -
+   * see docs/STATUS.md's 2-pass entry for why that tradeoff was chosen, and the follow-up this
+   * implies for any caller that needs correct two-pass output (must run every entry in `commands`
+   * in order instead).
+   */
   args: string[];
-  /** -filter_complex graph (for debugging/verification) */
+  /** -filter_complex graph for `args` above (for debugging/verification) */
   filterComplex: string;
   outputPath: string;
+  /**
+   * Every ffmpeg invocation needed to produce `outputPath`, in order. Single-pass cuesheets (the
+   * overwhelming majority) get exactly one entry, identical to { args, filterComplex, outputPath }
+   * above. A cuesheet that trips needsTwoPassRender (captured-frames title + a large HEVC concat -
+   * see twoPass.ts) gets two: pass 1 renders the base cut (concat/trim/speed/subtitles/audio) to an
+   * intermediate file, pass 2 overlays the title(s) onto that single-input intermediate. Added
+   * additively (2026-07-10) - existing callers reading only `args`/`filterComplex`/`outputPath`
+   * keep compiling and keep working for every cuesheet below the two-pass threshold.
+   */
+  commands: RenderCommand[];
   /**
    * Non-fatal warnings collected while building the plan (e.g. a subtitle likely to overflow the
    * frame at render). Callers (the CLI, the web server) are responsible for surfacing these -
@@ -69,18 +108,78 @@ export interface RenderPlanOptions {
 }
 
 /**
- * Converts a cuesheet into an ffmpeg render plan (command arguments).
- * Each segment is trimmed -> sped up -> scaled -> fps-normalized -> subtitled (if any),
- * then joined via concat; if bgm is present, its start time (adelay) and volume are
- * applied and mixed in with amix.
+ * Converts a cuesheet into an ffmpeg render plan (one or more ffmpeg invocations - see
+ * RenderPlan.commands). Each segment is trimmed -> sped up -> scaled -> fps-normalized ->
+ * subtitled (if any), then joined via concat; if bgm is present, its start time (adelay) and
+ * volume are applied and mixed in with amix.
  *
- * Units are seconds. Clip paths are assembled from clipDir + filename (so moving the folder doesn't break things).
+ * Units are seconds. Clip paths are assembled from clipDir + filename (so moving the folder
+ * doesn't break things).
+ *
+ * Two-pass dispatch: a cuesheet with a captured-frames title (gooey/melt/particle) combined with
+ * a large HEVC concat graph (needsTwoPassRender - see twoPass.ts) deadlocks ffmpeg's filter-graph
+ * scheduler in a single pass. Below that threshold (the overwhelming majority of cuesheets),
+ * behavior is unchanged from before this existed: one command, byte-identical args/filterComplex.
+ * At/above it, this builds two commands instead (pass 1: base cut -> intermediate file; pass 2:
+ * title overlays -> final output) - see RenderPlan.commands's doc for the API-compatibility note.
  */
-export function buildRenderPlan(
+export function buildRenderPlan(cue: CueSheet, outputPath: string, opts?: RenderPlanOptions): RenderPlan {
+  const frameTitleIndices = frameTitleSegmentIndices(cue, opts?.titleAssets);
+
+  if (!needsTwoPassRender(cue, frameTitleIndices)) {
+    const { command, warnings } = buildBasePassCommand(cue, outputPath, opts, {
+      deferFrameTitleIndices: EMPTY_DEFER_SET,
+      label: "single-pass",
+    });
+    return { args: command.args, filterComplex: command.filterComplex, outputPath: command.outputPath, commands: [command], warnings };
+  }
+
+  const intermediatePath = deriveIntermediatePath(outputPath);
+  const { command: pass1, warnings } = buildBasePassCommand(cue, intermediatePath, opts, {
+    deferFrameTitleIndices: new Set(frameTitleIndices),
+    videoEncodeArgs: INTERMEDIATE_VIDEO_ENCODE_ARGS,
+    label: "pass1-base",
+  });
+  // titleAssets is guaranteed populated for every index in frameTitleIndices (that's exactly how
+  // frameTitleSegmentIndices derives them), so this is never undefined here.
+  const pass2 = buildTitleOverlayPass(cue, intermediatePath, outputPath, frameTitleIndices, opts?.titleAssets ?? {});
+
+  return {
+    args: pass2.args,
+    filterComplex: pass2.filterComplex,
+    outputPath: pass2.outputPath,
+    commands: [pass1, pass2],
+    warnings,
+  };
+}
+
+/** No segment indices deferred - the single-pass control value, named for readability at call sites. */
+const EMPTY_DEFER_SET: ReadonlySet<number> = new Set();
+
+interface BasePassControl {
+  /**
+   * Segment indices whose title/backdrop rendering is skipped in THIS pass (deferred to pass 2's
+   * buildTitleOverlayPass instead). Always a subset of frame-kind-titled segments - an ASS
+   * ("typing") title is never deferred, see frameTitleSegmentIndices's doc.
+   */
+  deferFrameTitleIndices: ReadonlySet<number>;
+  /** Overrides the trailing `-c:v ...` encode args (default: today's single-pass delivery encode). */
+  videoEncodeArgs?: string[];
+  label: string;
+}
+
+/**
+ * Builds the base concat/mix filter graph (everything buildRenderPlan has always done) as one
+ * RenderCommand. Extracted out of buildRenderPlan so both the single-pass path and two-pass
+ * render's pass 1 share this one implementation - see buildRenderPlan's dispatch above and
+ * BasePassControl's doc for what varies between the two.
+ */
+function buildBasePassCommand(
   cue: CueSheet,
   outputPath: string,
-  opts?: RenderPlanOptions,
-): RenderPlan {
+  opts: RenderPlanOptions | undefined,
+  control: BasePassControl,
+): { command: RenderCommand; warnings: string[] } {
   const burnSubtitles = opts?.burnSubtitles ?? true;
   assertCropMatchesProjectAspect(cue, opts?.sourceDimensions);
   const { width: W, height: H, fps } = cue.project;
@@ -108,6 +207,8 @@ export function buildRenderPlan(
       resolvedStyle?: CueSheet["subtitleStyle"];
       title?: CueSheet["segments"][number]["title"];
       titleAsset?: TitleAsset;
+      /** True when this segment's title is deferred to a two-pass render's pass 2 (see BasePassControl). */
+      deferTitle?: boolean;
       transitionIn?: CueSheet["segments"][number]["transitionIn"];
       transitionOut?: CueSheet["segments"][number]["transitionOut"];
       /** This clip's own OUTPUT duration (seconds, post-speed) - only needed when a transition is
@@ -147,7 +248,7 @@ export function buildRenderPlan(
     let vLabel = `v${i}`;
     filters.push(`[${i}:v]${vParts.join(",")}[${vLabel}]`);
 
-    if (o.title && o.titleAsset) {
+    if (o.title && o.titleAsset && !o.deferTitle) {
       const durationS = o.title.durationS;
       // Backdrop dim: a black color-source layer, faded in/out via `fade ... alpha=1` (ramps the
       // *alpha* channel 0->1->0 instead of the usual luma-to-black) and capped at the requested
@@ -215,9 +316,10 @@ export function buildRenderPlan(
   }
 
   if (cue.intro) addClip(cue.intro, {});
-  // Cumulative output-timeline start time per segment (speed-adjusted) — used to place narration audio at that time.
-  // v1 constraint: intro duration can't be known without probing the file, so it's not included in this offset.
-  let segmentOffset = 0;
+  // Cumulative output-timeline start time per segment (speed-adjusted) — used to place narration
+  // audio at that time (same offset math a two-pass render's pass 2 uses to place title overlays -
+  // see timeline.ts's doc for the v1 intro-duration constraint this inherits).
+  const segmentTimings = computeSegmentOutputTimings(cue);
   const narrationCues: { path: string; start: number }[] = [];
   cue.segments.forEach((s, i) => {
     const style = resolveSubtitleStyle(cue, s);
@@ -246,14 +348,14 @@ export function buildRenderPlan(
       resolvedStyle: style,
       title: s.title ?? undefined,
       titleAsset: s.title ? opts?.titleAssets?.[i] : undefined,
+      deferTitle: control.deferFrameTitleIndices.has(i),
       transitionIn: s.transitionIn ?? undefined,
       transitionOut: s.transitionOut ?? undefined,
       outputDurationS: (s.out - s.in) / s.speed,
     });
     if (cue.narration?.enabled && s.narration) {
-      narrationCues.push({ path: join(cue.narration.dir, s.narration), start: segmentOffset });
+      narrationCues.push({ path: join(cue.narration.dir, s.narration), start: segmentTimings[i]!.startS });
     }
-    segmentOffset += (s.out - s.in) / s.speed;
   });
   if (cue.outro) addClip(cue.outro, {});
 
@@ -261,9 +363,10 @@ export function buildRenderPlan(
   filters.push(`${concatLabels.join("")}concat=n=${n}:v=1:a=1[vout][amain]`);
 
   // BGM ducking (PRD backlog #4) - windows are derived once, up front, from narration placements
-  // (independent of the addClip loop above; see ducking.ts's deriveDuckingWindows doc for why the
-  // segmentOffset math there is kept identical to this function's own). A cuesheet without
-  // narration.ducking set gets duckExpr === null, so every BGM cue below falls back to the exact
+  // (independent of the addClip loop above; see ducking.ts's deriveDuckingWindows doc - both it and
+  // this function's narrationCues placement above share the same computeSegmentOutputTimings, so
+  // they can never drift apart). A cuesheet without narration.ducking set gets duckExpr === null,
+  // so every BGM cue below falls back to the exact
   // same `volume=${b.volume}` filter string as before this feature existed (byte-identical,
   // regression-safe passthrough).
   const ducking = cue.narration?.ducking;
@@ -325,7 +428,7 @@ export function buildRenderPlan(
   }
   if (cue.project.fadeOutS) {
     // The final output's total duration isn't known at plan-build time without probing intro/
-    // outro (same v1 constraint noted at segmentOffset above), so rather than computing an
+    // outro (same v1 constraint noted at computeSegmentOutputTimings above), so rather than computing an
     // absolute start time for "fade out", this uses the standard reverse-fade-in-reverse idiom:
     // reversing the stream turns "fade out the last N seconds" into "fade in the first N seconds",
     // which needs no knowledge of the stream's total length at all.
@@ -344,6 +447,12 @@ export function buildRenderPlan(
   // reliably avoids it - filter execution isn't the render's bottleneck (encode is), so this
   // costs negligible wall-clock time. Scoped to only when it's actually needed (a captured-frames
   // title is present) so cuesheets without one (the overwhelming majority) are unaffected.
+  // This pass's own frame-overlay titles only (deferred ones don't set usesFrameOverlayTitle,
+  // since their branch never gets built in this pass - see the addClip title condition above) -
+  // for a two-pass render's pass 1, every frame title is deferred, so this is always false there
+  // and the flag is never needed (pass 2 has its own, structurally simpler, deadlock-avoidance
+  // rationale - see twoPass.ts's buildTitleOverlayPass doc).
+  const videoEncodeArgs = control.videoEncodeArgs ?? ["-c:v", "libx264"];
   const args = [
     ...inputs,
     ...(usesFrameOverlayTitle ? ["-filter_complex_threads", "1"] : []),
@@ -355,8 +464,7 @@ export function buildRenderPlan(
     finalAudio,
     "-r",
     String(fps),
-    "-c:v",
-    "libx264",
+    ...videoEncodeArgs,
     "-pix_fmt",
     "yuv420p",
     "-c:a",
@@ -364,7 +472,7 @@ export function buildRenderPlan(
     "-y",
     outputPath,
   ];
-  return { args, filterComplex, outputPath, warnings };
+  return { command: { args, filterComplex, outputPath, label: control.label }, warnings };
 }
 
 /**
