@@ -33,7 +33,7 @@ import { useCueSheetHistory } from "./hooks/useCueSheetHistory.js";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts.js";
 import { VideoPreview } from "./components/VideoPreview.js";
 import type { VideoPreviewHandle } from "./components/VideoPreview.js";
-import { BgmSettingsPanel } from "./components/BgmSettingsPanel.js";
+import { BgmSettingsPanel } from "./components/BgmSettingsPanel/index.js";
 import { MomentPalette } from "./components/MomentPalette.js";
 import { KeyboardHelp } from "./components/KeyboardHelp/index.js";
 import { HeaderBar } from "./components/HeaderBar/index.js";

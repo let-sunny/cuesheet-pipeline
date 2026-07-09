@@ -1,8 +1,10 @@
 import { useRef, useState } from "react";
+import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
 import type { BgmCue } from "@cuesheet/schema";
-import { bgmFileStreamUrl, type BgmFile } from "../api.js";
-import { useNumericField } from "../hooks/useNumericField.js";
+import { bgmFileStreamUrl, type BgmFile } from "../../api.js";
+import { useNumericField } from "../../hooks/useNumericField.js";
+import { styles } from "./BgmSettingsPanel.styles.js";
 
 interface Props {
   cue: BgmCue;
@@ -86,12 +88,15 @@ export function BgmSettingsPanel({
           from picking it, so auditioning doesn't require committing first. */}
       <div className="qf-group">
         <div className="qf-group-label">File</div>
-        <div className="bgm-file-list">
+        <div {...stylex.props(styles.fileList)}>
           {files.length === 0 ? (
             <p className="narration-empty-note">{filesNote ?? "No audio files found under media/ or clipDir"}</p>
           ) : (
             files.map((f) => (
-              <div className={`bgm-file-row${f.path === cue.file ? " selected" : ""}`} key={f.path}>
+              <div
+                className={`bgm-file-row${f.path === cue.file ? " selected" : ""} ${stylex.props(styles.fileRow).className ?? ""}`}
+                key={f.path}
+              >
                 <button
                   type="button"
                   className="plain-button bgm-file-play"
