@@ -1,6 +1,10 @@
 import { join } from "node:path";
 import type { CueSheet, Segment } from "@cuesheet/schema";
+import { buildDuckingGainExpression, deriveDuckingWindows } from "./ducking.js";
 import { escapeFilterPath, type TitleAsset } from "./title.js";
+
+export { buildDuckingGainExpression, deriveDuckingWindows, mergeDuckingWindows } from "./ducking.js";
+export type { DuckingWindow } from "./ducking.js";
 
 export { buildSrt, secondsToSrtTimestamp } from "./srt.js";
 export {
@@ -52,6 +56,16 @@ export interface RenderPlanOptions {
    * (segments[i].title: ...) rather than silently skipping the title.
    */
   titleAssets?: Record<number, TitleAsset>;
+  /**
+   * Each narrated segment's own audio clip duration (seconds), keyed by segment index - only
+   * needed when cue.narration.ducking is set (PRD backlog #4). buildRenderPlan stays pure/sync
+   * (no ffprobe itself); the CLI/web server probe each segment.narration file and pass the
+   * result here, same pattern as sourceDimensions above. A narrated segment missing an entry
+   * here just skips ducking for that one cut (see ducking.ts's deriveDuckingWindows) rather than
+   * throwing - unlike a missing titleAssets entry, ducking is a non-essential enhancement on top
+   * of narration, not something narration itself depends on to render.
+   */
+  narrationDurations?: Record<number, number>;
 }
 
 /**
@@ -239,6 +253,20 @@ export function buildRenderPlan(
   const n = clipCount;
   filters.push(`${concatLabels.join("")}concat=n=${n}:v=1:a=1[vout][amain]`);
 
+  // BGM ducking (PRD backlog #4) - windows are derived once, up front, from narration placements
+  // (independent of the addClip loop above; see ducking.ts's deriveDuckingWindows doc for why the
+  // segmentOffset math there is kept identical to this function's own). A cuesheet without
+  // narration.ducking set gets duckExpr === null, so every BGM cue below falls back to the exact
+  // same `volume=${b.volume}` filter string as before this feature existed (byte-identical,
+  // regression-safe passthrough).
+  const ducking = cue.narration?.ducking;
+  let duckExpr: string | null = null;
+  if (ducking) {
+    const { windows, warnings: duckingWarnings } = deriveDuckingWindows(cue, opts?.narrationDurations);
+    warnings.push(...duckingWarnings);
+    duckExpr = buildDuckingGainExpression(windows, ducking.amount, ducking.fadeS);
+  }
+
   const mixLabels: string[] = [];
   if (cue.bgm.length > 0) {
     for (const b of cue.bgm) {
@@ -246,8 +274,15 @@ export function buildRenderPlan(
       const i = idx++;
       const delay = Math.round(b.start * 1000);
       const dur = b.end - b.start;
+      // Ducking multiplies into this BGM's own volume (the ffmpeg volume filter's t refers to
+      // this stream's own timestamp, which adelay above already shifted into output time - the
+      // same domain deriveDuckingWindows placed its windows in). eval=frame is required for the
+      // expression to be re-evaluated every frame instead of once at filter init.
+      const volumePart = duckExpr
+        ? `volume=eval=frame:volume='${b.volume}*(${duckExpr})'`
+        : `volume=${b.volume}`;
       filters.push(
-        `[${i}:a]atrim=0:${dur},adelay=${delay}|${delay},volume=${b.volume}[bgm${i}]`,
+        `[${i}:a]atrim=0:${dur},adelay=${delay}|${delay},${volumePart}[bgm${i}]`,
       );
       mixLabels.push(`[bgm${i}]`);
     }

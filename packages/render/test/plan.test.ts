@@ -797,6 +797,98 @@ describe("buildRenderPlan", () => {
     });
   });
 
+  describe("BGM ducking (narration.ducking, PRD backlog #4)", () => {
+    it("is a byte-identical passthrough when narration.ducking is absent, even with narration+bgm present", () => {
+      const withoutDucking = buildRenderPlan(
+        make({
+          bgm: [{ file: "/bgm.mp3", start: 0, end: 10, volume: 0.4 }],
+          narration: { enabled: true, dir: "/narration", volume: 1 },
+          segments: [
+            { clip: "a.mp4", in: 0, out: 5, speed: 1, volume: 1, subtitle: "", narration: "n0.mp3" },
+            { clip: "b.mp4", in: 2, out: 6, speed: 1.5, volume: 0.3, subtitle: "안녕" },
+          ],
+        }),
+        "out.mp4",
+      );
+      expect(withoutDucking.filterComplex).toContain("volume=0.4[bgm");
+      expect(withoutDucking.filterComplex).not.toContain("eval=frame");
+    });
+
+    it("is a passthrough when narration is enabled+ducking is set but no segment carries a narration file", () => {
+      const p = buildRenderPlan(
+        make({
+          bgm: [{ file: "/bgm.mp3", start: 0, end: 10, volume: 0.4 }],
+          narration: { enabled: true, dir: "/narration", volume: 1, ducking: {} },
+        }),
+        "out.mp4",
+      );
+      expect(p.filterComplex).toContain("volume=0.4[bgm");
+      expect(p.filterComplex).not.toContain("eval=frame");
+      expect(p.warnings).toEqual([]);
+    });
+
+    it("multiplies the BGM's own volume by a volume=eval=frame gain expression over the narration window", () => {
+      const p = buildRenderPlan(
+        make({
+          bgm: [{ file: "/bgm.mp3", start: 0, end: 10, volume: 0.4 }],
+          narration: { enabled: true, dir: "/narration", volume: 1, ducking: { amount: 0.6, fadeS: 0.3 } },
+          segments: [
+            { clip: "a.mp4", in: 0, out: 5, speed: 1, volume: 1, subtitle: "", narration: "n0.mp3" },
+            { clip: "b.mp4", in: 2, out: 6, speed: 1.5, volume: 0.3, subtitle: "안녕" },
+          ],
+        }),
+        "out.mp4",
+        { narrationDurations: { 0: 3 } },
+      );
+      // Segment a starts at output t=0, narration duration 3s -> window [0,3].
+      expect(p.filterComplex).toContain("volume=eval=frame:volume='0.4*(");
+      expect(p.filterComplex).toContain("between(t,0,3)");
+      // Ramp-down edge: 1 - 0.6*(t-0)/0.3
+      expect(p.filterComplex).toContain("1-(0.6)*(t-0)/0.3");
+      // Sustain floor: 1 - 0.6 = 0.4
+      expect(p.filterComplex).toContain("lt(t,2.7),0.4");
+      // Ramp-up edge back to 1
+      expect(p.filterComplex).toContain("0.4+(0.6)*(t-(2.7))/0.3");
+    });
+
+    it("skips (with a warning) a narrated segment whose duration wasn't probed, rather than throwing", () => {
+      const p = buildRenderPlan(
+        make({
+          bgm: [{ file: "/bgm.mp3", start: 0, end: 10, volume: 0.4 }],
+          narration: { enabled: true, dir: "/narration", volume: 1, ducking: {} },
+          segments: [
+            { clip: "a.mp4", in: 0, out: 5, speed: 1, volume: 1, subtitle: "", narration: "n0.mp3" },
+            { clip: "b.mp4", in: 2, out: 6, speed: 1.5, volume: 0.3, subtitle: "안녕" },
+          ],
+        }),
+        "out.mp4",
+        // No narrationDurations option at all.
+      );
+      expect(p.filterComplex).not.toContain("eval=frame");
+      expect(p.warnings.some((w) => w.includes("segments[0].narration") && w.includes("ducking skipped"))).toBe(true);
+    });
+
+    it("merges two overlapping/adjacent narration windows into one continuous dip", () => {
+      const p = buildRenderPlan(
+        make({
+          bgm: [{ file: "/bgm.mp3", start: 0, end: 10, volume: 0.4 }],
+          narration: { enabled: true, dir: "/narration", volume: 1, ducking: { amount: 0.6, fadeS: 0.3 } },
+          segments: [
+            // Segment a: output [0,5), narration duration 5.2s -> window [0, 5.2] overlaps segment b's start.
+            { clip: "a.mp4", in: 0, out: 5, speed: 1, volume: 1, subtitle: "", narration: "n0.mp3" },
+            // Segment b starts at output t=5 (a's (out-in)/speed = 5), narration duration 1s -> window [5,6].
+            { clip: "b.mp4", in: 0, out: 4, speed: 1, volume: 1, subtitle: "", narration: "n1.mp3" },
+          ],
+        }),
+        "out.mp4",
+        { narrationDurations: { 0: 5.2, 1: 1 } },
+      );
+      // Merged into a single [0, 6] window rather than two separate between() branches.
+      expect(p.filterComplex).toContain("between(t,0,6)");
+      expect(p.filterComplex.match(/between\(t,/g)?.length).toBe(1);
+    });
+  });
+
   describe("episode-level fadeIn/fadeOut (project.fadeInS/fadeOutS, PRD backlog #3)", () => {
     it("produces an identical plan to the baseline when fadeInS/fadeOutS are absent (regression)", () => {
       const withoutFades = buildRenderPlan(make(), "out.mp4");

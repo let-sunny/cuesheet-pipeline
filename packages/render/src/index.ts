@@ -99,6 +99,18 @@ for (const clip of croppedClips) {
   if (dims) sourceDimensions[clip] = dims;
 }
 
+// Only needed when ducking is on (deriveDuckingWindows needs each narrated segment's clip
+// duration) - probing every narration file unconditionally would be wasted work otherwise.
+const narrationDurations: Record<number, number> = {};
+const narrationConfig = result.data.narration;
+if (narrationConfig?.enabled && narrationConfig.ducking) {
+  result.data.segments.forEach((s, i) => {
+    if (!s.narration) return;
+    const durationS = probeDurationS(join(narrationConfig.dir, s.narration));
+    if (durationS != null) narrationDurations[i] = durationS;
+  });
+}
+
 const hasAnyTitle = result.data.segments.some((s) => s.title);
 let titleAssets: Record<number, import("./title.js").TitleAsset> = {};
 if (hasAnyTitle) {
@@ -112,7 +124,12 @@ if (hasAnyTitle) {
 
 let plan;
 try {
-  plan = buildRenderPlan(result.data, outPath, { burnSubtitles, sourceDimensions, titleAssets });
+  plan = buildRenderPlan(result.data, outPath, {
+    burnSubtitles,
+    sourceDimensions,
+    titleAssets,
+    narrationDurations,
+  });
 } catch (e) {
   console.error((e as Error).message);
   process.exit(1);
