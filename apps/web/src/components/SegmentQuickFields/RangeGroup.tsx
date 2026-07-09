@@ -30,11 +30,28 @@ export function RangeGroup({ clip, lengthS, inField, outField }: RangeGroupProps
       <div className="qf-row">
         <label className="qf-field field-narrow">
           <span>In</span>
-          <input type="number" className="plain-field" min={0} {...inField} data-testid="cut-field-in" />
+          {/* type="text", not "number" - a native number input sanitizes any value that isn't
+              plain float syntax back to "" (no leading "+", no ":"), which would silently eat the
+              M:SS.s shorthand and relative +/-n entry (trim-ux-conventions.md section 4.4) before
+              our own parser ever sees it. Up/Down frame-stepping is handled entirely in JS
+              (useNumericField's step/bigStep), so the native spinner isn't needed either. */}
+          <input
+            type="text"
+            inputMode="decimal"
+            className="plain-field"
+            {...inField}
+            data-testid="cut-field-in"
+          />
         </label>
         <label className="qf-field field-narrow">
           <span>Out</span>
-          <input type="number" className="plain-field" min={0} {...outField} data-testid="cut-field-out" />
+          <input
+            type="text"
+            inputMode="decimal"
+            className="plain-field"
+            {...outField}
+            data-testid="cut-field-out"
+          />
         </label>
         <span className="qf-readonly">Length {lengthS.toFixed(1)}s</span>
       </div>

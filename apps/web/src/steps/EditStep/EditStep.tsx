@@ -140,6 +140,7 @@ export function EditStep({
                 globalSubtitleStyle={draft.subtitleStyle}
                 subtitleStylePresets={draft.subtitleStylePresets}
                 projectWidth={draft.project.width}
+                projectFps={draft.project.fps}
                 onToggleStyleOverride={(enabled) => actions.toggleSegmentStyleOverride(selectedIndex, enabled)}
                 onChangeStyleOverride={(patch) => actions.updateSegmentStyleOverride(selectedIndex, patch)}
                 onPromoteStyleOverride={() => actions.promoteSegmentStyleOverride(selectedIndex)}

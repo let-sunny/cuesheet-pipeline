@@ -59,6 +59,9 @@ interface Props {
   subtitleStylePresets: SubtitleStylePresets | undefined;
   /** Project frame width (px) — used to estimate whether the subtitle text might overflow the frame. */
   projectWidth: number;
+  /** Project fps — derives the In/Out fields' Up/Down arrow-key frame nudge (1/fps), per
+   * trim-ux-conventions.md section 4.4 (no hardcoded frame duration). */
+  projectFps: number;
   onToggleStyleOverride: (enabled: boolean) => void;
   onChangeStyleOverride: (patch: Partial<SubtitleStyleOverride>) => void;
   onPromoteStyleOverride: () => void;
@@ -112,6 +115,7 @@ export function SegmentQuickFields({
   globalSubtitleStyle,
   subtitleStylePresets,
   projectWidth,
+  projectFps,
   onToggleStyleOverride,
   onChangeStyleOverride,
   onPromoteStyleOverride,
@@ -129,15 +133,25 @@ export function SegmentQuickFields({
   // These hooks must run unconditionally (before the `!segment` early return below) - they fall
   // back to placeholder values when there's no selected segment, but the actual fields only
   // render once `segment` is confirmed non-null further down.
+  // In/Out get the frame-precision treatment (trim-ux-conventions.md section 4.4): Up/Down steps
+  // by 1 frame (derived from project.fps, never hardcoded), Shift+Up/Down by 1s, and typed text
+  // accepts M:SS.s shorthand plus a leading +/- as a delta from the current value.
+  const frameS = 1 / projectFps;
   const inField = useNumericField({
     value: segment?.in ?? 0,
     coerce: (n) => Math.max(0, n),
     onCommit: (next) => onChange({ in: next }),
+    parseTimeShorthand: true,
+    step: frameS,
+    bigStep: 1,
   });
   const outField = useNumericField({
     value: segment?.out ?? 0,
     coerce: (n) => Math.max(0, n),
     onCommit: (next) => onChange({ out: next }),
+    parseTimeShorthand: true,
+    step: frameS,
+    bigStep: 1,
   });
   const speedField = useNumericField({
     value: segment?.speed ?? 1,

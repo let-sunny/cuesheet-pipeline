@@ -47,6 +47,7 @@ function baseProps(overrides: Partial<ComponentProps<typeof SegmentQuickFields>>
     globalSubtitleStyle,
     subtitleStylePresets: undefined,
     projectWidth: 1080,
+    projectFps: 30,
     onToggleStyleOverride: vi.fn(),
     onChangeStyleOverride: vi.fn(),
     onPromoteStyleOverride: vi.fn(),
@@ -205,5 +206,39 @@ describe("SegmentQuickFields", () => {
     render(<SegmentQuickFields {...baseProps({ onChange })} />);
     fireEvent.change(screen.getByDisplayValue("hello"), { target: { value: "updated" } });
     expect(onChange).toHaveBeenCalledWith({ subtitle: "updated" });
+  });
+
+  it("In/Out: ArrowUp steps by 1/fps (not a hardcoded 1/30), Shift+ArrowUp steps by 1s", () => {
+    const onChange = vi.fn();
+    render(<SegmentQuickFields {...baseProps({ onChange, projectFps: 24, segment: segment({ in: 2 }) })} />);
+    const inField = screen.getByTestId("cut-field-in");
+
+    fireEvent.keyDown(inField, { key: "ArrowUp" });
+    expect(onChange).toHaveBeenCalledOnce();
+    expect((onChange.mock.calls[0]![0] as { in: number }).in).toBeCloseTo(2 + 1 / 24, 5);
+
+    onChange.mockClear();
+    fireEvent.keyDown(inField, { key: "ArrowUp", shiftKey: true });
+    expect(onChange).toHaveBeenCalledWith({ in: 3 });
+  });
+
+  it("In/Out: a leading -/+ in the typed text commits a delta from the current value", () => {
+    const onChange = vi.fn();
+    render(<SegmentQuickFields {...baseProps({ onChange, segment: segment({ out: 9 }) })} />);
+    const outField = screen.getByTestId("cut-field-out");
+
+    fireEvent.change(outField, { target: { value: "-1.5" } });
+    fireEvent.blur(outField);
+    expect(onChange).toHaveBeenCalledWith({ out: 7.5 });
+  });
+
+  it("In/Out: accepts M:SS.s shorthand", () => {
+    const onChange = vi.fn();
+    render(<SegmentQuickFields {...baseProps({ onChange })} />);
+    const inField = screen.getByTestId("cut-field-in");
+
+    fireEvent.change(inField, { target: { value: "1:02.5" } });
+    fireEvent.blur(inField);
+    expect(onChange).toHaveBeenCalledWith({ in: 62.5 });
   });
 });
