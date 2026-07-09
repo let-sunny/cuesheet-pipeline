@@ -175,6 +175,15 @@ edits handled grows, schema expands along with it.
   fast jsdom unit tests. `tests/e2e/` (repo root) is a separate, thin Playwright smoke suite for
   full user journeys — see `tests/e2e/README.md`.
 
+## No invented UI patterns (user rule, 2026-07-09)
+
+Never invent a novel interaction pattern. Before designing any UI mechanism (trim,
+scrubbing, lane editing, zoom, pickers), research how established editors (Premiere,
+Final Cut, CapCut, Descript, YouTube Studio) solve it and adopt the convention — users
+arrive with those instincts. Motivating incident: an invented "overview bar + zoomed
+bar" two-level trim read as an uninteractive blue box and was judged unintuitive;
+it is being replaced with the researched convention.
+
 ## Composition rule: groups are components, panels are arrangements (user rule, 2026-07-09)
 
 A settings panel (cut settings, export sections) never accretes inline field groups.
