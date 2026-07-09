@@ -599,6 +599,245 @@ describe("buildRenderPlan", () => {
     });
   });
 
+  describe("transitions (fade/dip, PRD backlog #3)", () => {
+    it("produces an identical filter chain to the baseline when no segment has a transition (regression)", () => {
+      const withoutTransitions = buildRenderPlan(make(), "out.mp4");
+      expect(withoutTransitions.filterComplex).not.toContain("fade=");
+      expect(withoutTransitions.filterComplex).not.toContain("afade=");
+      expect(withoutTransitions.filterComplex).not.toContain("dipin");
+      expect(withoutTransitions.filterComplex).not.toContain("dipout");
+      expect(withoutTransitions.args.join(" ")).toContain("-map [vout]");
+    });
+
+    it("wires a fade-in at the segment's own output-time st=0, chained after the base scale/fps step", () => {
+      const p = buildRenderPlan(
+        make({
+          segments: [
+            {
+              clip: "a.mp4",
+              in: 0,
+              out: 5,
+              speed: 1,
+              volume: 1,
+              subtitle: "",
+              transitionIn: { type: "fade", durationS: 0.5 },
+            },
+          ],
+        }),
+        "out.mp4",
+      );
+      expect(p.filterComplex).toContain("scale=1920:1080,setsar=1,fps=30[v0]");
+      expect(p.filterComplex).toContain("[v0]fade=t=in:st=0:d=0.5[vtxin0]");
+      expect(p.filterComplex).toContain("[vtxin0][a0]concat=");
+      expect(p.filterComplex).toContain("afade=t=in:st=0:d=0.5");
+    });
+
+    it("wires a fade-out at st=outputDuration-durationS (no speed - source duration equals output duration)", () => {
+      const p = buildRenderPlan(
+        make({
+          segments: [
+            {
+              clip: "a.mp4",
+              in: 0,
+              out: 5,
+              speed: 1,
+              volume: 1,
+              subtitle: "",
+              transitionOut: { type: "fade", durationS: 1 },
+            },
+          ],
+        }),
+        "out.mp4",
+      );
+      // outputDurationS = 5 (out-in, speed 1) -> st = 5-1 = 4
+      expect(p.filterComplex).toContain("[v0]fade=t=out:st=4:d=1[vtxout0]");
+      expect(p.filterComplex).toContain("afade=t=out:st=4:d=1");
+    });
+
+    it("computes the fade-out offset on OUTPUT time (post-setpts/speed), not source time", () => {
+      const p = buildRenderPlan(
+        make({
+          segments: [
+            {
+              // Source range is 8s (0-8), speed 2x -> output duration = 4s
+              clip: "a.mp4",
+              in: 0,
+              out: 8,
+              speed: 2,
+              volume: 1,
+              subtitle: "",
+              transitionOut: { type: "fade", durationS: 1 },
+            },
+          ],
+        }),
+        "out.mp4",
+      );
+      // st = outputDuration(4) - durationS(1) = 3, not 8-1=7 (source time)
+      expect(p.filterComplex).toContain("fade=t=out:st=3:d=1[vtxout0]");
+      expect(p.filterComplex).toContain("afade=t=out:st=3:d=1");
+    });
+
+    it("chains transitionIn then transitionOut in sequence on the same clip", () => {
+      const p = buildRenderPlan(
+        make({
+          segments: [
+            {
+              clip: "a.mp4",
+              in: 0,
+              out: 5,
+              speed: 1,
+              volume: 1,
+              subtitle: "",
+              transitionIn: { type: "fade", durationS: 0.5 },
+              transitionOut: { type: "fade", durationS: 0.5 },
+            },
+          ],
+        }),
+        "out.mp4",
+      );
+      expect(p.filterComplex).toContain("[v0]fade=t=in:st=0:d=0.5[vtxin0]");
+      expect(p.filterComplex).toContain("[vtxin0]fade=t=out:st=4.5:d=0.5[vtxout0]");
+      expect(p.filterComplex).toContain("[vtxout0][a0]concat=");
+      expect(p.filterComplex).toContain("afade=t=in:st=0:d=0.5,afade=t=out:st=4.5:d=0.5");
+    });
+
+    it("wires a dip-in as a black-alpha overlay ramping from dim down to 0, defaulting dim to 1", () => {
+      const p = buildRenderPlan(
+        make({
+          segments: [
+            {
+              clip: "a.mp4",
+              in: 0,
+              out: 5,
+              speed: 1,
+              volume: 1,
+              subtitle: "",
+              transitionIn: { type: "dip", durationS: 0.5 },
+            },
+          ],
+        }),
+        "out.mp4",
+      );
+      expect(p.filterComplex).toContain(
+        "color=black:size=1920x1080:duration=5:rate=30,format=yuva420p,fade=t=out:st=0:d=0.5:alpha=1,colorchannelmixer=aa=1[dipin0]",
+      );
+      expect(p.filterComplex).toContain("[v0][dipin0]overlay=0:0[vdipin0]");
+      expect(p.filterComplex).toContain("[vdipin0][a0]concat=");
+    });
+
+    it("wires a dip-out with a partial dim (0.6), ramping alpha from 0 up to dim by the segment's end", () => {
+      const p = buildRenderPlan(
+        make({
+          segments: [
+            {
+              clip: "a.mp4",
+              in: 0,
+              out: 5,
+              speed: 1,
+              volume: 1,
+              subtitle: "",
+              transitionOut: { type: "dip", durationS: 0.5, dim: 0.6 },
+            },
+          ],
+        }),
+        "out.mp4",
+      );
+      expect(p.filterComplex).toContain(
+        "color=black:size=1920x1080:duration=5:rate=30,format=yuva420p,fade=t=in:st=4.5:d=0.5:alpha=1,colorchannelmixer=aa=0.6[dipout0]",
+      );
+      expect(p.filterComplex).toContain("[v0][dipout0]overlay=0:0[vdipout0]");
+      // Audio still gets a plain afade (same window) regardless of dip's partial dim.
+      expect(p.filterComplex).toContain("afade=t=out:st=4.5:d=0.5");
+    });
+
+    it("clamps a transition longer than the cut's own output duration so the offset never goes negative", () => {
+      const p = buildRenderPlan(
+        make({
+          segments: [
+            {
+              // outputDurationS = 0.3s, shorter than the transition's own 2s max
+              clip: "a.mp4",
+              in: 0,
+              out: 0.3,
+              speed: 1,
+              volume: 1,
+              subtitle: "",
+              transitionOut: { type: "fade", durationS: 2 },
+            },
+          ],
+        }),
+        "out.mp4",
+      );
+      // d clamped to 0.3 -> st = 0.3-0.3 = 0
+      expect(p.filterComplex).toContain("fade=t=out:st=0:d=0.3[vtxout0]");
+    });
+
+    it("applies a transition on the title-composited frame (chained after the title/backdrop stage)", () => {
+      const p = buildRenderPlan(
+        make({
+          segments: [
+            {
+              clip: "a.mp4",
+              in: 0,
+              out: 5,
+              speed: 1,
+              volume: 1,
+              subtitle: "",
+              title: { text: "Cast on", preset: "typing", durationS: 2 },
+              transitionIn: { type: "fade", durationS: 0.5 },
+            },
+          ],
+        }),
+        "out.mp4",
+        { titleAssets: { 0: { kind: "ass", path: "/tmp/title.ass" } } },
+      );
+      expect(p.filterComplex).toContain("[v0]subtitles=/tmp/title.ass[vass0]");
+      expect(p.filterComplex).toContain("[vass0]fade=t=in:st=0:d=0.5[vtxin0]");
+      expect(p.filterComplex).toContain("[vtxin0][a0]concat=");
+    });
+  });
+
+  describe("episode-level fadeIn/fadeOut (project.fadeInS/fadeOutS, PRD backlog #3)", () => {
+    it("produces an identical plan to the baseline when fadeInS/fadeOutS are absent (regression)", () => {
+      const withoutFades = buildRenderPlan(make(), "out.mp4");
+      expect(withoutFades.filterComplex).not.toContain("vfadein");
+      expect(withoutFades.filterComplex).not.toContain("vfadeout");
+      expect(withoutFades.args.join(" ")).toContain("-map [vout]");
+    });
+
+    it("fades the final video+audio in from st=0 when project.fadeInS is set", () => {
+      const p = buildRenderPlan(make({ project: { name: "t", fps: 30, width: 1920, height: 1080, fadeInS: 1 } }), "out.mp4");
+      expect(p.filterComplex).toContain("[vout]fade=t=in:st=0:d=1[vfadein]");
+      expect(p.filterComplex).toContain("[amain]afade=t=in:st=0:d=1[afadein]");
+      expect(p.args.join(" ")).toContain("-map [vfadein]");
+      expect(p.args.join(" ")).toContain("-map [afadein]");
+    });
+
+    it("fades the final video+audio out using the reverse-fade-in-reverse idiom when project.fadeOutS is set (total duration unknown)", () => {
+      const p = buildRenderPlan(make({ project: { name: "t", fps: 30, width: 1920, height: 1080, fadeOutS: 1.5 } }), "out.mp4");
+      expect(p.filterComplex).toContain("[vout]reverse,fade=t=in:st=0:d=1.5,reverse[vfadeout]");
+      expect(p.filterComplex).toContain("[amain]areverse,afade=t=in:st=0:d=1.5,areverse[afadeout]");
+      expect(p.args.join(" ")).toContain("-map [vfadeout]");
+      expect(p.args.join(" ")).toContain("-map [afadeout]");
+    });
+
+    it("chains fadeIn then fadeOut, and fadeOut reads off the amix output when bgm is present", () => {
+      const p = buildRenderPlan(
+        make({
+          project: { name: "t", fps: 30, width: 1920, height: 1080, fadeInS: 0.5, fadeOutS: 0.5 },
+          bgm: [{ file: "/bgm.mp3", start: 0, end: 10, volume: 0.4 }],
+        }),
+        "out.mp4",
+      );
+      expect(p.filterComplex).toContain("[vout]fade=t=in:st=0:d=0.5[vfadein]");
+      expect(p.filterComplex).toContain("[vfadein]reverse,fade=t=in:st=0:d=0.5,reverse[vfadeout]");
+      expect(p.filterComplex).toContain("[aout]afade=t=in:st=0:d=0.5[afadein]");
+      expect(p.filterComplex).toContain("[afadein]areverse,afade=t=in:st=0:d=0.5,areverse[afadeout]");
+      expect(p.args.join(" ")).toContain("-map [vfadeout]");
+      expect(p.args.join(" ")).toContain("-map [afadeout]");
+    });
+  });
+
   it("includes codec and fps in the output arguments", () => {
     const p = buildRenderPlan(make(), "final.mp4");
     const s = p.args.join(" ");

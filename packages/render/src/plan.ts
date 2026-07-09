@@ -94,6 +94,13 @@ export function buildRenderPlan(
       resolvedStyle?: CueSheet["subtitleStyle"];
       title?: CueSheet["segments"][number]["title"];
       titleAsset?: TitleAsset;
+      transitionIn?: CueSheet["segments"][number]["transitionIn"];
+      transitionOut?: CueSheet["segments"][number]["transitionOut"];
+      /** This clip's own OUTPUT duration (seconds, post-speed) - only needed when a transition is
+       * present, to compute its segment-local offsets (see applyTransition). intro/outro never
+       * pass this (their duration isn't known without probing the file), which is fine since they
+       * never carry a transitionIn/Out either. */
+      outputDurationS?: number;
     },
   ): void {
     if (o.ss != null) inputs.push("-ss", String(o.ss));
@@ -162,9 +169,24 @@ export function buildRenderPlan(
       }
     }
 
+    // Per-cut fade/dip (PRD backlog #3) - applied last in the video chain (after title/backdrop),
+    // since a transition fades the whole composited frame the viewer actually sees, not just the
+    // base footage. Offsets are computed on this clip's own OUTPUT duration (o.outputDurationS,
+    // already post-speed - see the caller) since every upstream stage (setpts=PTS/speed) has
+    // already rebased the timeline to output time by this point in the chain.
+    if (o.transitionIn && o.outputDurationS != null) {
+      vLabel = applyTransition(filters, vLabel, i, "in", o.transitionIn, o.outputDurationS, W, H, fps);
+    }
+    if (o.transitionOut && o.outputDurationS != null) {
+      vLabel = applyTransition(filters, vLabel, i, "out", o.transitionOut, o.outputDurationS, W, H, fps);
+    }
+
     const aParts = ["asetpts=PTS-STARTPTS"];
     if (speed !== 1) aParts.push(...atempoChain(speed));
     if (vol !== 1) aParts.push(`volume=${vol}`);
+    if (o.outputDurationS != null) {
+      aParts.push(...transitionAudioFilters(o.transitionIn, o.transitionOut, o.outputDurationS));
+    }
     filters.push(`[${i}:a]${aParts.join(",")}[a${i}]`);
 
     concatLabels.push(`[${vLabel}]`, `[a${i}]`);
@@ -203,6 +225,9 @@ export function buildRenderPlan(
       resolvedStyle: style,
       title: s.title ?? undefined,
       titleAsset: s.title ? opts?.titleAssets?.[i] : undefined,
+      transitionIn: s.transitionIn ?? undefined,
+      transitionOut: s.transitionOut ?? undefined,
+      outputDurationS: (s.out - s.in) / s.speed,
     });
     if (cue.narration?.enabled && s.narration) {
       narrationCues.push({ path: join(cue.narration.dir, s.narration), start: segmentOffset });
@@ -246,6 +271,28 @@ export function buildRenderPlan(
     finalAudio = "[aout]";
   }
 
+  // Episode-level fade in/out (PRD backlog #3) - applied to the final concat output, after bgm/
+  // narration mixing, so it covers the whole finished export (intro if present, or the first
+  // segment otherwise; same at the end).
+  let finalVideo = "[vout]";
+  if (cue.project.fadeInS) {
+    filters.push(`${finalVideo}fade=t=in:st=0:d=${cue.project.fadeInS}[vfadein]`);
+    finalVideo = "[vfadein]";
+    filters.push(`${finalAudio}afade=t=in:st=0:d=${cue.project.fadeInS}[afadein]`);
+    finalAudio = "[afadein]";
+  }
+  if (cue.project.fadeOutS) {
+    // The final output's total duration isn't known at plan-build time without probing intro/
+    // outro (same v1 constraint noted at segmentOffset above), so rather than computing an
+    // absolute start time for "fade out", this uses the standard reverse-fade-in-reverse idiom:
+    // reversing the stream turns "fade out the last N seconds" into "fade in the first N seconds",
+    // which needs no knowledge of the stream's total length at all.
+    filters.push(`${finalVideo}reverse,fade=t=in:st=0:d=${cue.project.fadeOutS},reverse[vfadeout]`);
+    finalVideo = "[vfadeout]";
+    filters.push(`${finalAudio}areverse,afade=t=in:st=0:d=${cue.project.fadeOutS},areverse[afadeout]`);
+    finalAudio = "[afadeout]";
+  }
+
   const filterComplex = filters.join(";");
   // Multiple simultaneous captured-frames title overlays (gooey/melt/particle) in one render -
   // each its own image2-sequence input feeding an `overlay` branch ahead of `concat` - deadlocks
@@ -261,7 +308,7 @@ export function buildRenderPlan(
     "-filter_complex",
     filterComplex,
     "-map",
-    "[vout]",
+    finalVideo,
     "-map",
     finalAudio,
     "-r",
@@ -327,6 +374,81 @@ function atempoChain(speed: number): string[] {
   }
   parts.push(Number(s.toFixed(6)));
   return parts.map((p) => `atempo=${p}`);
+}
+
+/**
+ * Video-side fade/dip at one edge of a cut (PRD backlog #3). Offsets are on the segment's own
+ * OUTPUT timeline: "in" starts at st=0, "out" ends at st=outputDurationS (i.e. starts at
+ * outputDurationS-durationS). durationS is clamped to outputDurationS so a transition longer than
+ * a very short cut never produces a negative start offset.
+ *
+ * "fade" fades the whole composited frame (video+subtitle+title, since this runs last in the
+ * per-clip video chain) directly to/from black via the plain `fade` filter - a single filter link.
+ *
+ * "dip" instead overlays a separate black layer whose alpha ramps 0<->dim (dim<1 = a partial dip
+ * that never fully hides the frame) - the exact same alpha-overlay technique as the title backdrop
+ * dim above (`color=black,format=yuva420p,fade=...:alpha=1,colorchannelmixer=aa=<dim>` then
+ * `overlay`), just windowed to the cut boundary instead of held for a title's whole duration:
+ * - "in": alpha starts at dim (t=0) and fades OUT to 0 by t=durationS (`fade=t=out`), i.e. the cut
+ *   opens fully dipped and reveals the footage.
+ * - "out": alpha starts at 0 and fades IN to dim by the cut's end (`fade=t=in`), i.e. the footage
+ *   is covered by the dip right before the cut ends.
+ * Each side's own color layer spans the clip's whole outputDurationS so its alpha value is exactly
+ * 0 outside its own transition window (no separate `enable` clause needed, unlike the title
+ * backdrop which needs one because it shares the frame with non-title footage on either side).
+ */
+function applyTransition(
+  filters: string[],
+  vLabel: string,
+  i: number,
+  side: "in" | "out",
+  transition: NonNullable<CueSheet["segments"][number]["transitionIn"]>,
+  outputDurationS: number,
+  W: number,
+  H: number,
+  fps: number,
+): string {
+  const d = Math.min(transition.durationS, outputDurationS);
+  const st = side === "in" ? 0 : outputDurationS - d;
+
+  if (transition.type === "fade") {
+    const label = `vtx${side}${i}`;
+    filters.push(`[${vLabel}]fade=t=${side}:st=${st}:d=${d}[${label}]`);
+    return label;
+  }
+
+  const dim = transition.dim ?? 1;
+  const alphaFade = side === "in" ? `fade=t=out:st=0:d=${d}:alpha=1` : `fade=t=in:st=${st}:d=${d}:alpha=1`;
+  const colorLabel = `dip${side}${i}`;
+  filters.push(
+    `color=black:size=${W}x${H}:duration=${outputDurationS}:rate=${fps},format=yuva420p,` +
+      `${alphaFade},colorchannelmixer=aa=${dim}[${colorLabel}]`,
+  );
+  const label = `vdip${side}${i}`;
+  filters.push(`[${vLabel}][${colorLabel}]overlay=0:0[${label}]`);
+  return label;
+}
+
+/**
+ * Audio-side fade for the same cut boundary transitions, regardless of type (fade/dip) - both get
+ * a plain `afade` over the same [st, st+d] window as the video side (screen-spec/PRD: "audio afade
+ * same windows"). Returns filter fragments meant to be appended to a clip's existing audio chain.
+ */
+function transitionAudioFilters(
+  transitionIn: CueSheet["segments"][number]["transitionIn"],
+  transitionOut: CueSheet["segments"][number]["transitionOut"],
+  outputDurationS: number,
+): string[] {
+  const parts: string[] = [];
+  if (transitionIn) {
+    const d = Math.min(transitionIn.durationS, outputDurationS);
+    parts.push(`afade=t=in:st=0:d=${d}`);
+  }
+  if (transitionOut) {
+    const d = Math.min(transitionOut.durationS, outputDurationS);
+    parts.push(`afade=t=out:st=${outputDurationS - d}:d=${d}`);
+  }
+  return parts;
 }
 
 /**
