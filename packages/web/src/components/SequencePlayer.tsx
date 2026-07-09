@@ -1,13 +1,14 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { MouseEvent } from "react";
-import type { Segment, SubtitleStyle, SubtitleStylePresets } from "@cuesheet/schema";
+import type { CueSheet, Segment, SubtitleStyle, SubtitleStylePresets } from "@cuesheet/schema";
 import { Button } from "@astryxdesign/core/Button";
 import { cropPreviewStyle } from "../lib/cropPreview.js";
 import { TitleOverlay } from "./TitleOverlay/index.js";
-import type { ClipMoments } from "../api.js";
+import type { ClipMoments, NarrationFile } from "../api.js";
 import { matchSceneInfo } from "../lib/sceneInfo.js";
 import { cumulativeCutStarts } from "../lib/bgmCutMapping.js";
 import { formatClock } from "../lib/segmentTiming.js";
+import { useSequenceAudio } from "../hooks/useSequenceAudio.js";
 import {
   computeCurrentOutputPosition,
   pickActiveSlot,
@@ -36,6 +37,12 @@ export interface SequencePlayerHandle {
 
 interface Props {
   segments: Segment[];
+  /** Full cuesheet — segments is also passed separately above (existing prop, used by the video
+   *  logic), but useSequenceAudio also needs bgm/narration to make BGM/narration audible here. */
+  cue: CueSheet;
+  /** /api/narration-files listing — passed through to useSequenceAudio to resolve each narrated
+   *  segment's real clip duration by filename. */
+  narrationFiles: NarrationFile[];
   /** Index of the cut currently playing/selected (shared with App's selectedIndex). */
   currentIndex: number;
   /** Draft vision-analysis data — used to show a small scene description for the current cut over the subtitle. */
@@ -63,6 +70,8 @@ interface Props {
 export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function SequencePlayer(
   {
     segments,
+    cue,
+    narrationFiles,
     currentIndex,
     moments,
     subtitleStyle,
@@ -426,6 +435,17 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
     totalOutputSeconds,
   );
   const progressRatio = totalOutputSeconds > 0 ? Math.min(1, currentOutputPosition / totalOutputSeconds) : 0;
+
+  // Makes BGM/narration (and BGM ducking) actually audible during "Play all" - the <video>
+  // elements above only ever carry the selected cut's own embedded audio track. Driven by the
+  // same output-timeline position/playing state/user rate as everything else in this component.
+  useSequenceAudio({
+    cue,
+    positionS: currentOutputPosition,
+    playing,
+    rate: userRate,
+    narrationFiles,
+  });
 
   function goToPrevCut() {
     if (currentIndex > 0) {

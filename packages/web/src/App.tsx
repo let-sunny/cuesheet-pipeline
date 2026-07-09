@@ -1019,6 +1019,8 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
           <SequencePlayer
             ref={sequencePlayerRef}
             segments={draft.segments}
+            cue={draft}
+            narrationFiles={narrationFiles}
             currentIndex={selectedIndex}
             moments={moments}
             subtitleStyle={draft.subtitleStyle}
