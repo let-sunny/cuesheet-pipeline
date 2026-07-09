@@ -1,28 +1,30 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { MouseEvent } from "react";
+import * as stylex from "@stylexjs/stylex";
 import type { CueSheet, Segment, SubtitleStyle, SubtitleStylePresets } from "@cuesheet/schema";
 import { Button } from "@astryxdesign/core/Button";
-import { cropPreviewStyle } from "../lib/cropPreview.js";
-import { TitleOverlay } from "./TitleOverlay/index.js";
-import type { ClipMoments, NarrationFile } from "../api.js";
-import { matchSceneInfo } from "../lib/sceneInfo.js";
-import { cumulativeCutStarts } from "../lib/bgmCutMapping.js";
-import { formatClock } from "../lib/segmentTiming.js";
-import { useSequenceAudio } from "../hooks/useSequenceAudio.js";
+import { cropPreviewStyle } from "../../lib/cropPreview.js";
+import { TitleOverlay } from "../TitleOverlay/index.js";
+import type { ClipMoments, NarrationFile } from "../../api.js";
+import { matchSceneInfo } from "../../lib/sceneInfo.js";
+import { cumulativeCutStarts } from "../../lib/bgmCutMapping.js";
+import { formatClock } from "../../lib/segmentTiming.js";
+import { useSequenceAudio } from "../../hooks/useSequenceAudio.js";
 import {
   computeCurrentOutputPosition,
   pickActiveSlot,
   pickPreloadSlot,
   resolveProgressClickTarget,
-} from "../lib/sequenceScheduling.js";
+} from "../../lib/sequenceScheduling.js";
 import {
   mergeSubtitleStyle,
   subtitleBackgroundRgba,
   subtitleOutlineStyle,
   subtitlePositionStyle,
   toCqw,
-} from "../lib/subtitleOverlay.js";
-import { transitionOpacity } from "../lib/transitionOverlay.js";
+} from "../../lib/subtitleOverlay.js";
+import { transitionOpacity } from "../../lib/transitionOverlay.js";
+import { styles } from "./SequencePlayer.styles.js";
 
 /** Handle for controlling playthrough from outside (e.g. the Space shortcut in App.tsx). */
 export interface SequencePlayerHandle {
@@ -482,29 +484,35 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
   }
 
   return (
-    <div className="sequence-player">
-      <div className="sequence-player-stage">
+    <div {...stylex.props(styles.player)}>
+      <div {...stylex.props(styles.stage)}>
         <video
           ref={videoRefs[0]}
-          className={front === 0 ? "sequence-video visible" : "sequence-video hidden"}
+          {...stylex.props(styles.video, front !== 0 && styles.videoHidden)}
           style={front === 0 ? frontStyle : undefined}
           playsInline
         />
         <video
           ref={videoRefs[1]}
-          className={front === 1 ? "sequence-video visible" : "sequence-video hidden"}
+          {...stylex.props(styles.video, front !== 1 && styles.videoHidden)}
           style={front === 1 ? frontStyle : undefined}
           playsInline
         />
         {sceneHintText ? (
-          <div className="sequence-scene-hint" title={sceneHintText}>
+          <div {...stylex.props(styles.sceneHint)} title={sceneHintText}>
             {sceneHintText}
           </div>
         ) : null}
         <TitleOverlay title={currentSegment?.title} localTimeS={videoNow - (currentSegment?.in ?? 0)} />
         {subtitle !== "" ? (
           <div
-            className={`sequence-subtitle sequence-subtitle-${effectiveStyle.position}`}
+            {...stylex.props(
+              styles.subtitle,
+              effectiveStyle.position === "bottom" && styles.subtitleBottom,
+              effectiveStyle.position === "top" && styles.subtitleTop,
+              effectiveStyle.position === "center" && styles.subtitleCenter,
+            )}
+            data-testid="sequence-subtitle"
             style={{
               color: effectiveStyle.color,
               fontFamily: effectiveStyle.font,
@@ -522,7 +530,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
             }}
           >
             <span
-              className="sequence-subtitle-text"
+              {...stylex.props(styles.subtitleText)}
               style={
                 effectiveStyle.background
                   ? {
@@ -539,11 +547,11 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
             </span>
           </div>
         ) : null}
-        {!currentSegment ? <div className="sequence-player-ended">End</div> : null}
+        {!currentSegment ? <div {...stylex.props(styles.ended)}>End</div> : null}
       </div>
 
       <div
-        className="sequence-player-progress"
+        {...stylex.props(styles.progress)}
         onClick={handleProgressClick}
         role="slider"
         aria-label="Play all progress"
@@ -551,11 +559,11 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
         aria-valuemax={100}
         aria-valuenow={Math.round(progressRatio * 100)}
       >
-        <div className="sequence-player-progress-fill" style={{ width: `${progressRatio * 100}%` }} />
+        <div {...stylex.props(styles.progressFill)} style={{ width: `${progressRatio * 100}%` }} />
       </div>
 
-      <div className="sequence-player-controls">
-        <div className="sequence-player-transport">
+      <div {...stylex.props(styles.controls)}>
+        <div {...stylex.props(styles.transport)}>
           <Button label="Previous cut" variant="ghost" isDisabled={currentIndex <= 0} onClick={goToPrevCut} />
           <Button
             label={playing ? "Pause" : "Play"}
@@ -571,7 +579,10 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
           />
         </div>
 
-        <div className="sequence-player-speed-toggle">
+        {/* `sequence-player-speed-toggle` stays alongside the StyleX class as a marker so the
+            `.sequence-player-speed-toggle button` descendant-selector exception (styles.css) keeps
+            matching - see SequencePlayer.styles.ts's file comment. */}
+        <div className={`sequence-player-speed-toggle ${stylex.props(styles.speedToggle).className}`}>
           {RATE_OPTIONS.map((rate) => (
             <button
               key={rate}
@@ -584,7 +595,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
           ))}
         </div>
 
-        <span className="sequence-player-counter">
+        <span {...stylex.props(styles.counter)}>
           Cut {segments.length > 0 ? `${currentIndex + 1}/${segments.length}` : "0/0"} ·{" "}
           {formatClock(currentOutputPosition)} / {formatClock(totalOutputSeconds)}
         </span>
