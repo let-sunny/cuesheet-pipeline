@@ -1,5 +1,5 @@
 import type { Segment } from "@cuesheet/schema";
-import { MomentPalette } from "../../components/MomentPalette.js";
+import { MomentPalette } from "../../components/MomentPalette/index.js";
 
 export interface ComposeStepProps {
   segments: Segment[];

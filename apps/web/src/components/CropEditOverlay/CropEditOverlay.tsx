@@ -1,9 +1,11 @@
 import { useRef } from "react";
 import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
+import * as stylex from "@stylexjs/stylex";
 import type { Crop } from "@cuesheet/schema";
-import type { CropHandleId } from "../lib/cropGeometry.js";
-import { clamp } from "../lib/clamp.js";
-import { resizeLocked } from "../lib/cropGeometry.js";
+import type { CropHandleId } from "../../lib/cropGeometry.js";
+import { clamp } from "../../lib/clamp.js";
+import { resizeLocked } from "../../lib/cropGeometry.js";
+import { styles } from "./CropEditOverlay.styles.js";
 
 interface Props {
   crop: Crop;
@@ -85,21 +87,23 @@ export function CropEditOverlay({ crop, frameRef, onChange, lockRatio = 1 }: Pro
   };
 
   return (
-    <div className="crop-edit-overlay">
+    <div {...stylex.props(styles.overlay)} data-testid="crop-edit-overlay">
       <div
-        className="crop-edit-box"
+        {...stylex.props(styles.box)}
         style={boxStyle}
         onPointerDown={startDrag("move")}
         onPointerMove={onDrag}
         onPointerUp={endDrag}
+        data-testid="crop-edit-box"
       >
         {HANDLE_IDS.map((id) => (
           <div
             key={id}
-            className={`crop-edit-handle handle-${id}`}
+            {...stylex.props(styles.handle, HANDLE_VARIANT_STYLES[id])}
             onPointerDown={startDrag(id)}
             onPointerMove={onDrag}
             onPointerUp={endDrag}
+            data-testid={`crop-edit-handle-${id}`}
           />
         ))}
       </div>
@@ -108,3 +112,14 @@ export function CropEditOverlay({ crop, frameRef, onChange, lockRatio = 1 }: Pro
 }
 
 const HANDLE_IDS: CropHandleId[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+
+const HANDLE_VARIANT_STYLES: Record<CropHandleId, (typeof styles)[keyof typeof styles]> = {
+  nw: styles.handleNw,
+  n: styles.handleN,
+  ne: styles.handleNe,
+  e: styles.handleE,
+  se: styles.handleSe,
+  s: styles.handleS,
+  sw: styles.handleSw,
+  w: styles.handleW,
+};

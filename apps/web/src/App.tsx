@@ -20,15 +20,15 @@ import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts.js";
 import { useEditStepActions } from "./hooks/useEditStepActions.js";
 import { useComposeStepActions } from "./hooks/useComposeStepActions.js";
 import { useFinishStepActions } from "./hooks/useFinishStepActions.js";
-import type { VideoPreviewHandle } from "./components/VideoPreview.js";
+import type { VideoPreviewHandle } from "./components/VideoPreview/index.js";
 import { KeyboardHelp } from "./components/KeyboardHelp/index.js";
 import { HeaderBar } from "./components/HeaderBar/index.js";
 import type { ThemeModeSetting } from "./lib/theme.js";
 import { StepNav } from "./components/StepNav/index.js";
 import type { Step } from "./components/StepNav/index.js";
-import { MiniTimelineStrip } from "./components/MiniTimelineStrip.js";
-import { SequencePlayer } from "./components/SequencePlayer.js";
-import type { SequencePlayerHandle } from "./components/SequencePlayer.js";
+import { MiniTimelineStrip } from "./components/MiniTimelineStrip/index.js";
+import { SequencePlayer } from "./components/SequencePlayer/index.js";
+import type { SequencePlayerHandle } from "./components/SequencePlayer/index.js";
 import { RenderSettingsDialog } from "./components/RenderSettingsDialog/index.js";
 import { Banner } from "./components/Banner/index.js";
 import { minutesAgoLabel } from "./lib/relativeTime.js";
@@ -427,7 +427,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         subtitleTotal={draft.segments.length}
       />
 
-      <div className="mini-strip-row">
+      <div {...stylex.props(styles.miniStripRow)}>
         <MiniTimelineStrip
           segments={draft.segments}
           selectedIndex={selectedIndex}
@@ -443,7 +443,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       </div>
 
       {sequenceMode ? (
-        <div className="sequence-player-sticky">
+        <div {...stylex.props(styles.sequencePlayerSticky)}>
           <SequencePlayer
             ref={sequencePlayerRef}
             segments={draft.segments}
@@ -461,7 +461,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         </div>
       ) : null}
 
-      <div className="step-body">
+      <div {...stylex.props(styles.stepBody)}>
         {step === "compose" ? (
           <ComposeStep
             segments={draft.segments}
