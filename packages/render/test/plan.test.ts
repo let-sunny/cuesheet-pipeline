@@ -772,6 +772,84 @@ describe("buildRenderPlan", () => {
       expect(p.filterComplex).toContain("fade=t=out:st=0:d=0.3[vtxout0]");
     });
 
+    it("cross-clamps transitionIn+transitionOut proportionally when their combined duration exceeds the cut (QA-2 #1)", () => {
+      // 1.5s cut, 2s transitionIn + 2s transitionOut - each independently clamps to 1.5s (the old
+      // behavior), so the two fade windows would span the ENTIRE cut and overlap. Cross-clamped:
+      // ratio is 1:1, so both scale down to 0.75s each (1.5/(2+2)=0.375 scale -> 2*0.375=0.75),
+      // summing to exactly the 1.5s cut with no overlap.
+      const p = buildRenderPlan(
+        make({
+          segments: [
+            {
+              clip: "a.mp4",
+              in: 0,
+              out: 1.5,
+              speed: 1,
+              volume: 1,
+              subtitle: "",
+              transitionIn: { type: "fade", durationS: 2 },
+              transitionOut: { type: "fade", durationS: 2 },
+            },
+          ],
+        }),
+        "out.mp4",
+      );
+      expect(p.filterComplex).toContain("[v0]fade=t=in:st=0:d=0.75[vtxin0]");
+      expect(p.filterComplex).toContain("[vtxin0]fade=t=out:st=0.75:d=0.75[vtxout0]");
+      expect(p.filterComplex).toContain("afade=t=in:st=0:d=0.75,afade=t=out:st=0.75:d=0.75");
+    });
+
+    it("cross-clamps an asymmetric transitionIn/transitionOut pair preserving their original ratio", () => {
+      // 2s cut, transitionIn=2s (schema max), transitionOut=1s (sum=3, 1.5x the cut) ->
+      // scale=2/3 -> dIn=2*(2/3)=1.3333, dOut=1*(2/3)=0.6667.
+      const p = buildRenderPlan(
+        make({
+          segments: [
+            {
+              clip: "a.mp4",
+              in: 0,
+              out: 2,
+              speed: 1,
+              volume: 1,
+              subtitle: "",
+              transitionIn: { type: "fade", durationS: 2 },
+              transitionOut: { type: "fade", durationS: 1 },
+            },
+          ],
+        }),
+        "out.mp4",
+      );
+      expect(p.filterComplex).toContain("[v0]fade=t=in:st=0:d=1.3333333333333333[vtxin0]");
+      expect(p.filterComplex).toContain(
+        "[vtxin0]fade=t=out:st=1.3333333333333335:d=0.6666666666666666[vtxout0]",
+      );
+      expect(p.filterComplex).toContain(
+        "afade=t=in:st=0:d=1.3333333333333333,afade=t=out:st=1.3333333333333335:d=0.6666666666666666",
+      );
+    });
+
+    it("does not cross-clamp when transitionIn+transitionOut already fit within the cut (regression, no change)", () => {
+      const p = buildRenderPlan(
+        make({
+          segments: [
+            {
+              clip: "a.mp4",
+              in: 0,
+              out: 5,
+              speed: 1,
+              volume: 1,
+              subtitle: "",
+              transitionIn: { type: "fade", durationS: 0.5 },
+              transitionOut: { type: "fade", durationS: 0.5 },
+            },
+          ],
+        }),
+        "out.mp4",
+      );
+      expect(p.filterComplex).toContain("[v0]fade=t=in:st=0:d=0.5[vtxin0]");
+      expect(p.filterComplex).toContain("[vtxin0]fade=t=out:st=4.5:d=0.5[vtxout0]");
+    });
+
     it("applies a transition on the title-composited frame (chained after the title/backdrop stage)", () => {
       const p = buildRenderPlan(
         make({
