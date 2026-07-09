@@ -1,24 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   BgmCue,
-  CueSheet,
   NarrationConfig,
   Project,
   Segment,
   SubtitleStyle,
   SubtitleStyleOverride,
 } from "@cuesheet/schema";
-import { validateCueSheet } from "@cuesheet/schema";
 import { useToast } from "@astryxdesign/core/Toast";
 import { Button } from "@astryxdesign/core/Button";
 import {
-  CueSheetNotFoundError,
   fetchBgmFiles,
-  fetchCueSheet,
   fetchMoments,
   fetchNarrationFiles,
   fetchRenderStatus,
-  saveCueSheet,
   startRender,
   type BgmFile,
   type ClipMoments,
@@ -27,8 +22,12 @@ import {
 import { buildClipPath, computeClipDurations } from "./clipPaths.js";
 import { bgmCutRange, cumulativeCutStarts, cutRangeToSeconds } from "./lib/bgmCutMapping.js";
 import { computeMergeEligibility } from "./lib/segmentMerge.js";
-import { isBlockingOverlayOpen, useBlockingOverlay } from "./lib/modalStack.js";
+import { useBlockingOverlay } from "./lib/modalStack.js";
+import { minutesAgoLabel } from "./lib/relativeTime.js";
 import { scaleCueSheetForResolution } from "./lib/subtitleScale.js";
+import { useCueSheetServer } from "./hooks/useCueSheetServer.js";
+import { useCueSheetHistory } from "./hooks/useCueSheetHistory.js";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts.js";
 import { VideoPreview } from "./components/VideoPreview.js";
 import type { VideoPreviewHandle } from "./components/VideoPreview.js";
 import { BgmSettingsPanel } from "./components/BgmSettingsPanel.js";
@@ -53,12 +52,6 @@ interface AppProps {
   onThemeModeChange: (mode: ThemeModeSetting) => void;
 }
 
-type SaveState =
-  | { status: "idle" }
-  | { status: "saving" }
-  | { status: "success" }
-  | { status: "error"; errors: string[] };
-
 type RenderState =
   | { status: "idle" }
   | { status: "rendering"; progress: number }
@@ -67,31 +60,28 @@ type RenderState =
   // error itself is always the short extracted summary, so it never needs to duplicate the dump.
   | { status: "error"; error: string; errorDetail?: string };
 
-interface HistoryEntry {
-  cuesheet: CueSheet;
-  selectedIndex: number;
-}
-
-interface DraftSnapshot {
-  cuesheet: CueSheet;
-  savedAt: number;
-}
-
 export function App({ themeMode, onThemeModeChange }: AppProps) {
-  const [serverCuesheet, setServerCuesheet] = useState<CueSheet | null>(null);
-  const [draft, setDraft] = useState<CueSheet | null>(null);
-  const [loadError, setLoadError] = useState<
-    { kind: "not-found"; message: string } | { kind: "error"; message: string } | null
-  >(null);
-  const [saveState, setSaveState] = useState<SaveState>({ status: "idle" });
-  const [renderState, setRenderState] = useState<RenderState>({ status: "idle" });
-  const [externalChangePending, setExternalChangePending] = useState(false);
-  const [restoreSnapshot, setRestoreSnapshot] = useState<DraftSnapshot | null>(null);
+  const toast = useToast();
+  const {
+    draft,
+    setDraft,
+    loadError,
+    saveState,
+    dirty,
+    externalChangePending,
+    restoreSnapshot,
+    handleSave,
+    handleReload,
+    handleRestoreSnapshot,
+    handleDiscardSnapshot,
+  } = useCueSheetServer(toast);
+
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [step, setStep] = useState<Step>("compose");
   const [renderDialogOpen, setRenderDialogOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [sequenceMode, setSequenceMode] = useState(false);
+  const [renderState, setRenderState] = useState<RenderState>({ status: "idle" });
   const [noBurnSubtitles, setNoBurnSubtitles] = useState(loadNoBurnSubtitles);
   // Approximate duration per clip (seconds) — used to judge the 15s cap for the intro/outro assign
   // buttons (palette/inspector). If this fails, editing still isn't blocked; it's just left as an
@@ -116,119 +106,29 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
   const videoPreviewRef = useRef<VideoPreviewHandle>(null);
   const sequencePlayerRef = useRef<SequencePlayerHandle>(null);
   const renderPollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const toast = useToast();
-
-  // Undo/redo history: past/future snapshot stacks (session memory only, cleared on refresh —
-  // separate from the localStorage exit-guard snapshot).
-  const [past, setPast] = useState<HistoryEntry[]>([]);
-  const [future, setFuture] = useState<HistoryEntry[]>([]);
-  const burstActiveRef = useRef(false);
-  const burstTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
       if (renderPollTimer.current) {
         clearTimeout(renderPollTimer.current);
       }
-      if (burstTimerRef.current) {
-        clearTimeout(burstTimerRef.current);
-      }
     };
   }, []);
 
-  const pushHistorySnapshot = useCallback(() => {
-    if (!draft) {
-      return;
-    }
-    const snapshot: HistoryEntry = {
-      cuesheet: JSON.parse(JSON.stringify(draft)) as CueSheet,
+  const { canUndo, canRedo, handleUndo, handleRedo, recordDiscreteChange, recordContinuousChange } =
+    useCueSheetHistory({
+      draft,
+      setDraft,
       selectedIndex,
-    };
-    setPast((prev) => {
-      const next = [...prev, snapshot];
-      return next.length > HISTORY_LIMIT ? next.slice(next.length - HISTORY_LIMIT) : next;
+      setSelectedIndex,
+      onUndo: () => toast({ type: "info", body: "Undone" }),
     });
-    setFuture([]);
-  }, [draft, selectedIndex]);
-
-  // Structural changes (add/remove/move/split a cut, add/remove BGM, etc.): record one history
-  // entry immediately every time, and cut off any in-progress continuous-edit burst so the next
-  // edit starts a fresh burst.
-  const recordDiscreteChange = useCallback(() => {
-    if (burstTimerRef.current) {
-      clearTimeout(burstTimerRef.current);
-      burstTimerRef.current = null;
-    }
-    burstActiveRef.current = false;
-    pushHistorySnapshot();
-  }, [pushHistorySnapshot]);
-
-  // Continuous edits (subtitle typing, trim handle dragging, sliders, etc.): only when the burst is
-  // empty does this record the state once at the start of editing; subsequent changes just reset
-  // the debounce timer. When the timer expires (input stops), the burst closes and the next change opens a new one.
-  const recordContinuousChange = useCallback(() => {
-    if (!burstActiveRef.current) {
-      pushHistorySnapshot();
-      burstActiveRef.current = true;
-    }
-    if (burstTimerRef.current) {
-      clearTimeout(burstTimerRef.current);
-    }
-    burstTimerRef.current = setTimeout(() => {
-      burstActiveRef.current = false;
-      burstTimerRef.current = null;
-    }, BURST_DEBOUNCE_MS);
-  }, [pushHistorySnapshot]);
 
   // Registers the render settings dialog as a "blocking overlay" - see lib/modalStack.ts. This
   // makes the global keydown handler below ignore every key while the dialog is open, so e.g.
   // pressing o/Space/arrows to adjust the render dialog's own fields doesn't leak through and
   // mutate the cut/video underneath it.
   useBlockingOverlay(renderDialogOpen);
-
-  const canUndo = past.length > 0;
-  const canRedo = future.length > 0;
-
-  const handleUndo = useCallback(() => {
-    if (!draft || past.length === 0) {
-      return;
-    }
-    const last = past[past.length - 1];
-    if (!last) {
-      return;
-    }
-    const currentSnapshot: HistoryEntry = { cuesheet: draft, selectedIndex };
-    if (burstTimerRef.current) {
-      clearTimeout(burstTimerRef.current);
-      burstTimerRef.current = null;
-    }
-    burstActiveRef.current = false;
-    setFuture((f) => [currentSnapshot, ...f].slice(0, HISTORY_LIMIT));
-    setPast((p) => p.slice(0, -1));
-    setDraft(last.cuesheet);
-    setSelectedIndex(last.selectedIndex);
-    toast({ type: "info", body: "Undone" });
-  }, [draft, past, selectedIndex, toast]);
-
-  const handleRedo = useCallback(() => {
-    if (!draft || future.length === 0) {
-      return;
-    }
-    const next = future[0];
-    if (!next) {
-      return;
-    }
-    const currentSnapshot: HistoryEntry = { cuesheet: draft, selectedIndex };
-    if (burstTimerRef.current) {
-      clearTimeout(burstTimerRef.current);
-      burstTimerRef.current = null;
-    }
-    burstActiveRef.current = false;
-    setPast((p) => [...p, currentSnapshot].slice(-HISTORY_LIMIT));
-    setFuture((f) => f.slice(1));
-    setDraft(next.cuesheet);
-    setSelectedIndex(next.selectedIndex);
-  }, [draft, future, selectedIndex]);
 
   // Merge adjacent cuts (Cmd+J / inspector button) — only runs when the same clip and time-adjacent
   // (computeMergeEligibility). The merge result has in=current in, out=next out, keeping the current
@@ -267,14 +167,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       segments.splice(i, 2, merged);
       return { ...prev, segments };
     });
-  }, [draft, recordDiscreteChange]);
-
-  const dirty = useMemo(() => {
-    if (!draft || !serverCuesheet) {
-      return false;
-    }
-    return JSON.stringify(draft) !== JSON.stringify(serverCuesheet);
-  }, [draft, serverCuesheet]);
+  }, [draft, recordDiscreteChange, setDraft]);
 
   // Approximate output duration for the render settings dialog summary — intro/outro are unknown
   // without probing the file, so this just sums segments, the same as the server's estimateOutputSeconds.
@@ -284,38 +177,6 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     }
     return draft.segments.reduce((sum, s) => sum + (s.out - s.in) / s.speed, 0);
   }, [draft]);
-
-  const load = useCallback(async () => {
-    try {
-      const cs = await fetchCueSheet();
-      setServerCuesheet(cs);
-      setDraft(cs);
-      setLoadError(null);
-      setExternalChangePending(false);
-      setSaveState({ status: "idle" });
-
-      const snapshot = loadDraftSnapshot(cs.project.name);
-      if (snapshot && JSON.stringify(snapshot.cuesheet) !== JSON.stringify(cs)) {
-        setRestoreSnapshot(snapshot);
-      } else {
-        if (snapshot) {
-          // A snapshot identical to the server data has already been applied, so clean it up.
-          clearDraftSnapshot(cs.project.name);
-        }
-        setRestoreSnapshot(null);
-      }
-    } catch (e) {
-      if (e instanceof CueSheetNotFoundError) {
-        setLoadError({ kind: "not-found", message: e.message });
-      } else {
-        setLoadError({ kind: "error", message: e instanceof Error ? e.message : String(e) });
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   useEffect(() => {
     void (async () => {
@@ -371,65 +232,6 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     })();
   }, []);
 
-  // Shows the browser's default confirmation dialog on refresh/tab close while dirty.
-  useEffect(() => {
-    const handler = (e: BeforeUnloadEvent) => {
-      if (dirty) {
-        e.preventDefault();
-        e.returnValue = "";
-      }
-    };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [dirty]);
-
-  // Debounced (1s) temp save of a dirty draft to localStorage, so edits can be restored even if
-  // they'd otherwise vanish from an unsaved refresh/tab close.
-  useEffect(() => {
-    if (!draft || !dirty) {
-      return;
-    }
-    const timer = setTimeout(() => {
-      try {
-        const snapshot: DraftSnapshot = { cuesheet: draft, savedAt: Date.now() };
-        localStorage.setItem(draftSnapshotKey(draft.project.name), JSON.stringify(snapshot));
-      } catch {
-        // Ignore things like quota exceeded (best-effort feature).
-      }
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [draft, dirty]);
-
-  const handleRestoreSnapshot = useCallback(() => {
-    if (!restoreSnapshot) {
-      return;
-    }
-    setDraft(restoreSnapshot.cuesheet);
-    setRestoreSnapshot(null);
-    toast({ type: "info", body: "Restored - click Save to confirm if this looks right." });
-  }, [restoreSnapshot, toast]);
-
-  const handleDiscardSnapshot = useCallback(() => {
-    if (draft) {
-      clearDraftSnapshot(draft.project.name);
-    }
-    setRestoreSnapshot(null);
-  }, [draft]);
-
-  useEffect(() => {
-    const handler = () => {
-      if (dirty) {
-        setExternalChangePending(true);
-      } else {
-        void load();
-      }
-    };
-    import.meta.hot?.on("cuesheet:changed", handler);
-    return () => {
-      import.meta.hot?.off("cuesheet:changed", handler);
-    };
-  }, [dirty, load]);
-
   useEffect(() => {
     if (draft && selectedIndex >= draft.segments.length) {
       setSelectedIndex(Math.max(0, draft.segments.length - 1));
@@ -448,203 +250,20 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
 
   // Common shortcuts: ignored while an input field (input/textarea) is focused (Tab-based
   // navigation inside batch subtitle-writing mode is handled by SubtitleWriteMode itself in each
-  // textarea). I/O, playback, and split only make sense in the ② edit step, where VideoPreview is actually mounted.
-  useEffect(() => {
-    const isVideoStep = step === "edit";
-    const handler = (e: KeyboardEvent) => {
-      // Checked first, before anything else (including undo/redo and the isTyping guard below):
-      // while a dialog (or another registered blocking overlay, e.g. crop edit mode) is open, no
-      // global shortcut should act on the cut list/video preview underneath it. See lib/modalStack.ts.
-      if (isBlockingOverlayOpen()) {
-        return;
-      }
-      const target = e.target as HTMLElement | null;
-      const isTyping = target?.tagName === "INPUT" || target?.tagName === "TEXTAREA";
-      // Cmd+Z/Cmd+Shift+Z is handled before the isTyping guard: our app's unified undo/redo must
-      // always apply even while an input/textarea is focused (e.g. after typing a subtitle and
-      // tabbing to the next field). Without filtering this out here, the browser's native per-field
-      // undo would fire instead, silently reverting only text that's out of sync with React state
-      // (no toast, and the original state lingers at save time) — an inconsistency.
-      if ((e.metaKey || e.ctrlKey) && (e.key === "z" || e.key === "Z")) {
-        e.preventDefault();
-        if (e.shiftKey) {
-          handleRedo();
-        } else {
-          handleUndo();
-        }
-        return;
-      }
-      if (isTyping) {
-        return;
-      }
-      if (e.key === "?") {
-        e.preventDefault();
-        setShowShortcuts((v) => !v);
-        return;
-      }
-      if (sequenceMode) {
-        if (e.key === " ") {
-          e.preventDefault();
-          sequencePlayerRef.current?.togglePlay();
-          return;
-        }
-        if (e.key === "l" || e.key === "L") {
-          e.preventDefault();
-          sequencePlayerRef.current?.shuttleForward();
-          return;
-        }
-        if (e.key === "k" || e.key === "K") {
-          e.preventDefault();
-          sequencePlayerRef.current?.shuttleStop();
-          return;
-        }
-        if (e.key === "j" || e.key === "J") {
-          if (!e.metaKey && !e.ctrlKey) {
-            e.preventDefault();
-            sequencePlayerRef.current?.shuttleBackward();
-          }
-          return;
-        }
-        return;
-      }
-      if (!isVideoStep) {
-        if (e.key === "ArrowUp") {
-          e.preventDefault();
-          selectRelative(-1);
-          return;
-        }
-        if (e.key === "ArrowDown") {
-          e.preventDefault();
-          selectRelative(1);
-          return;
-        }
-        return;
-      }
-      if (e.key === " ") {
-        e.preventDefault();
-        videoPreviewRef.current?.togglePlay();
-        return;
-      }
-      if (e.key === "i" || e.key === "I") {
-        e.preventDefault();
-        videoPreviewRef.current?.setInFromCurrent();
-        return;
-      }
-      if (e.key === "o" || e.key === "O") {
-        e.preventDefault();
-        videoPreviewRef.current?.setOutFromCurrent();
-        return;
-      }
-      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-        e.preventDefault();
-        const sign = e.key === "ArrowLeft" ? -1 : 1;
-        const seekStep = e.shiftKey ? 1 : FRAME_SECONDS;
-        videoPreviewRef.current?.seekBy(sign * seekStep);
-        return;
-      }
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        selectRelative(-1);
-        return;
-      }
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        selectRelative(1);
-        return;
-      }
-      if (e.key === "Tab") {
-        e.preventDefault();
-        selectRelative(e.shiftKey ? -1 : 1);
-        return;
-      }
-      if ((e.metaKey || e.ctrlKey) && (e.key === "b" || e.key === "B")) {
-        e.preventDefault();
-        videoPreviewRef.current?.splitAtCurrent();
-        return;
-      }
-      if ((e.metaKey || e.ctrlKey) && (e.key === "j" || e.key === "J")) {
-        e.preventDefault();
-        mergeSegmentWithNext(selectedIndex);
-        return;
-      }
-      if (e.key === "l" || e.key === "L") {
-        e.preventDefault();
-        videoPreviewRef.current?.shuttleForward();
-        return;
-      }
-      if (e.key === "k" || e.key === "K") {
-        e.preventDefault();
-        videoPreviewRef.current?.shuttleStop();
-        return;
-      }
-      if (e.key === "j" || e.key === "J") {
-        e.preventDefault();
-        videoPreviewRef.current?.shuttleBackward();
-        return;
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [step, selectRelative, sequenceMode, handleUndo, handleRedo, selectedIndex, mergeSegmentWithNext]);
-
-  const handleSave = useCallback(async () => {
-    if (!draft) {
-      return;
-    }
-    const localCheck = validateCueSheet(draft);
-    if (!localCheck.ok) {
-      setSaveState({ status: "error", errors: localCheck.errors });
-      toast({
-        type: "error",
-        body: (
-          <div>
-            Can't save:
-            <ul>
-              {localCheck.errors.map((err, i) => (
-                <li key={i}>{err}</li>
-              ))}
-            </ul>
-          </div>
-        ),
-      });
-      return;
-    }
-    setSaveState({ status: "saving" });
-    try {
-      const result = await saveCueSheet(localCheck.data);
-      if (result.ok) {
-        setServerCuesheet(result.data);
-        setDraft(result.data);
-        setSaveState({ status: "success" });
-        clearDraftSnapshot(result.data.project.name);
-        setRestoreSnapshot(null);
-        toast({ type: "info", body: "Saved." });
-      } else {
-        setSaveState({ status: "error", errors: result.errors });
-        toast({
-          type: "error",
-          body: (
-            <div>
-              Save failed:
-              <ul>
-                {result.errors.map((err, i) => (
-                  <li key={i}>{err}</li>
-                ))}
-              </ul>
-            </div>
-          ),
-        });
-      }
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      setSaveState({ status: "error", errors: [message] });
-      toast({ type: "error", body: `Couldn't save: ${message} - please try again.` });
-    }
-  }, [draft, toast]);
-
-  const handleReload = useCallback(() => {
-    void load();
-  }, [load]);
+  // textarea). I/O, playback, and split only make sense in the ② edit step, where VideoPreview is
+  // actually mounted. See hooks/useKeyboardShortcuts.ts for the full key-to-action mapping.
+  useKeyboardShortcuts({
+    step,
+    sequenceMode,
+    selectedIndex,
+    selectRelative,
+    onUndo: handleUndo,
+    onRedo: handleRedo,
+    onToggleShortcuts: () => setShowShortcuts((v) => !v),
+    onMerge: mergeSegmentWithNext,
+    videoPreviewRef,
+    sequencePlayerRef,
+  });
 
   // Polls from render start until completion/failure. Editing can continue while a render is
   // running — since the render proceeds based on the cuesheet that was on disk when it started,
@@ -704,7 +323,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     }
     recordContinuousChange();
     setDraft((prev) => (prev ? { ...prev, project: { ...prev.project, ...patch } } : prev));
-  }, [draft, recordContinuousChange]);
+  }, [draft, recordContinuousChange, setDraft]);
 
   // Resolution preset switching in the render settings dialog — since subtitleStyle/styleOverride's
   // absolute px values must also be scaled by the height ratio, this is a structural edit (not a
@@ -718,7 +337,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     }
     recordDiscreteChange();
     setDraft((prev) => (prev ? scaleCueSheetForResolution(prev, width, height) : prev));
-  }, [draft, recordDiscreteChange]);
+  }, [draft, recordDiscreteChange, setDraft]);
 
   const updateNarration = useCallback((patch: Partial<NarrationConfig>) => {
     if (!draft) {
@@ -736,7 +355,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       };
       return { ...prev, narration: { ...base, ...patch } };
     });
-  }, [draft, recordContinuousChange]);
+  }, [draft, recordContinuousChange, setDraft]);
 
   const updateSubtitleStyle = useCallback((patch: Partial<SubtitleStyle>) => {
     if (!draft) {
@@ -746,7 +365,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     setDraft((prev) =>
       prev ? { ...prev, subtitleStyle: { ...prev.subtitleStyle, ...patch } } : prev,
     );
-  }, [draft, recordContinuousChange]);
+  }, [draft, recordContinuousChange, setDraft]);
 
   const updateIntroOutro = useCallback((patch: { intro?: string | null; outro?: string | null }) => {
     if (!draft) {
@@ -754,7 +373,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     }
     recordContinuousChange();
     setDraft((prev) => (prev ? { ...prev, ...patch } : prev));
-  }, [draft, recordContinuousChange]);
+  }, [draft, recordContinuousChange, setDraft]);
 
   // The "Set as intro"/"Set as outro" buttons on palette cards/edit inspector — since this is a
   // single-click discrete edit (unlike direct text typing), it leaves one undo entry immediately
@@ -771,7 +390,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       }
       return role === "intro" ? { ...prev, intro: path } : { ...prev, outro: path };
     });
-  }, [draft, recordDiscreteChange]);
+  }, [draft, recordDiscreteChange, setDraft]);
 
   const clearIntroOutro = useCallback((role: "intro" | "outro") => {
     if (!draft) {
@@ -784,7 +403,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       }
       return role === "intro" ? { ...prev, intro: null } : { ...prev, outro: null };
     });
-  }, [draft, recordDiscreteChange]);
+  }, [draft, recordDiscreteChange, setDraft]);
 
   const updateSegment = useCallback((i: number, patch: Partial<Segment>) => {
     if (!draft) {
@@ -798,7 +417,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       const segments = prev.segments.map((s, idx) => (idx === i ? { ...s, ...patch } : s));
       return { ...prev, segments };
     });
-  }, [draft, recordContinuousChange]);
+  }, [draft, recordContinuousChange, setDraft]);
 
   // The "Add segment" button — the previous behavior of appending an empty cut at the end was the
   // cause of user complaints about "not knowing what to do after clicking" (a clip-less empty cut
@@ -827,7 +446,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       setSelectedIndex(insertAt);
       return { ...prev, segments };
     });
-  }, [draft, recordDiscreteChange, selectedIndex]);
+  }, [draft, recordDiscreteChange, selectedIndex, setDraft]);
 
   const removeSegment = useCallback((i: number) => {
     if (!draft || draft.segments.length <= 1) {
@@ -841,7 +460,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       const segments = prev.segments.filter((_, idx) => idx !== i);
       return { ...prev, segments };
     });
-  }, [draft, recordDiscreteChange]);
+  }, [draft, recordDiscreteChange, setDraft]);
 
   const moveSegment = useCallback((i: number, direction: -1 | 1) => {
     if (!draft) {
@@ -867,7 +486,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       setSelectedIndex(target);
       return { ...prev, segments };
     });
-  }, [draft, recordDiscreteChange]);
+  }, [draft, recordDiscreteChange, setDraft]);
 
   const splitSegment = useCallback((i: number, at: number) => {
     if (!draft) {
@@ -898,7 +517,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       segments.splice(i, 1, first, second);
       return { ...prev, segments };
     });
-  }, [draft, recordDiscreteChange]);
+  }, [draft, recordDiscreteChange, setDraft]);
 
   const addMomentSegment = useCallback((seg: Segment) => {
     if (!draft) {
@@ -919,7 +538,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       setSelectedIndex(insertAt);
       return { ...prev, segments };
     });
-  }, [draft, recordDiscreteChange]);
+  }, [draft, recordDiscreteChange, setDraft]);
 
   // "Remove" on a palette card — removes segments from the added list that overlap the card's
   // range within the same clip (uses the same overlap criterion as MomentPalette's "in use" check).
@@ -946,7 +565,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       }
       return { ...prev, segments };
     });
-  }, [draft, recordDiscreteChange]);
+  }, [draft, recordDiscreteChange, setDraft]);
 
   // Double-clicking a mini timeline block — switches to the edit step (trim view) and selects that cut.
   const goToEdit = useCallback((i: number) => {
@@ -967,7 +586,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       const bgm = prev.bgm.map((c, idx) => (idx === i ? { ...c, ...patch } : c));
       return { ...prev, bgm };
     });
-  }, [draft, recordContinuousChange]);
+  }, [draft, recordContinuousChange, setDraft]);
 
   // Adds a track defaulting to span just the currently selected cut (the Edit step gutter's
   // "+ Add track" button) - immediately selects it so its settings panel opens on the right.
@@ -987,7 +606,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       return { ...prev, bgm: [...prev.bgm, cue] };
     });
     setSelectedBgmIndex(newIndex);
-  }, [draft, recordDiscreteChange, selectedIndex]);
+  }, [draft, recordDiscreteChange, selectedIndex, setDraft]);
 
   // Moves/resizes a track by cut index (drag in the gutter, or the settings panel's numeric
   // fields) - converts back to the seconds actually stored/rendered.
@@ -1005,7 +624,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       const bgm = prev.bgm.map((c, idx) => (idx === bgmIndex ? { ...c, start, end } : c));
       return { ...prev, bgm };
     });
-  }, [draft, recordContinuousChange]);
+  }, [draft, recordContinuousChange, setDraft]);
 
   const removeBgmTrack = useCallback((i: number) => {
     if (!draft) {
@@ -1014,7 +633,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     recordDiscreteChange();
     setDraft((prev) => (prev ? { ...prev, bgm: prev.bgm.filter((_, idx) => idx !== i) } : prev));
     setSelectedBgmIndex(null);
-  }, [draft, recordDiscreteChange]);
+  }, [draft, recordDiscreteChange, setDraft]);
 
   const clearSegmentCrop = useCallback((i: number) => {
     if (!draft) {
@@ -1028,7 +647,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       const segments = prev.segments.map((s, idx) => (idx === i ? { ...s, crop: null } : s));
       return { ...prev, segments };
     });
-  }, [draft, recordDiscreteChange]);
+  }, [draft, recordDiscreteChange, setDraft]);
 
   // "Style for this cut only" toggle — turning it on starts the override as a straight copy of the
   // global subtitleStyle (so the visible value doesn't change the instant it's toggled), letting
@@ -1048,7 +667,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       );
       return { ...prev, segments };
     });
-  }, [draft, recordDiscreteChange]);
+  }, [draft, recordDiscreteChange, setDraft]);
 
   const updateSegmentStyleOverride = useCallback((i: number, patch: Partial<SubtitleStyleOverride>) => {
     if (!draft) {
@@ -1064,7 +683,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       );
       return { ...prev, segments };
     });
-  }, [draft, recordContinuousChange]);
+  }, [draft, recordContinuousChange, setDraft]);
 
   const clearSegmentStyleOverride = useCallback((i: number) => {
     if (!draft) {
@@ -1078,7 +697,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       const segments = prev.segments.map((s, idx) => (idx === i ? withoutStyleOverride(s) : s));
       return { ...prev, segments };
     });
-  }, [draft, recordDiscreteChange]);
+  }, [draft, recordDiscreteChange, setDraft]);
 
   // "Promote to global style" — merges this cut's override into the global subtitleStyle and
   // removes this cut's override (this is a confirmed edit since it affects other cuts too).
@@ -1110,7 +729,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       const segments = prev.segments.map((s, idx) => (idx === i ? withoutStyleOverride(s) : s));
       return { ...prev, subtitleStyle: mergedGlobal, segments };
     });
-  }, [draft, recordDiscreteChange]);
+  }, [draft, recordDiscreteChange, setDraft]);
 
   const handleDownloadSrt = useCallback(() => {
     if (dirty) {
@@ -1438,7 +1057,6 @@ function withoutStyleOverride(segment: Segment): Segment {
   return rest;
 }
 
-
 function loadNoBurnSubtitles(): boolean {
   try {
     return localStorage.getItem(NO_BURN_SUBTITLES_KEY) === "1";
@@ -1447,53 +1065,8 @@ function loadNoBurnSubtitles(): boolean {
   }
 }
 
-function draftSnapshotKey(projectName: string): string {
-  return `${DRAFT_SNAPSHOT_PREFIX}${projectName}`;
-}
-
-function loadDraftSnapshot(projectName: string): DraftSnapshot | null {
-  try {
-    const raw = localStorage.getItem(draftSnapshotKey(projectName));
-    if (!raw) {
-      return null;
-    }
-    return JSON.parse(raw) as DraftSnapshot;
-  } catch {
-    return null;
-  }
-}
-
-/** Human-readable elapsed time like "3 min ago" - used in the restore banner text. */
-function minutesAgoLabel(savedAt: number): string {
-  const minutes = Math.max(0, Math.round((Date.now() - savedAt) / 60000));
-  if (minutes === 0) {
-    return "just now";
-  }
-  return `${minutes} min ago`;
-}
-
-function clearDraftSnapshot(projectName: string): void {
-  try {
-    localStorage.removeItem(draftSnapshotKey(projectName));
-  } catch {
-    // Silently ignore if localStorage is inaccessible (best-effort feature).
-  }
-}
-
-/** Distance moved per ← / → press (1 frame, based on 30fps). Shift+← / → moves 1 second. */
-const FRAME_SECONDS = 1 / 30;
-
 /** Render progress polling interval (ms). */
 const RENDER_POLL_INTERVAL_MS = 1500;
 
-/** Max number of past snapshots kept in the undo history. */
-const HISTORY_LIMIT = 50;
-
-/** Debounce interval (ms) for merging continuous edits (subtitle typing, trim handle dragging, etc.) into one batch. */
-const BURST_DEBOUNCE_MS = 500;
-
 /** localStorage key remembering the "don't burn subtitles (clean video for CC)" checkbox state. */
 const NO_BURN_SUBTITLES_KEY = "cuesheet-render-no-burn-subtitles";
-
-/** localStorage key holding a temporary snapshot of unsaved edits. Separated per cuesheet (project name). */
-const DRAFT_SNAPSHOT_PREFIX = "cuesheet-draft-snapshot:";
