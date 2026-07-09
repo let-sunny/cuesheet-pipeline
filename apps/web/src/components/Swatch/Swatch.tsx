@@ -8,7 +8,7 @@ interface Props {
 
 /**
  * Small inline color-preview chip shown next to a color field's label. Shared by three call sites
- * (FinishingSettings' global subtitle style, SegmentStyleOverride's per-cut override,
+ * (SubtitleStyleSettings' global subtitle style, SegmentStyleOverride's per-cut override,
  * SubtitleStylePresetsSettings' preset editor) that all rendered the identical
  * `<span className="swatch" style={{ background: color }} />` pattern before this extraction.
  */

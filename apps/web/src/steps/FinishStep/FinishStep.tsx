@@ -1,18 +1,15 @@
-import { Button } from "@astryxdesign/core/Button";
 import type { CueSheet } from "@cuesheet/schema";
 import type { UseFinishStepActionsResult } from "../../hooks/useFinishStepActions.js";
 import { ProjectMetaFields } from "../../components/ProjectMetaFields/index.js";
-import { SubtitleStyleSettings, NarrationSettings } from "../../components/FinishingSettings/index.js";
-import { SubtitleStylePresetsSettings } from "../../components/SubtitleStylePresetsSettings.js";
+import { SubtitleStyleSettings } from "../../components/SubtitleStyleSettings/index.js";
+import { NarrationSettings } from "../../components/NarrationSettings/index.js";
+import { SubtitleStylePresetsSettings } from "../../components/SubtitleStylePresetsSettings/index.js";
 import { IntroOutroEditor } from "../../components/IntroOutroEditor/index.js";
+import { BgmSummarySection } from "../../components/BgmSummarySection/index.js";
+import { ExportOutputSection } from "../../components/ExportOutputSection/index.js";
+import type { RenderState } from "../../components/ExportOutputSection/index.js";
 
-export type RenderState =
-  | { status: "idle" }
-  | { status: "rendering"; progress: number }
-  | { status: "success"; path: string }
-  // errorDetail (the full raw ffmpeg dump) is optional and shown separately, in a collapsible -
-  // error itself is always the short extracted summary, so it never needs to duplicate the dump.
-  | { status: "error"; error: string; errorDetail?: string };
+export type { RenderState };
 
 export interface FinishStepProps {
   draft: CueSheet;
@@ -31,8 +28,8 @@ export interface FinishStepProps {
  * style (global) -> Subtitle style presets -> Intro/outro -> Background music (summary only, real
  * editing lives in the (2) Edit step's BGM gutter) -> Narration -> Output. Thin: each section is
  * its own tested component (ProjectMetaFields/SubtitleStyleSettings/SubtitleStylePresetsSettings/
- * IntroOutroEditor/NarrationSettings) - this component only arranges them and wires the currently
- * selected preset/project's data and callbacks in.
+ * IntroOutroEditor/NarrationSettings/BgmSummarySection/ExportOutputSection) - this component only
+ * arranges them and wires the currently selected preset/project's data and callbacks in.
  */
 export function FinishStep({
   draft,
@@ -83,65 +80,18 @@ export function FinishStep({
         />
       </div>
 
-      <div className="settings-group" data-testid="export-section-bgm-summary">
-        <h3>Background music</h3>
-        <p className="settings-note">
-          Background music: {draft.bgm.length} {draft.bgm.length === 1 ? "track" : "tracks"} — edit in the ② Edit step
-        </p>
-      </div>
+      <BgmSummarySection trackCount={draft.bgm.length} />
 
       <div data-testid="export-section-narration">
         <NarrationSettings narration={draft.narration} onNarrationChange={actions.updateNarration} />
       </div>
 
-      <div className="render-cta" data-testid="export-section-cta">
-        <Button
-          label={
-            renderState.status === "rendering"
-              ? `Exporting… ${renderState.progress}%`
-              : "Export"
-          }
-          variant="primary"
-          size="lg"
-          // Lets the dialog open even while dirty — same convention as HeaderBar renderDisabled
-          // above (the dirty warning + [Start export] disabling inside RenderSettingsDialog is the actual final gate).
-          isDisabled={renderState.status === "rendering"}
-          onClick={onOpenRenderDialog}
-          data-testid="export-button"
-        />
-        {renderState.status === "success" ? (
-          <a href={`/${renderState.path}`} download>
-            Download {renderState.path}
-          </a>
-        ) : null}
-        {renderState.status === "error" ? (
-          <div className="render-error-block">
-            <span className="render-note render-note-error">Export failed: {renderState.error}</span>
-            {renderState.errorDetail ? (
-              <details className="render-error-detail">
-                <summary>Show full ffmpeg output</summary>
-                <pre>{renderState.errorDetail}</pre>
-              </details>
-            ) : null}
-          </div>
-        ) : null}
-        <span className="render-note">
-          Export runs against the cuesheet that was saved when it started — edits/saves made while exporting won't be included in this export.
-        </span>
-
-        <Button
-          label="Download subtitles (.srt)"
-          variant="secondary"
-          isDisabled={dirty}
-          onClick={actions.handleDownloadSrt}
-          data-testid="export-download-srt"
-        />
-        {dirty ? (
-          <span className="render-note">
-            Subtitles are based on the cuesheet saved to disk — save first, then download.
-          </span>
-        ) : null}
-      </div>
+      <ExportOutputSection
+        dirty={dirty}
+        renderState={renderState}
+        onOpenRenderDialog={onOpenRenderDialog}
+        onDownloadSrt={actions.handleDownloadSrt}
+      />
     </div>
   );
 }

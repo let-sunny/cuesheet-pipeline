@@ -5,8 +5,8 @@ import * as stylex from "@stylexjs/stylex";
  * `.render-dialog`/`.render-resolution-options*`/`.render-dialog-summary-line`/
  * `.render-dialog-actions` classes in styles.css.
  *
- * Left behind in styles.css (not migrated): `.settings-group` (shared with FinishingSettings/
- * IntroOutroEditor/ProjectMetaFields/App — this component still renders it as a plain
+ * Left behind in styles.css (not migrated): `.settings-group` (shared with SubtitleStyleSettings/
+ * NarrationSettings/IntroOutroEditor/ProjectMetaFields/App — this component still renders it as a plain
  * className), `.render-dialog .settings-group` (the descendant override that turns off that
  * shared class's flex-grow inside this dialog — can't move to stylex since the target class
  * itself stays a plain global token), and `.render-note`/`.render-note-error` (shared with

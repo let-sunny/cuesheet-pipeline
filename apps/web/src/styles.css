@@ -1421,6 +1421,13 @@ body {
 }
 
 .preset-row-header {
+  /* Owns its own flex display now (2026-07-09 diagnosed fix) - this row used to rely on being
+     paired with the qf-row marker class for display:flex/flex-wrap, but qf-row's descendant
+     selector on .qf-field forced a 40px label column (Cut settings' token, meant for short labels
+     like In/Out) onto this row's "Name" field, clipping it. Switched to settings-field (Export
+     step's own 120px label token) instead, so this class now provides its own layout. */
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
 }
@@ -1443,7 +1450,13 @@ body {
   color: #ffffff;
 }
 
-.preset-create-row {
+/* Renamed from .preset-create-row (2026-07-09 diagnosed fix, same root cause as
+   .preset-row-header above) - this row no longer pairs with qf-row, so it owns its own
+   display:flex/flex-wrap; its field uses settings-field/field-text-medium (120px label,
+   240px text input), not qf-field, so "New preset name" no longer clips. */
+.settings-create-row {
+  display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: 12px;
   margin-top: 12px;

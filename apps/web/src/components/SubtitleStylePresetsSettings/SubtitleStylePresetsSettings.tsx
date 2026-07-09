@@ -3,10 +3,10 @@ import { Button } from "@astryxdesign/core/Button";
 import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { Slider } from "@astryxdesign/core/Slider";
 import type { SubtitleStyle, SubtitleStyleOverride, SubtitleStylePresets } from "@cuesheet/schema";
-import { mergeSubtitleStyle, subtitleBackgroundRgba, subtitleOutlineStyle, toCqw, toColorInputValue } from "../lib/subtitleOverlay.js";
-import { Swatch } from "./Swatch/index.js";
+import { mergeSubtitleStyle, subtitleBackgroundRgba, subtitleOutlineStyle, toCqw, toColorInputValue } from "../../lib/subtitleOverlay.js";
+import { Swatch } from "../Swatch/index.js";
 
-interface Props {
+export interface SubtitleStylePresetsSettingsProps {
   presets: SubtitleStylePresets | undefined;
   /** Used as the base style for both "fields not yet set on this preset" and the compact preview. */
   globalStyle: SubtitleStyle;
@@ -24,7 +24,7 @@ interface Props {
  * an unset field simply falls back to the global style (same merge rule as segment.styleOverride,
  * just one merge step earlier - see ARCHITECTURE.md).
  */
-export function SubtitleStylePresetsSettings({ presets, globalStyle, onCreate, onRename, onDelete, onChangePreset }: Props) {
+export function SubtitleStylePresetsSettings({ presets, globalStyle, onCreate, onRename, onDelete, onChangePreset }: SubtitleStylePresetsSettingsProps) {
   const [newName, setNewName] = useState("");
   const names = Object.keys(presets ?? {});
 
@@ -52,8 +52,11 @@ export function SubtitleStylePresetsSettings({ presets, globalStyle, onCreate, o
         ))
       )}
 
-      <div className="qf-row preset-create-row">
-        <label className="qf-field field-medium">
+      {/* Export-step tokens (settings-field's 120px label column), not Cut settings' qf-field
+          (40px, only meant for short labels like In/Out/Speed) - "New preset name" was clipping
+          in the 40px column before this fix (2026-07-09 diagnosed fix). */}
+      <div className="settings-create-row">
+        <label className="settings-field field-text-medium">
           <span>New preset name</span>
           <input
             type="text"
@@ -93,8 +96,8 @@ function PresetRow({ name, override, globalStyle, onRename, onDelete, onChange }
 
   return (
     <div className="preset-row">
-      <div className="qf-row preset-row-header">
-        <label className="qf-field field-medium">
+      <div className="preset-row-header">
+        <label className="settings-field field-text-medium">
           <span>Name</span>
           <input
             type="text"

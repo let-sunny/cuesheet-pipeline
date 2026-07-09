@@ -2,8 +2,11 @@ import * as stylex from "@stylexjs/stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md) — rules ported 1:1 from the old
- * `.subtitle-style-preview-*`/`.narration-guide` classes in styles.css (all owned solely by this
- * file's components - SubtitleStyleSettings/NarrationSettings/the private preview-stage helper).
+ * `.subtitle-style-preview-*` classes in styles.css (owned solely by this file's components -
+ * SubtitleStyleSettings and its private preview-stage helper). Split out of the old shared
+ * `FinishingSettings/` folder once SubtitleStyleSettings/NarrationSettings became separate
+ * per-section components (CLAUDE.md's "groups are components, panels are arrangements" rule,
+ * applied to the Export step's sections).
  *
  * Left behind in styles.css (not migrated): `.settings-group`/`.settings-group-wide`/
  * `.settings-field`/`.field-*`/`.plain-field`/`.color-field-inputs`/`.settings-note`/`.wide-input`
@@ -31,11 +34,5 @@ export const styles = stylex.create({
     width: "100%",
     height: "100%",
     objectFit: "cover",
-  },
-  narrationGuide: {
-    margin: "0 0 12px",
-    fontSize: 12,
-    lineHeight: 1.5,
-    color: "var(--text-tertiary)",
   },
 });
