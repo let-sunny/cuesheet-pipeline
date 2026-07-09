@@ -107,3 +107,72 @@ migration target.
 - `components/StepNav/` — anatomy for a component migrated from a flat `.tsx` file with no
   existing CSS to move (the degenerate but valid case: empty `.styles.ts`, the value is the
   folder/test/index scaffolding and import-path change, not CSS extraction).
+
+---
+
+## Appendix: styles.css residue map (2026-07-09)
+
+A complete classification of all 1910 lines in `packages/web/src/styles.css` into six categories, identifying what remains, why, and the migration path forward.
+
+### Classification table
+
+| Category | Lines | Description | Status |
+|----------|-------|-------------|--------|
+| **(a) Tokens/Base** | 1–148 | `:root` color tokens (custom + Astryx theme overrides), `html` color-scheme rules, `body` styling, Astryx theme bug workarounds (lines 99–120) | **Keep in styles.css** (contract file) |
+| **(b) Plain-* marker** | 263–306 | `.plain-button`, `.plain-field`, `.plain-field-textarea` (raw-element guards against specificity collisions with Astryx components) | **Keep in styles.css** (screen-spec rule 8) |
+| **(c) Shared tokens** | 391–550 | `.settings-*`, `.field-narrow/medium/full`, `.segment-field`, `.settings-note`, `.settings-group` (used by 2+ components: FinishingSettings, IntroOutroEditor, ProjectMetaFields, RenderSettingsDialog, etc.) | **Keep in styles.css** (shared layout vocabulary) |
+| **(d) Domain-custom** | 559–796, 798–880, 909–1125, 1140–1210, 1377–1433, 1742–1910 | Video stage (`.video-*`, `.crop-edit-*`), timeline (`.scrub-*`, `.trim-*`), palette grid (`.moment-*`), mini strip (`.mini-strip-*`), BGM gutter (`.bgm-*`), sequence player (`.sequence-*`). These form the app's core editing interface — visual "stages" with complex overlay/canvas behavior. | **Keep until component anatomy folders are created** (see trade-off note below) |
+| **(e) Documented exceptions** | 99–120, 308–343, 1283–1320, 1377–1414 | Cascade/specificity ties that can't migrate to StyleX without visual regression (explained in each rule's comment). Examples: HeaderBar theme toggle (`.theme-mode-toggle button`), CompactSegmentList subtitle input (`.compact-list-subtitle-input`), BgmSettingsPanel file buttons (`.bgm-file-*`). | **Keep in styles.css** (documented, measured for regressions) |
+| **(f) Migratable remainder** | ~240 lines (see list below) | Single-component-owned rules with no marker-class ties or specificity hazards. Small, isolated stylings ready for component `.styles.ts` homes. | **Batch 4+ candidates** (migrate in next iteration) |
+
+### Category (d) domain-custom visuals — composition
+
+These are not error/exception cases but rather **intentional design**: the app's editing interface consists of 6 visual "stages" (video frame, timeline strip, palette grid, sequence playback, crop tool, BGM track). Each is a complex interactive canvas with overlays, handles, and visual feedback. They share timeline language (`.scrub-*`, `.trim-*`) and are tightly coupled to rendering logic.
+
+**Line ranges:**
+- **Video stage + crop overlay** (lines 559–796): `.video-preview`, `.video-context-*`, `.video-crop-frame`, `.crop-edit-*` — VideoPreview + CropEditOverlay (238 lines)
+- **Timeline scrubbing** (lines 798–880): `.scrub-*`, `.trim-overview*`, `.time-readout` — shared across Edit step (82 lines)
+- **Moment palette grid** (lines 909–1125): `.moment-palette`, `.moment-card*`, `.moment-grid`, `.moment-*`, `.empty-state` — MomentPalette (217 lines)
+- **Mini timeline strip** (lines 1140–1210): `.mini-strip-*` — MiniTimelineStrip (71 lines)
+- **BGM track gutter** (lines 1377–1433): `.bgm-gutter-*`, `.bgm-file-*` — CompactSegmentList BGM section (57 lines, documented exception at lines 1377–1388)
+- **Sequential playback** (lines 1742–1910): `.sequence-*` — SequencePlayer (169 lines)
+
+**Current state:** All owned by unmigrated components (VideoPreview, CropEditOverlay, MomentPalette, MiniTimelineStrip, SequencePlayer, CompactSegmentList BGM gutter).
+
+### Category (f) migratable remainder — batch 4+ candidates
+
+Single-component rules, no marker-class ties, ready to move to component `.styles.ts` files:
+
+| Component | Classes | Lines | Notes |
+|-----------|---------|-------|-------|
+| App (root) | `.app`, `.app h2` | ~13 | Top-level padding/layout — safe to move to App.styles.ts |
+| Banner | `.banner`, `.banner-actions`, `.banner.success/error`, `.banner.error ul/pre` | ~46 | Generic success/error alert — candidate for standalone Banner component or FinishingSettings.styles.ts |
+| Video controls | `.notice`, `.playmode-toggle`, `.playmode-toggle button.active`, `.time-readout`, `.video-controls-row` | ~30 | Small controls in VideoPreview — defer until VideoPreview migrates |
+| Segment list | `.timeline`, `.segment`, `.segment.selected`, `.segment .clip`, `.segment .meta`, `.segment .subtitle`, `.empty` | ~53 | Generic segment list styling — could move to a SegmentList component or stay as base (not yet claimed by VideoPreview) |
+| Swatch | `.swatch` | ~8 | Color indicator — move to a Swatch subcomponent or color-field component |
+| Edit layout | `.edit-layout`, `.trim-layout`, `.trim-workspace`, `.trim-video-col`, `.trim-fields-col` | ~57 | Edit step container layout — could be EditLayout.styles.ts (a layout-only shell component) |
+| Segment thumbnail | `.segment-thumb`, `.segment-thumb img` | ~10 | Shared thumbnail — move to SegmentThumb.styles.ts (currently used by CompactSegmentList, VideoPreview) |
+| **Subtotal (f)** | | ~217 | |
+
+### Defined END STATE
+
+**styles.css keeps only (a) + (b) + (c) + (e):**
+- **(a)** `:root` color tokens, theme rules, body
+- **(b)** `.plain-button`, `.plain-field` marker classes (raw-element guards)
+- **(c)** `.settings-*`, `.field-*` shared layout tokens (used by 2+ components for form layout)
+- **(e)** Documented cascade exceptions (HeaderBar, CompactSegmentList, BgmSettingsPanel, Astryx theme bug fixes)
+
+**Total: ~370 lines** (tokens + markers + shared + exceptions)
+
+**Domain-custom visuals (d) — migration trade-off:**
+The 6 visual stages are intentionally kept in plain CSS because they represent a distinct "editing interface layer" with complex canvas/overlay behavior. Migrating them to component `.styles.ts` files is technically possible but requires:
+1. Each component (VideoPreview, MomentPalette, etc.) to have a full anatomy folder structure (`.tsx`, `.styles.ts`, `.test.tsx`, `index.ts`)
+2. A decision on whether secondary components like CropEditOverlay become sub-styles within VideoPreview.styles.ts or standalone
+
+**Recommendation:** Defer domain-custom visual migration until the component team has capacity for full-lifecycle testing (visual screenshots, accessibility, responsive behavior). The current plain-CSS organization is maintainable and low-risk for incremental refinement. When ready, migrate one stage at a time (VideoPreview first, then MiniTimelineStrip, etc.).
+
+**Batch 4+ priority order:**
+1. **Category (f)** — batch 4: Migrate 12 small migratable components (App, Banner, Segment list, Edit layout, etc.) — ~217 lines, low risk
+2. **Category (d)** — batch 5+: Migrate VideoPreview + CropEditOverlay (~238 lines), then MomentPalette (~217), MiniTimelineStrip (~71), SequencePlayer (~169)
+3. **Remaining** — Category (d) BGM gutter is already documented as an exception in CompactSegmentList.styles.ts; keep its plain-CSS stub unless CompactSegmentList refactor necessitates absorption
+
