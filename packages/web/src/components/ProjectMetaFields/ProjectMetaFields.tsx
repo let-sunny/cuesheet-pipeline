@@ -37,6 +37,19 @@ export function ProjectMetaFields({ project, onChange }: Props) {
     onAdjusted: (typed, adjusted) => setHeightNote(`Rounded to ${adjusted} (must be even) - typed ${typed}`),
     onCommit: (next) => onChange({ height: next }),
   });
+  // Episode-level fade in/out at the very start/end of the export (PRD backlog #3) - omitted
+  // (undefined) reads as 0 (no episode fade), matching an existing cuesheet saved before this
+  // field existed.
+  const fadeInField = useNumericField({
+    value: project.fadeInS ?? 0,
+    coerce: (n) => Math.min(3, Math.max(0, n)),
+    onCommit: (next) => onChange({ fadeInS: next }),
+  });
+  const fadeOutField = useNumericField({
+    value: project.fadeOutS ?? 0,
+    coerce: (n) => Math.min(3, Math.max(0, n)),
+    onCommit: (next) => onChange({ fadeOutS: next }),
+  });
 
   return (
     <div className="settings-group">
@@ -77,6 +90,18 @@ export function ProjectMetaFields({ project, onChange }: Props) {
         />
       </label>
       {heightNote ? <p className="qf-note">{heightNote}</p> : null}
+      {/* Episode fade in/out (PRD backlog #3) - a pair, so they sit side by side (screen-spec
+          rule 4), matching the Width/Height row's field width above. */}
+      <label className="settings-field field-narrow">
+        <span>Fade in</span>
+        <input type="number" className="plain-field" min={0} max={3} step={0.1} {...fadeInField} />
+        <span className="qf-suffix">s</span>
+      </label>
+      <label className="settings-field field-narrow">
+        <span>Fade out</span>
+        <input type="number" className="plain-field" min={0} max={3} step={0.1} {...fadeOutField} />
+        <span className="qf-suffix">s</span>
+      </label>
     </div>
   );
 }

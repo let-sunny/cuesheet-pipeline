@@ -188,22 +188,29 @@ undraggable. Fixed with two stacked bars under the video, both always visible:
   entrance then a drip/fade departure), **Particle** (fibers/sparkles assembling, canvas) — the
   latter three render via headless frame-capture -> alpha overlay at render time (see
   docs/research/title-render-spike.md). Placed directly after Subtitle (both are text-overlay
-  concerns) and before Narration/Reframe.
-**G5. Narration** — select (medium) + preview + length warning (shown only when narration
+  concerns) and before Transitions/Narration/Reframe.
+**G5. Transitions** (PRD backlog #3, 2026-07-09 addition) — two independent sub-blocks,
+  **Transition in** and **Transition out**, each a checkbox that once on reveals: type select
+  (Fade/Dip) + duration (narrow, paired row, matching the G2 Speed/Volume pairing pattern) and a
+  **Dip amount** slider (0-100%, shown only when type is Dip — Fade always fades fully to black,
+  so it has no amount control). A parity note under the group states the Edit-step video's
+  fade/dip is an opacity-ramp approximation, not the real render. Placed directly after Title
+  (both are "what happens at/over the edges of this cut's frame" concerns) and before Narration.
+**G6. Narration** — select (medium) + preview + length warning (shown only when narration
   is in use)
-**G6. Reframe** — status display + [Edit] [Release] (Edit opens an overlay mode on the video)
-**G7. Cut actions** — one row of buttons: [Split Cmd+B] [Merge with next cut Cmd+J]
+**G7. Reframe** — status display + [Edit] [Release] (Edit opens an overlay mode on the video)
+**G8. Cut actions** — one row of buttons: [Split Cmd+B] [Merge with next cut Cmd+J]
   [Duplicate] [Set as intro] [Set as outro]. No primary in this row — none of these five is
   a dominant/default action, so all are `secondary`/`ghost` (2026-07-08 revision: this group
   used to also hold Delete at the end, visually pushed right by a CSS trick; that read as
   "just another cut action" and risked a misclick on a destructive operation).
-**Destructive zone (separate from G7, panel bottom)** — [Delete], alone, separated from G7 by
+**Destructive zone (separate from G8, panel bottom)** — [Delete], alone, separated from G8 by
   a divider + extra spacing and rendered `variant="destructive"`. This is not a numbered G
   group: it is deliberately isolated so it can never be mistaken for a routine action (section
   0-5 "destructive/rare actions ... last" taken literally — last and set apart, not just last
   in reading order).
 
-Rationale: G1-G3 cover 90% of the edit loop (range -> subtitle), G4-G7 are occasional.
+Rationale: G1-G3 cover 90% of the edit loop (range -> subtitle), G4-G8 are occasional.
 "Subtitle style for this cut" is a sub-property of subtitle, so it lives inside G3 — never
 its own section (this is the core fix for the current problem). The clip filename in G1 is
 read-only plain text (not an input) — the only legitimate way to change which source clip a
@@ -224,7 +231,8 @@ expected degradation, not a bug.
 
 ## 5. (3) Export
 
-Section order (the natural order of preparing output): **Project** (name, fps, resolution)
+Section order (the natural order of preparing output): **Project** (name, fps, resolution,
+episode fade in/out — PRD backlog #3, a narrow-field pair like Width/Height above it)
 -> **Subtitle style (global)** (compact live preview / size/color/outline as one group /
 background box as one group / position + edge margin, each its own row / note pointing at the
 (2) Edit video column for the composited-over-actual-video version) -> **Subtitle style
@@ -295,6 +303,11 @@ Buttons that belong to one group render inside one container (not spread across 
 stay visually together, and action groups in banners/dialog footers are right-aligned.
 
 ## Changelog
+- 2026-07-09 — PRD backlog #3 (fades/dip): Cut settings gains **G5. Transitions** (section 4),
+  renumbering the former G5-G7 (Narration/Reframe/Cut actions) to G6-G8 - placed after Title,
+  before Narration (both Title and Transitions are cut-frame-edge concerns); Export's Project
+  section gains an episode fade in/out field pair (section 5).
+
 - 2026-07-09 — PRD backlog #1+#2 (named subtitle style presets, title cards): (1) Cut settings
   gains **G4. Title** (section 4), renumbering the former G4-G6 (Narration/Reframe/Cut actions)
   to G5-G7 - placed after Subtitle (both are text-overlay concerns), before Narration/Reframe;

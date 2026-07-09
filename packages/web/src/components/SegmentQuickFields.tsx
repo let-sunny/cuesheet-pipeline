@@ -1,7 +1,14 @@
 import { Button } from "@astryxdesign/core/Button";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { Slider } from "@astryxdesign/core/Slider";
-import type { Segment, SubtitleStyle, SubtitleStyleOverride, SubtitleStylePresets, Title } from "@cuesheet/schema";
+import type {
+  Segment,
+  SubtitleStyle,
+  SubtitleStyleOverride,
+  SubtitleStylePresets,
+  Title,
+  Transition,
+} from "@cuesheet/schema";
 import { INTRO_OUTRO_MAX_DURATION_S } from "../clipPaths.js";
 import { narrationFileUrl, type NarrationFile } from "../api.js";
 import { useNumericField } from "../hooks/useNumericField.js";
@@ -55,16 +62,21 @@ interface Props {
   /** Turning a title card on/off for this cut (starts as a default typing title when enabled). */
   onToggleTitle: (enabled: boolean) => void;
   onChangeTitle: (patch: Partial<Title>) => void;
+  /** Turning a transitionIn/transitionOut fade or dip on/off for this cut (starts as a default
+   * fade, 0.5s, when enabled). */
+  onToggleTransition: (side: "in" | "out", enabled: boolean) => void;
+  onChangeTransition: (side: "in" | "out", patch: Partial<Transition>) => void;
 }
 
 /**
  * Cut settings (right-hand field panel in the touch-up step, canonical name from PRD section 4 —
- * formerly the "Inspector") - follows screen-spec section 4's G1-G7 group order as-is: Range ->
+ * formerly the "Inspector") - follows screen-spec section 4's G1-G8 group order as-is: Range ->
  * Playback -> Subtitle (+ per-cut subtitle style preset select/override) -> Title (title card,
- * PRD backlog #2) -> Narration (shown only when in use) -> Reframe -> Cut actions. The clip
- * filename field's group membership was ambiguous - the spec doesn't specify it, making it the
- * one element in this panel that needed a judgment call, but since it determines which clip the
- * "Range" applies to, it's placed at the top of the G1 (Range) group.
+ * PRD backlog #2) -> Transitions (fade/dip, PRD backlog #3) -> Narration (shown only when in use)
+ * -> Reframe -> Cut actions. The clip filename field's group membership was ambiguous - the spec
+ * doesn't specify it, making it the one element in this panel that needed a judgment call, but
+ * since it determines which clip the "Range" applies to, it's placed at the top of the G1 (Range)
+ * group.
  */
 export function SegmentQuickFields({
   segment,
@@ -94,6 +106,8 @@ export function SegmentQuickFields({
   onChangeStylePreset,
   onToggleTitle,
   onChangeTitle,
+  onToggleTransition,
+  onChangeTransition,
 }: Props) {
   // These hooks must run unconditionally (before the `!segment` early return below) - they fall
   // back to placeholder values when there's no selected segment, but the actual fields only
@@ -123,6 +137,16 @@ export function SegmentQuickFields({
     value: segment?.title?.durationS ?? DEFAULT_TITLE_DURATION_S,
     coerce: (n) => Math.min(10, Math.max(0.5, n)),
     onCommit: (next) => onChangeTitle({ durationS: next }),
+  });
+  const transitionInDurationField = useNumericField({
+    value: segment?.transitionIn?.durationS ?? DEFAULT_TRANSITION_DURATION_S,
+    coerce: (n) => Math.min(2, Math.max(0.2, n)),
+    onCommit: (next) => onChangeTransition("in", { durationS: next }),
+  });
+  const transitionOutDurationField = useNumericField({
+    value: segment?.transitionOut?.durationS ?? DEFAULT_TRANSITION_DURATION_S,
+    coerce: (n) => Math.min(2, Math.max(0.2, n)),
+    onCommit: (next) => onChangeTransition("out", { durationS: next }),
   });
 
   if (!segment) {
@@ -316,7 +340,112 @@ export function SegmentQuickFields({
         ) : null}
       </div>
 
-      {/* G5. Narration (shown only when in use) */}
+      {/* G5. Transitions (fade/dip, PRD backlog #3, screen-spec section 4 - placed after Title,
+          before Narration: Title and Transitions are both "what happens at/over the edges of this
+          cut's frame" concerns). Two independent optional transitions (cut start / cut end), each
+          toggled on with the same "starts from a sane default" pattern as Title above (fade,
+          0.5s). Dip amount only applies (and is only shown) when type is Dip - Fade always fades
+          fully to black. */}
+      <div className="qf-group">
+        <div className="qf-group-label">Transitions</div>
+        <div className="qf-transition">
+          <CheckboxInput
+            label="Transition in"
+            value={!!segment.transitionIn}
+            onChange={(enabled) => onToggleTransition("in", enabled)}
+          />
+          {segment.transitionIn ? (
+            <>
+              <div className="qf-row">
+                <label className="qf-field field-medium">
+                  <span>Type</span>
+                  <select
+                    className="plain-field"
+                    value={segment.transitionIn.type}
+                    onChange={(e) => onChangeTransition("in", { type: e.target.value as Transition["type"] })}
+                  >
+                    <option value="fade">Fade</option>
+                    <option value="dip">Dip</option>
+                  </select>
+                </label>
+                <label className="qf-field field-narrow">
+                  <span>Dur.</span>
+                  <input
+                    type="number"
+                    className="plain-field"
+                    min={0.2}
+                    max={2}
+                    step={0.1}
+                    {...transitionInDurationField}
+                  />
+                  <span className="qf-suffix">s</span>
+                </label>
+              </div>
+              {segment.transitionIn.type === "dip" ? (
+                <Slider
+                  label="Dip amount"
+                  value={Math.round((segment.transitionIn.dim ?? 1) * 100)}
+                  min={0}
+                  max={100}
+                  step={5}
+                  valueDisplay="text"
+                  onChange={(v: number) => onChangeTransition("in", { dim: v / 100 })}
+                />
+              ) : null}
+            </>
+          ) : null}
+        </div>
+        <div className="qf-transition">
+          <CheckboxInput
+            label="Transition out"
+            value={!!segment.transitionOut}
+            onChange={(enabled) => onToggleTransition("out", enabled)}
+          />
+          {segment.transitionOut ? (
+            <>
+              <div className="qf-row">
+                <label className="qf-field field-medium">
+                  <span>Type</span>
+                  <select
+                    className="plain-field"
+                    value={segment.transitionOut.type}
+                    onChange={(e) => onChangeTransition("out", { type: e.target.value as Transition["type"] })}
+                  >
+                    <option value="fade">Fade</option>
+                    <option value="dip">Dip</option>
+                  </select>
+                </label>
+                <label className="qf-field field-narrow">
+                  <span>Dur.</span>
+                  <input
+                    type="number"
+                    className="plain-field"
+                    min={0.2}
+                    max={2}
+                    step={0.1}
+                    {...transitionOutDurationField}
+                  />
+                  <span className="qf-suffix">s</span>
+                </label>
+              </div>
+              {segment.transitionOut.type === "dip" ? (
+                <Slider
+                  label="Dip amount"
+                  value={Math.round((segment.transitionOut.dim ?? 1) * 100)}
+                  min={0}
+                  max={100}
+                  step={5}
+                  valueDisplay="text"
+                  onChange={(v: number) => onChangeTransition("out", { dim: v / 100 })}
+                />
+              ) : null}
+            </>
+          ) : null}
+        </div>
+        <p className="qf-note-neutral">Preview approximates fades and dips (opacity ramp) - the exported video renders the real fade/dip.</p>
+      </div>
+
+      {/* G6. Narration (shown only when in use) */}
       {narrationEnabled ? (
         <div className="qf-group">
           <div className="qf-group-label">Narration</div>
@@ -352,7 +481,7 @@ export function SegmentQuickFields({
         </div>
       ) : null}
 
-      {/* G6. Reframe (crop) */}
+      {/* G7. Reframe (crop) */}
       <div className="qf-group">
         <div className="qf-group-label">Reframe</div>
         <div className="qf-row">
@@ -369,7 +498,7 @@ export function SegmentQuickFields({
         </div>
       </div>
 
-      {/* G7. Cut actions - Delete is not here (see the separate danger zone below, screen-spec section 4 revision). */}
+      {/* G8. Cut actions - Delete is not here (see the separate danger zone below, screen-spec section 4 revision). */}
       <div className="qf-group">
         <div className="qf-group-label">Cut actions</div>
         <div className="qf-row qf-actions-row">
@@ -427,3 +556,7 @@ export function SegmentQuickFields({
 
 /** Matches the schema's title.durationS default (3) - the value shown right after the toggle is turned on, before onChangeTitle's first patch lands. */
 const DEFAULT_TITLE_DURATION_S = 3;
+
+/** Matches the schema's transition.durationS default (0.5) - the value shown right after a
+ * transition toggle is turned on, before onChangeTransition's first patch lands. */
+const DEFAULT_TRANSITION_DURATION_S = 0.5;

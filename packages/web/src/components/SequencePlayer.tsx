@@ -21,6 +21,7 @@ import {
   subtitlePositionStyle,
   toCqw,
 } from "../lib/subtitleOverlay.js";
+import { transitionOpacity } from "../lib/transitionOverlay.js";
 
 /** Handle for controlling playthrough from outside (e.g. the Space shortcut in App.tsx). */
 export interface SequencePlayerHandle {
@@ -397,6 +398,21 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
   const sceneHint = currentSegment ? matchSceneInfo(currentSegment, moments) : { kind: "none" as const };
   const sceneHintText = sceneHint.kind !== "none" ? sceneHint.memo : null;
 
+  // Preview approximation of the active cut's transitionIn/transitionOut (PRD backlog #3) - only
+  // meaningful merged into the *front* (visible) slot's own style below, never the back slot's
+  // (which stays hidden via its own CSS class regardless of any style here).
+  const frontStyle = currentSegment
+    ? {
+        ...cropPreviewStyle(currentSegment.crop),
+        opacity: transitionOpacity(
+          currentSegment.transitionIn,
+          currentSegment.transitionOut,
+          currentSegment.out - currentSegment.in,
+          videoNow - currentSegment.in,
+        ),
+      }
+    : undefined;
+
   // Cumulative offset (seconds) on the output timeline — the progress bar, time display, and
   // click-seeking all use this basis. cumulativeStart has one trailing entry equal to the total
   // (see lib/bgmCutMapping.ts), so totalOutputSeconds is just its last element.
@@ -451,13 +467,13 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
         <video
           ref={videoRefs[0]}
           className={front === 0 ? "sequence-video visible" : "sequence-video hidden"}
-          style={front === 0 ? cropPreviewStyle(currentSegment?.crop) : undefined}
+          style={front === 0 ? frontStyle : undefined}
           playsInline
         />
         <video
           ref={videoRefs[1]}
           className={front === 1 ? "sequence-video visible" : "sequence-video hidden"}
-          style={front === 1 ? cropPreviewStyle(currentSegment?.crop) : undefined}
+          style={front === 1 ? frontStyle : undefined}
           playsInline
         />
         {sceneHintText ? (

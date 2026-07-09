@@ -1721,6 +1721,20 @@ body {
   color: var(--warning-text);
 }
 
+/* Same treatment as .qf-note but for informational (non-warning) text, e.g. the Transitions
+   group's preview-parity note - same neutral color as .narration-empty-note. */
+.qf-note-neutral {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Spacing between the "Transition in"/"Transition out" sub-blocks and the parity note below them,
+   inside the Transitions group (G5) - each is a visually separate toggle+fields block sharing one qf-group. */
+.qf-transition {
+  margin-bottom: 10px;
+}
+
 /* clip file name (read-only) - sits in the same place as other qf-field values, but is
    ellipsis-truncated so a long name doesn't overflow the card/panel width (selecting/copying still
    gets the full text regardless of the visual truncation). */

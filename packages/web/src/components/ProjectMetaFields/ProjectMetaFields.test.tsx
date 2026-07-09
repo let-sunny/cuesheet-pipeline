@@ -61,4 +61,37 @@ describe("ProjectMetaFields", () => {
     fireEvent.blur(height);
     expect(onChange).toHaveBeenCalledWith({ height: 720 });
   });
+
+  it("shows Fade in/Fade out as 0 when fadeInS/fadeOutS are absent (an existing cuesheet)", () => {
+    const onChange = vi.fn();
+    render(<ProjectMetaFields project={baseProject()} onChange={onChange} />);
+    expect(screen.getAllByDisplayValue("0")).toHaveLength(2);
+  });
+
+  it("commits Fade in on blur", () => {
+    const onChange = vi.fn();
+    render(<ProjectMetaFields project={{ ...baseProject(), fadeInS: 0 }} onChange={onChange} />);
+    const [fadeIn] = screen.getAllByDisplayValue("0");
+    fireEvent.change(fadeIn!, { target: { value: "1.5" } });
+    fireEvent.blur(fadeIn!);
+    expect(onChange).toHaveBeenCalledWith({ fadeInS: 1.5 });
+  });
+
+  it("commits Fade out on blur", () => {
+    const onChange = vi.fn();
+    render(<ProjectMetaFields project={{ ...baseProject(), fadeOutS: 0 }} onChange={onChange} />);
+    const [, fadeOut] = screen.getAllByDisplayValue("0");
+    fireEvent.change(fadeOut!, { target: { value: "2" } });
+    fireEvent.blur(fadeOut!);
+    expect(onChange).toHaveBeenCalledWith({ fadeOutS: 2 });
+  });
+
+  it("clamps a fade value typed above 3 down to 3", () => {
+    const onChange = vi.fn();
+    render(<ProjectMetaFields project={{ ...baseProject(), fadeInS: 0 }} onChange={onChange} />);
+    const [fadeIn] = screen.getAllByDisplayValue("0");
+    fireEvent.change(fadeIn!, { target: { value: "5" } });
+    fireEvent.blur(fadeIn!);
+    expect(onChange).toHaveBeenCalledWith({ fadeInS: 3 });
+  });
 });

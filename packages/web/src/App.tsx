@@ -8,6 +8,7 @@ import type {
   SubtitleStyleOverride,
   SubtitleStylePresets,
   Title,
+  Transition,
 } from "@cuesheet/schema";
 import { useToast } from "@astryxdesign/core/Toast";
 import { Button } from "@astryxdesign/core/Button";
@@ -789,6 +790,51 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     });
   }, [draft, recordContinuousChange, setDraft]);
 
+  // "Transition in"/"Transition out" toggle (PRD backlog #3) - turning one on starts from a sane
+  // default (fade, 0.5s) so the preview shows something immediately, same pattern as the Title
+  // toggle above.
+  const toggleSegmentTransition = useCallback((i: number, side: "in" | "out", enabled: boolean) => {
+    if (!draft) {
+      return;
+    }
+    recordDiscreteChange();
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const key = side === "in" ? "transitionIn" : "transitionOut";
+      const segments = prev.segments.map((s, idx) =>
+        idx === i
+          ? enabled
+            ? { ...s, [key]: { type: "fade" as const, durationS: DEFAULT_TRANSITION_DURATION_S } }
+            : withoutTransition(s, side)
+          : s,
+      );
+      return { ...prev, segments };
+    });
+  }, [draft, recordDiscreteChange, setDraft]);
+
+  const updateSegmentTransition = useCallback((i: number, side: "in" | "out", patch: Partial<Transition>) => {
+    if (!draft) {
+      return;
+    }
+    recordContinuousChange();
+    setDraft((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const key = side === "in" ? "transitionIn" : "transitionOut";
+      const segments = prev.segments.map((s, idx) => {
+        if (idx !== i) {
+          return s;
+        }
+        const current = side === "in" ? s.transitionIn : s.transitionOut;
+        return current ? { ...s, [key]: { ...current, ...patch } } : s;
+      });
+      return { ...prev, segments };
+    });
+  }, [draft, recordContinuousChange, setDraft]);
+
   // Subtitle style presets management (Export step) - create/rename/delete/edit. Renaming and
   // deleting also sweep every segment referencing the old name, so a cut never silently ends up
   // pointing at a preset name that no longer exists (the schema would reject that on save).
@@ -1086,6 +1132,8 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
                       onChangeStylePreset={(name) => changeSegmentStylePreset(selectedIndex, name)}
                       onToggleTitle={(enabled) => toggleSegmentTitle(selectedIndex, enabled)}
                       onChangeTitle={(patch) => updateSegmentTitle(selectedIndex, patch)}
+                      onToggleTransition={(side, enabled) => toggleSegmentTransition(selectedIndex, side, enabled)}
+                      onChangeTransition={(side, patch) => updateSegmentTransition(selectedIndex, side, patch)}
                     />
                   )}
                 </div>
@@ -1221,6 +1269,21 @@ function withoutTitle(segment: Segment): Segment {
   const { title: _title, ...rest } = segment;
   return rest;
 }
+
+// Same convention as withoutTitle: drop the `transitionIn`/`transitionOut` key entirely (rather
+// than leaving it null) when that side's transition is turned off.
+function withoutTransition(segment: Segment, side: "in" | "out"): Segment {
+  if (side === "in") {
+    const { transitionIn: _transitionIn, ...rest } = segment;
+    return rest;
+  }
+  const { transitionOut: _transitionOut, ...rest } = segment;
+  return rest;
+}
+
+/** Matches the schema's transition.durationS default (0.5) - the value written when a Transition
+ * in/out toggle is first turned on. */
+const DEFAULT_TRANSITION_DURATION_S = 0.5;
 
 function loadNoBurnSubtitles(): boolean {
   try {

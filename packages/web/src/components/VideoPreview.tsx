@@ -17,6 +17,7 @@ import {
   subtitlePositionStyle,
   toCqw,
 } from "../lib/subtitleOverlay.js";
+import { transitionOpacity } from "../lib/transitionOverlay.js";
 import { computeDefaultTrimWindow, moveTrimWindow } from "../lib/trimWindow.js";
 import { CropEditOverlay } from "./CropEditOverlay.js";
 
@@ -507,7 +508,22 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
               ref={videoRef}
               src={`/clips/${encodeURIComponent(segment.clip)}`}
               onError={() => setMissing(true)}
-              style={cropEditDraft ? undefined : cropPreviewStyle(segment.crop)}
+              style={
+                cropEditDraft
+                  ? undefined
+                  : {
+                      ...cropPreviewStyle(segment.crop),
+                      // Preview approximation of transitionIn/transitionOut (PRD backlog #3) - see
+                      // lib/transitionOverlay.ts's module doc for why this isn't pixel-exact with
+                      // the real render.
+                      opacity: transitionOpacity(
+                        segment.transitionIn,
+                        segment.transitionOut,
+                        segment.out - segment.in,
+                        currentTime - segment.in,
+                      ),
+                    }
+              }
             />
             {cropEditDraft ? (
               <CropEditOverlay
