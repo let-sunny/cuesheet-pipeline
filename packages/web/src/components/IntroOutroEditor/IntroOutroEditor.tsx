@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import * as stylex from "@stylexjs/stylex";
 import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { Button } from "@astryxdesign/core/Button";
-import { baseName, INTRO_OUTRO_MAX_DURATION_S } from "../clipPaths.js";
-import { fetchClipFiles, uploadClip, type ClipFile } from "../api.js";
+import { baseName, INTRO_OUTRO_MAX_DURATION_S } from "../../clipPaths.js";
+import { fetchClipFiles, uploadClip, type ClipFile } from "../../api.js";
+import { styles } from "./IntroOutroEditor.styles.js";
 
 interface Props {
   intro: string | null;
@@ -102,12 +104,12 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
   const matchedOutroFile = matchedFileName(outro, clipDir, files);
 
   return (
-    <div className="intro-outro-editor">
+    <div {...stylex.props(styles.editor)}>
       <div className="settings-group">
         <h3>Intro</h3>
         {intro ? (
-          <div className="intro-outro-current">
-            <span className="intro-outro-clip-name">Clip: {clipLabel(intro, clipDir)}</span>
+          <div {...stylex.props(styles.current)}>
+            <span {...stylex.props(styles.clipName)}>Clip: {clipLabel(intro, clipDir)}</span>
             <Button label="Clear" variant="ghost" size="sm" onClick={() => onClear("intro")} />
           </div>
         ) : null}
@@ -136,7 +138,7 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
           <p className="narration-empty-note">{filesNote}</p>
         ) : null}
         <div
-          className={`intro-outro-dropzone${introDragOver ? " intro-outro-dropzone-active" : ""}`}
+          {...stylex.props(styles.dropzone, introDragOver && styles.dropzoneActive)}
           onDragOver={(e) => {
             e.preventDefault();
             setIntroDragOver(true);
@@ -155,7 +157,7 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
             ref={introFileInputRef}
             type="file"
             accept="video/*"
-            className="intro-outro-file-input"
+            {...stylex.props(styles.fileInput)}
             onChange={(e) => {
               const file = e.target.files?.[0];
               e.target.value = "";
@@ -172,8 +174,8 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
             isLoading={introUpload.uploading}
             onClick={() => introFileInputRef.current?.click()}
           />
-          <span className="intro-outro-dropzone-hint">or drag and drop a video file here</span>
-          {introUpload.error ? <p className="intro-outro-upload-error">{introUpload.error}</p> : null}
+          <span {...stylex.props(styles.dropzoneHint)}>or drag and drop a video file here</span>
+          {introUpload.error ? <p {...stylex.props(styles.uploadError)}>{introUpload.error}</p> : null}
         </div>
         <Collapsible trigger="Enter path manually" defaultIsOpen={!matchedIntroFile && intro != null}>
           <label className="settings-field wide-input">
@@ -189,10 +191,10 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
         </Collapsible>
         {intro ? (
           introError ? (
-            <div className="empty intro-outro-missing">Can't find the source: {intro}</div>
+            <div className={`empty ${stylex.props(styles.missing).className}`}>Can't find the source: {intro}</div>
           ) : (
             <video
-              className="intro-outro-preview"
+              {...stylex.props(styles.preview)}
               src={localVideoUrl(intro)}
               controls
               onError={() => setIntroError(true)}
@@ -204,8 +206,8 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
       <div className="settings-group">
         <h3>Outro</h3>
         {outro ? (
-          <div className="intro-outro-current">
-            <span className="intro-outro-clip-name">Clip: {clipLabel(outro, clipDir)}</span>
+          <div {...stylex.props(styles.current)}>
+            <span {...stylex.props(styles.clipName)}>Clip: {clipLabel(outro, clipDir)}</span>
             <Button label="Clear" variant="ghost" size="sm" onClick={() => onClear("outro")} />
           </div>
         ) : null}
@@ -234,7 +236,7 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
           <p className="narration-empty-note">{filesNote}</p>
         ) : null}
         <div
-          className={`intro-outro-dropzone${outroDragOver ? " intro-outro-dropzone-active" : ""}`}
+          {...stylex.props(styles.dropzone, outroDragOver && styles.dropzoneActive)}
           onDragOver={(e) => {
             e.preventDefault();
             setOutroDragOver(true);
@@ -253,7 +255,7 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
             ref={outroFileInputRef}
             type="file"
             accept="video/*"
-            className="intro-outro-file-input"
+            {...stylex.props(styles.fileInput)}
             onChange={(e) => {
               const file = e.target.files?.[0];
               e.target.value = "";
@@ -270,8 +272,8 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
             isLoading={outroUpload.uploading}
             onClick={() => outroFileInputRef.current?.click()}
           />
-          <span className="intro-outro-dropzone-hint">or drag and drop a video file here</span>
-          {outroUpload.error ? <p className="intro-outro-upload-error">{outroUpload.error}</p> : null}
+          <span {...stylex.props(styles.dropzoneHint)}>or drag and drop a video file here</span>
+          {outroUpload.error ? <p {...stylex.props(styles.uploadError)}>{outroUpload.error}</p> : null}
         </div>
         <Collapsible trigger="Enter path manually" defaultIsOpen={!matchedOutroFile && outro != null}>
           <label className="settings-field wide-input">
@@ -287,10 +289,10 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
         </Collapsible>
         {outro ? (
           outroError ? (
-            <div className="empty intro-outro-missing">Can't find the source: {outro}</div>
+            <div className={`empty ${stylex.props(styles.missing).className}`}>Can't find the source: {outro}</div>
           ) : (
             <video
-              className="intro-outro-preview"
+              {...stylex.props(styles.preview)}
               src={localVideoUrl(outro)}
               controls
               onError={() => setOutroError(true)}
