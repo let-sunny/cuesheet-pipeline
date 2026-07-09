@@ -26,4 +26,15 @@ if [ ! -f bgm_test.m4a ]; then
     -c:a aac bgm_test.m4a
 fi
 
+# A "long clip" fixture for the TrimStrip zoom/precision journey (task #25) - the real-world case
+# is a knitting long-take up to ~40min (docs/research/trim-ux-conventions.md), but 40min (or even
+# the 900s used in QA notes elsewhere) would blow this suite's <2min budget just to encode once.
+# 180s is already long enough that the default viewport (padded in/out, floored at 20s) is a small
+# fraction of the clip - the property the journey actually needs to exercise - while encoding in a
+# few seconds (ultrafast preset, no audio needed).
+if [ ! -f cut_long.mp4 ]; then
+  "$FFMPEG" -y -f lavfi -i "testsrc2=size=640x360:rate=24:duration=180" \
+    -c:v libx264 -preset ultrafast -pix_fmt yuv420p -an cut_long.mp4
+fi
+
 echo "Fixture media ready in $OUT_DIR"

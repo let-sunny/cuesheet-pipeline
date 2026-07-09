@@ -32,6 +32,14 @@
       "speed": 1,
       "volume": 1,
       "subtitle": "Third cut"
+    },
+    {
+      "clip": "cut_long.mp4",
+      "in": 90,
+      "out": 93,
+      "speed": 1,
+      "volume": 1,
+      "subtitle": "Long-take cut (TrimStrip zoom fixture)"
     }
   ],
   "bgm": [],
