@@ -10,8 +10,9 @@ Point it at a folder of raw footage and it takes you through three steps:
 1. **Scenes** — a vision model (Claude) looks at extracted frames and proposes moment
    candidates: which parts of the footage are worth using, and why.
 2. **Edit** — refine the auto-generated rough cut in a browser editor (cut list, mini
-   timeline, live preview) or by telling your own Claude Code session what to change
-   (it edits the same cuesheet file through an MCP bridge — no extra API cost).
+   timeline, live preview, title cards, fade/dip transitions, BGM ducking under narration,
+   one-click frame capture for thumbnails) or by telling your own Claude Code session what
+   to change (it edits the same cuesheet file through an MCP bridge — no extra API cost).
 3. **Export** — render straight to a final `.mp4` (and `.srt`) with local ffmpeg, no
    upload, no cloud step.
 
