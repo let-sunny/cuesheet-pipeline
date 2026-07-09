@@ -7,6 +7,13 @@ interface Props {
   /** Timestamp (seconds) to grab the thumbnail from. */
   t: number;
   className?: string;
+  /**
+   * Reports whether the thumbnail ultimately resolved: `true` once the image loads, `false` for
+   * "unavailable" (no clip filename, or the request 404s). Not called while a thumbnail is still
+   * pending (not yet visible/loading) - only on a definite outcome. Used by consumers like
+   * TrimStrip to fall back to a ruler-tick placeholder per cell when a thumbnail can't be shown.
+   */
+  onResult?: (ok: boolean) => void;
 }
 
 /**
@@ -16,11 +23,18 @@ interface Props {
  * dragging. If there's no proxy and the server returns 404 (onError), it's left as an empty
  * placeholder.
  */
-export function SegmentThumb({ clip, t, className }: Props) {
+export function SegmentThumb({ clip, t, className, onResult }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [visible, setVisible] = useState(false);
   const [debouncedT, setDebouncedT] = useState(t);
   const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!clip) {
+      onResult?.(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clip]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -63,7 +77,11 @@ export function SegmentThumb({ clip, t, className }: Props) {
         {...stylex.props(styles.img)}
         src={`/api/thumb?clip=${encodeURIComponent(clip)}&t=${debouncedT.toFixed(1)}`}
         alt=""
-        onError={() => setFailed(true)}
+        onLoad={() => onResult?.(true)}
+        onError={() => {
+          setFailed(true);
+          onResult?.(false);
+        }}
       />
     </div>
   );

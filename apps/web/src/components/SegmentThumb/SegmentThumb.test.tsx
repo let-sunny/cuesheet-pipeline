@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, render } from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { SegmentThumb } from "./SegmentThumb.js";
 
 let ioCallback: IntersectionObserverCallback | undefined;
@@ -58,5 +58,33 @@ describe("SegmentThumb", () => {
   it("appends the consumer className alongside its own base class", () => {
     const { container } = render(<SegmentThumb clip="cut_01.mp4" t={1} className="mini-strip-thumb" />);
     expect(container.firstElementChild?.className).toContain("mini-strip-thumb");
+  });
+
+  it("reports onResult(false) immediately when there's no clip filename", () => {
+    const onResult = vi.fn();
+    render(<SegmentThumb clip="" t={1} onResult={onResult} />);
+    expect(onResult).toHaveBeenCalledWith(false);
+  });
+
+  it("reports onResult(true) once the thumbnail image loads", () => {
+    const onResult = vi.fn();
+    const { container } = render(<SegmentThumb clip="cut_01.mp4" t={1} onResult={onResult} />);
+    fireIntersect();
+    const img = container.querySelector("img")!;
+    act(() => {
+      img.dispatchEvent(new Event("load"));
+    });
+    expect(onResult).toHaveBeenCalledWith(true);
+  });
+
+  it("reports onResult(false) when the thumbnail request 404s", () => {
+    const onResult = vi.fn();
+    const { container } = render(<SegmentThumb clip="cut_01.mp4" t={1} onResult={onResult} />);
+    fireIntersect();
+    const img = container.querySelector("img")!;
+    act(() => {
+      img.dispatchEvent(new Event("error"));
+    });
+    expect(onResult).toHaveBeenCalledWith(false);
   });
 });
