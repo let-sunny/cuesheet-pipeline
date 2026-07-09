@@ -34,7 +34,14 @@ function sanitizeFileName(name: string): string {
 }
 
 function renderOutputPathFor(projectName: string): string {
-  return resolve(renderOutputDir, `${sanitizeFileName(projectName)}.mp4`);
+  // Timestamped so repeated renders of the same project never overwrite each
+  // other (issue #4); GET /out.mp4 stays a stable alias via lastRenderOutputPath.
+  const stamp = new Date()
+    .toISOString()
+    .slice(0, 16)
+    .replace("T", " ")
+    .replace(":", ".");
+  return resolve(renderOutputDir, `${sanitizeFileName(projectName)} ${stamp}.mp4`);
 }
 
 // Extensions accepted for intro/outro file uploads (/api/upload-clip) - not all of clipMimeTypes,
