@@ -1,4 +1,6 @@
+import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
+import { styles } from "./KeyboardHelp.styles.js";
 
 interface Props {
   visible: boolean;
@@ -17,17 +19,17 @@ export function KeyboardHelp({ visible, onToggle }: Props) {
     return null;
   }
   return (
-    <div className="keyboard-help">
-      <p className="keyboard-help-note">Playback/trim shortcuts (Space, L/K/J, I/O, arrows, Cmd+B) apply on the ② Edit step.</p>
-      <ul className="keyboard-help-list">
+    <div {...stylex.props(styles.panel)}>
+      <p {...stylex.props(styles.note)}>Playback/trim shortcuts (Space, L/K/J, I/O, arrows, Cmd+B) apply on the ② Edit step.</p>
+      <ul {...stylex.props(styles.list)}>
         {SHORTCUTS.map(([key, desc]) => (
-          <li key={key}>
-            <kbd>{key}</kbd>
+          <li key={key} {...stylex.props(styles.listItem)}>
+            <kbd {...stylex.props(styles.kbd)}>{key}</kbd>
             <span>{desc}</span>
           </li>
         ))}
       </ul>
-      <Button label="Close" variant="ghost" size="sm" className="keyboard-help-toggle" onClick={onToggle} />
+      <Button label="Close" variant="ghost" size="sm" xstyle={styles.toggle} onClick={onToggle} />
     </div>
   );
 }

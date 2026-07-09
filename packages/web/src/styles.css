@@ -1186,60 +1186,6 @@ body {
   gap: 6px;
 }
 
-.keyboard-help {
-  position: fixed;
-  right: 16px;
-  bottom: 16px;
-  z-index: 10;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
-}
-
-.keyboard-help-toggle {
-  font-size: 13px;
-}
-
-.keyboard-help-note {
-  margin: 0;
-  padding: 8px 12px;
-  background: var(--surface-1);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 12px;
-  color: var(--text-tertiary);
-  max-width: 280px;
-}
-
-.keyboard-help-list {
-  list-style: none;
-  margin: 0;
-  padding: 10px 12px;
-  background: var(--surface-1);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 13px;
-  max-width: 280px;
-}
-
-.keyboard-help-list li {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 3px 0;
-}
-
-.keyboard-help-list kbd {
-  font: inherit;
-  color: var(--text-quaternary);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 1px 5px;
-  white-space: nowrap;
-}
-
 /* ---- 4-step editing journey shell ---- */
 
 .header-title-group {
