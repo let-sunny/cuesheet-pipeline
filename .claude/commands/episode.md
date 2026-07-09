@@ -220,7 +220,11 @@ node scripts/youtube-chapters.mjs episodes/<slug>.cuesheet.json
 ```
 
 It derives chapter starts from the editing grammar (timelapse connectors /
-no-subtitle stretches). The raw titles are just each section's first subtitle —
+no-subtitle stretches). Known limitation (v4 rehearsal): connectors may cluster
+early, leaving one oversized final chapter — when that happens, ALSO treat
+completion-reveal cuts ("짜잔"-style subtitles) as section closers and insert a
+chapter at the next cut, keeping chapters 20s+ apart. The raw titles are just
+each section's first subtitle —
 rewrite them as short section names (2-4 words, voice-guide tone does NOT apply
 here; plain descriptive Korean like "도트얀 언박싱", "몸판 뜨기"), keeping the
 timestamps. Include the final list in the report so the user can paste it into
