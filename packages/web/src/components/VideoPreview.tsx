@@ -1,12 +1,13 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { Button } from "@astryxdesign/core/Button";
-import type { Crop, Segment, SubtitleStyle } from "@cuesheet/schema";
+import type { Segment, SubtitleStyle } from "@cuesheet/schema";
 import { CompactButton } from "./ui/CompactButton/index.js";
 import { fetchProxyStatus, type ClipMoments, type ProxyStatus } from "../api.js";
 import { clamp } from "../lib/clamp.js";
 import { cropPreviewStyle } from "../lib/cropPreview.js";
-import { useBlockingOverlay } from "../lib/modalStack.js";
+import { useCropEditor } from "../hooks/useCropEditor.js";
+import { MAX_PLAYBACK_RATE, useShuttle } from "../hooks/useShuttle.js";
 import { matchSceneInfo, shotTypeLabel } from "../lib/sceneInfo.js";
 import {
   mergeSubtitleStyle,
@@ -15,58 +16,8 @@ import {
   subtitlePositionStyle,
   toCqw,
 } from "../lib/subtitleOverlay.js";
+import { computeDefaultTrimWindow, moveTrimWindow } from "../lib/trimWindow.js";
 import { CropEditOverlay } from "./CropEditOverlay.js";
-
-/** Polling interval (ms) for proxy readiness status. */
-const PROXY_STATUS_POLL_INTERVAL_MS = 10000;
-
-/** Browsers throw a NotSupportedError setting HTMLMediaElement.playbackRate above 16 - the schema
- * also caps segment.speed at 16, but this is a defensive clamp for old/hand-edited data (e.g. via
- * the bridge) and the J/K/L shuttle, which multiplies speed further (up to 4x). */
-const MAX_PLAYBACK_RATE = 16;
-
-/** Minimum gap (seconds) between in/out when dragging a handle. */
-const MIN_GAP = 0.05;
-/** Minimum gap (seconds) from the in/out boundary when splitting. */
-const SPLIT_MARGIN = 0.2;
-
-/** Two-level trim (screen-spec section 3) - the detail bar's default zoom window is the cut's
- * in/out range padded by this fraction of the range's own length on each side. */
-const TRIM_WINDOW_PADDING_RATIO = 0.3;
-/** The detail bar's zoom window is never narrower than this (seconds) unless the whole clip is
- * shorter, in which case the window is just the whole clip - "min 20s window" from the spec, and
- * "on a short clip, window = whole clip" for clips under that. */
-const TRIM_WINDOW_MIN_S = 20;
-
-/**
- * Default zoom window (seconds) for the detail trim bar: the cut's in/out range padded by 30% of
- * its own length on each side, widened to at least TRIM_WINDOW_MIN_S (or the whole clip, if
- * shorter than that), then clamped into [0, durationS] while preserving width where possible.
- */
-function computeDefaultTrimWindow(inS: number, outS: number, durationS: number): { start: number; end: number } {
-  if (durationS <= 0) {
-    return { start: 0, end: 0 };
-  }
-  const range = Math.max(0, outS - inS);
-  const padding = range * TRIM_WINDOW_PADDING_RATIO;
-  let start = inS - padding;
-  let end = outS + padding;
-  const minWidth = Math.min(TRIM_WINDOW_MIN_S, durationS);
-  if (end - start < minWidth) {
-    const center = (inS + outS) / 2;
-    start = center - minWidth / 2;
-    end = center + minWidth / 2;
-  }
-  if (start < 0) {
-    end -= start;
-    start = 0;
-  }
-  if (end > durationS) {
-    start -= end - durationS;
-    end = durationS;
-  }
-  return { start: Math.max(0, start), end: Math.min(durationS, end) };
-}
 
 type PlayMode = "loop" | "free";
 
@@ -120,8 +71,6 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   const overviewTimelineRef = useRef<HTMLDivElement | null>(null);
   const cropFrameRef = useRef<HTMLDivElement | null>(null);
   const [missing, setMissing] = useState(false);
-  // null = not in crop edit mode. A value means an in-progress draft crop (not yet committed to the segment).
-  const [cropEditDraft, setCropEditDraft] = useState<Crop | null>(null);
   // The source video's own intrinsic pixel size (video.videoWidth/videoHeight), set once metadata
   // loads — used (with projectWidth/projectHeight) to derive the crop ratio-lock below.
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
@@ -144,12 +93,10 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   // A value used to force-remount <video> when a proxy has just become ready, so it re-requests
   // the newly served proxy file (also clears any missing state left over from an original load failure).
   const [reloadToken, setReloadToken] = useState(0);
-  // J/K/L shuttle state — managed as a ref only, since playback direction/speed don't need to trigger a re-render.
-  // "stopped" means the shuttle isn't involved, i.e. normal playback/pause state (handled by existing logic like handlePlay).
-  const shuttleDirectionRef = useRef<"stopped" | "forward" | "backward">("stopped");
-  const shuttleLevelRef = useRef(1);
-  const shuttleRafRef = useRef<number | null>(null);
-  const shuttleLastTsRef = useRef<number | undefined>(undefined);
+
+  const { cropEditDraft, lockRatio, updateCropDraft, startCropEdit, applyCropEdit, cancelCropEdit, resetCropEditToFullFrame, clearCropEdit } =
+    useCropEditor({ segment, projectWidth, projectHeight, naturalSize, onChange });
+  const { shuttleForward, shuttleBackward, shuttleStop, resetShuttle } = useShuttle({ videoRef, segment, setCurrentTime });
 
   useEffect(() => {
     autoPlayRef.current = autoPlay;
@@ -176,17 +123,10 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   // When the selected cut changes, discard any in-progress crop edit (a draft based on a
   // different cut), and also clean up any shuttle (J/K/L speed/reverse playback) running for the previous cut.
   useEffect(() => {
-    setCropEditDraft(null);
+    cancelCropEdit();
     resetShuttle();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIndex]);
-
-  // Clean up on unmount so no reverse-playback rAF loop is left running.
-  useEffect(() => {
-    return () => {
-      stopShuttleRaf();
-    };
-  }, []);
 
   // If the selected clip's proxy is pending/being generated, check status every 10 seconds to
   // refresh the notice, and once ready, remount <video> to switch over to the proxy.
@@ -317,24 +257,6 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     setCurrentTime(clamped);
   };
 
-  const stopShuttleRaf = () => {
-    if (shuttleRafRef.current !== null) {
-      cancelAnimationFrame(shuttleRafRef.current);
-      shuttleRafRef.current = null;
-    }
-  };
-
-  /** Resets the shuttle (J/K/L) state back to normal (stopped) — cleans up speed/mute/reverse-playback loop. */
-  const resetShuttle = () => {
-    stopShuttleRaf();
-    shuttleDirectionRef.current = "stopped";
-    shuttleLevelRef.current = 1;
-    const video = videoRef.current;
-    if (video) {
-      video.muted = false;
-    }
-  };
-
   const handlePlay = () => {
     const video = videoRef.current;
     if (!video || !segment) {
@@ -351,83 +273,6 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     video.playbackRate = Math.min(segment.speed, MAX_PLAYBACK_RATE);
     video.volume = segment.volume;
     void video.play();
-  };
-
-  const shuttleStop = () => {
-    const video = videoRef.current;
-    resetShuttle();
-    if (video) {
-      video.pause();
-    }
-  };
-
-  /** Reverse playback frame loop — keeps video paused and decrements currentTime directly on
-      every rAF (an approximation, since HTML video doesn't support negative playbackRate). */
-  const reverseTick = (ts: number) => {
-    const video = videoRef.current;
-    if (!video || !segment || shuttleDirectionRef.current !== "backward") {
-      stopShuttleRaf();
-      return;
-    }
-    const last = shuttleLastTsRef.current;
-    shuttleLastTsRef.current = ts;
-    if (last === undefined) {
-      shuttleRafRef.current = requestAnimationFrame(reverseTick);
-      return;
-    }
-    const dt = (ts - last) / 1000;
-    const next = Math.max(segment.in, video.currentTime - dt * shuttleLevelRef.current);
-    video.currentTime = next;
-    setCurrentTime(next);
-    if (next <= segment.in) {
-      shuttleStop();
-      return;
-    }
-    shuttleRafRef.current = requestAnimationFrame(reverseTick);
-  };
-
-  /** L: forward playback. Repeated presses raise the speed 1x -> 2x -> 4x (capped at 4x). If
-      reverse playback is active, switches to forward 1x. */
-  const shuttleForward = () => {
-    const video = videoRef.current;
-    if (!video || !segment) {
-      return;
-    }
-    if (shuttleDirectionRef.current === "forward") {
-      shuttleLevelRef.current = shuttleLevelRef.current >= 4 ? 4 : shuttleLevelRef.current * 2;
-    } else {
-      stopShuttleRaf();
-      shuttleDirectionRef.current = "forward";
-      shuttleLevelRef.current = 1;
-      video.muted = false;
-      if (video.currentTime < segment.in || video.currentTime >= segment.out) {
-        video.currentTime = segment.in;
-        setCurrentTime(segment.in);
-      }
-    }
-    video.playbackRate = Math.min(segment.speed * shuttleLevelRef.current, MAX_PLAYBACK_RATE);
-    video.volume = segment.volume;
-    void video.play();
-  };
-
-  /** J: reverse playback (approximate). Repeated presses raise the speed 1x -> 2x -> 4x (capped
-      at 4x). Audio is meaningless here so it's muted. If forward playback is active, switches to reverse 1x. */
-  const shuttleBackward = () => {
-    const video = videoRef.current;
-    if (!video || !segment) {
-      return;
-    }
-    if (shuttleDirectionRef.current === "backward") {
-      shuttleLevelRef.current = shuttleLevelRef.current >= 4 ? 4 : shuttleLevelRef.current * 2;
-      return;
-    }
-    video.pause();
-    shuttleDirectionRef.current = "backward";
-    shuttleLevelRef.current = 1;
-    video.muted = true;
-    stopShuttleRaf();
-    shuttleLastTsRef.current = undefined;
-    shuttleRafRef.current = requestAnimationFrame(reverseTick);
   };
 
   const handleSetIn = () => {
@@ -462,88 +307,6 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     }
     onSplit(currentTime);
   };
-
-  // crop.w/crop.h (ratios of the source frame) must reproduce the project's aspect ratio once
-  // scaled onto the source (see @cuesheet/schema's cueSheetSchema superRefine) — i.e.
-  // w/h === (projectWidth/projectHeight) / (naturalWidth/naturalHeight). For same-aspect
-  // sources (the common case for this project) that's exactly 1, the old square-lock value.
-  // Falls back to 1 until the video's metadata has loaded.
-  const lockRatio =
-    naturalSize && naturalSize.width > 0 && naturalSize.height > 0
-      ? (projectWidth * naturalSize.height) / (projectHeight * naturalSize.width)
-      : 1;
-
-  /** The largest ratio-locked crop box (centered) that fits inside the full 0-1 frame. */
-  const maxCropForRatio = (ratio: number): Crop => {
-    const w = ratio >= 1 ? 1 : ratio;
-    const h = ratio >= 1 ? 1 / ratio : 1;
-    return { x: (1 - w) / 2, y: (1 - h) / 2, w, h };
-  };
-
-  const startCropEdit = () => {
-    if (!segment) {
-      return;
-    }
-    if (segment.crop) {
-      setCropEditDraft(segment.crop);
-      return;
-    }
-    // Starting value for a new crop: a ratio-locked box sized to 70% of the max box (matches
-    // the old { x: 0.15, y: 0.15, w: 0.7, h: 0.7 } default exactly when lockRatio===1).
-    const max = maxCropForRatio(lockRatio);
-    const w = max.w * 0.7;
-    const h = max.h * 0.7;
-    setCropEditDraft({ x: (1 - w) / 2, y: (1 - h) / 2, w, h });
-  };
-
-  const applyCropEdit = () => {
-    if (!cropEditDraft) {
-      return;
-    }
-    onChange({ crop: cropEditDraft });
-    setCropEditDraft(null);
-  };
-
-  const cancelCropEdit = () => {
-    setCropEditDraft(null);
-  };
-
-  /** Resets just the draft to the full frame while staying in edit mode (no apply/commit) — a
-   * shortcut for when dragging handles all the way out to the frame edges is tedious. You can
-   * still narrow it back down and apply from here. */
-  const resetCropEditToFullFrame = () => {
-    setCropEditDraft(maxCropForRatio(lockRatio));
-  };
-
-  const clearCropEdit = () => {
-    onChange({ crop: null });
-    setCropEditDraft(null);
-  };
-
-  // Registers crop edit mode as a "blocking overlay" (lib/modalStack.ts) - without this, App's
-  // global keydown handler (also on window) would still see the same keydown events crop editing
-  // cares about (arrows/space/o/etc, e.g. from the general playback shortcuts) and act on the
-  // segment/video underneath while the user is mid-drag on the crop rectangle.
-  useBlockingOverlay(cropEditDraft !== null);
-
-  // Intercept Esc (cancel)/Enter (apply) only while crop editing is active.
-  useEffect(() => {
-    if (!cropEditDraft) {
-      return;
-    }
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        cancelCropEdit();
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        applyCropEdit();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cropEditDraft]);
 
   useImperativeHandle(
     ref,
@@ -644,34 +407,19 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
 
   const overviewPct = (t: number): number => (duration > 0 ? clamp((t / duration) * 100, 0, 100) : 0);
 
-  const moveTrimWindowTo = (centerT: number) => {
-    const width = trimWindow.end - trimWindow.start;
-    let start = centerT - width / 2;
-    let end = start + width;
-    if (start < 0) {
-      end -= start;
-      start = 0;
-    }
-    if (end > duration) {
-      start -= end - duration;
-      end = duration;
-    }
-    setTrimWindow({ start: Math.max(0, start), end: Math.min(duration, end) });
-  };
-
   const handleOverviewPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (duration <= 0) {
       return;
     }
     e.currentTarget.setPointerCapture(e.pointerId);
-    moveTrimWindowTo(overviewTimeAtClientX(e.clientX));
+    setTrimWindow(moveTrimWindow(trimWindow, duration, overviewTimeAtClientX(e.clientX)));
   };
 
   const handleOverviewPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (e.buttons === 0 || duration <= 0) {
       return;
     }
-    moveTrimWindowTo(overviewTimeAtClientX(e.clientX));
+    setTrimWindow(moveTrimWindow(trimWindow, duration, overviewTimeAtClientX(e.clientX)));
   };
 
   const subtitleSummary = segment.subtitle.trim() !== "" ? segment.subtitle.trim() : "(no subtitle)";
@@ -746,7 +494,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
               <CropEditOverlay
                 crop={cropEditDraft}
                 frameRef={cropFrameRef}
-                onChange={setCropEditDraft}
+                onChange={updateCropDraft}
                 lockRatio={lockRatio}
               />
             ) : null}
@@ -879,3 +627,11 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     </div>
   );
 });
+
+/** Polling interval (ms) for proxy readiness status. */
+const PROXY_STATUS_POLL_INTERVAL_MS = 10000;
+
+/** Minimum gap (seconds) between in/out when dragging a handle. */
+const MIN_GAP = 0.05;
+/** Minimum gap (seconds) from the in/out boundary when splitting. */
+const SPLIT_MARGIN = 0.2;
