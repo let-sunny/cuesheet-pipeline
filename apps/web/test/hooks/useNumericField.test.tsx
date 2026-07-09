@@ -14,9 +14,12 @@ interface HarnessProps {
   coerce?: (n: number) => number;
   onAdjusted?: (typed: number, adjusted: number) => void;
   initial?: number;
+  parseTimeShorthand?: boolean;
+  step?: number;
+  bigStep?: number;
 }
 
-function Harness({ onCommit, coerce, onAdjusted, initial = 12 }: HarnessProps) {
+function Harness({ onCommit, coerce, onAdjusted, initial = 12, parseTimeShorthand, step, bigStep }: HarnessProps) {
   const [value, setValue] = useState(initial);
   const bindings = useNumericField({
     value,
@@ -26,6 +29,9 @@ function Harness({ onCommit, coerce, onAdjusted, initial = 12 }: HarnessProps) {
     },
     coerce,
     onAdjusted,
+    parseTimeShorthand,
+    step,
+    bigStep,
   });
   return <input aria-label="numeric" {...bindings} />;
 }
@@ -91,5 +97,61 @@ describe("useNumericField", () => {
     expect(input.value).toBe("7");
     expect(onCommit).toHaveBeenCalledOnce();
     expect(onCommit).toHaveBeenCalledWith(7);
+  });
+
+  it("ArrowUp/ArrowDown step the committed value by `step` and commit immediately (no blur needed)", () => {
+    const onCommit = vi.fn();
+    render(<Harness onCommit={onCommit} initial={10} step={1 / 30} />);
+    const input = screen.getByLabelText("numeric") as HTMLInputElement;
+
+    fireEvent.keyDown(input, { key: "ArrowUp" });
+    expect(onCommit).toHaveBeenCalledOnce();
+    expect(onCommit.mock.calls[0][0]).toBeCloseTo(10 + 1 / 30, 5);
+    expect(Number(input.value)).toBeCloseTo(10 + 1 / 30, 5);
+
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    expect(onCommit).toHaveBeenCalledTimes(2);
+    expect(onCommit.mock.calls[1][0]).toBeCloseTo(10, 5);
+  });
+
+  it("Shift+ArrowUp/Down steps by `bigStep` instead of `step`", () => {
+    const onCommit = vi.fn();
+    render(<Harness onCommit={onCommit} initial={10} step={1 / 30} bigStep={1} />);
+    const input = screen.getByLabelText("numeric") as HTMLInputElement;
+
+    fireEvent.keyDown(input, { key: "ArrowUp", shiftKey: true });
+    expect(onCommit).toHaveBeenCalledWith(11);
+  });
+
+  it("without `step`, arrow keys are left to native input behavior (no commit)", () => {
+    const onCommit = vi.fn();
+    render(<Harness onCommit={onCommit} initial={10} />);
+    const input = screen.getByLabelText("numeric") as HTMLInputElement;
+
+    fireEvent.keyDown(input, { key: "ArrowUp" });
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
+  it("parseTimeShorthand: accepts M:SS.s shorthand", () => {
+    const onCommit = vi.fn();
+    render(<Harness onCommit={onCommit} initial={0} parseTimeShorthand />);
+    const input = screen.getByLabelText("numeric") as HTMLInputElement;
+
+    fireEvent.change(input, { target: { value: "1:23.4" } });
+    fireEvent.blur(input);
+
+    expect(onCommit).toHaveBeenCalledOnce();
+    expect(onCommit.mock.calls[0][0]).toBeCloseTo(83.4, 5);
+  });
+
+  it("parseTimeShorthand: a leading +/- commits a delta from the current value, not a literal", () => {
+    const onCommit = vi.fn();
+    render(<Harness onCommit={onCommit} initial={10} parseTimeShorthand />);
+    const input = screen.getByLabelText("numeric") as HTMLInputElement;
+
+    fireEvent.change(input, { target: { value: "-2" } });
+    fireEvent.blur(input);
+
+    expect(onCommit).toHaveBeenCalledWith(8);
   });
 });
