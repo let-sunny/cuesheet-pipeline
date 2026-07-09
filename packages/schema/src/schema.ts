@@ -32,6 +32,19 @@ export const projectSchema = z.object({
     .int("height must be an integer")
     .positive("height must be positive")
     .refine((h) => h % 2 === 0, { error: "must be even for video encoding" }),
+  // Episode-level fade in/out at the very start/end of the whole export (PRD backlog #3). Optional
+  // and unbounded-below-3s - omitted (undefined) means no episode fade, same as an existing
+  // cuesheet saved before this field existed.
+  fadeInS: z
+    .number()
+    .min(0, "fadeInS must be >= 0")
+    .max(3, "fadeInS must be <= 3")
+    .optional(),
+  fadeOutS: z
+    .number()
+    .min(0, "fadeOutS must be >= 0")
+    .max(3, "fadeOutS must be <= 3")
+    .optional(),
 });
 
 /**
@@ -153,6 +166,24 @@ export const titleSchema = z.object({
   backdrop: titleBackdropSchema.optional(),
 });
 
+/**
+ * A fade/dip at one edge of a cut (PRD backlog #3). "fade" fades the whole composited frame
+ * (video+subtitle+title) directly to/from black via ffmpeg's plain `fade` filter. "dip" instead
+ * overlays a separate black layer whose peak opacity is `dim` (1 = fully black, same as a plain
+ * fade; < 1 = a partial dip that never fully hides the frame) - same alpha-overlay technique as
+ * title.backdrop's dim layer, just windowed to the cut boundary instead of a title's whole
+ * duration. `dim` only has meaning for "dip" (render/preview both ignore it for "fade").
+ */
+export const transitionSchema = z.object({
+  type: z.enum(["fade", "dip"]),
+  durationS: z
+    .number()
+    .min(0.2, "durationS must be >= 0.2")
+    .max(2, "durationS must be <= 2")
+    .default(0.5),
+  dim: z.number().min(0, "dim must be >= 0").max(1, "dim must be <= 1").optional(),
+});
+
 export const segmentSchema = z
   .object({
     clip: z.string().min(1, "clip filename must not be empty"),
@@ -180,6 +211,10 @@ export const segmentSchema = z
     stylePreset: z.string().min(1, "stylePreset must not be empty").nullable().optional(),
     // Title card shown at this cut's start. null/omitted = no title.
     title: titleSchema.nullable().optional(),
+    // Fade/dip at this cut's start/end (PRD backlog #3). null/omitted = no transition (hard cut,
+    // existing behavior).
+    transitionIn: transitionSchema.nullable().optional(),
+    transitionOut: transitionSchema.nullable().optional(),
   })
   .refine((s) => s.in < s.out, {
     error: "in must be less than out (in < out)",

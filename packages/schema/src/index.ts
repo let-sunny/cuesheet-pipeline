@@ -12,6 +12,7 @@ export {
   titleBackdropSchema,
   titlePresetSchema,
   titleSchema,
+  transitionSchema,
 } from "./schema.js";
 
 export type {
@@ -29,6 +30,7 @@ export type {
   Title,
   TitleBackdrop,
   TitlePreset,
+  Transition,
 } from "./types.js";
 
 export { validateCueSheet, formatIssue } from "./validate.js";

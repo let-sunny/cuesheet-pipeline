@@ -191,13 +191,17 @@ describe("validateCueSheet - pass cases", () => {
     }
   });
 
-  it("an existing cuesheet without subtitleStylePresets/segment.stylePreset/segment.title remains valid", () => {
+  it("an existing cuesheet without subtitleStylePresets/segment.stylePreset/segment.title/transitions/project fades remains valid", () => {
     const result = validateCueSheet(sample);
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.subtitleStylePresets).toBeUndefined();
       expect(result.data.segments[0]?.stylePreset).toBeUndefined();
       expect(result.data.segments[0]?.title).toBeUndefined();
+      expect(result.data.segments[0]?.transitionIn).toBeUndefined();
+      expect(result.data.segments[0]?.transitionOut).toBeUndefined();
+      expect(result.data.project.fadeInS).toBeUndefined();
+      expect(result.data.project.fadeOutS).toBeUndefined();
     }
   });
 
@@ -343,6 +347,132 @@ describe("validateCueSheet - pass cases", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.segments[0]?.title).toBeNull();
+    }
+  });
+
+  it("is valid with a fade transitionIn/transitionOut, defaulting durationS to 0.5", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      segments: [
+        {
+          clip: "a.mp4",
+          in: 0,
+          out: 1,
+          subtitle: "",
+          transitionIn: { type: "fade" },
+          transitionOut: { type: "fade", durationS: 1.2 },
+        },
+      ],
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.segments[0]?.transitionIn).toEqual({ type: "fade", durationS: 0.5 });
+      expect(result.data.segments[0]?.transitionOut).toEqual({ type: "fade", durationS: 1.2 });
+    }
+  });
+
+  it("is valid with a dip transitionIn carrying an explicit dim", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      segments: [
+        {
+          clip: "a.mp4",
+          in: 0,
+          out: 1,
+          subtitle: "",
+          transitionIn: { type: "dip", durationS: 0.8, dim: 0.6 },
+        },
+      ],
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.segments[0]?.transitionIn).toEqual({ type: "dip", durationS: 0.8, dim: 0.6 });
+    }
+  });
+
+  it("fails when transition.type is not fade or dip", () => {
+    const result = validateCueSheet({
+      ...(sample as Record<string, unknown>),
+      segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", transitionIn: { type: "wipe" } }],
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.startsWith("segments[0].transitionIn.type:"))).toBe(true);
+    }
+  });
+
+  it("fails when transition.durationS is out of the 0.2-2 range", () => {
+    const tooShort = validateCueSheet({
+      ...(sample as Record<string, unknown>),
+      segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", transitionIn: { type: "fade", durationS: 0.1 } }],
+    });
+    expect(tooShort.ok).toBe(false);
+    const tooLong = validateCueSheet({
+      ...(sample as Record<string, unknown>),
+      segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", transitionOut: { type: "fade", durationS: 2.1 } }],
+    });
+    expect(tooLong.ok).toBe(false);
+    if (!tooLong.ok) {
+      expect(tooLong.errors.some((e) => e.includes("segments[0].transitionOut.durationS"))).toBe(true);
+    }
+  });
+
+  it("fails when transition.dim is out of the 0-1 range", () => {
+    const result = validateCueSheet({
+      ...(sample as Record<string, unknown>),
+      segments: [
+        { clip: "a.mp4", in: 0, out: 1, subtitle: "", transitionIn: { type: "dip", dim: 1.5 } },
+      ],
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.includes("segments[0].transitionIn.dim"))).toBe(true);
+    }
+  });
+
+  it("is valid when segment.transitionIn/transitionOut are null (treated as no transition)", () => {
+    const result = validateCueSheet({
+      ...(sample as Record<string, unknown>),
+      segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", transitionIn: null, transitionOut: null }],
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.segments[0]?.transitionIn).toBeNull();
+      expect(result.data.segments[0]?.transitionOut).toBeNull();
+    }
+  });
+
+  it("is valid with project-level fadeInS/fadeOutS within 0-3", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      project: { ...(sample as { project: object }).project, fadeInS: 1.5, fadeOutS: 3 },
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.project.fadeInS).toBe(1.5);
+      expect(result.data.project.fadeOutS).toBe(3);
+    }
+  });
+
+  it("fails when project.fadeInS/fadeOutS are out of the 0-3 range", () => {
+    const negative = validateCueSheet({
+      ...(sample as Record<string, unknown>),
+      project: { ...(sample as { project: object }).project, fadeInS: -1 },
+    });
+    expect(negative.ok).toBe(false);
+    if (!negative.ok) {
+      expect(negative.errors.some((e) => e.startsWith("project.fadeInS:"))).toBe(true);
+    }
+    const tooLarge = validateCueSheet({
+      ...(sample as Record<string, unknown>),
+      project: { ...(sample as { project: object }).project, fadeOutS: 3.5 },
+    });
+    expect(tooLarge.ok).toBe(false);
+    if (!tooLarge.ok) {
+      expect(tooLarge.errors.some((e) => e.startsWith("project.fadeOutS:"))).toBe(true);
     }
   });
 

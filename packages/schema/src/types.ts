@@ -13,6 +13,7 @@ import type {
   titleBackdropSchema,
   titlePresetSchema,
   titleSchema,
+  transitionSchema,
 } from "./schema.js";
 
 /**
@@ -30,6 +31,7 @@ export type SubtitleStylePresets = z.infer<typeof subtitleStylePresetsSchema>;
 export type TitlePreset = z.infer<typeof titlePresetSchema>;
 export type TitleBackdrop = z.infer<typeof titleBackdropSchema>;
 export type Title = z.infer<typeof titleSchema>;
+export type Transition = z.infer<typeof transitionSchema>;
 export type NarrationConfig = z.infer<typeof narrationConfigSchema>;
 export type CueSheet = z.infer<typeof cueSheetSchema>;
 
