@@ -14,7 +14,7 @@ describe("TitleGroup", () => {
   it("does not render the detail fields until a title exists", () => {
     render(<TitleGroup title={undefined} onToggle={vi.fn()} onChangeTitle={vi.fn()} titleDurationField={numericField("3")} />);
     expect(screen.queryByText("Preset")).toBeNull();
-    expect(screen.queryByText("Backdrop dim")).toBeNull();
+    expect(screen.queryByText(/Backdrop dim/)).toBeNull();
   });
 
   it("calls onToggle when the checkbox is clicked", () => {
@@ -29,7 +29,9 @@ describe("TitleGroup", () => {
     render(<TitleGroup title={title} onToggle={vi.fn()} onChangeTitle={vi.fn()} titleDurationField={numericField("3")} />);
     expect(screen.getByDisplayValue("hi")).not.toBeNull();
     expect(screen.getByText("Preset")).not.toBeNull();
-    expect(screen.getByText("Backdrop dim")).not.toBeNull();
+    // The slider's value is folded into its own label (2026-07-09 diagnosed fix), not a bare
+    // group name - default backdrop dim is 0% before any change.
+    expect(screen.getByText("Backdrop dim (0%)")).not.toBeNull();
   });
 
   it("calls onChangeTitle when the text field changes", () => {

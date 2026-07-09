@@ -66,13 +66,15 @@ describe("SegmentStyleOverride", () => {
   it("shows the background fields only once the override's background box is on", () => {
     const segment = baseSegment({ styleOverride: {} });
     render(<SegmentStyleOverride {...baseProps()} segment={segment} />);
-    expect(screen.queryByText("Background opacity")).toBeNull();
+    expect(screen.queryByText(/Background opacity/)).toBeNull();
 
     const segmentWithBg = baseSegment({
       styleOverride: { background: { color: "#000000", opacity: 0.75, padding: 8 } },
     });
     render(<SegmentStyleOverride {...baseProps()} segment={segmentWithBg} />);
-    expect(screen.getByText("Background opacity")).not.toBeNull();
+    // The slider's value is folded into its own label (2026-07-09 diagnosed fix), not a bare
+    // group name - see SubtitleStyleSettings.test.tsx's matching case for the full rationale.
+    expect(screen.getByText("Background opacity (75%)")).not.toBeNull();
   });
 
   it("calls onPromote/onClear from the detail actions", () => {

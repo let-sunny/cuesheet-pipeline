@@ -69,13 +69,16 @@ export function TransitionsGroup({
               </label>
             </div>
             {transitionIn.type === "dip" ? (
+              // Value folded into the label, valueDisplay="none" (2026-07-09 diagnosed fix - see
+              // TitleGroup.tsx's Backdrop dim slider for the full rationale: at max value, the
+              // thumb overlaps an adjacent same-row text display regardless of column width).
               <Slider
-                label="Dip amount"
+                label={`Dip amount (${Math.round((transitionIn.dim ?? 1) * 100)}%)`}
                 value={Math.round((transitionIn.dim ?? 1) * 100)}
                 min={0}
                 max={100}
                 step={5}
-                valueDisplay="text"
+                valueDisplay="none"
                 onChange={(v: number) => onChangeTransition("in", { dim: v / 100 })}
               />
             ) : null}
@@ -114,12 +117,12 @@ export function TransitionsGroup({
             </div>
             {transitionOut.type === "dip" ? (
               <Slider
-                label="Dip amount"
+                label={`Dip amount (${Math.round((transitionOut.dim ?? 1) * 100)}%)`}
                 value={Math.round((transitionOut.dim ?? 1) * 100)}
                 min={0}
                 max={100}
                 step={5}
-                valueDisplay="text"
+                valueDisplay="none"
                 onChange={(v: number) => onChangeTransition("out", { dim: v / 100 })}
               />
             ) : null}

@@ -186,13 +186,15 @@ function PresetRow({ name, override, globalStyle, onRename, onDelete, onChange }
             </div>
           </label>
 
+          {/* Value folded into the label, valueDisplay="none" (2026-07-09 diagnosed fix - see
+              SegmentQuickFields/TitleGroup.tsx's Backdrop dim slider for the full rationale). */}
           <Slider
-            label="Edge margin"
+            label={`Edge margin (${override.margin ?? globalStyle.margin ?? 40}px)`}
             value={override.margin ?? globalStyle.margin ?? 40}
             min={8}
             max={600}
             step={1}
-            valueDisplay="text"
+            valueDisplay="none"
             onChange={(v: number) => onChange({ margin: v })}
           />
         </div>

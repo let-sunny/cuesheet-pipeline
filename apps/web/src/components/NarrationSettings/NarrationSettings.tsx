@@ -53,13 +53,15 @@ export function NarrationSettings({ narration, onNarrationChange }: NarrationSet
               onChange={(e) => onNarrationChange({ dir: e.target.value })}
             />
           </label>
+          {/* Value folded into the label, valueDisplay="none" (2026-07-09 diagnosed fix - see
+              SegmentQuickFields/TitleGroup.tsx's Backdrop dim slider for the full rationale). */}
           <Slider
-            label="Overall volume"
+            label={`Overall volume (${Math.round(narration.volume * 100)}%)`}
             value={Math.round(narration.volume * 100)}
             min={0}
             max={100}
             step={5}
-            valueDisplay="text"
+            valueDisplay="none"
             onChange={(v: number) => onNarrationChange({ volume: v / 100 })}
           />
 
@@ -74,12 +76,12 @@ export function NarrationSettings({ narration, onNarrationChange }: NarrationSet
           {ducking ? (
             <>
               <Slider
-                label="Duck amount"
+                label={`Duck amount (${Math.round(ducking.amount * 100)}%)`}
                 value={Math.round(ducking.amount * 100)}
                 min={0}
                 max={100}
                 step={5}
-                valueDisplay="text"
+                valueDisplay="none"
                 onChange={(v: number) => patchDucking({ amount: v / 100 })}
               />
               <label className="settings-field field-narrow">

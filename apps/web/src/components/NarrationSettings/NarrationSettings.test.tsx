@@ -11,14 +11,16 @@ describe("NarrationSettings", () => {
     render(<NarrationSettings narration={undefined} onNarrationChange={vi.fn()} />);
     const checkbox = screen.getByLabelText("Enable narration") as HTMLInputElement;
     expect(checkbox.checked).toBe(false);
-    expect(screen.queryByText("Overall volume")).toBeNull();
+    expect(screen.queryByText(/Overall volume/)).toBeNull();
   });
 
   it("shows folder/volume fields once narration is enabled", () => {
     const narration: NarrationConfig = { enabled: true, dir: "media/narration", volume: 0.8 };
     render(<NarrationSettings narration={narration} onNarrationChange={vi.fn()} />);
     expect(screen.getByDisplayValue("media/narration")).not.toBeNull();
-    expect(screen.getByText("Overall volume")).not.toBeNull();
+    // The slider's value is folded into its own label (2026-07-09 diagnosed fix), not a bare
+    // group name.
+    expect(screen.getByText("Overall volume (80%)")).not.toBeNull();
   });
 
   it("calls onNarrationChange when the enable checkbox is toggled", () => {
@@ -33,7 +35,7 @@ describe("NarrationSettings", () => {
     render(<NarrationSettings narration={narration} onNarrationChange={vi.fn()} />);
     const toggle = screen.getByLabelText("Duck background music during narration") as HTMLInputElement;
     expect(toggle.checked).toBe(false);
-    expect(screen.queryByText("Duck amount")).toBeNull();
+    expect(screen.queryByText(/Duck amount/)).toBeNull();
     expect(screen.queryByText("Fade duration (s)")).toBeNull();
   });
 
@@ -66,7 +68,7 @@ describe("NarrationSettings", () => {
       ducking: { amount: 0.9, fadeS: 0.5 },
     };
     render(<NarrationSettings narration={narration} onNarrationChange={vi.fn()} />);
-    expect(screen.getByRole("slider", { name: "Duck amount" })).not.toBeNull();
+    expect(screen.getByRole("slider", { name: /Duck amount/ })).not.toBeNull();
     expect(screen.getByDisplayValue("0.5")).not.toBeNull();
   });
 
@@ -79,7 +81,7 @@ describe("NarrationSettings", () => {
     };
     const onNarrationChange = vi.fn();
     render(<NarrationSettings narration={narration} onNarrationChange={onNarrationChange} />);
-    const slider = screen.getByRole("slider", { name: "Duck amount" });
+    const slider = screen.getByRole("slider", { name: /Duck amount/ });
     fireEvent.keyDown(slider, { key: "ArrowRight" });
     expect(onNarrationChange.mock.calls[0]?.[0]).toEqual({ ducking: { amount: 0.65, fadeS: 0.3 } });
   });

@@ -36,11 +36,13 @@ describe("TransitionsGroup", () => {
   it("shows Dip amount only for a dip transition, not fade", () => {
     const fade: Transition = { type: "fade", durationS: 0.5 };
     const { rerender } = render(<TransitionsGroup {...baseProps({ transitionIn: fade })} />);
-    expect(screen.queryByText("Dip amount")).toBeNull();
+    expect(screen.queryByText(/Dip amount/)).toBeNull();
 
     const dip: Transition = { type: "dip", durationS: 0.5, dim: 0.5 };
     rerender(<TransitionsGroup {...baseProps({ transitionIn: dip })} />);
-    expect(screen.getByText("Dip amount")).not.toBeNull();
+    // The slider's value is folded into its own label (2026-07-09 diagnosed fix), not a bare
+    // group name.
+    expect(screen.getByText("Dip amount (50%)")).not.toBeNull();
   });
 
   it("calls onToggle for the correct side", () => {

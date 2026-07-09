@@ -61,12 +61,17 @@ export function TitleGroup({ title, onToggle, onChangeTitle, titleDurationField 
             </label>
           </div>
           <Slider
-            label="Backdrop dim"
+            // Value folded into the label (valueDisplay="none") rather than Astryx's own adjacent
+            // text display (2026-07-09 diagnosed fix) - at the slider's max, the thumb's own width
+            // overlaps the start of a same-row value label regardless of column width (the thumb
+            // is wider than the gap Astryx reserves next to it), clipping e.g. "100%" to "]00%".
+            // The label sits on its own row above the track, so it never touches the thumb.
+            label={`Backdrop dim (${Math.round((title.backdrop?.dim ?? 0) * 100)}%)`}
             value={Math.round((title.backdrop?.dim ?? 0) * 100)}
             min={0}
             max={100}
             step={5}
-            valueDisplay="text"
+            valueDisplay="none"
             onChange={(v: number) => onChangeTitle({ backdrop: v === 0 ? undefined : { dim: v / 100 } })}
           />
         </>

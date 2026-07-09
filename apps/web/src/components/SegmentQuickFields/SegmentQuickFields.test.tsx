@@ -86,7 +86,7 @@ describe("SegmentQuickFields", () => {
   it("does not render the Title card fields until the toggle is on", () => {
     render(<SegmentQuickFields {...baseProps()} />);
     expect(screen.queryByText("Preset")).toBeNull();
-    expect(screen.queryByText("Backdrop dim")).toBeNull();
+    expect(screen.queryByText(/Backdrop dim/)).toBeNull();
   });
 
   it("renders Title card fields once segment.title is set", () => {
@@ -98,7 +98,9 @@ describe("SegmentQuickFields", () => {
       />,
     );
     expect(screen.getByText("Preset")).not.toBeNull();
-    expect(screen.getByText("Backdrop dim")).not.toBeNull();
+    // The slider's value is folded into its own label (2026-07-09 diagnosed fix) - no backdrop
+    // set yet, so it defaults to 0%.
+    expect(screen.getByText("Backdrop dim (0%)")).not.toBeNull();
   });
 
   it("calls onToggleTitle when the Title card checkbox is toggled", () => {
@@ -120,7 +122,9 @@ describe("SegmentQuickFields", () => {
         })}
       />,
     );
-    expect(screen.getByText("Dip amount")).not.toBeNull();
+    // The slider's value is folded into its own label (2026-07-09 diagnosed fix), not a bare
+    // group name.
+    expect(screen.getByText("Dip amount (50%)")).not.toBeNull();
   });
 
   it("does not show Dip amount for a fade transition", () => {
@@ -131,7 +135,7 @@ describe("SegmentQuickFields", () => {
         })}
       />,
     );
-    expect(screen.queryByText("Dip amount")).toBeNull();
+    expect(screen.queryByText(/Dip amount/)).toBeNull();
   });
 
   it("hides the Narration group when narrationEnabled is false", () => {

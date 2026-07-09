@@ -37,7 +37,7 @@ describe("SubtitleStyleSettings", () => {
 
   it("shows the background fields only once the background box is on", () => {
     render(<SubtitleStyleSettings {...subtitleProps()} />);
-    expect(screen.queryByText("Background opacity")).toBeNull();
+    expect(screen.queryByText(/Background opacity/)).toBeNull();
 
     const onChange = vi.fn();
     render(
@@ -47,7 +47,10 @@ describe("SubtitleStyleSettings", () => {
         subtitleStyle={{ ...baseStyle, background: { color: "#000000", opacity: 0.75, padding: 8 } }}
       />,
     );
-    expect(screen.getByText("Background opacity")).not.toBeNull();
+    // The slider's value is folded into its own label (2026-07-09 diagnosed fix - avoids the
+    // thumb overlapping an adjacent same-row value display near its max), so the label text
+    // includes the current percentage rather than being the bare group name.
+    expect(screen.getByText("Background opacity (75%)")).not.toBeNull();
   });
 
   it("toggling the background box on passes the default background patch", () => {
@@ -59,7 +62,7 @@ describe("SubtitleStyleSettings", () => {
 
   it("disables the edge margin slider when position is center", () => {
     render(<SubtitleStyleSettings {...subtitleProps()} subtitleStyle={{ ...baseStyle, position: "center" }} />);
-    const slider = screen.getByRole("slider", { name: "Edge margin" });
+    const slider = screen.getByRole("slider", { name: /Edge margin/ });
     expect(slider.getAttribute("aria-disabled")).toBe("true");
   });
 

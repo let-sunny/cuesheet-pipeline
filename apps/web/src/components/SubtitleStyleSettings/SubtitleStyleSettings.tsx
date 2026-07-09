@@ -161,13 +161,17 @@ export function SubtitleStyleSettings({
               />
             </div>
           </label>
+          {/* Value folded into the label, valueDisplay="none" (2026-07-09 diagnosed fix - see
+              SegmentQuickFields/TitleGroup.tsx's Backdrop dim slider for the full rationale: near
+              the slider's max, the thumb overlaps an adjacent same-row text display regardless of
+              column width). */}
           <Slider
-            label="Background opacity"
+            label={`Background opacity (${Math.round(background.opacity * 100)}%)`}
             value={Math.round(background.opacity * 100)}
             min={0}
             max={100}
             step={5}
-            valueDisplay="text"
+            valueDisplay="none"
             onChange={(v: number) => patchBackground({ opacity: v / 100 })}
           />
           <label className="settings-field field-narrow">
@@ -197,12 +201,12 @@ export function SubtitleStyleSettings({
         </select>
       </label>
       <Slider
-        label="Edge margin"
+        label={`Edge margin (${margin}px)`}
         value={margin}
         min={8}
         max={600}
         step={1}
-        valueDisplay="text"
+        valueDisplay="none"
         isDisabled={subtitleStyle.position === "center"}
         onChange={(v: number) => onSubtitleStyleChange({ margin: v })}
       />
