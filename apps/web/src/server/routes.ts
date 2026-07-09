@@ -12,6 +12,7 @@ import {
   contentDispositionHeader,
   isWithin,
   narrationAudioMimeTypes,
+  overallRenderProgress,
   probeDurationSeconds,
   readRequestBody,
   repoRoot,
@@ -801,42 +802,56 @@ export function registerRoutes(
     for (const warning of plan.warnings) {
       server.config.logger.warn(`[render] ${warning}`);
     }
-    const proc = spawn("ffmpeg", plan.args, { stdio: ["ignore", "pipe", "pipe"] });
-    let stderr = "";
-    proc.stdout?.on("data", () => {});
-    proc.stderr?.on("data", (chunk: Buffer) => {
-      const text = chunk.toString("utf8");
-      stderr += text;
-      const seconds = parseFfmpegTimeSeconds(text);
-      if (seconds != null && totalSeconds > 0) {
-        const pct = Math.min(99, Math.round((seconds / totalSeconds) * 100));
-        renderJob = { state: "running", progress: pct };
-      }
-    });
-    proc.on("error", (e) => {
-      renderInProgress = false;
-      renderJob = {
-        state: "error",
-        progress: renderJob.progress,
-        error: `ffmpeg failed to start (is it installed?): ${e.message}`,
-      };
-    });
-    proc.on("exit", (code) => {
-      renderInProgress = false;
-      if (code === 0) {
+    // A plan is one or more sequential ffmpeg commands (2-pass when captured-frames titles
+    // meet a large concat graph - see @cuesheet/render's twoPass.ts). Overall progress maps
+    // each pass to an equal slice: (passIndex + withinPass) / passCount.
+    const commands = plan.commands;
+    const runCommand = (index: number) => {
+      const command = commands[index];
+      if (!command) return;
+      const proc = spawn("ffmpeg", command.args, { stdio: ["ignore", "pipe", "pipe"] });
+      let stderr = "";
+      proc.stdout?.on("data", () => {});
+      proc.stderr?.on("data", (chunk: Buffer) => {
+        const text = chunk.toString("utf8");
+        stderr += text;
+        const seconds = parseFfmpegTimeSeconds(text);
+        if (seconds != null && totalSeconds > 0) {
+          const pct = overallRenderProgress(index, commands.length, seconds / totalSeconds);
+          renderJob = { state: "running", progress: pct };
+        }
+      });
+      proc.on("error", (e) => {
+        renderInProgress = false;
+        renderJob = {
+          state: "error",
+          progress: renderJob.progress,
+          error: `ffmpeg failed to start (is it installed?): ${e.message}`,
+        };
+      });
+      proc.on("exit", (code) => {
+        if (code !== 0) {
+          renderInProgress = false;
+          renderJob = {
+            state: "error",
+            progress: renderJob.progress,
+            error: `[${command.label}] ${extractFfmpegErrorSummary(stderr)}`,
+            errorDetail: stderr.slice(-4000),
+          };
+          return;
+        }
+        if (index + 1 < commands.length) {
+          runCommand(index + 1);
+          return;
+        }
+        renderInProgress = false;
         renderJob = { state: "done", progress: 100 };
         lastRenderName = result.data.project.name;
         lastRenderBurnSubtitles = burnSubtitles;
         lastRenderOutputPath = outputPath;
-      } else {
-        renderJob = {
-          state: "error",
-          progress: renderJob.progress,
-          error: extractFfmpegErrorSummary(stderr),
-          errorDetail: stderr.slice(-4000),
-        };
-      }
-    });
+      });
+    };
+    runCommand(0);
 
     sendJson(res, 200, { ok: true, jobId });
   });

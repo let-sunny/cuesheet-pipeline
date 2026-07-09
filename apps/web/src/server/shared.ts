@@ -102,3 +102,12 @@ export function probeDurationSeconds(path: string): Promise<number | null> {
     });
   });
 }
+
+/**
+ * Overall progress (0-99) for a multi-command render: each command gets an
+ * equal slice, `within` is the 0-1 completion of the current command.
+ */
+export function overallRenderProgress(commandIndex: number, commandCount: number, within: number): number {
+  const clamped = Math.min(1, Math.max(0, within));
+  return Math.min(99, Math.round(((commandIndex + clamped) / commandCount) * 100));
+}
