@@ -150,6 +150,16 @@ edits handled grows, schema expands along with it.
   out`).
 - **No emoji** (in code, comments, commits, or subtitle text examples — anywhere).
 
+## Composition rule: groups are components, panels are arrangements (user rule, 2026-07-09)
+
+A settings panel (cut settings, export sections) never accretes inline field groups.
+Each functional group (Range, Playback, Subtitle, Title, Transitions, Reframe, Actions,
+each Export section) is its OWN component with its own tests; the panel composes them —
+arrangement only, no logic, no layout surprises. Adding a feature = build+test its group
+component, then slot it into the arrangement. Motivating incident: TITLE/TRANSITIONS/
+presets/ducking were bolted inline into panels in one day and the right column overflowed
+the viewport while Export sections lost the grid discipline.
+
 ## Component layering (user rule, 2026-07-09)
 
 Follow Astryx's component system as-is. Components own their styling (variants);
