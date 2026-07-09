@@ -237,6 +237,32 @@ export const bgmCueSchema = z
   });
 
 /**
+ * BGM ducking (PRD backlog #4, design sketch 2026-07-09): when a narration clip plays over a
+ * BGM track, the BGM volume automatically dips. There is no per-cut field - ducking windows are
+ * derived entirely from narration placements already in the cuesheet (segment output start +
+ * narration clip duration), so this is a single project-level on/off + two shape knobs. Presence
+ * of this object is the on/off toggle itself (undefined/omitted = no ducking, same as before this
+ * field existed) - mirrors the optional-object-as-toggle pattern used by segment.title/
+ * transitionIn elsewhere in this schema.
+ */
+export const duckingSchema = z.object({
+  // How much the BGM dips: 0.6 (default) means the BGM is ducked down to 40% of its usual volume
+  // while narration plays (1 - amount = the floor gain).
+  amount: z
+    .number()
+    .min(0, "ducking.amount must be >= 0")
+    .max(1, "ducking.amount must be <= 1")
+    .default(0.6),
+  // Ramp duration (seconds) at each edge of a ducking window (fade down entering, fade back up
+  // leaving) - clamped at render time to half the window's own length for very short narrations.
+  fadeS: z
+    .number()
+    .min(0.1, "ducking.fadeS must be >= 0.1")
+    .max(1, "ducking.fadeS must be <= 1")
+    .default(0.3),
+});
+
+/**
  * Voice-cloned narration plumbing (feature flag). If enabled is false or this field
  * is absent entirely, render must behave 100% identically to before. dir follows the
  * same philosophy as clipDir: the directory containing the narration audio files
@@ -250,6 +276,9 @@ export const narrationConfigSchema = z.object({
     .min(0, "volume must be >= 0.0")
     .max(1, "volume must be <= 1.0")
     .default(1.0),
+  // BGM ducking (see duckingSchema above). Optional/omitted = no ducking - existing cuesheets
+  // (including ones with narration already enabled) stay valid and render identically.
+  ducking: duckingSchema.optional(),
 });
 
 /**

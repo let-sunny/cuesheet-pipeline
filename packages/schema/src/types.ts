@@ -3,6 +3,7 @@ import type {
   bgmCueSchema,
   cropSchema,
   cueSheetSchema,
+  duckingSchema,
   narrationConfigSchema,
   projectSchema,
   segmentSchema,
@@ -32,6 +33,7 @@ export type TitlePreset = z.infer<typeof titlePresetSchema>;
 export type TitleBackdrop = z.infer<typeof titleBackdropSchema>;
 export type Title = z.infer<typeof titleSchema>;
 export type Transition = z.infer<typeof transitionSchema>;
+export type Ducking = z.infer<typeof duckingSchema>;
 export type NarrationConfig = z.infer<typeof narrationConfigSchema>;
 export type CueSheet = z.infer<typeof cueSheetSchema>;
 

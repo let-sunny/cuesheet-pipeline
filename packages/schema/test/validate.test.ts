@@ -487,6 +487,42 @@ describe("validateCueSheet - pass cases", () => {
       expect(result.data.narration?.volume).toBe(1.0);
     }
   });
+
+  it("an existing cuesheet without narration.ducking remains valid (additive-only field)", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      narration: { enabled: true, dir: "/narration", volume: 0.8 },
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.narration?.ducking).toBeUndefined();
+    }
+  });
+
+  it("defaults narration.ducking.amount/fadeS when only the object is present", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      narration: { enabled: true, dir: "/narration", ducking: {} },
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.narration?.ducking).toEqual({ amount: 0.6, fadeS: 0.3 });
+    }
+  });
+
+  it("accepts an explicit narration.ducking amount/fadeS", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      narration: { enabled: true, dir: "/narration", ducking: { amount: 0.9, fadeS: 0.5 } },
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.narration?.ducking).toEqual({ amount: 0.9, fadeS: 0.5 });
+    }
+  });
 });
 
 describe("validateCueSheet - failure cases", () => {
@@ -558,6 +594,30 @@ describe("validateCueSheet - failure cases", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.errors.some((e) => e.includes("narration.volume"))).toBe(true);
+    }
+  });
+
+  it("fails when narration.ducking.amount is out of range", () => {
+    const bad = {
+      ...(sample as Record<string, unknown>),
+      narration: { enabled: true, dir: "/narration", ducking: { amount: 1.5 } },
+    };
+    const result = validateCueSheet(bad);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.includes("narration.ducking.amount"))).toBe(true);
+    }
+  });
+
+  it("fails when narration.ducking.fadeS is below the minimum", () => {
+    const bad = {
+      ...(sample as Record<string, unknown>),
+      narration: { enabled: true, dir: "/narration", ducking: { fadeS: 0.05 } },
+    };
+    const result = validateCueSheet(bad);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.includes("narration.ducking.fadeS"))).toBe(true);
     }
   });
 
