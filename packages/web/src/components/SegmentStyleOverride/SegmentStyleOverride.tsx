@@ -1,10 +1,12 @@
+import * as stylex from "@stylexjs/stylex";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { Slider } from "@astryxdesign/core/Slider";
 import { Button } from "@astryxdesign/core/Button";
 import type { Segment, SubtitleBackground, SubtitleStyle, SubtitleStyleOverride } from "@cuesheet/schema";
-import { useNumericField } from "../hooks/useNumericField.js";
-import { toColorInputValue } from "../lib/subtitleOverlay.js";
+import { useNumericField } from "../../hooks/useNumericField.js";
+import { toColorInputValue } from "../../lib/subtitleOverlay.js";
+import { styles } from "./SegmentStyleOverride.styles.js";
 
 interface Props {
   segment: Segment;
@@ -44,8 +46,8 @@ export function SegmentStyleOverride({
   });
 
   return (
-    <div className="qf-style-override">
-      <div className="qf-style-override-toggle">
+    <div {...stylex.props(styles.override)}>
+      <div {...stylex.props(styles.toggle)}>
         <CheckboxInput label="Subtitle style for this cut" value={!!override} onChange={onToggle} />
       </div>
 
@@ -153,7 +155,7 @@ export function SegmentStyleOverride({
               onChange={(v: number) => onChangeOverride({ margin: v })}
             />
 
-            <div className="style-override-actions">
+            <div {...stylex.props(styles.actions)}>
               <Button label="Apply to all cuts" variant="secondary" size="sm" onClick={onPromote} />
               <Button label="Remove override" variant="ghost" size="sm" onClick={onClear} />
             </div>

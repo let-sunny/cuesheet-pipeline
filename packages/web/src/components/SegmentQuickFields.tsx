@@ -15,7 +15,7 @@ import { useNumericField } from "../hooks/useNumericField.js";
 import type { MergeEligibility } from "../lib/segmentMerge.js";
 import { mergeSubtitleStyle } from "../lib/subtitleOverlay.js";
 import { subtitleOverflowWarning } from "../lib/subtitleOverflow.js";
-import { SegmentStyleOverride } from "./SegmentStyleOverride.js";
+import { SegmentStyleOverride } from "./SegmentStyleOverride/index.js";
 
 interface Props {
   segment: Segment | undefined;

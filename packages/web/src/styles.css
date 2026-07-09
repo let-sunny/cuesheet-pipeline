@@ -1752,31 +1752,11 @@ body {
   resize: vertical;
 }
 
-/* "Style for this cut only" — makes explicit that it belongs to the subtitle (G3) group via
-   indentation + a left border (screen-spec section 4 "no standalone sections"). */
-.qf-style-override {
-  margin-top: 10px;
-  padding-left: 10px;
-  border-left: 2px solid var(--border-dashed);
-}
-
-.qf-style-override-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
 .style-override-fields {
   display: flex;
   flex-direction: column;
   gap: 10px;
   margin-top: 8px;
-}
-
-.style-override-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 4px;
 }
 
 .qf-actions-row {
