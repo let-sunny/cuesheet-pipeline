@@ -44,7 +44,7 @@ import { MiniTimelineStrip } from "./components/MiniTimelineStrip.js";
 import { SequencePlayer } from "./components/SequencePlayer.js";
 import type { SequencePlayerHandle } from "./components/SequencePlayer.js";
 import { CompactSegmentList } from "./components/CompactSegmentList/index.js";
-import { SegmentQuickFields } from "./components/SegmentQuickFields.js";
+import { SegmentQuickFields } from "./components/SegmentQuickFields/index.js";
 import { IntroOutroEditor } from "./components/IntroOutroEditor/index.js";
 import { SubtitleStyleSettings, NarrationSettings } from "./components/FinishingSettings/index.js";
 import { SubtitleStylePresetsSettings } from "./components/SubtitleStylePresetsSettings.js";

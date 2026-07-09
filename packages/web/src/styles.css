@@ -1530,37 +1530,6 @@ body {
   color: var(--warning-text);
 }
 
-/* Same treatment as .qf-note but for informational (non-warning) text, e.g. the Transitions
-   group's preview-parity note - same neutral color as .narration-empty-note. */
-.qf-note-neutral {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-/* Spacing between the "Transition in"/"Transition out" sub-blocks and the parity note below them,
-   inside the Transitions group (G5) - each is a visually separate toggle+fields block sharing one qf-group. */
-.qf-transition {
-  margin-bottom: 10px;
-}
-
-/* clip file name (read-only) - sits in the same place as other qf-field values, but is
-   ellipsis-truncated so a long name doesn't overflow the card/panel width (selecting/copying still
-   gets the full text regardless of the visual truncation). */
-.qf-readonly-value {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
-  color: var(--text-primary);
-}
-
-.qf-subtitle-field textarea {
-  resize: vertical;
-}
-
 .style-override-fields {
   display: flex;
   flex-direction: column;
@@ -1568,6 +1537,14 @@ body {
   margin-top: 8px;
 }
 
+/* SegmentQuickFields migration (docs/styling-migration.md, StyleX migration batch 3) -
+   `.qf-note-neutral`/`.qf-transition`/`.qf-readonly-value`/`.qf-subtitle-field textarea`/
+   `.narration-warning`/`.quick-fields-narration-preview`(+`audio`) all moved to
+   SegmentQuickFields.styles.ts (no property conflicts with any marker class - see that file's
+   comment for the full reasoning). `.qf-actions-row` below is kept as a documented exception: it
+   overrides the shared `.qf-row`'s `gap` (16px -> 8px) at equal specificity, winning today only by
+   being later in this file's source order - moving it into StyleX (injected before this file)
+   would lose that cascade tie to `.qf-row`. */
 .qf-actions-row {
   gap: 8px;
 }
@@ -1588,23 +1565,6 @@ body {
   font-size: 12px;
   color: var(--text-secondary);
 }
-
-.narration-warning {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--warning-text);
-}
-
-.quick-fields-narration-preview {
-  padding-top: 8px;
-  border-top: 1px dashed var(--border-dashed);
-}
-
-.quick-fields-narration-preview audio {
-  width: 100%;
-  height: 32px;
-}
-
 
 /* Subtitle style presets (Export step) */
 

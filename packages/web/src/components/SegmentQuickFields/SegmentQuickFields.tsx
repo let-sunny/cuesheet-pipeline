@@ -1,3 +1,4 @@
+import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { Slider } from "@astryxdesign/core/Slider";
@@ -9,13 +10,14 @@ import type {
   Title,
   Transition,
 } from "@cuesheet/schema";
-import { INTRO_OUTRO_MAX_DURATION_S } from "../clipPaths.js";
-import { narrationFileUrl, type NarrationFile } from "../api.js";
-import { useNumericField } from "../hooks/useNumericField.js";
-import type { MergeEligibility } from "../lib/segmentMerge.js";
-import { mergeSubtitleStyle } from "../lib/subtitleOverlay.js";
-import { subtitleOverflowWarning } from "../lib/subtitleOverflow.js";
-import { SegmentStyleOverride } from "./SegmentStyleOverride/index.js";
+import { INTRO_OUTRO_MAX_DURATION_S } from "../../clipPaths.js";
+import { narrationFileUrl, type NarrationFile } from "../../api.js";
+import { useNumericField } from "../../hooks/useNumericField.js";
+import type { MergeEligibility } from "../../lib/segmentMerge.js";
+import { mergeSubtitleStyle } from "../../lib/subtitleOverlay.js";
+import { subtitleOverflowWarning } from "../../lib/subtitleOverflow.js";
+import { SegmentStyleOverride } from "../SegmentStyleOverride/index.js";
+import { styles } from "./SegmentQuickFields.styles.js";
 
 interface Props {
   segment: Segment | undefined;
@@ -195,7 +197,7 @@ export function SegmentQuickFields({
             disabled inputs block selection in some browsers). */}
         <div className="qf-field field-full">
           <span>clip</span>
-          <span className="qf-readonly-value" title={segment.clip}>
+          <span {...stylex.props(styles.readonlyValue)} title={segment.clip}>
             {segment.clip}
           </span>
         </div>
@@ -243,9 +245,9 @@ export function SegmentQuickFields({
       {/* G3. Subtitle (+ subsection: per-cut subtitle style) */}
       <div className="qf-group">
         <div className="qf-group-label">Subtitle</div>
-        <label className="qf-field field-full qf-subtitle-field">
+        <label className="qf-field field-full">
           <textarea
-            className="plain-field plain-field-textarea"
+            className={`plain-field plain-field-textarea ${stylex.props(styles.subtitleTextarea).className ?? ""}`}
             value={segment.subtitle}
             rows={2}
             placeholder="Enter subtitle"
@@ -348,7 +350,7 @@ export function SegmentQuickFields({
           fully to black. */}
       <div className="qf-group">
         <div className="qf-group-label">Transitions</div>
-        <div className="qf-transition">
+        <div {...stylex.props(styles.transition)}>
           <CheckboxInput
             label="Transition in"
             value={!!segment.transitionIn}
@@ -395,7 +397,7 @@ export function SegmentQuickFields({
             </>
           ) : null}
         </div>
-        <div className="qf-transition">
+        <div {...stylex.props(styles.transition)}>
           <CheckboxInput
             label="Transition out"
             value={!!segment.transitionOut}
@@ -442,7 +444,7 @@ export function SegmentQuickFields({
             </>
           ) : null}
         </div>
-        <p className="qf-note-neutral">Preview approximates fades and dips (opacity ramp) - the exported video renders the real fade/dip.</p>
+        <p {...stylex.props(styles.noteNeutral)}>Preview approximates fades and dips (opacity ramp) - the exported video renders the real fade/dip.</p>
       </div>
 
       {/* G6. Narration (shown only when in use) */}
@@ -471,10 +473,14 @@ export function SegmentQuickFields({
             <p className="narration-empty-note">{narrationNote}</p>
           ) : null}
           {selectedNarrationFile ? (
-            <div className="quick-fields-narration-preview">
-              <audio controls src={narrationFileUrl(selectedNarrationFile.name, narrationDir)} />
+            <div {...stylex.props(styles.narrationPreview)}>
+              <audio
+                {...stylex.props(styles.narrationAudio)}
+                controls
+                src={narrationFileUrl(selectedNarrationFile.name, narrationDir)}
+              />
               {narrationDurationWarning ? (
-                <p className="narration-warning">{narrationDurationWarning}</p>
+                <p {...stylex.props(styles.narrationWarning)}>{narrationDurationWarning}</p>
               ) : null}
             </div>
           ) : null}
