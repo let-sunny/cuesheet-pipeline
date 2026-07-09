@@ -14,9 +14,13 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "episode": "node scripts/episode.mjs",
-    "token-usage": "node scripts/token-usage-report.mjs"
+    "token-usage": "node scripts/token-usage-report.mjs",
+    "e2e": "playwright test --config tests/e2e/playwright.config.ts",
+    "e2e:ui": "playwright test --config tests/e2e/playwright.config.ts --ui"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^22.20.0",
     "typescript": "^5.6.0"
   }
 }

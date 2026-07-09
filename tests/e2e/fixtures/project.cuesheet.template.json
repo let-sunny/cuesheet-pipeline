@@ -1,0 +1,46 @@
+{
+  "project": {
+    "name": "E2E fixture project",
+    "fps": 30,
+    "width": 640,
+    "height": 360
+  },
+  "clipDir": "CLIP_DIR_PLACEHOLDER",
+  "intro": null,
+  "outro": null,
+  "segments": [
+    {
+      "clip": "cut_01.mp4",
+      "in": 0,
+      "out": 2,
+      "speed": 1,
+      "volume": 1,
+      "subtitle": "First cut"
+    },
+    {
+      "clip": "cut_02.mp4",
+      "in": 0.5,
+      "out": 2.5,
+      "speed": 1,
+      "volume": 1,
+      "subtitle": "Second cut"
+    },
+    {
+      "clip": "cut_01.mp4",
+      "in": 2,
+      "out": 3,
+      "speed": 1,
+      "volume": 1,
+      "subtitle": "Third cut"
+    }
+  ],
+  "bgm": [],
+  "subtitleStyle": {
+    "font": "sans-serif",
+    "size": 48,
+    "color": "#ffffff",
+    "outlineColor": "#000000",
+    "outlineWidth": 3,
+    "position": "bottom"
+  }
+}
