@@ -152,10 +152,13 @@ above:
 - `GET /api/bgm-files` — lists audio files usable as background music, recursively under repo
   `media/` plus the current cuesheet's `clipDir`, each with a probed `durationS`.
 - `POST /api/render` runs the same render the Export step's button triggers. The output file
-  lands at `out/<project-name>.mp4` (repo-root `out/` directory, filename sanitized from
-  `project.name`) — **not** `out.mp4` at the repo root. That bare `out.mp4` name is only the
-  `cuesheet-render` CLI's own default output argument (see CLI surface above); the two are
-  independent paths that happen to share a directory choice by convention, not the same file.
+  lands at `out/<project-name> <timestamp>.mp4` (repo-root `out/` directory, filename sanitized
+  from `project.name`, timestamped so repeated renders of the same project never overwrite each
+  other) — **not** `out.mp4` at the repo root. `GET /out.mp4` is a separate, stable download
+  alias that always streams back whichever file that render most recently produced. That bare
+  `out.mp4` name is also, confusingly, the `cuesheet-render` CLI's own default output argument
+  (see CLI surface above) — the two are independent paths that happen to share a name by
+  convention, not the same file.
 
 ## File/path conventions
 
@@ -180,8 +183,8 @@ above:
 **New episode, end to end**: `pnpm episode "<folder>"` (scans, boots the editor) -> in Claude
 Code, `/episode <folder>` (vision judgment -> assemble -> subtitle voice pass) -> open
 `http://localhost:5173`, review the rough cut, hand-edit anything -> press render in the editor
-(lands at `out/<project-name>.mp4`) (or run `cuesheet-render episodes/<slug>.cuesheet.json
-out.mp4`).
+(lands at `out/<project-name> <timestamp>.mp4`, downloadable via the stable `GET /out.mp4`
+alias) (or run `cuesheet-render episodes/<slug>.cuesheet.json out.mp4`).
 
 **Bulk subtitle edit via MCP**: connect to `cuesheet-bridge`, call `get_cuesheet`, compute a new
 `segments` array with every `subtitle` rewritten (e.g. tone pass per `docs/voice-guide.md`),

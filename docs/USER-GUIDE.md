@@ -87,9 +87,9 @@ rough cut from this folder," and Claude Code will run the same procedure on its 
   **ducking** (dip the BGM automatically while narration plays — amount/fade-in-out shape are
   both adjustable, and audible in-editor via Play all, not just in the final export).
 - **Export**: save, then hit the export button -> pick resolution (720p/1080p/4K) and whether
-  to burn in subtitles (shows progress %, downloads when done). The rendered file is saved to
-  this project's `out/<project name>.mp4` on the server, and the button also offers it as a
-  direct download.
+  to burn in subtitles (shows progress %, downloads when done). The rendered file is saved on
+  the server under `out/<project name> <timestamp>.mp4` (timestamped so re-exporting never
+  overwrites a previous one), and the button also offers it as a direct download.
   - **Check "Without subtitles (for CC)"** = for uploading as YouTube CC
   - **"Download subtitles (.srt)"** = a separate subtitle file (for CC upload)
 - Upload combos: **clean video + SRT as CC**, or a subtitled video on its own.
