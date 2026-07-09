@@ -54,9 +54,20 @@ rough cut from this folder," and Claude Code will run the same procedure on its 
 ### ② Edit — adjusting cuts
 - Select a cut in the cut list (thumbnails) -> adjust it in **Cut settings** on the right:
   - **Range**: drag the In/Out handles or type numbers (updates the preview instantly)
-  - **Subtitle**: edit the text (see the "Voice" section below)
+  - **Subtitle**: edit the text (see the "Voice" section below) — a **style preset** select
+    appears here too, once you've created any presets in ③ Export (see below)
   - **Speed/Volume/Narration/Reframe**
-- **Play all**: the play button up top -> cuts play back to back (with subtitle overlay).
+  - **Title**: turns on a title card at this cut's start — text, one of 4 presets
+    (typing/gooey/melt/particle), duration, backdrop dim (darkens behind the card)
+  - **Transitions**: independent fade/dip at this cut's start (transition in) and end
+    (transition out) — dip lets you set how dark it goes (less than fully black), fade always
+    goes fully black
+- **Capture frame**: camera-icon button on the preview — grabs a full-resolution PNG of the
+  current preview position straight from the original clip (crop is not applied to the
+  capture) and downloads it. Handy for pulling a thumbnail candidate without leaving the editor.
+- **Play all**: the play button up top -> cuts play back to back (with subtitle overlay, and
+  now real audio too — BGM/narration actually play, including the ducking dip, so you can hear
+  the mix before exporting instead of only seeing it).
   You can keep editing below while it plays — click a cut in the list to play from there.
   Controls: previous/next cut, speed 1x/1.5x/2x, click the progress bar to jump.
 - **Shortcuts**: Space play/pause · I/O set in/out · arrow keys to move ·
@@ -65,11 +76,20 @@ rough cut from this folder," and Claude Code will run the same procedure on its 
   [Continue editing], and save once you're happy with it.
 
 ### ③ Export — style and output
+- **Project**: name/resolution/fps, plus **episode fade in/out** — a fade to/from black at the
+  very start/end of the whole export (0-3s, off by default).
 - **Subtitle style**: color picker + background box (color/opacity/margin — a YouTube-default
   subtitle look) + edge margin slider. Preview updates live in the ② Edit video.
-- Review/clear **intro/outro**, **BGM**, **narration** (see section 4 below).
+- **Subtitle style presets**: save a named variant of the subtitle style (e.g. a bigger yellow
+  "shout" look) once here, then assign it to individual cuts from the style preset select in
+  ② Edit's Cut settings — no need to hand-set the same override on every cut that wants that look.
+- Review/clear **intro/outro**, **BGM**, **narration** (see section 4 below), including
+  **ducking** (dip the BGM automatically while narration plays — amount/fade-in-out shape are
+  both adjustable, and audible in-editor via Play all, not just in the final export).
 - **Export**: save, then hit the export button -> pick resolution (720p/1080p/4K) and whether
-  to burn in subtitles (shows progress %, downloads when done).
+  to burn in subtitles (shows progress %, downloads when done). The rendered file is saved to
+  this project's `out/<project name>.mp4` on the server, and the button also offers it as a
+  direct download.
   - **Check "Without subtitles (for CC)"** = for uploading as YouTube CC
   - **"Download subtitles (.srt)"** = a separate subtitle file (for CC upload)
 - Upload combos: **clean video + SRT as CC**, or a subtitled video on its own.
