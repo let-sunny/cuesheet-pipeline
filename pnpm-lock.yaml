@@ -17,6 +17,9 @@ importers:
       typescript:
         specifier: ^5.6.0
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9(@types/node@22.20.0)(@vitest/browser@2.1.9)(jsdom@29.1.1)(lightningcss@1.32.0)(msw@2.15.0(@types/node@22.20.0)(typescript@5.9.3))
 
   apps/web:
     dependencies:
@@ -2812,6 +2815,28 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@vitest/browser@2.1.9(@types/node@22.20.0)(playwright@1.61.1)(typescript@5.9.3)(vite@5.4.21(@types/node@22.20.0)(lightningcss@1.32.0))(vitest@2.1.9)':
+    dependencies:
+      '@testing-library/dom': 10.4.1
+      '@testing-library/user-event': 14.6.1(@testing-library/dom@10.4.1)
+      '@vitest/mocker': 2.1.9(msw@2.15.0(@types/node@22.20.0)(typescript@5.9.3))(vite@5.4.21(@types/node@22.20.0)(lightningcss@1.32.0))
+      '@vitest/utils': 2.1.9
+      magic-string: 0.30.21
+      msw: 2.15.0(@types/node@22.20.0)(typescript@5.9.3)
+      sirv: 3.0.2
+      tinyrainbow: 1.2.0
+      vitest: 2.1.9(@types/node@22.20.0)(@vitest/browser@2.1.9)(jsdom@29.1.1)(lightningcss@1.32.0)(msw@2.15.0(@types/node@22.20.0)(typescript@5.9.3))
+      ws: 8.21.0
+    optionalDependencies:
+      playwright: 1.61.1
+    transitivePeerDependencies:
+      - '@types/node'
+      - bufferutil
+      - typescript
+      - utf-8-validate
+      - vite
+    optional: true
+
   '@vitest/browser@2.1.9(@types/node@22.20.0)(playwright@1.61.1)(typescript@5.9.3)(vite@6.4.3(@types/node@22.20.0)(lightningcss@1.32.0))(vitest@2.1.9)':
     dependencies:
       '@testing-library/dom': 10.4.1
@@ -3891,7 +3916,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 22.20.0
-      '@vitest/browser': 2.1.9(@types/node@22.20.0)(playwright@1.61.1)(typescript@5.9.3)(vite@6.4.3(@types/node@22.20.0)(lightningcss@1.32.0))(vitest@2.1.9)
+      '@vitest/browser': 2.1.9(@types/node@22.20.0)(playwright@1.61.1)(typescript@5.9.3)(vite@5.4.21(@types/node@22.20.0)(lightningcss@1.32.0))(vitest@2.1.9)
       jsdom: 29.1.1
     transitivePeerDependencies:
       - less

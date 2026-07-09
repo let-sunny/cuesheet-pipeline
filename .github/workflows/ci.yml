@@ -28,6 +28,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Test check scripts
+        run: pnpm test:checks
+
       - name: Build
         run: pnpm -r build
 
@@ -36,3 +39,7 @@ jobs:
 
       - name: Test
         run: pnpm -r test
+
+      # check-schema-examples imports packages/schema/dist, so this must run after Build.
+      - name: Check repo conventions
+        run: pnpm check:repo
