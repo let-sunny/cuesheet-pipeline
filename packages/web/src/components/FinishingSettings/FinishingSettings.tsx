@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
+import * as stylex from "@stylexjs/stylex";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { Slider } from "@astryxdesign/core/Slider";
 import type { NarrationConfig, SubtitleBackground, SubtitleStyle } from "@cuesheet/schema";
-import { useNumericField } from "../hooks/useNumericField.js";
+import { useNumericField } from "../../hooks/useNumericField.js";
 import {
   subtitleBackgroundRgba,
   subtitleOutlineStyle,
   subtitlePositionStyle,
   toCqw,
   toColorInputValue,
-} from "../lib/subtitleOverlay.js";
+} from "../../lib/subtitleOverlay.js";
+import { styles } from "./FinishingSettings.styles.js";
 
 interface SubtitleStyleProps {
   subtitleStyle: SubtitleStyle;
@@ -242,10 +244,10 @@ function SubtitleStylePreviewStage({
   const showThumb = previewClip != null && previewClip !== "" && !thumbFailed;
 
   return (
-    <div className="subtitle-style-preview-stage">
+    <div {...stylex.props(styles.previewStage)}>
       {showThumb ? (
         <img
-          className="subtitle-style-preview-thumb"
+          {...stylex.props(styles.previewThumb)}
           src={`/api/thumb?clip=${encodeURIComponent(previewClip)}&t=${previewClipTimeS.toFixed(1)}`}
           alt=""
           onError={() => setThumbFailed(true)}
@@ -300,7 +302,7 @@ export function NarrationSettings({ narration, onNarrationChange }: NarrationPro
       />
       {narration?.enabled ? (
         <>
-          <p className="narration-guide">
+          <p {...stylex.props(styles.narrationGuide)}>
             Put voice files (mp3/m4a/wav) in the folder, then pick a file on each cut — it's
             mixed in starting at that cut.
           </p>

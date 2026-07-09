@@ -46,7 +46,7 @@ import type { SequencePlayerHandle } from "./components/SequencePlayer.js";
 import { CompactSegmentList } from "./components/CompactSegmentList.js";
 import { SegmentQuickFields } from "./components/SegmentQuickFields.js";
 import { IntroOutroEditor } from "./components/IntroOutroEditor/index.js";
-import { SubtitleStyleSettings, NarrationSettings } from "./components/FinishingSettings.js";
+import { SubtitleStyleSettings, NarrationSettings } from "./components/FinishingSettings/index.js";
 import { SubtitleStylePresetsSettings } from "./components/SubtitleStylePresetsSettings.js";
 import { ProjectMetaFields } from "./components/ProjectMetaFields/index.js";
 import { RenderSettingsDialog } from "./components/RenderSettingsDialog/index.js";
