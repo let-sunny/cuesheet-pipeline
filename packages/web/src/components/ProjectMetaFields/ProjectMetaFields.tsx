@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { Project } from "@cuesheet/schema";
-import { useNumericField } from "../hooks/useNumericField.js";
+import { useNumericField } from "../../hooks/useNumericField.js";
 
 interface Props {
   project: Project;

@@ -47,7 +47,7 @@ import { SegmentQuickFields } from "./components/SegmentQuickFields.js";
 import { IntroOutroEditor } from "./components/IntroOutroEditor.js";
 import { SubtitleStyleSettings, NarrationSettings } from "./components/FinishingSettings.js";
 import { SubtitleStylePresetsSettings } from "./components/SubtitleStylePresetsSettings.js";
-import { ProjectMetaFields } from "./components/ProjectMetaFields.js";
+import { ProjectMetaFields } from "./components/ProjectMetaFields/index.js";
 import { RenderSettingsDialog } from "./components/RenderSettingsDialog.js";
 
 interface AppProps {
