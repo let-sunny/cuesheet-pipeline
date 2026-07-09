@@ -147,20 +147,6 @@ body {
   font-size: 15px;
 }
 
-.app {
-  max-width: none;
-  margin: 0 auto;
-  padding: 24px 32px;
-}
-
-.app h2 {
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-secondary);
-  margin: 28px 0 12px;
-}
-
 .project {
   display: flex;
   gap: 24px;
@@ -179,67 +165,17 @@ body {
   font-weight: 600;
 }
 
-.timeline {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding-bottom: 8px;
-}
-
-.segment {
-  flex: 0 0 auto;
-  min-width: 120px;
-  padding: 12px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  box-sizing: border-box;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.segment.selected {
-  border-color: var(--accent);
-  background: var(--surface-3);
-}
-
-.segment .clip {
-  font-weight: 600;
-  font-size: 13px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.segment .meta {
-  font-size: 13px;
-  color: var(--text-tertiary);
-  margin-top: 4px;
-}
-
-.segment .subtitle {
-  margin-top: 8px;
-  font-size: 13px;
-  color: var(--text-quaternary);
-  border-top: 1px dashed var(--border-dashed);
-  padding-top: 6px;
-}
+/* .timeline/.segment(+.selected/.clip/.meta/.subtitle) removed (StyleX migration batch 4) - dead:
+   CompactSegmentList replaced this cut-list rendering long ago and no component renders
+   className="timeline"/"segment" anymore (repo-wide grep confirmed zero call sites). `.empty`
+   below is unrelated to `.segment .subtitle`'s content despite the similar old context - it's
+   still live (VideoPreview's "can't find the source" message) and stays until VideoPreview itself
+   gets a component anatomy folder (category (d), deferred). `.swatch` was migrated (not dead) -
+   see components/Swatch/. */
 
 .empty {
   color: var(--text-secondary);
   font-size: 13px;
-}
-
-.swatch {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
-  vertical-align: middle;
-  margin-right: 4px;
-  border: 1px solid #00000055;
 }
 
 .status {
@@ -341,52 +277,10 @@ body {
   flex: 0 0 auto;
 }
 
-.banner {
-  padding: 12px 16px;
-  background: var(--surface-2);
-  border: 1px solid var(--border-dashed);
-  border-radius: 6px;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 13px;
-}
-
-/* Button group inside a banner (e.g. continue editing/discard) — grouped as one action unit
-   separated from the text, laid out side by side and right-aligned (screen-spec section 6). */
-.banner-actions {
-  display: flex;
-  flex-shrink: 0;
-  gap: 8px;
-}
-
-.banner.success {
-  border-color: var(--success-border);
-  color: var(--success-text);
-}
-
-.banner.error {
-  border-color: var(--error-border);
-  color: var(--error-text);
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.banner.error ul {
-  margin: 4px 0 0;
-  padding-left: 18px;
-}
-
-.banner.error pre {
-  margin: 4px 0 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 240px;
-  overflow-y: auto;
-  font-size: 13px;
-}
+/* .banner/.banner-actions migrated to components/Banner/ (StyleX migration batch 4).
+   .banner.success/.banner.error(+ul/pre) were NOT migrated - dead: repo-wide grep found no call
+   site ever applying those modifier classes (both current banners in App.tsx render the plain
+   look), so they were deleted rather than ported. */
 
 .settings {
   display: flex;
@@ -1211,74 +1105,9 @@ body {
 
 /* Step ② Edit */
 
-.edit-layout {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.trim-layout {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-}
-
-/* Two-column workspace wrapping everything to the right of the cut list (video + field panel).
-   If the combined minimum width of the video column and field column exceeds the screen width
-   (roughly under 1280px), flex-wrap naturally drops the field column below the video.
-   Stuck to the top of the viewport via sticky, so the video+fields stay visible on screen even
-   when the cut count (tens to hundreds) makes the left cut list (.compact-list) long enough to create page scroll. */
-.trim-workspace {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: flex-start;
-  position: sticky;
-  top: 12px;
-  align-self: flex-start;
-}
-
-/* Left column (wide): scene header -> video -> playback/trim controls are already bundled
-   together inside a single VideoPreview block, so this just sets that column's width. */
-.trim-video-col {
-  flex: 2 1 480px;
-  min-width: 480px;
-}
-
-/* Right column (narrow, next to the video): subtitle/speed/volume/narration/crop field panel.
-   max-width was 380px - at that width the Range row (In 144px slot + Out 144px slot + 16px gap
-   between them + 16px gap before + "Length X.Xs" readonly text, inside the panel's 16px side
-   padding) needs roughly 423px of column width and didn't fit on one line, wrapping the Length
-   text onto its own row (measured 2026-07-09 QA pass).
-   Raising max-width alone isn't enough: min-width was 320px, and .trim-workspace's flex-grow ratio
-   (video-col 2 : fields-col 1) meant that at plenty of realistic desktop widths (measured at
-   1440-1600px) this column only ever grew to ~330-382px - short of the ~423px the Range row
-   needs, but still "wide enough" that .trim-workspace's flex-wrap didn't kick in to stack the two
-   columns instead, so it landed in a broken in-between size. Raising min-width to match what the
-   Range row actually needs closes that gap: the column now either renders at a width that fits
-   the row on one line, or - if the viewport is too narrow for that plus the video column - wraps
-   as a whole to its own line below the video (existing, already-handled responsive behavior),
-   never at some in-between width that breaks only this one row. */
-.trim-fields-col {
-  flex: 1 1 424px;
-  min-width: 424px;
-  max-width: 440px;
-}
-
-/* Common shell for segment thumbnails — size is set by the consumer class (compact-list-thumb, etc).
-   Background is intentionally fixed dark regardless of theme — a video frame thumbnail canvas (spec item 3). */
-.segment-thumb {
-  background: var(--stage-bg);
-}
-
-.segment-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
+/* .edit-layout/.trim-layout/.trim-workspace/.trim-video-col/.trim-fields-col migrated to
+   App.styles.ts (StyleX migration batch 4) - App.tsx's own Edit-step container layout, not a
+   separate component. .segment-thumb(+img) migrated to components/SegmentThumb/ (same batch). */
 
 /* CompactSegmentList migration (docs/styling-migration.md, StyleX migration batch 3) -
    `.compact-list`/`.compact-list-row`(+`.selected`)/`.compact-list-index`/`.compact-list-thumb`/
@@ -1442,11 +1271,17 @@ body {
 }
 
 /* Cut settings (PRD section 4's canonical name for the "inspector") panel title — identifies what
-   the entire right-side field panel belongs to. */
+   the entire right-side field panel belongs to. Also absorbs the old `.app h2` rule's effect
+   (StyleX migration batch 4, see App.styles.ts's comment): that class+tag selector had higher
+   specificity than this single class, so it silently won font-size/margin on these same <h2>
+   elements and uniquely supplied text-transform/letter-spacing (no other rule set those) - folded
+   in below so the rendered look is unchanged now that `.app h2` is gone. */
 .qf-panel-title {
-  margin: 0 0 8px;
-  font-size: 13px;
+  margin: 28px 0 12px;
+  font-size: 14px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--text-secondary);
 }
 
