@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import { basename, extname, isAbsolute, relative, resolve, sep } from "node:path";
 import type { ViteDevServer } from "vite";
 import { findLostFieldPaths, validateCueSheet, type CueSheet } from "@cuesheet/schema";
-import { buildRenderPlan, buildSrt } from "@cuesheet/render";
+import { buildRenderPlan, buildSrt, DEFAULT_TITLE_CACHE_DIR, prepareTitleAssets } from "@cuesheet/render";
 import {
   clipMimeTypes,
   contentDispositionHeader,
@@ -666,7 +666,28 @@ export function registerRoutes(
     const cueForRender = { ...result.data, clipDir: resolveRepoPath(result.data.clipDir) };
     const outputPath = renderOutputPathFor(result.data.project.name);
     await mkdir(renderOutputDir, { recursive: true });
-    const plan = buildRenderPlan(cueForRender, outputPath, { burnSubtitles });
+
+    // Title cards (gooey/melt/particle) need their frames captured (or read from cache) before
+    // buildRenderPlan can reference them - buildRenderPlan itself stays pure/sync (see plan.ts).
+    let titleAssets;
+    try {
+      titleAssets = result.data.segments.some((s) => s.title)
+        ? await prepareTitleAssets(cueForRender, { cacheDir: resolveRepoPath(DEFAULT_TITLE_CACHE_DIR) })
+        : undefined;
+    } catch (e) {
+      renderInProgress = false;
+      sendJson(res, 400, { ok: false, error: (e as Error).message });
+      return;
+    }
+
+    let plan;
+    try {
+      plan = buildRenderPlan(cueForRender, outputPath, { burnSubtitles, titleAssets });
+    } catch (e) {
+      renderInProgress = false;
+      sendJson(res, 400, { ok: false, error: (e as Error).message });
+      return;
+    }
     for (const warning of plan.warnings) {
       server.config.logger.warn(`[render] ${warning}`);
     }
