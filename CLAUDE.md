@@ -66,13 +66,17 @@ Detailed rationale for decisions lives in docs subdocuments.
 
 ## Architecture
 
-### Packages
+### Apps & packages
+
+Apps are deployable applications; packages are libraries.
 
 ```
+apps/
+  web/      web app that edits/previews the cuesheet (produces the cuesheet)          [implemented]
+
 packages/
   schema/   cuesheet type definitions + runtime validation (single source of truth)  [implemented]
   draft/    raw folder -> auto-generated rough-cut cuesheet (scan + frame extraction/assembly, vision judgment by Claude) [implemented]
-  web/      web app that edits/previews the cuesheet (produces the cuesheet)          [implemented]
   render/   takes a cuesheet and renders the actual video, ffmpeg etc. (consumes the cuesheet) [implemented]
 ```
 
@@ -164,7 +168,7 @@ edits handled grows, schema expands along with it.
   DOM. Verify a given Astryx component's source before relying on this; where it doesn't forward,
   select by ARIA role + accessible name instead (e.g. `getByRole("checkbox", { name: "..." })` —
   Astryx's `Field`/`FieldLabel` render a real `<label htmlFor>`, so this works reliably).
-  `packages/web/vitest.config.ts` runs two projects: `unit` (jsdom, the default) and `browser`
+  `apps/web/vitest.config.ts` runs two projects: `unit` (jsdom, the default) and `browser`
   (real Chromium via `@vitest/browser` + the Playwright provider, opt-in per file via
   `*.browser.test.tsx`) — reach for browser mode only for cases that need a real browser environment
   (layout/animation timing, real `<input>` focus/selection behavior); everything else stays on the
@@ -232,7 +236,7 @@ deliberate exceptions, both left as-is:
   the protagonist, so "helper defined above its point of use, `main()` invoked at the bottom" is
   already the natural reading order; forcing the convention here would just churn without adding
   clarity.
-- **`packages/web/src/cuesheet-plugin.ts`** — dominated by one large exported factory
+- **`apps/web/src/cuesheet-plugin.ts`** — dominated by one large exported factory
   (`cuesheetPlugin`) whose ~20 helpers/state variables are only used inside the middleware
   closures it returns. Reordering it is mechanically safe but touches ~450 lines of a live
   dev-server plugin; treat as a separate, isolated follow-up (server stopped) rather than bundling

@@ -756,7 +756,7 @@ export function registerRoutes(
     const totalSeconds = estimateOutputSeconds(result.data);
     renderJob = { state: "running", progress: 0 };
 
-    // ffmpeg runs inheriting this vite server's cwd (packages/web) as-is, so if clipDir is a
+    // ffmpeg runs inheriting this vite server's cwd (apps/web) as-is, so if clipDir is a
     // relative path, convert it to an absolute path based on the repo root before passing it in.
     const cueForRender = { ...result.data, clipDir: resolveRepoPath(result.data.clipDir) };
     const outputPath = renderOutputPathFor(result.data.project.name);

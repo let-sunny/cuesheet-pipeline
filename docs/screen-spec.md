@@ -35,7 +35,7 @@
    value — compiles into our own `product` StyleX layer, which reliably wins over the library
    layer) for anything cheap and static, `style` (inline `CSSProperties`) as the escape hatch for
    anything dynamic/conditional. Never repeat the same `xstyle`/`style` tweak at 2+ call sites —
-   promote it to a named wrapper component instead (`packages/web/src/components/ui/`, one folder
+   promote it to a named wrapper component instead (`apps/web/src/components/ui/`, one folder
    per component; see `CompactButton`/`CardActionButton`/`IoAssignButton` for examples). Raw
    (non-Astryx) elements that still exist for the 4 domain-custom areas (rule 6) get an explicit
    marker class instead (e.g. `.plain-button`, `.plain-field`) and are styled via that class, never
@@ -348,7 +348,7 @@ stay visually together, and action groups in banners/dialog footers are right-al
   (1) scoping the global rules to `.plain-button`/`.plain-field` marker classes, added to every
   remaining raw `<button>`/`<input>`/`<select>`/`<textarea>`; (2) replacing the 3 CSS-reaches-into-
   Astryx cases with named wrapper components (`CompactButton`, `CardActionButton`,
-  `IoAssignButton` under `packages/web/src/components/ui/`) that apply the tweak via `xstyle`
+  `IoAssignButton` under `apps/web/src/components/ui/`) that apply the tweak via `xstyle`
   instead; (3) moving the one-off `.add-button` margin tweak on BgmEditor's Button to inline
   `style`.
 - 2026-07-08 first draft — established the fix baseline for the hierarchy collapse (In/Out

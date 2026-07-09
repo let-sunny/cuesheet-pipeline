@@ -9,7 +9,7 @@ const particleTitle: Title = { text: "Cast on", preset: "particle", durationS: 2
 
 /**
  * Browser-mode companion to the jsdom TitleOverlay.test.tsx suite - the particle preset draws to a
- * real `<canvas>` 2D context (packages/web/src/components/TitleOverlay/TitleOverlay.tsx's
+ * real `<canvas>` 2D context (apps/web/src/components/TitleOverlay/TitleOverlay.tsx's
  * ParticleTitle), which jsdom cannot exercise at all ("Not implemented: HTMLCanvasElement's
  * getContext() method", visible as stderr noise in the jsdom run) - the existing test only checks
  * that a `<canvas>` element exists, not that anything was actually drawn. This mounts in a real

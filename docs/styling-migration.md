@@ -112,7 +112,7 @@ migration target.
 
 ## Appendix: styles.css residue map (2026-07-09)
 
-A complete classification of all 1910 lines in `packages/web/src/styles.css` into six categories, identifying what remains, why, and the migration path forward.
+A complete classification of all 1910 lines in `apps/web/src/styles.css` into six categories, identifying what remains, why, and the migration path forward.
 
 ### Classification table
 

@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const webDir = resolve(here, "../../packages/web");
+const webDir = resolve(here, "../../apps/web");
 const runtimeDir = resolve(here, ".runtime");
 
 const PORT = 5199;

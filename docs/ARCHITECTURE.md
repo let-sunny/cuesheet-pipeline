@@ -382,7 +382,7 @@ timing models (see `components/TitleOverlay/` in section 2 above).
 ## Verification notes / doc-vs-code mismatches found
 
 None of consequence — every endpoint, export, and CLI flag documented above was grepped/read
-directly out of the current source (`packages/*/src`, `scripts/episode.mjs`, `.mcp.json`,
+directly out of the current source (`packages/*/src`, `apps/*/src`, `scripts/episode.mjs`, `.mcp.json`,
 `package.json` files) rather than recalled from STATUS.md prose. Two things worth flagging
 for whoever reads this next:
 

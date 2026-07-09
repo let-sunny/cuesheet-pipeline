@@ -493,7 +493,7 @@ function transitionAudioFilters(
  * replaced wholesale rather than partially merged (avoids ambiguous leftovers like opacity from a
  * partial merge) — since each step is itself a shallow merge that overwrites whole object fields,
  * this rule is satisfied without any extra handling. Mirrored field-for-field by the web editor's
- * live preview (packages/web/src/lib/subtitleOverlay.ts's mergeSubtitleStyle) - see ARCHITECTURE.md.
+ * live preview (apps/web/src/lib/subtitleOverlay.ts's mergeSubtitleStyle) - see ARCHITECTURE.md.
  */
 export function resolveSubtitleStyle(cue: CueSheet, segment: Segment): CueSheet["subtitleStyle"] {
   let style = cue.subtitleStyle;
@@ -542,7 +542,7 @@ const CROP_ASPECT_TOLERANCE = 0.01;
  * This is a rough character-count-vs-estimated-pixel-width guard, not a precise prediction (exact
  * wrap parity with drawtext isn't feasible without the actual font metrics) - it's the last-resort
  * guard right before the real ffmpeg render, mirroring the same heuristic/ratio the web editor
- * shows at edit time (packages/web/src/lib/subtitleOverflow.ts).
+ * shows at edit time (apps/web/src/lib/subtitleOverflow.ts).
  */
 const AVG_CHAR_WIDTH_RATIO = 0.6;
 

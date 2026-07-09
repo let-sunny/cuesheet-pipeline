@@ -19,7 +19,7 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 | `packages/schema` | Cuesheet types + validation (contract's center, zod) | Stable. 42 tests |
 | `packages/bridge` | MCP server for Claude Code connection (natural-language editing) | Stable. 4 tests |
 | `packages/render` | Cuesheet -> ffmpeg render (CLI + buildRenderPlan) | Stable. 50 tests, verified with a real render |
-| `packages/web` | Touch-up editor: cut editing, timeline trimming (scrub/handles/split), full timeline + BGM drag, proxy playback, export button | Actively evolving |
+| `apps/web` | Touch-up editor: cut editing, timeline trimming (scrub/handles/split), full timeline + BGM drag, proxy playback, export button | Actively evolving |
 | `packages/draft` | **Core**: raw footage folder -> automatic rough-cut cuesheet generation (CLI `cuesheet-draft`: scan for inventory + frame extraction -> assemble for assembly; vision judgment handled by Claude) | Promoted to a proper package. 7 tests, scan/assemble E2E verified against a real footage folder |
 | `media/proxies/` | 720p H.264 proxies for web preview (auto-generated, git-ignored) | Automatic |
 | `media/dotmix_src` | Symlink to the user's raw footage folder (git-ignored) | — |

@@ -9,7 +9,7 @@ coverage/
 tests/e2e/.runtime/
 playwright-report/
 test-results/
-packages/web/__screenshots__/
+apps/web/__screenshots__/
 
 # large files/generated artifacts (not committed to the repo)
 media/clips/*.mp4

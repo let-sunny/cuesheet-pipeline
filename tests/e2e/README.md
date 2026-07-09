@@ -4,7 +4,7 @@ A thin set of full user-journey tests against the web app's own dev server, run 
 Chromium instance. This is a smoke suite, not exhaustive coverage — each journey is short
 (well under 30s) and the whole suite is meant to stay under ~2 minutes.
 
-This is separate from `packages/web`'s Vitest suites:
+This is separate from `apps/web`'s Vitest suites:
 
 - `pnpm --filter @cuesheet/web test` — unit tests (jsdom).
 - `pnpm --filter @cuesheet/web test:browser` — Vitest Browser Mode (real Chromium, opt-in per file
