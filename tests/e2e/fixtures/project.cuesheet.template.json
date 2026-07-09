@@ -10,7 +10,7 @@
   "outro": null,
   "segments": [
     {
-      "clip": "cut_01.mp4",
+      "clip": "e2e_cut_01.mp4",
       "in": 0,
       "out": 2,
       "speed": 1,
@@ -18,7 +18,7 @@
       "subtitle": "First cut"
     },
     {
-      "clip": "cut_02.mp4",
+      "clip": "e2e_cut_02.mp4",
       "in": 0.5,
       "out": 2.5,
       "speed": 1,
@@ -26,7 +26,7 @@
       "subtitle": "Second cut"
     },
     {
-      "clip": "cut_01.mp4",
+      "clip": "e2e_cut_01.mp4",
       "in": 2,
       "out": 3,
       "speed": 1,
@@ -34,7 +34,7 @@
       "subtitle": "Third cut"
     },
     {
-      "clip": "cut_long.mp4",
+      "clip": "e2e_cut_long.mp4",
       "in": 90,
       "out": 93,
       "speed": 1,

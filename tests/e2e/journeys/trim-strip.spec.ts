@@ -20,7 +20,7 @@ async function waitForVideoMetadata(page: Page): Promise<void> {
 test("short clip: TrimStrip has a sane default, no dead pan-control chrome", async ({ page }) => {
   await page.goto("/");
   await page.getByTestId("step-tab-edit").click();
-  await page.getByTestId("cut-row-0").click(); // cut_01.mp4, a 3s clip
+  await page.getByTestId("cut-row-0").click(); // e2e_cut_01.mp4, a 3s clip
   await waitForVideoMetadata(page);
 
   await expect(page.getByTestId("trim-strip-filmstrip")).toBeVisible();
@@ -39,7 +39,7 @@ test("long clip: default viewport is zoomed in (pan control visible), Fit clip/F
   // the cut list (e.g. bgm-track.spec.ts's "Duplicate selected cut" clicks), so a fixed
   // "cut-row-N" index isn't stable across the whole run. Clicking the subtitle textarea selects
   // the cut, same as clicking its row (CompactSegmentList's onFocus also calls onSelect).
-  await page.getByTitle(/^Long-take cut \(TrimStrip zoom fixture\)/).click(); // cut_long.mp4, a 180s clip, cut at 90-93s
+  await page.getByTitle(/^Long-take cut \(TrimStrip zoom fixture\)/).click(); // e2e_cut_long.mp4, a 180s clip, cut at 90-93s
   await waitForVideoMetadata(page);
 
   await expect(page.getByTestId("trim-strip-pan")).toBeVisible();
