@@ -252,7 +252,13 @@ and CLI's schema versions ever drift, we choose a loud failure over silent data 
    settings section in Export. Editing-grammar fit: narration is sparse and windowed —
    automation beats a live compressor for determinism and render parity.
 5. YouTube chapter list generation from no-subtitle gaps (grammar: gaps = chapter breaks).
-6. Thumbnail frame capture (current frame -> PNG).
+6. **Thumbnail frame capture** — design sketch (2026-07-09): `GET
+   /api/frame-capture?clip=<name>&atS=<source-seconds>` extracts a full-resolution
+   PNG from the ORIGINAL clip via seek-based ffmpeg (-ss before -i) server-side
+   (the preview proxy is 720p — thumbnails need source pixels); response
+   Content-Disposition names it `<project> <m.ss>.png`. UI: a camera button under
+   the Edit-step video (captures the current preview position mapped to source
+   time). Use case: YouTube thumbnail candidates without leaving the editor.
 
 1. Detect "mistake / frog it and restart" narratives (frame comparison across the timeline —
    target 90%+ recall)
