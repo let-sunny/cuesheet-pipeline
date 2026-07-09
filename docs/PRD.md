@@ -229,7 +229,16 @@ and CLI's schema versions ever drift, we choose a loud failure over silent data 
    Web preview via CSS/JS. Render paths: Typing via ASS/libass karaoke; Gooey/Particle
    via headless frame-capture -> alpha overlay compositing (spike in progress validating
    both paths + caching strategy per (text, preset)).
-3. **Fades** — audio/video fade in/out at cut boundaries and episode ends (optional fields).
+3. **Fades** — design sketch (2026-07-09): contract adds optional `segment.transitionIn?`
+   / `transitionOut?: { type: "fade" | "dip", durationS: 0.2-2 (default 0.5), dim?: 0-1
+   (dip target; 1 = black) }` and project-level `fadeIn/fadeOut` for episode ends.
+   Render: video via fade filter (in/out offsets from segment bounds), audio via afade
+   in the same window; "dip" = fade to a dim/black frame then back (pairs with the
+   title backdrop-dim concept but lives on the cut boundary). Preview: CSS opacity ramp
+   on the video element driven by playback position (approximation is acceptable — parity
+   note in UI). UI: TRANSITIONS group in cut settings after TITLE; episode-level fades in
+   Export project section. Editing grammar note: chapter transitions (no-subtitle gaps)
+   are the natural place for dips — the /episode pipeline may propose them there later.
 4. **Audio ducking** — BGM lowers under narration (render sidechain).
 5. YouTube chapter list generation from no-subtitle gaps (grammar: gaps = chapter breaks).
 6. Thumbnail frame capture (current frame -> PNG).
