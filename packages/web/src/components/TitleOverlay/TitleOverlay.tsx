@@ -28,7 +28,7 @@ export function TitleOverlay({ title, localTimeS }: TitleOverlayProps) {
   const progress = Math.min(1, Math.max(0, localTimeS / title.durationS));
 
   return (
-    <div {...stylex.props(styles.container)}>
+    <div {...stylex.props(styles.container)} data-testid="title-overlay">
       {dimOpacity > 0 ? <div {...stylex.props(styles.backdrop)} style={{ opacity: dimOpacity }} /> : null}
       <div {...stylex.props(styles.stage)}>
         {title.preset === "typing" ? (

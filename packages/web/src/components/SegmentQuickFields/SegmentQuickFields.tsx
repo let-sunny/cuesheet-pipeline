@@ -183,11 +183,11 @@ export function SegmentQuickFields({
         : null;
 
   return (
-    <div className="quick-fields">
+    <div className="quick-fields" data-testid="cut-settings-panel">
       <h2 className="qf-panel-title">Cut settings</h2>
 
       {/* G1. Range */}
-      <div className="qf-group">
+      <div className="qf-group" data-testid="cut-settings-group-range">
         <div className="qf-group-label">Range</div>
         {/* The clip filename is shown as read-only text only (revised 2026-07-08) - the only
             proper way to change which source clip this cut points to is (1) picking a different
@@ -204,18 +204,18 @@ export function SegmentQuickFields({
         <div className="qf-row">
           <label className="qf-field field-narrow">
             <span>In</span>
-            <input type="number" className="plain-field" min={0} {...inField} />
+            <input type="number" className="plain-field" min={0} {...inField} data-testid="cut-field-in" />
           </label>
           <label className="qf-field field-narrow">
             <span>Out</span>
-            <input type="number" className="plain-field" min={0} {...outField} />
+            <input type="number" className="plain-field" min={0} {...outField} data-testid="cut-field-out" />
           </label>
           <span className="qf-readonly">Length {(segment.out - segment.in).toFixed(1)}s</span>
         </div>
       </div>
 
       {/* G2. Playback */}
-      <div className="qf-group">
+      <div className="qf-group" data-testid="cut-settings-group-playback">
         <div className="qf-group-label">Playback</div>
         <div className="qf-row">
           <label className="qf-field field-narrow">
@@ -228,12 +228,21 @@ export function SegmentQuickFields({
               step={0.1}
               title="Speed is capped at 16x - browsers can't play video faster than that"
               {...speedField}
+              data-testid="cut-field-speed"
             />
             <span className="qf-suffix">x</span>
           </label>
           <label className="qf-field field-narrow">
             <span>Volume</span>
-            <input type="number" className="plain-field" min={0} max={100} step={1} {...volumeField} />
+            <input
+              type="number"
+              className="plain-field"
+              min={0}
+              max={100}
+              step={1}
+              {...volumeField}
+              data-testid="cut-field-volume"
+            />
             <span className="qf-suffix">%</span>
           </label>
         </div>
@@ -243,7 +252,7 @@ export function SegmentQuickFields({
       </div>
 
       {/* G3. Subtitle (+ subsection: per-cut subtitle style) */}
-      <div className="qf-group">
+      <div className="qf-group" data-testid="cut-settings-group-subtitle">
         <div className="qf-group-label">Subtitle</div>
         <label className="qf-field field-full">
           <textarea
@@ -252,6 +261,7 @@ export function SegmentQuickFields({
             rows={2}
             placeholder="Enter subtitle"
             onChange={(e) => onChange({ subtitle: e.target.value })}
+            data-testid="cut-field-subtitle"
           />
         </label>
         {subtitleWarning ? <p className="qf-note">{subtitleWarning}</p> : null}
@@ -291,8 +301,11 @@ export function SegmentQuickFields({
           on starts with a default typing title (3s, no dim) so the preview shows something
           immediately, matching the same "toggle starts from a sane default" pattern as the
           per-cut subtitle style override above. */}
-      <div className="qf-group">
+      <div className="qf-group" data-testid="cut-settings-group-title">
         <div className="qf-group-label">Title</div>
+        {/* CheckboxInput (unlike Button/Tab/Slider) doesn't forward arbitrary data-* props to the
+            DOM (no `...rest` spread in its implementation) - select this in tests by ARIA role +
+            accessible name instead: getByRole("checkbox", { name: "Title card for this cut" }). */}
         <CheckboxInput label="Title card for this cut" value={!!segment.title} onChange={onToggleTitle} />
         {segment.title ? (
           <>
@@ -304,6 +317,7 @@ export function SegmentQuickFields({
                 maxLength={80}
                 value={segment.title.text}
                 onChange={(e) => onChangeTitle({ text: e.target.value })}
+                data-testid="cut-field-title-text"
               />
             </label>
             <div className="qf-row">
@@ -313,6 +327,7 @@ export function SegmentQuickFields({
                   className="plain-field"
                   value={segment.title.preset}
                   onChange={(e) => onChangeTitle({ preset: e.target.value as Title["preset"] })}
+                  data-testid="cut-field-title-preset"
                 >
                   <option value="typing">Typing</option>
                   <option value="gooey">Gooey</option>
@@ -348,9 +363,10 @@ export function SegmentQuickFields({
           toggled on with the same "starts from a sane default" pattern as Title above (fade,
           0.5s). Dip amount only applies (and is only shown) when type is Dip - Fade always fades
           fully to black. */}
-      <div className="qf-group">
+      <div className="qf-group" data-testid="cut-settings-group-transitions">
         <div className="qf-group-label">Transitions</div>
         <div {...stylex.props(styles.transition)}>
+          {/* Select by role/name in tests, not testid - see the Title toggle's comment above. */}
           <CheckboxInput
             label="Transition in"
             value={!!segment.transitionIn}
@@ -449,7 +465,7 @@ export function SegmentQuickFields({
 
       {/* G6. Narration (shown only when in use) */}
       {narrationEnabled ? (
-        <div className="qf-group">
+        <div className="qf-group" data-testid="cut-settings-group-narration">
           <div className="qf-group-label">Narration</div>
           <label className="qf-field field-medium">
             <span>File</span>
@@ -488,7 +504,7 @@ export function SegmentQuickFields({
       ) : null}
 
       {/* G7. Reframe (crop) */}
-      <div className="qf-group">
+      <div className="qf-group" data-testid="cut-settings-group-reframe">
         <div className="qf-group-label">Reframe</div>
         <div className="qf-row">
           <span className="qf-readonly">{segment.crop ? "Applied" : "Not applied"}</span>
@@ -505,10 +521,17 @@ export function SegmentQuickFields({
       </div>
 
       {/* G8. Cut actions - Delete is not here (see the separate danger zone below, screen-spec section 4 revision). */}
-      <div className="qf-group">
+      <div className="qf-group" data-testid="cut-settings-group-actions">
         <div className="qf-group-label">Cut actions</div>
         <div className="qf-row qf-actions-row">
-          <Button label="Split" variant="secondary" size="sm" tooltip="Cmd/Ctrl + B" onClick={onSplit} />
+          <Button
+            label="Split"
+            variant="secondary"
+            size="sm"
+            tooltip="Cmd/Ctrl + B"
+            onClick={onSplit}
+            data-testid="cut-action-split"
+          />
           <Button
             label="Merge with next cut"
             variant="secondary"
@@ -516,8 +539,15 @@ export function SegmentQuickFields({
             isDisabled={!mergeEligibility.eligible}
             tooltip={mergeEligibility.eligible ? "Cmd/Ctrl + J" : mergeEligibility.reason}
             onClick={onMergeNext}
+            data-testid="cut-action-merge"
           />
-          <Button label="Duplicate" variant="secondary" size="sm" onClick={onDuplicate} />
+          <Button
+            label="Duplicate"
+            variant="secondary"
+            size="sm"
+            onClick={onDuplicate}
+            data-testid="cut-action-duplicate"
+          />
           <Button
             label="Set as intro"
             variant="ghost"
@@ -528,6 +558,7 @@ export function SegmentQuickFields({
               "Range (In/Out) is ignored - the whole clip is inserted as the intro"
             }
             onClick={onSetIntro}
+            data-testid="cut-action-set-intro"
           />
           <Button
             label="Set as outro"
@@ -539,6 +570,7 @@ export function SegmentQuickFields({
               "Range (In/Out) is ignored - the whole clip is inserted as the outro"
             }
             onClick={onSetOutro}
+            data-testid="cut-action-set-outro"
           />
         </div>
       </div>
@@ -546,7 +578,7 @@ export function SegmentQuickFields({
       {/* Danger zone: Delete is separated out (screen-spec section 4, revised 2026-07-08) - a
           divider + spacing clearly separates it from the cut actions group above, to prevent
           accidental deletion from being pressed alongside other buttons. */}
-      <div className="qf-danger-zone">
+      <div className="qf-danger-zone" data-testid="cut-settings-group-danger">
         <Button
           label="Delete"
           variant="destructive"
@@ -554,6 +586,7 @@ export function SegmentQuickFields({
           isDisabled={!canDelete}
           tooltip={canDelete ? undefined : "Can't delete the last remaining cut"}
           onClick={onDelete}
+          data-testid="cut-action-delete"
         />
       </div>
     </div>

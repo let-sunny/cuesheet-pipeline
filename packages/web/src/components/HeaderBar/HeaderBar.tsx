@@ -61,8 +61,8 @@ export function HeaderBar({
         ) : null}
       </div>
       <div {...stylex.props(styles.saveRow)}>
-        <Button label="Undo" variant="ghost" isDisabled={!canUndo} onClick={onUndo} />
-        <Button label="Redo" variant="ghost" isDisabled={!canRedo} onClick={onRedo} />
+        <Button label="Undo" variant="ghost" isDisabled={!canUndo} onClick={onUndo} data-testid="header-undo" />
+        <Button label="Redo" variant="ghost" isDisabled={!canRedo} onClick={onRedo} data-testid="header-redo" />
 
         <span {...stylex.props(styles.divider)} aria-hidden="true" />
 
@@ -77,12 +77,14 @@ export function HeaderBar({
           isDisabled={saving}
           tooltip={dirty ? "Click Save to write it to disk" : undefined}
           onClick={onSave}
+          data-testid="header-save"
         />
         <Button
           label={rendering ? `Exporting… ${renderProgress ?? 0}%` : "Export"}
           variant={dirty ? "secondary" : "primary"}
           isDisabled={renderDisabled}
           onClick={onRender}
+          data-testid="header-render"
         />
       </div>
     </div>

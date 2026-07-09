@@ -970,7 +970,17 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
       />
 
       {externalChangePending ? (
-        <Banner actions={<Button label="Reload" variant="secondary" size="sm" onClick={handleReload} />}>
+        <Banner
+          actions={
+            <Button
+              label="Reload"
+              variant="secondary"
+              size="sm"
+              onClick={handleReload}
+              data-testid="reload-banner-reload"
+            />
+          }
+        >
           The cuesheet changed elsewhere - discard what's on screen and reload?
         </Banner>
       ) : null}
@@ -984,8 +994,20 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         <Banner
           actions={
             <>
-              <Button label="Continue editing" variant="primary" size="sm" onClick={handleRestoreSnapshot} />
-              <Button label="Discard and use saved" variant="secondary" size="sm" onClick={handleDiscardSnapshot} />
+              <Button
+                label="Continue editing"
+                variant="primary"
+                size="sm"
+                onClick={handleRestoreSnapshot}
+                data-testid="restore-banner-continue"
+              />
+              <Button
+                label="Discard and use saved"
+                variant="secondary"
+                size="sm"
+                onClick={handleDiscardSnapshot}
+                data-testid="restore-banner-discard"
+              />
             </>
           }
         >
@@ -1073,7 +1095,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
                 onAddBgmTrack={addBgmTrack}
                 onChangeBgmRange={changeBgmRange}
               />
-              <div {...stylex.props(styles.trimWorkspace)}>
+              <div {...stylex.props(styles.trimWorkspace)} data-testid="edit-trim-workspace">
                 <div {...stylex.props(styles.trimVideoCol)}>
                   <VideoPreview
                     ref={videoPreviewRef}
@@ -1089,7 +1111,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
                     projectWidth={draft.project.width}
                   />
                 </div>
-                <div {...stylex.props(styles.trimFieldsCol)}>
+                <div {...stylex.props(styles.trimFieldsCol)} data-testid="edit-trim-fields-col">
                   {selectedBgmIndex != null && selectedBgmCue && selectedBgmRange ? (
                     <BgmSettingsPanel
                       cue={selectedBgmCue}
@@ -1150,50 +1172,60 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         ) : null}
 
         {step === "finish" ? (
-          <div className="finish-layout">
+          <div className="finish-layout" data-testid="export-step">
             {/* Section order (screen-spec section 5): project -> subtitle style (global) ->
                 intro/outro -> background music (BGM) -> narration -> output. Project meta used to
                 be hidden inside the header's "Settings" dialog; it was folded in here as the
                 natural first step of preparing output. */}
-            <ProjectMetaFields project={draft.project} onChange={updateProject} />
+            <div data-testid="export-section-project-meta">
+              <ProjectMetaFields project={draft.project} onChange={updateProject} />
+            </div>
 
-            <SubtitleStyleSettings
-              subtitleStyle={draft.subtitleStyle}
-              onSubtitleStyleChange={updateSubtitleStyle}
-              projectWidth={draft.project.width}
-              projectHeight={draft.project.height}
-              previewClip={draft.segments[0]?.clip}
-              previewClipTimeS={draft.segments[0] ? draft.segments[0].in + 0.3 : 0}
-            />
+            <div data-testid="export-section-subtitle-style">
+              <SubtitleStyleSettings
+                subtitleStyle={draft.subtitleStyle}
+                onSubtitleStyleChange={updateSubtitleStyle}
+                projectWidth={draft.project.width}
+                projectHeight={draft.project.height}
+                previewClip={draft.segments[0]?.clip}
+                previewClipTimeS={draft.segments[0] ? draft.segments[0].in + 0.3 : 0}
+              />
+            </div>
 
-            <SubtitleStylePresetsSettings
-              presets={draft.subtitleStylePresets}
-              globalStyle={draft.subtitleStyle}
-              onCreate={createSubtitleStylePreset}
-              onRename={renameSubtitleStylePreset}
-              onDelete={deleteSubtitleStylePreset}
-              onChangePreset={updateSubtitleStylePreset}
-            />
+            <div data-testid="export-section-subtitle-presets">
+              <SubtitleStylePresetsSettings
+                presets={draft.subtitleStylePresets}
+                globalStyle={draft.subtitleStyle}
+                onCreate={createSubtitleStylePreset}
+                onRename={renameSubtitleStylePreset}
+                onDelete={deleteSubtitleStylePreset}
+                onChangePreset={updateSubtitleStylePreset}
+              />
+            </div>
 
-            <IntroOutroEditor
-              intro={draft.intro}
-              outro={draft.outro}
-              clipDir={draft.clipDir}
-              onChangeText={updateIntroOutro}
-              onSelectClip={(role, clip) => setIntroOutroFromClip(role, clip)}
-              onClear={clearIntroOutro}
-            />
+            <div data-testid="export-section-intro-outro">
+              <IntroOutroEditor
+                intro={draft.intro}
+                outro={draft.outro}
+                clipDir={draft.clipDir}
+                onChangeText={updateIntroOutro}
+                onSelectClip={(role, clip) => setIntroOutroFromClip(role, clip)}
+                onClear={clearIntroOutro}
+              />
+            </div>
 
-            <div className="settings-group">
+            <div className="settings-group" data-testid="export-section-bgm-summary">
               <h3>Background music</h3>
               <p className="settings-note">
                 Background music: {draft.bgm.length} {draft.bgm.length === 1 ? "track" : "tracks"} — edit in the ② Edit step
               </p>
             </div>
 
-            <NarrationSettings narration={draft.narration} onNarrationChange={updateNarration} />
+            <div data-testid="export-section-narration">
+              <NarrationSettings narration={draft.narration} onNarrationChange={updateNarration} />
+            </div>
 
-            <div className="render-cta">
+            <div className="render-cta" data-testid="export-section-cta">
               <Button
                 label={
                   renderState.status === "rendering"
@@ -1206,6 +1238,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
                 // above (the dirty warning + [Start export] disabling inside RenderSettingsDialog is the actual final gate).
                 isDisabled={renderState.status === "rendering"}
                 onClick={() => setRenderDialogOpen(true)}
+                data-testid="export-button"
               />
               {renderState.status === "success" ? (
                 <a href={`/${renderState.path}`} download>
@@ -1232,6 +1265,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
                 variant="secondary"
                 isDisabled={dirty}
                 onClick={handleDownloadSrt}
+                data-testid="export-download-srt"
               />
               {dirty ? (
                 <span className="render-note">

@@ -367,7 +367,11 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   );
 
   if (!segment) {
-    return <div className="video-preview empty">Select a cut</div>;
+    return (
+      <div className="video-preview empty" data-testid="video-preview">
+        Select a cut
+      </div>
+    );
   }
 
   // Detail bar - maps [trimWindow.start, trimWindow.end] to its own width, giving real pixel room
@@ -468,13 +472,15 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   const isPreparingProxy = segment.clip !== "" && (isGeneratingProxy || pendingIndex !== -1);
 
   return (
-    <div className="video-preview">
+    <div className="video-preview" data-testid="video-preview">
       <div className="video-context-header">
         <div
           className={`video-context-scene${sceneInfo.kind === "none" ? " empty" : ""}`}
           title={sceneText}
         >
-          <span className="video-context-index">#{selectedIndex + 1}</span>
+          <span className="video-context-index" data-testid="video-context-index">
+            #{selectedIndex + 1}
+          </span>
           {sceneInfo.kind === "moment" ? (
             <span className={`scene-shot-badge shot-${sceneInfo.shotType}`}>
               {shotTypeLabel(sceneInfo.shotType)}
@@ -648,16 +654,35 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
 
           {/* Playback controls — a single row attached directly below the video(+scrub) (screen-spec section 3). */}
           <div className="video-controls-row">
-            <Button label="Play" variant="primary" size="sm" onClick={handlePlay} />
-            <Button label="Set In here" variant="secondary" size="sm" onClick={handleSetIn} />
-            <Button label="Set Out here" variant="secondary" size="sm" onClick={handleSetOut} />
-            <Button label="Split" variant="secondary" size="sm" onClick={handleSplit} />
+            <Button label="Play" variant="primary" size="sm" onClick={handlePlay} data-testid="video-control-play" />
+            <Button
+              label="Set In here"
+              variant="secondary"
+              size="sm"
+              onClick={handleSetIn}
+              data-testid="video-control-set-in"
+            />
+            <Button
+              label="Set Out here"
+              variant="secondary"
+              size="sm"
+              onClick={handleSetOut}
+              data-testid="video-control-set-out"
+            />
+            <Button
+              label="Split"
+              variant="secondary"
+              size="sm"
+              onClick={handleSplit}
+              data-testid="video-control-split"
+            />
             <Button
               label="Capture frame"
               variant="secondary"
               size="sm"
               tooltip="Captures the original frame (crop is not applied to the capture)"
               onClick={handleCapture}
+              data-testid="video-control-capture-frame"
             />
           </div>
 

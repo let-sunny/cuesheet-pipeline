@@ -149,6 +149,27 @@ edits handled grows, schema expands along with it.
 - On validation failure, give a message in `field-path: reason` format (e.g. `segments[0].in: in <
   out`).
 - **No emoji** (in code, comments, commits, or subtitle text examples — anywhere).
+- **Tests always select by `data-testid` (or ARIA role) — never by class name.** A class-based
+  probe silently breaks the moment a styling refactor (e.g. the StyleX migration) renames or drops
+  that class — this is a real incident that happened, not a hypothetical. Give a stable
+  `data-testid` to every real interaction point: step-nav tabs, cut-list rows, cut-settings
+  groups/fields, video controls (including Capture frame), the BGM gutter + add-track button,
+  palette cards/actions, Export sections, render-dialog controls, restore-banner buttons, etc.
+  Most Astryx components pass through arbitrary `data-*` attributes to the DOM via `BaseProps`'s
+  `` data-${string} `` index signature (confirmed for `Button`/`Tab`/`Slider` - they spread a
+  `...rest`/`...props` object that includes it), so `<Button data-testid="...">` just works — no
+  wrapper needed. **This is not universal** — `CheckboxInput` declares the same `BaseProps` type
+  (so TypeScript won't stop you) but its implementation destructures a fixed prop list with no
+  `...rest` capture at all, so a `data-testid` passed to it is silently dropped, never reaching the
+  DOM. Verify a given Astryx component's source before relying on this; where it doesn't forward,
+  select by ARIA role + accessible name instead (e.g. `getByRole("checkbox", { name: "..." })` —
+  Astryx's `Field`/`FieldLabel` render a real `<label htmlFor>`, so this works reliably).
+  `packages/web/vitest.config.ts` runs two projects: `unit` (jsdom, the default) and `browser`
+  (real Chromium via `@vitest/browser` + the Playwright provider, opt-in per file via
+  `*.browser.test.tsx`) — reach for browser mode only for cases that need a real browser environment
+  (layout/animation timing, real `<input>` focus/selection behavior); everything else stays on the
+  fast jsdom unit tests. `tests/e2e/` (repo root) is a separate, thin Playwright smoke suite for
+  full user journeys — see `tests/e2e/README.md`.
 
 ## Composition rule: groups are components, panels are arrangements (user rule, 2026-07-09)
 

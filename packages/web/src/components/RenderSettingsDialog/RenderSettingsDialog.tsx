@@ -68,7 +68,10 @@ export function RenderSettingsDialog({
                 properties) because styles.css's `.render-dialog .settings-group` override still
                 needs it as an ancestor selector hook — `.settings-group` itself is a shared class
                 used by several not-yet-migrated components, so it isn't being touched here. */}
-            <div className={`render-dialog ${stylex.props(styles.dialog).className}`}>
+            <div
+              className={`render-dialog ${stylex.props(styles.dialog).className}`}
+              data-testid="render-dialog"
+            >
               <div className="settings-group">
                 <h3>Resolution</h3>
                 <div
@@ -82,6 +85,7 @@ export function RenderSettingsDialog({
                         key={preset.label}
                         className={`plain-button${isActive ? " active" : ""}`}
                         onClick={() => handlePickResolution(preset.width, preset.height)}
+                        data-testid={`render-dialog-resolution-${preset.width}x${preset.height}`}
                       >
                         {preset.label}
                       </button>
@@ -102,6 +106,8 @@ export function RenderSettingsDialog({
 
               <div className="settings-group">
                 <h3>Subtitles</h3>
+                {/* CheckboxInput doesn't forward data-* props to the DOM - select by role/name in
+                    tests: getByRole("checkbox", { name: "Export without subtitles (for CC)" }). */}
                 <CheckboxInput
                   label="Export without subtitles (for CC)"
                   value={noBurnSubtitles}
@@ -124,12 +130,18 @@ export function RenderSettingsDialog({
               ) : null}
 
               <div {...stylex.props(styles.actions)}>
-                <Button label="Cancel" variant="secondary" onClick={() => onOpenChange(false)} />
+                <Button
+                  label="Cancel"
+                  variant="secondary"
+                  onClick={() => onOpenChange(false)}
+                  data-testid="render-dialog-cancel"
+                />
                 <Button
                   label={rendering ? "Exporting…" : "Start export"}
                   variant="primary"
                   isDisabled={dirty || rendering}
                   onClick={handleStart}
+                  data-testid="render-dialog-start"
                 />
               </div>
             </div>

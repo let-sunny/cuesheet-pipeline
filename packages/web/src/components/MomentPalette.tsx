@@ -209,7 +209,12 @@ export function MomentPalette({
               return (
                 // Card(BaseProps) explicitly omits title (it's on the footgun list), so this
                 // plain wrapper div takes over the card's full-info tooltip instead.
-                <div className="moment-card-wrap" key={card.key} title={fullInfo}>
+                <div
+                  className="moment-card-wrap"
+                  key={card.key}
+                  title={fullInfo}
+                  data-testid={`palette-card-${card.key}`}
+                >
                   <Card
                     padding={0}
                     className={`moment-card${inUse ? " in-use" : ""}${statusClass}`}
@@ -302,6 +307,7 @@ export function MomentPalette({
                             size="sm"
                             isDisabled={inUse}
                             onClick={() => handleAdd(card)}
+                            data-testid={`palette-card-add-${card.key}`}
                           />
                           {/* Hide Remove while not in use (but keep its space so card height
                               stays consistent regardless of whether Add/Remove is shown). */}
@@ -312,6 +318,7 @@ export function MomentPalette({
                             isDisabled={!inUse}
                             className={inUse ? "" : "placeholder"}
                             onClick={() => onRemoveSegment(card.clipFileName, card.inS, card.outS)}
+                            data-testid={`palette-card-remove-${card.key}`}
                           />
                         </div>
                         <div className="moment-io-actions">
@@ -325,6 +332,7 @@ export function MomentPalette({
                               "Sets this whole clip as the intro (no range - the entire clip is inserted)"
                             }
                             onClick={() => onSetIntro(card.clipFileName)}
+                            data-testid={`palette-card-set-intro-${card.key}`}
                           />
                           <IoAssignButton
                             label={isOutro ? "Outro set" : "Set as outro"}
@@ -336,6 +344,7 @@ export function MomentPalette({
                               "Sets this whole clip as the outro (no range - the entire clip is inserted)"
                             }
                             onClick={() => onSetOutro(card.clipFileName)}
+                            data-testid={`palette-card-set-outro-${card.key}`}
                           />
                         </div>
                       </div>

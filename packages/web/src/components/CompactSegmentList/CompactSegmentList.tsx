@@ -222,12 +222,13 @@ export function CompactSegmentList({
           className="plain-button bgm-gutter-toggle"
           onClick={() => setBgmGutterCollapsed((c) => !c)}
           title={bgmGutterCollapsed ? "Expand the background music gutter" : "Collapse the background music gutter"}
+          data-testid="bgm-gutter-toggle"
         >
           {bgmGutterCollapsed ? "▸" : "▾"} Background music
           {bgm.length > 0 ? <span {...stylex.props(styles.gutterCountBadge)}>{bgm.length}</span> : null}
         </button>
         {!bgmGutterCollapsed ? (
-          <button type="button" className="plain-button" onClick={onAddBgmTrack}>
+          <button type="button" className="plain-button" onClick={onAddBgmTrack} data-testid="bgm-add-track">
             + Add track
           </button>
         ) : null}
@@ -255,6 +256,7 @@ export function CompactSegmentList({
                     onPointerMove={onTrackDragMove}
                     onPointerUp={endTrackDrag}
                     title={`${cue?.file ? baseName(cue.file) : "(no file)"} · cuts ${item.startCutIdx + 1}-${item.endCutIdx + 1}`}
+                    data-testid={`bgm-bar-${item.bgmIndex}`}
                   >
                     <div
                       {...stylex.props(styles.gutterHandle)}
@@ -297,6 +299,7 @@ export function CompactSegmentList({
                   rowDivRefs.current[i] = el;
                 }}
                 onClick={() => onSelect(i)}
+                data-testid={`cut-row-${i}`}
               >
                 <span {...stylex.props(styles.index)}>{i + 1}</span>
                 <SegmentThumb clip={seg.clip} t={seg.in + 0.3} className={stylex.props(styles.thumb).className} />
@@ -317,6 +320,7 @@ export function CompactSegmentList({
                       autoResize(e.target);
                     }}
                     onKeyDown={handleSubtitleKeyDown(i)}
+                    data-testid={`cut-row-subtitle-${i}`}
                   />
                   <span
                     {...stylex.props(styles.scene, sceneInfo.kind === "none" && styles.sceneEmpty)}
@@ -358,6 +362,7 @@ export function CompactSegmentList({
                     }}
                     disabled={i === 0}
                     title="Move up"
+                    data-testid={`cut-row-move-up-${i}`}
                   >
                     ↑
                   </button>
@@ -370,6 +375,7 @@ export function CompactSegmentList({
                     }}
                     disabled={i === segments.length - 1}
                     title="Move down"
+                    data-testid={`cut-row-move-down-${i}`}
                   >
                     ↓
                   </button>
@@ -382,6 +388,7 @@ export function CompactSegmentList({
                     }}
                     disabled={segments.length <= 1}
                     title="Delete"
+                    data-testid={`cut-row-delete-${i}`}
                   >
                     ✕
                   </button>
@@ -395,6 +402,7 @@ export function CompactSegmentList({
             style={addButtonProps.style}
             onClick={onAdd}
             title="Duplicates the selected cut right after it (useful for splitting a long clip into separate cuts)"
+            data-testid="cut-list-add"
           >
             Duplicate selected cut
           </button>

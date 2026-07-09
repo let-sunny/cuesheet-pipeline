@@ -81,12 +81,12 @@ export function BgmSettingsPanel({
   });
 
   return (
-    <div className="quick-fields">
+    <div className="quick-fields" data-testid="bgm-settings-panel">
       <h2 className="qf-panel-title">Background music track {bgmIndex + 1}</h2>
 
       {/* File - pre-listen before assigning: a play/stop button next to each candidate, separate
           from picking it, so auditioning doesn't require committing first. */}
-      <div className="qf-group">
+      <div className="qf-group" data-testid="bgm-settings-group-file">
         <div className="qf-group-label">File</div>
         <div {...stylex.props(styles.fileList)}>
           {files.length === 0 ? (
@@ -123,17 +123,31 @@ export function BgmSettingsPanel({
 
       {/* Range - anchored to cut numbers (the gutter's unit); seconds shown alongside since that's
           what's actually stored/rendered. */}
-      <div className="qf-group">
+      <div className="qf-group" data-testid="bgm-settings-group-range">
         <div className="qf-group-label">Range</div>
         <div className="qf-row">
           <label className="qf-field field-narrow">
             <span>Start</span>
-            <input type="number" className="plain-field" min={1} max={endCutIdx + 1} {...startField} />
+            <input
+              type="number"
+              className="plain-field"
+              min={1}
+              max={endCutIdx + 1}
+              {...startField}
+              data-testid="bgm-field-start"
+            />
             <span className="qf-suffix">cut</span>
           </label>
           <label className="qf-field field-narrow">
             <span>End</span>
-            <input type="number" className="plain-field" min={startCutIdx + 1} max={cutCount} {...endField} />
+            <input
+              type="number"
+              className="plain-field"
+              min={startCutIdx + 1}
+              max={cutCount}
+              {...endField}
+              data-testid="bgm-field-end"
+            />
             <span className="qf-suffix">cut</span>
           </label>
         </div>
@@ -142,19 +156,33 @@ export function BgmSettingsPanel({
         </span>
       </div>
 
-      <div className="qf-group">
+      <div className="qf-group" data-testid="bgm-settings-group-playback">
         <div className="qf-group-label">Playback</div>
         <div className="qf-row">
           <label className="qf-field field-narrow">
             <span>Volume</span>
-            <input type="number" className="plain-field" min={0} max={100} step={1} {...volumeField} />
+            <input
+              type="number"
+              className="plain-field"
+              min={0}
+              max={100}
+              step={1}
+              {...volumeField}
+              data-testid="bgm-field-volume"
+            />
             <span className="qf-suffix">%</span>
           </label>
         </div>
       </div>
 
       <div className="qf-danger-zone">
-        <Button label="Remove track" variant="destructive" size="sm" onClick={onRemove} />
+        <Button
+          label="Remove track"
+          variant="destructive"
+          size="sm"
+          onClick={onRemove}
+          data-testid="bgm-action-remove"
+        />
       </div>
     </div>
   );
