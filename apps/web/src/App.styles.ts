@@ -16,11 +16,39 @@ import * as stylex from "@stylexjs/stylex";
  * equivalent, so instead of leaving a phantom App-scoped rule around, its winning values were
  * folded directly into `.qf-panel-title` in styles.css (see the comment on that rule) — same
  * rendered result, but the rule now lives with its true owner instead of a mis-scoped ancestor.
+ *
+ * `miniStripRow`/`sequencePlayerSticky`/`stepBody` added in StyleX migration batch 5 — ported 1:1
+ * from styles.css's old `.mini-strip-row`/`.sequence-player-sticky`/`.step-body` rules. These wrap
+ * MiniTimelineStrip/SequencePlayer but are App's own container layout (not those components' own
+ * root styles), same reasoning as `.edit-layout` above.
  */
 export const styles = stylex.create({
   app: {
     maxWidth: "none",
     margin: "0 auto",
     padding: "24px 32px",
+  },
+  // Row placing the mini timeline strip + "Play all" button side by side.
+  miniStripRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 12,
+  },
+  // Sequential playback sticky area: fixed below the mini timeline, with the edit content below it
+  // still visible as-is.
+  sequencePlayerSticky: {
+    position: "sticky",
+    top: 0,
+    zIndex: 20,
+    backgroundColor: "var(--surface-0)",
+    padding: "12px 0",
+    marginTop: 12,
+    borderBottomWidth: 1,
+    borderBottomStyle: "solid",
+    borderBottomColor: "var(--surface-2)",
+  },
+  stepBody: {
+    marginTop: 16,
   },
 });

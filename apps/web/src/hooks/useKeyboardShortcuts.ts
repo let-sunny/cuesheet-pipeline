@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import type { RefObject } from "react";
 import { isBlockingOverlayOpen } from "../lib/modalStack.js";
-import type { SequencePlayerHandle } from "../components/SequencePlayer.js";
-import type { VideoPreviewHandle } from "../components/VideoPreview.js";
+import type { SequencePlayerHandle } from "../components/SequencePlayer/index.js";
+import type { VideoPreviewHandle } from "../components/VideoPreview/index.js";
 
 export type ShortcutAction =
   | { type: "undo" }
