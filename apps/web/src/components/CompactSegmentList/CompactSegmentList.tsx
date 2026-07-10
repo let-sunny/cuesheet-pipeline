@@ -43,8 +43,10 @@ interface Props {
  * renders as a vertical bar spanning the cut rows it covers, anchored to cut boundaries (not
  * arbitrary pixels), so the user places music changes while reading cut content instead of
  * against a blank timeline. Bar geometry is derived directly from the actual rendered row
- * elements (offsetTop/offsetHeight), not from a separate proportional time axis, so it's
- * pixel-exact with the cut strip by construction rather than by coincidence.
+ * elements' bounding rects (measured relative to the gutter container itself, not raw
+ * `offsetTop`/`offsetHeight` — see measureRows' comment for why that distinction matters), not
+ * from a separate proportional time axis, so it's pixel-exact with the cut strip by construction
+ * rather than by coincidence.
  */
 export function CompactSegmentList({
   segments,
@@ -63,6 +65,7 @@ export function CompactSegmentList({
 }: Props) {
   const rowRefs = useRef<Array<HTMLTextAreaElement | null>>([]);
   const rowDivRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const gutterRef = useRef<HTMLDivElement | null>(null);
   const [rowRects, setRowRects] = useState<Array<{ top: number; height: number }>>([]);
   const [bgmGutterCollapsed, setBgmGutterCollapsed] = useState(false);
   const [dragHighlight, setDragHighlight] = useState<{ start: number; end: number } | null>(null);
@@ -73,8 +76,27 @@ export function CompactSegmentList({
     rowDivRefs.current = rowDivRefs.current.slice(0, segments.length);
   }, [segments.length]);
 
+  // Row tops are measured relative to the gutter container's own box, NOT raw `el.offsetTop`
+  // (bug found 2026-07-10, QA report: BGM bars rendered a constant amount below their target row,
+  // worsening for nothing - it was a fixed offset for every bar). `offsetTop` is relative to an
+  // element's nearest positioned ancestor, and the bars' CSS `top` is interpreted relative to
+  // `gutter`'s own box (its actual containing block, since `gutter` has `position: relative`) -
+  // but the row divs live in a completely different sibling (`.list`), so their offsetTop is
+  // relative to whatever shared ancestor happens to be positioned (often just `<body>`, if
+  // nothing between here and the page root sets `position`), not to `gutter`. Using that raw value
+  // as a bar's `top` silently added gutter's own offset from that ancestor on top of every bar's
+  // position. Measuring both rects with getBoundingClientRect and subtracting sidesteps the
+  // offsetParent chain entirely - the delta between two simultaneous viewport-relative
+  // measurements is correct regardless of what (if anything) is positioned above them.
   const measureRows = () => {
-    const next = rowDivRefs.current.map((el) => (el ? { top: el.offsetTop, height: el.offsetHeight } : { top: 0, height: 0 }));
+    const gutterTop = gutterRef.current?.getBoundingClientRect().top ?? 0;
+    const next = rowDivRefs.current.map((el) => {
+      if (!el) {
+        return { top: 0, height: 0 };
+      }
+      const rect = el.getBoundingClientRect();
+      return { top: rect.top - gutterTop, height: rect.height };
+    });
     // This effect has no dependency array (it needs to re-measure after every render, since a row
     // can grow/shrink from a subtitle edit without segments.length changing) - guarding on an
     // actual value change is what keeps that from looping forever, since setting a new array
@@ -225,7 +247,12 @@ export function CompactSegmentList({
       </div>
 
       <div {...stylex.props(styles.listBody)}>
-        <div {...stylex.props(styles.gutter)} style={{ width: gutterWidth }}>
+        <div
+          {...stylex.props(styles.gutter)}
+          style={{ width: gutterWidth }}
+          ref={gutterRef}
+          data-testid="bgm-gutter"
+        >
           {!bgmGutterCollapsed
             ? laneItems.map((item) => {
                 const top = rowRects[item.startCutIdx]?.top ?? 0;

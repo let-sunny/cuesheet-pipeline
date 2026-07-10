@@ -160,6 +160,69 @@ describe("CompactSegmentList", () => {
     expect(onAddBgmTrack).toHaveBeenCalledTimes(1);
   });
 
+  it("positions a BGM bar's top/height relative to the gutter container's own box, not each row's raw offsetTop", () => {
+    // Regression test (QA finding 2026-07-10): a bar's `top` CSS is interpreted relative to the
+    // `bgm-gutter` container's own box (it's `position: relative`, the bar's containing block),
+    // but row divs live in a separate DOM branch (`.list`, a flex sibling of the gutter) - using
+    // raw `el.offsetTop` (relative to whatever ancestor happens to be positioned, often far above
+    // both) silently double-counted the gutter's own page-level offset into every bar's position.
+    // Mocking getBoundingClientRect per element (keyed by data-testid) simulates real on-screen
+    // positions without relying on jsdom layout (which doesn't compute one) - the gutter and cut
+    // rows are given the same non-zero page-level top (500) they'd share in real layout (both are
+    // flex siblings starting flush at the same content edge), so a correct implementation must
+    // produce top:0 for a bar covering row 0, not top:500.
+    const rectByTestId: Record<string, { top: number; height: number }> = {
+      "bgm-gutter": { top: 500, height: 400 },
+      "cut-row-0": { top: 500, height: 120 },
+      "cut-row-1": { top: 620, height: 120 },
+      "cut-row-2": { top: 740, height: 120 },
+    };
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
+      const rect = rectByTestId[this.getAttribute("data-testid") ?? ""];
+      const top = rect?.top ?? 0;
+      const height = rect?.height ?? 0;
+      return {
+        top,
+        bottom: top + height,
+        height,
+        left: 0,
+        right: 0,
+        width: 0,
+        x: 0,
+        y: top,
+        toJSON: () => ({}),
+      } as DOMRect;
+    };
+
+    try {
+      // 3 segments of 5s each (cumulative cut starts 0/5/10/15) - a bgm cue spanning seconds 0-10
+      // covers cuts 0-1 (rows 0-1).
+      const bgm: BgmCue[] = [{ file: "bgm.mp3", start: 0, end: 10, volume: 1 }];
+      render(
+        <CompactSegmentList
+          {...baseProps({
+            segments: [
+              segment({ in: 0, out: 5 }),
+              segment({ in: 5, out: 10 }),
+              segment({ in: 10, out: 15 }),
+            ],
+            bgm,
+          })}
+        />,
+      );
+
+      const bar = screen.getByTestId("bgm-bar-0");
+      // Correct: row0.top (500) - gutter.top (500) = 0. The pre-fix, offsetTop-based computation
+      // would have produced 500 here instead (double-counting the gutter's own page offset).
+      expect(bar.style.top).toBe("0px");
+      // bottom = row1.top(620) + row1.height(120) - gutter.top(500) = 240.
+      expect(bar.style.height).toBe("240px");
+    } finally {
+      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    }
+  });
+
   it("caps the row subtitle textarea at a 2-line height (rows=2) even with a 500-char subtitle", () => {
     const longSubtitle = "가나다라마바사아자차카타파하 ".repeat(34); // ~500 chars, Korean
     render(
