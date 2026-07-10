@@ -159,4 +159,38 @@ describe("CompactSegmentList", () => {
     fireEvent.click(screen.getByText("+ Add track"));
     expect(onAddBgmTrack).toHaveBeenCalledTimes(1);
   });
+
+  it("caps the row subtitle textarea at a 2-line height (rows=2) even with a 500-char subtitle", () => {
+    const longSubtitle = "가나다라마바사아자차카타파하 ".repeat(34); // ~500 chars, Korean
+    render(
+      <CompactSegmentList
+        {...baseProps({ segments: [segment({ subtitle: longSubtitle }), segment()] })}
+      />,
+    );
+    const textarea = screen.getByTestId("cut-row-subtitle-0") as HTMLTextAreaElement;
+    expect(longSubtitle.length).toBeGreaterThan(400);
+    expect(textarea.getAttribute("rows")).toBe("2");
+    // No JS-driven inline height is set on the element (the 2-line cap is a static CSS rule, not
+    // content-dependent auto-grow) - a long subtitle must not push an inline style height onto it.
+    expect(textarea.style.height).toBe("");
+  });
+
+  it("leaves the row subtitle textarea's rows/height constraint unaffected for short subtitles", () => {
+    render(<CompactSegmentList {...baseProps()} />);
+    const textarea = screen.getByTestId("cut-row-subtitle-0") as HTMLTextAreaElement;
+    expect(textarea.getAttribute("rows")).toBe("2");
+    expect(textarea.style.height).toBe("");
+  });
+
+  it("caps the row subtitle textarea at 2 lines for a long unbroken Latin string too", () => {
+    const longLatin = "a".repeat(500);
+    render(
+      <CompactSegmentList
+        {...baseProps({ segments: [segment({ subtitle: longLatin }), segment()] })}
+      />,
+    );
+    const textarea = screen.getByTestId("cut-row-subtitle-0") as HTMLTextAreaElement;
+    expect(textarea.getAttribute("rows")).toBe("2");
+    expect(textarea.style.height).toBe("");
+  });
 });

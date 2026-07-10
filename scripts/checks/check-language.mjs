@@ -52,6 +52,10 @@ const LANGUAGE_ALLOWLIST = new Set([
   // UTF-8 Content-Disposition header it's testing.
   "apps/web/test/server/shared.test.ts",
 
+  // 2-line subtitle clamp test (QA finding 2026-07-10): needs a real long Korean string to
+  // exercise CJK wrapping inside the row's clamped textarea - functional test fixture, not prose.
+  "apps/web/src/components/CompactSegmentList/CompactSegmentList.test.tsx",
+
   // Draft-assembly source: Korean face/body-part keyword list (heuristic matcher) plus the
   // literal Korean timelapse-connector subtitle ("fast forward") it generates - functional/
   // content generation, not prose.

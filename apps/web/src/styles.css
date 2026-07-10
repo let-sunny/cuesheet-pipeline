@@ -623,7 +623,17 @@ body {
      className alongside the StyleX class so this selector keeps matching. */
 
 /* Inline input for fixing subtitles right in place on a cut list row — the core of merging
-   trim/batch-writing. Starts at rows=1 and its height auto-grows to fit content (handled in JS). */
+   trim/batch-writing. Fixed at a 2-line height (rows=2) with internal scroll once text exceeds
+   that (QA finding 2026-07-10: a ~500-char pasted subtitle used to auto-grow the textarea to fit
+   its full content, ballooning the row to ~35 lines and the whole list along with it — the row is
+   a fixed-height list-row convention (Premiere/Resolve bin rows), so it must not grow with content
+   the way a free-form document editor would). Full-length editing still happens in the right
+   panel's Subtitle group (SubtitleGroup.tsx), which keeps growing/scrolling normally — this row is
+   only ever a compact in-place preview/quick-edit, not the primary editing surface for long text.
+   line-height is set explicitly (rather than left to the browser default) so the 2-line height can
+   be computed directly: height = 2 * line-height + vertical padding + vertical border (box-sizing
+   stays border-box, kept from before this fix, so width:100% keeps meaning "100% of the row
+   column" exactly as it did — only height/overflow changed). */
 .compact-list-subtitle-input {
   width: 100%;
   min-width: 0;
@@ -631,12 +641,14 @@ body {
   padding: 3px 6px;
   font-size: 14px;
   font-family: inherit;
+  line-height: 18px;
+  height: 44px;
   color: inherit;
   background: var(--surface-1);
   border: 1px solid var(--border-soft);
   border-radius: 4px;
   resize: none;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .compact-list-subtitle-input:focus {

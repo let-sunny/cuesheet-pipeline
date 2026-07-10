@@ -73,22 +73,6 @@ export function CompactSegmentList({
     rowDivRefs.current = rowDivRefs.current.slice(0, segments.length);
   }, [segments.length]);
 
-  // Grow the textarea height to fit the number of lines so the full subtitle text is visible
-  // without being cut off (the fixed rows=1 is just the starting minimum height; overflow
-  // grows the height instead of scrolling). Also runs inline in the ref callback below, so by
-  // the time this fires the heights are usually already correct — kept as a backstop.
-  const autoResize = (el: HTMLTextAreaElement | null) => {
-    if (!el) {
-      return;
-    }
-    el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
-  };
-
-  useEffect(() => {
-    rowRefs.current.forEach((el) => autoResize(el));
-  }, [segments]);
-
   const measureRows = () => {
     const next = rowDivRefs.current.map((el) => (el ? { top: el.offsetTop, height: el.offsetHeight } : { top: 0, height: 0 }));
     // This effect has no dependency array (it needs to re-measure after every render, since a row
@@ -98,9 +82,12 @@ export function CompactSegmentList({
     setRowRects((prev) => (rectsEqual(prev, next) ? prev : next));
   };
 
-  // Re-measures every row's on-screen top/height after each render (ref-callback autoResize above
-  // has already run by this point in the same commit) — the BGM gutter's bars are positioned from
-  // this, so a row growing/shrinking (subtitle text wrapping, cut added/removed) keeps bars aligned.
+  // Re-measures every row's on-screen top/height after each render — the BGM gutter's bars are
+  // positioned from this. Kept dependency-free (re-measures on every render, not just row-count
+  // changes) defensively: row height is uniform today (the subtitle textarea is now a fixed
+  // 2-line height and the scene-info line is single-line/ellipsized, both non-wrapping), but this
+  // is what keeps bars correct without re-auditing this effect the next time row content grows a
+  // wrapping element.
   useLayoutEffect(() => {
     measureRows();
   });
@@ -303,21 +290,22 @@ export function CompactSegmentList({
                 <span {...stylex.props(styles.index)}>{i + 1}</span>
                 <SegmentThumb clip={seg.clip} t={seg.in + 0.3} className={stylex.props(styles.thumb).className} />
                 <div {...stylex.props(styles.text)}>
+                  {/* Fixed 2-line height with internal scroll (QA finding 2026-07-10) - this row
+                      is a compact quick-edit surface, not the primary place to write long
+                      subtitles (that's the right panel's Subtitle group), so it deliberately does
+                      NOT grow to fit arbitrarily long pasted text anymore; see the height/
+                      line-height/overflow-y rule on .compact-list-subtitle-input in styles.css. */}
                   <textarea
                     ref={(el) => {
                       rowRefs.current[i] = el;
-                      autoResize(el);
                     }}
                     className="plain-field plain-field-textarea compact-list-subtitle-input"
                     value={seg.subtitle}
-                    rows={1}
+                    rows={2}
                     placeholder={seg.clip || "(no filename)"}
                     title={tooltip}
                     onFocus={() => onSelect(i)}
-                    onChange={(e) => {
-                      onChangeSubtitle(i, e.target.value);
-                      autoResize(e.target);
-                    }}
+                    onChange={(e) => onChangeSubtitle(i, e.target.value)}
                     onKeyDown={handleSubtitleKeyDown(i)}
                     data-testid={`cut-row-subtitle-${i}`}
                   />
