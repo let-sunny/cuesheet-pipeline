@@ -118,6 +118,48 @@ describe("bridge MCP round-trip", () => {
     await close();
   });
 
+  it("validate_cuesheet omits diff when there's no currently-saved cuesheet to compare against", async () => {
+    const { client, close } = await connect();
+
+    const result = await client.callTool({
+      name: "validate_cuesheet",
+      arguments: { cuesheet: sample() },
+    });
+    const parsed = JSON.parse(textOf(result));
+    expect(parsed.ok).toBe(true);
+    expect(parsed.diff).toBeUndefined();
+
+    await close();
+  });
+
+  it("validate_cuesheet's diff reports segments removed and a BGM track added, against the saved cuesheet", async () => {
+    const { client, close } = await connect();
+
+    const saved = sample();
+    saved.segments = [
+      { clip: "a.mp4", in: 0, out: 5, speed: 1, volume: 1, subtitle: "" },
+      { clip: "b.mp4", in: 0, out: 5, speed: 1, volume: 1, subtitle: "" },
+      { clip: "c.mp4", in: 0, out: 5, speed: 1, volume: 1, subtitle: "" },
+    ];
+    await client.callTool({ name: "update_cuesheet", arguments: { cuesheet: saved } });
+
+    const candidate = sample();
+    candidate.segments = [{ clip: "a.mp4", in: 0, out: 5, speed: 1, volume: 1, subtitle: "" }];
+    candidate.bgm = [{ file: "bgm.mp3", start: 0, end: 5, volume: 0.5 }];
+
+    const result = await client.callTool({
+      name: "validate_cuesheet",
+      arguments: { cuesheet: candidate },
+    });
+    const parsed = JSON.parse(textOf(result));
+    expect(parsed.ok).toBe(true);
+    expect(parsed.diff.segments.removedTotal).toBe(2);
+    expect(parsed.diff.segments.addedTotal).toBe(0);
+    expect(parsed.diff.bgm).toEqual({ added: 1, removed: 0, modified: 0 });
+
+    await close();
+  });
+
   it("get_schema returns a JSON Schema describing the cuesheet contract", async () => {
     const { client, close } = await connect();
 

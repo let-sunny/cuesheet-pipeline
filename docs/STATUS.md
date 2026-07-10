@@ -17,7 +17,7 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 | Location | Role | Status |
 |---|---|---|
 | `packages/schema` | Cuesheet types + validation (contract's center, zod) | Stable. 42 tests |
-| `packages/bridge` | MCP server for Claude Code connection (natural-language editing) | Stable. 4 tests |
+| `packages/bridge` | MCP server for Claude Code connection (natural-language editing) | Stable. 26 tests |
 | `packages/render` | Cuesheet -> ffmpeg render (CLI + buildRenderPlan, incl. two-pass title fallback) | Stable. 110 tests, verified with a real render |
 | `apps/web` | Touch-up editor: cut editing, timeline trimming (scrub/handles/split), full timeline + BGM drag, proxy playback, export button | Actively evolving |
 | `packages/draft` | **Core**: raw footage folder -> automatic rough-cut cuesheet generation (CLI `cuesheet-draft`: scan for inventory + frame extraction -> assemble for assembly; vision judgment handled by Claude) | Promoted to a proper package. 7 tests, scan/assemble E2E verified against a real footage folder |
@@ -34,6 +34,36 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 - **User editing grammar constants**: cut average 2.9s, finished length 4:30-5:30, coverage ~90%, shot vocabulary (hand closeup/object/cat/reveal/wearing) — reverse-engineered from 2 real edits
 - **Proxy playback**: original 4K HEVC can't play in-browser -> 720p H.264 proxy for preview, render uses the original
 - **iCloud rule**: must check `stat blocks=0` before reading source footage (reading a placeholder hangs forever), manage space with `brctl download/evict`
+
+## 2026-07-10: bridge change-summary diff on `validate_cuesheet` (issue #10)
+
+- **Goal**: preview what an update would change before applying it. `validate_cuesheet` (the
+  existing dry-run tool - no new tool/flag added, per the issue's own scope note) now also
+  returns a `diff` on success, comparing the candidate against the currently-saved cuesheet:
+  `{durationDeltaS, segments, project, bgm, narration}`. Builds on issue #9's `buildEditReceipt`
+  (`packages/bridge/src/receipt.ts`) for the duration figures, so `update_cuesheet`'s receipt and
+  `validate_cuesheet`'s diff describe duration the same way.
+- **Diff logic**: `packages/bridge/src/diff.ts` (`buildCuesheetDiff`, pure, no I/O). Segments are
+  identified by a clip+in/out signature (not raw array index) via a queue-based multiset match, so
+  a pure reorder reports as `segments.reordered: true` instead of N unrelated adds+removes; matched
+  segments with other fields changed show up as `modified` entries (`{index, clip, changes:
+  [{field, before, after}]}`). `added`/`removed`/`modified` segment lists are each capped at 5
+  entries independently (`MAX_LISTED_SEGMENTS`) with an uncapped `*Total` count alongside, to keep
+  the response within a sane token budget. `bgm` is counts only (`added/removed/modified`, cues
+  matched by file+start/end); `narration` is a field-level diff when both sides have it configured,
+  or a single whole-object field change when it's toggled on/off. `project` covers
+  project.name/fps/width/height/fadeInS/fadeOutS plus clipDir/intro/outro/subtitleStyle/
+  subtitleStylePresets, uncapped (small fixed field set). `diff` is omitted entirely when there's no
+  currently-saved cuesheet yet to compare against.
+- **Scope decision**: per the issue's explicit note ("this issue does not add a new tool or a
+  dryRun flag... scope is strictly the diff computation on top of [validate_cuesheet]"),
+  `update_cuesheet`'s receipt is untouched - the diff lives only on the dry-run path.
+- **Tests**: `packages/bridge/test/diff.test.ts` (12 cases: no-change, added/removed/modified
+  segment, reorder true/false, the 5-item cap, project field changes, bgm counts, narration
+  add/change/no-op) + 2 new `server.test.ts` round-trip cases (diff omitted with no saved baseline;
+  diff reports 2 removed segments + 1 added BGM track against a saved cuesheet, matching the
+  issue's own worked example). `packages/bridge`: 26/26 tests passing; `pnpm -r
+  build`/`typecheck`/`test` and `pnpm check:repo` all green repo-wide.
 
 ## 2026-07-10: two-pass render fallback (captured-frames title + large HEVC concat deadlock)
 

@@ -150,6 +150,28 @@ follow-up `get_cuesheet` call. `warnings` flags cheap structural issues (e.g. an
 against the previous value. On failure, the response is unchanged: `field-path: reason` lines and
 nothing written.
 
+`validate_cuesheet` on success also carries a `diff` comparing the candidate against the
+currently-saved cuesheet — `{ok:true, diff: {durationDeltaS, segments, project, bgm,
+narration}}` — so you can preview exactly what an edit would change before calling
+`update_cuesheet` with it. Segments are identified by clip+in/out (not raw array position), so a
+reorder reads as `segments.reordered: true` rather than N unrelated adds+removes:
+- `segments`: `{added, addedTotal, removed, removedTotal, modified, modifiedTotal, reordered}`.
+  `added`/`removed` are `{index, clip, in, out}` entries; `modified` entries are matched segments
+  (same clip+in/out on both sides) whose other fields changed — `{index, clip, changes: [{field,
+  before, after}]}`. Each of the three lists is capped at 5 entries independently for token budget;
+  the matching `*Total` field always carries the true, uncapped count.
+- `project`: field changes across `project.name/fps/width/height/fadeInS/fadeOutS`, `clipDir`,
+  `intro`, `outro`, `subtitleStyle`, `subtitleStylePresets` — never capped (small fixed field set).
+- `bgm`/`narration`: counts and field changes rather than a full per-cue diff — `bgm` is
+  `{added, removed, modified}` (cues matched by file+start/end, `modified` = matched cues whose
+  volume differs); `narration` is `{changed, fields}` (field-level diff when both sides have
+  narration configured, or a single whole-object `narration` field change when it's toggled
+  on/off).
+`diff` is omitted entirely if there's no currently-saved cuesheet yet to compare against (e.g. the
+very first save). This is strictly `validate_cuesheet`'s addition — `update_cuesheet`'s own
+receipt is unchanged by this (see issue #10: the dry-run tool is where a preview belongs, not the
+write path).
+
 ## Web editor HTTP endpoints (agent-callable)
 
 The web editor's dev server (`pnpm --filter @cuesheet/web dev`, default `localhost:5173`) exposes

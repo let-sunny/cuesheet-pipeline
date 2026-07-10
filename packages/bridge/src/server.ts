@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { buildCuesheetDiff } from "./diff.js";
 import { buildEditReceipt } from "./receipt.js";
 import { getCuesheet, getCuesheetJsonSchema, updateCuesheet, validateCuesheet } from "./store.js";
 
@@ -70,15 +71,36 @@ export function createServer(cuesheetPath: string): McpServer {
         "When to use: to check whether a candidate cuesheet would pass validation before " +
         "committing it with update_cuesheet — a dry run that never writes to disk. Useful when " +
         "trying out an edit, or when you want the full list of errors up front instead of a " +
-        "failed save. Example: validate_cuesheet({cuesheet: {...}}) -> " +
-        '{ok:false, errors:["segments[0].out: in must be less than out"]}.',
+        "failed save. On success, the response also carries a `diff` comparing the candidate " +
+        "against the currently-saved cuesheet (segments added/removed/modified — identified by " +
+        "clip+in/out, so a reorder reads as reordered rather than N unrelated adds+removes — " +
+        "plus project/bgm/narration field changes and the output duration delta), so you can " +
+        "preview exactly what the edit would change before calling update_cuesheet. `diff` is " +
+        "omitted if there's no currently-saved cuesheet to compare against (e.g. first save). " +
+        "Segment lists in the diff are capped at 5 entries each (added/removed/modified " +
+        "independently); the matching *Total field always carries the true count. " +
+        "Example: validate_cuesheet({cuesheet: {...}}) -> " +
+        '{ok:false, errors:["segments[0].out: in must be less than out"]} or ' +
+        '{ok:true, diff:{durationDeltaS:-4.2, segments:{added:[],addedTotal:0,removed:[...], ' +
+        "removedTotal:2,modified:[],modifiedTotal:0,reordered:false},project:[],bgm:" +
+        '{added:1,removed:0,modified:0},narration:{changed:false,fields:[]}}}.',
       inputSchema: { cuesheet: z.record(z.string(), z.unknown()) },
     },
     async ({ cuesheet }) => {
       const r = validateCuesheet(cuesheet);
+      if (!r.ok) {
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(r, null, 2) }],
+          isError: true,
+        };
+      }
+      const current = getCuesheet(cuesheetPath);
+      const diff = current.ok ? buildCuesheetDiff(current.data, r.data) : undefined;
       return {
-        content: [{ type: "text" as const, text: JSON.stringify(r, null, 2) }],
-        isError: !r.ok,
+        content: [
+          { type: "text" as const, text: JSON.stringify(diff ? { ok: true, diff } : r, null, 2) },
+        ],
+        isError: false,
       };
     },
   );
