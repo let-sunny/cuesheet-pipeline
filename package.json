@@ -15,6 +15,7 @@
     "test": "pnpm -r test",
     "test:checks": "vitest run",
     "check:repo": "node scripts/checks/check-language.mjs && node scripts/checks/check-no-emoji.mjs && node scripts/checks/check-component-anatomy.mjs && node scripts/checks/check-test-selectors.mjs && node scripts/checks/check-schema-examples.mjs",
+    "new:component": "node scripts/new-component/new-component.mjs",
     "episode": "node scripts/episode.mjs",
     "token-usage": "node scripts/token-usage-report.mjs",
     "e2e": "playwright test --config tests/e2e/playwright.config.ts",

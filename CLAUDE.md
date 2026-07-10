@@ -222,6 +222,10 @@ Reusable stateful logic is extracted into custom hooks (`src/hooks/`), each smal
 enough to unit-test on its own. `.doc.mjs` is omitted until we ship
 public components. SYNC comments only where real cross-file chains exist.
 
+This anatomy is machine-executable, not just documented: `pnpm new:component <Name>
+[--dir apps/web/src/components]` (`scripts/new-component/`) scaffolds a folder that
+already satisfies it and passes `check-component-anatomy.mjs` with zero edits.
+
 ## Testability as the size limit (user rule, 2026-07-09)
 
 A file must always be small enough to write test code for. If a module is too big or

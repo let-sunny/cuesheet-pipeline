@@ -3,7 +3,7 @@
 > This document is the single entry point for "where things stand right now, and what exists
 > for what purpose." Rule: update this document at every milestone and commit it to git.
 > Detailed design rationale and decisions live in the linked documents; this one holds only
-> the map. (Last updated: 2026-07-08)
+> the map. (Last updated: 2026-07-10)
 
 ## North Star
 
@@ -34,6 +34,35 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 - **User editing grammar constants**: cut average 2.9s, finished length 4:30-5:30, coverage ~90%, shot vocabulary (hand closeup/object/cat/reveal/wearing) — reverse-engineered from 2 real edits
 - **Proxy playback**: original 4K HEVC can't play in-browser -> 720p H.264 proxy for preview, render uses the original
 - **iCloud rule**: must check `stat blocks=0` before reading source footage (reading a placeholder hangs forever), manage space with `brctl download/evict`
+
+## 2026-07-10: component scaffolding generator (issue #15)
+
+- **Goal**: make the component anatomy convention (CLAUDE.md "Component layering": one folder per
+  significant component - `Component.tsx` with a role header + co-located `Component.styles.ts`
+  (StyleX) + `Component.test.tsx` + `index.ts` export gate) machine-executable instead of
+  hand-followed, mirroring how issue #6's `check-component-anatomy.mjs` machine-enforces it.
+- **What was built**: `pnpm new:component <Name> [--dir apps/web/src/components]`
+  (`scripts/new-component/new-component.mjs`) scaffolds `<dir>/<Name>/` from committed templates
+  (`scripts/new-component/templates/component/`, astryx pattern - templates as files, not string
+  literals) substituting `__NAME__`/`__TEST_ID__` placeholders. Pure template logic
+  (`validateComponentName`, `generateComponent`) lives in `scripts/new-component/lib/component-
+  template.mjs`, PascalCase-validated and refusing to overwrite an existing folder. Root-element
+  `data-testid` is the kebab-case form of the name (matches the existing convention, e.g.
+  `crop-edit-overlay`, `bgm-settings-panel`); the generated test does a `render` +
+  `getByTestId` smoke check per CLAUDE.md's data-testid-only test-selection rule.
+- **Verified out of the box**: generated a scratch `ScratchProbe` component, then ran (against the
+  untouched generated output, no edits) `--filter @cuesheet/web typecheck` (clean),
+  `vitest run` on the generated test (1/1 passing), and `pnpm check:repo` both unstaged
+  (component-anatomy check walks the filesystem regardless of git status) and staged (proves
+  check-language/check-no-emoji also pass against the actual generated file content) - all green.
+  The scratch component was then deleted, never committed.
+- **Tests**: `scripts/new-component/test/component-template.test.mjs` (9 cases: name validation
+  accept/reject, all four files written with placeholders fully substituted, testid/index.ts
+  content, refuses an existing folder, refuses an invalid name before touching the filesystem).
+  Wired into the root `vitest.config.ts`'s `include` alongside `scripts/checks/test/`.
+  `npx vitest run` at repo root: 6 files / 37 tests passing (was 5/28 before this issue).
+- **Docs**: CLAUDE.md's "Component layering" section now points at the generator as the anatomy
+  convention's executable path.
 
 ## 2026-07-10: capability manifest via `get_capabilities` (issue #13)
 
