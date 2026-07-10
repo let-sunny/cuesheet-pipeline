@@ -45,7 +45,10 @@ downstream ever reads anything else.
   keep validating and rendering identically.
 - To see the full contract as JSON Schema instead of reading zod source, call the MCP bridge's
   `get_schema` tool (see below) — it's generated directly from the same zod schema, so it can't
-  drift from what actually validates.
+  drift from what actually validates. For a one-line-per-feature index instead (each of the
+  features listed above, plus crop and the subtitle background box, with its own `.describe()`
+  text and a minimal working cuesheet snippet) — as well as an index of every bridge tool and CLI
+  entry point — call `get_capabilities` (see below) instead of reconstructing this list by hand.
 
 ## CLI surface
 
@@ -139,6 +142,7 @@ table — but as a quick reference):
 | `update_cuesheet` | Once you've computed the whole new cuesheet for an edit (volume, trim, subtitle, order, crop, etc.) and are ready to save. Validates before writing; nothing is saved on failure. |
 | `validate_cuesheet` | Dry-run check of a candidate cuesheet — never writes to disk. Use before committing an edit, or to see all errors at once. |
 | `get_schema` | Once per session, or whenever unsure of a field's shape/type/enum values, instead of guessing from examples. Returns the cuesheet format as JSON Schema. |
+| `get_capabilities` | Once per session, or whenever exploring what this system can do, instead of reconstructing the feature list by reading source. Returns a capability manifest (see below). |
 
 Every edit is "read the whole cuesheet, compute the whole new cuesheet, send it back" —
 `update_cuesheet`/`validate_cuesheet` never take a partial patch. `CUESHEET_PATH` (env var,
@@ -152,6 +156,20 @@ Setting `CUESHEET_BRIDGE_READONLY=1` runs the bridge in read-only mode (issue #1
 list) — read-only shows up as a call-time refusal, not a missing tool. `get_cuesheet`,
 `validate_cuesheet`, and `get_schema` are unaffected in read-only mode: exactly what a review-only
 or demo session needs.
+
+`get_capabilities` (issue #13) returns `{tools, clis, schemaFeatures}` — the discovery surface for
+"what can an AI do with this system," generated live on every call (nothing is committed to the
+repo, so there's no separate artifact to go stale): `tools` is the same name+description every
+other bridge tool was registered with (read back, not retyped); `clis` names each
+`cuesheet-draft`/`cuesheet-render` entry point plus a reference to the CLI surface section above
+and the test file that pins its `--json` envelope, rather than restating the contract; and
+`schemaFeatures` lists each expressive cuesheet feature beyond the basic trim/subtitle/speed/volume
+fields (title cards, fade/dip transitions, episode-level fades, subtitle style presets, BGM
+ducking, timelapse speed, crop, subtitle background box) with its field path, its own
+`.describe()` text pulled straight off the zod schema (the same text `get_schema` serves), and a
+minimal valid cuesheet snippet demonstrating it (`packages/bridge/test/capabilities.test.ts`
+validates every snippet with `validateCueSheet`, so a schema change that breaks one is caught in
+CI). Unaffected by read-only mode, same as the other read/grounding tools.
 
 `update_cuesheet` on success: emits a structured receipt instead of just "saved" — `{ok:true,
 receipt: {segmentCount, durationS, warnings}}`, mirroring the `--json` receipts the

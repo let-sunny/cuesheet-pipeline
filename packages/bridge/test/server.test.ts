@@ -57,10 +57,11 @@ afterEach(() => {
 });
 
 describe("bridge MCP round-trip", () => {
-  it("tools/list exposes all four tools", async () => {
+  it("tools/list exposes all five tools", async () => {
     const { client, close } = await connect();
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
+      "get_capabilities",
       "get_cuesheet",
       "get_schema",
       "update_cuesheet",
@@ -188,13 +189,46 @@ describe("bridge MCP round-trip", () => {
 
     await close();
   });
+
+  it("get_capabilities returns a manifest with tools, CLIs, and schema features", async () => {
+    const { client, close } = await connect();
+
+    const result = await client.callTool({ name: "get_capabilities", arguments: {} });
+    expect(result.isError).toBeFalsy();
+    const manifest = JSON.parse(textOf(result));
+
+    expect(manifest.tools.map((t: { name: string }) => t.name).sort()).toEqual([
+      "get_capabilities",
+      "get_cuesheet",
+      "get_schema",
+      "update_cuesheet",
+      "validate_cuesheet",
+    ]);
+    expect(manifest.tools.every((t: { description: string }) => t.description.length > 0)).toBe(
+      true,
+    );
+
+    expect(manifest.clis.length).toBeGreaterThan(0);
+    expect(manifest.clis[0].command).toContain("cuesheet-draft");
+
+    expect(manifest.schemaFeatures.length).toBeGreaterThan(0);
+    for (const f of manifest.schemaFeatures) {
+      expect(typeof f.feature).toBe("string");
+      expect(typeof f.field).toBe("string");
+      expect(f.description.length).toBeGreaterThan(0);
+      expect(f.example.segments).toBeDefined();
+    }
+
+    await close();
+  });
 });
 
 describe("bridge read-only mode (issue #12)", () => {
-  it("tools/list still exposes all four tools — read-only omits writes at call time, not from registration", async () => {
+  it("tools/list still exposes all five tools — read-only omits writes at call time, not from registration", async () => {
     const { client, close } = await connect({ readOnly: true });
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual([
+      "get_capabilities",
       "get_cuesheet",
       "get_schema",
       "update_cuesheet",
@@ -237,6 +271,9 @@ describe("bridge read-only mode (issue #12)", () => {
 
     const schema = await client.callTool({ name: "get_schema", arguments: {} });
     expect(schema.isError).toBeFalsy();
+
+    const capabilities = await client.callTool({ name: "get_capabilities", arguments: {} });
+    expect(capabilities.isError).toBeFalsy();
 
     await close();
   });

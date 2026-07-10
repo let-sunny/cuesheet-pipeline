@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { buildCapabilities, type CapabilityTool } from "./capabilities.js";
 import { buildCuesheetDiff } from "./diff.js";
 import { buildEditReceipt } from "./receipt.js";
 import { getCuesheet, getCuesheetJsonSchema, updateCuesheet, validateCuesheet } from "./store.js";
@@ -25,7 +26,7 @@ export function createServer(cuesheetPath: string, options: CreateServerOptions 
   const readOnly = options.readOnly ?? false;
   const server = new McpServer({ name: "cuesheet-bridge", version: "0.0.0" });
 
-  server.registerTool(
+  const getCuesheetTool = server.registerTool(
     "get_cuesheet",
     {
       description:
@@ -43,7 +44,7 @@ export function createServer(cuesheetPath: string, options: CreateServerOptions 
     },
   );
 
-  server.registerTool(
+  const updateCuesheetTool = server.registerTool(
     "update_cuesheet",
     {
       description:
@@ -101,7 +102,7 @@ export function createServer(cuesheetPath: string, options: CreateServerOptions 
     },
   );
 
-  server.registerTool(
+  const validateCuesheetTool = server.registerTool(
     "validate_cuesheet",
     {
       description:
@@ -142,7 +143,7 @@ export function createServer(cuesheetPath: string, options: CreateServerOptions 
     },
   );
 
-  server.registerTool(
+  const getSchemaTool = server.registerTool(
     "get_schema",
     {
       description:
@@ -158,6 +159,40 @@ export function createServer(cuesheetPath: string, options: CreateServerOptions 
       const schema = getCuesheetJsonSchema();
       return {
         content: [{ type: "text" as const, text: JSON.stringify(schema, null, 2) }],
+        isError: false,
+      };
+    },
+  );
+
+  const getCapabilitiesTool = server.registerTool(
+    "get_capabilities",
+    {
+      description:
+        "When to use: once at the start of a session (or whenever exploring what this system " +
+        "can do) instead of reconstructing the feature list by reading source. Returns a " +
+        "capability manifest: bridge tools (name + description), CLI entry points " +
+        "(cuesheet-draft/cuesheet-render, see AGENTS.md for the full contract), and expressive " +
+        "cuesheet schema features beyond the basic trim/subtitle/speed/volume fields (title " +
+        "cards, fade/dip transitions, episode-level fades, subtitle style presets, BGM ducking, " +
+        "timelapse speed, crop, subtitle background box) — each with its own .describe() " +
+        "docstring (same text get_schema serves) and a minimal valid cuesheet snippet " +
+        "demonstrating it. Example: get_capabilities() -> {tools:[...], clis:[...], " +
+        "schemaFeatures:[{feature:\"title cards\", field:\"segments[].title\", " +
+        'description:"...", example:{...}}, ...]}.',
+      inputSchema: {},
+    },
+    async () => {
+      const tools: CapabilityTool[] = [
+        { name: "get_cuesheet", description: getCuesheetTool.description ?? "" },
+        { name: "update_cuesheet", description: updateCuesheetTool.description ?? "" },
+        { name: "validate_cuesheet", description: validateCuesheetTool.description ?? "" },
+        { name: "get_schema", description: getSchemaTool.description ?? "" },
+        { name: "get_capabilities", description: getCapabilitiesTool.description ?? "" },
+      ];
+      return {
+        content: [
+          { type: "text" as const, text: JSON.stringify(buildCapabilities(tools), null, 2) },
+        ],
         isError: false,
       };
     },

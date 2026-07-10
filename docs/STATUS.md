@@ -35,6 +35,44 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 - **Proxy playback**: original 4K HEVC can't play in-browser -> 720p H.264 proxy for preview, render uses the original
 - **iCloud rule**: must check `stat blocks=0` before reading source footage (reading a placeholder hangs forever), manage space with `brctl download/evict`
 
+## 2026-07-10: capability manifest via `get_capabilities` (issue #13)
+
+- **Goal**: a single discovery surface answering "what can an AI do with this system" — bridge
+  tools, CLI entry points, and expressive cuesheet schema features (title cards, transitions,
+  ducking, style presets, timelapse speed, etc.) each with a one-line description and, for schema
+  features, a minimal valid cuesheet snippet — so an agent doesn't have to reconstruct the list by
+  reading source (per issue #7/#3's `.describe()` docs landing first).
+- **Live vs. committed decision**: served live via a new `get_capabilities` bridge tool, not
+  committed as a `capabilities.json` artifact — same precedent as `get_schema`. Since nothing is
+  written to the repo, there is no separate file that can go stale, so no new `check:repo` check
+  was needed (the drift risk that *does* exist — a hand-authored example snippet no longer
+  validating after a schema change — is caught by a test, per the issue's own note, not a repo
+  check).
+- **Single-source construction**: `packages/bridge/src/capabilities.ts` (`buildCapabilities`, pure,
+  no I/O). `tools` is populated in `server.ts` from each tool's own already-registered
+  `{name, description}` (read back via the `RegisteredTool` handle `registerTool` returns, not
+  retyped) — covers all five tools including `get_capabilities` itself. `clis` only references the
+  AGENTS.md CLI surface section and each CLI's own `--json`-envelope-pinning test
+  (`packages/draft|render/test/cli.test.ts`, issue #8) rather than restating their contract.
+  `schemaFeatures[].description` is read directly off the same zod schema objects `get_schema`
+  serves (e.g. `segmentSchema.shape.title.description`) — a `.describe()` edit in `schema.ts` is
+  reflected here automatically, no third copy of the wording. `schemaFeatures[].example` is the one
+  hand-authored part (8 features: title cards, fade/dip transitions, episode-level fades, subtitle
+  style presets, BGM ducking, timelapse speed, crop, subtitle background box).
+- **Tests**: `packages/bridge/test/capabilities.test.ts` (5 cases — tools pass through unchanged,
+  CLI entries reference AGENTS.md, schema-feature descriptions match the live schema text, every
+  example validates via `validateCueSheet` [drift guard], the issue's named features are all
+  present) + `server.test.ts` gained one new `get_capabilities` round-trip case, now expects 5
+  tools (not 4) in both the normal and read-only `tools/list` checks, and the existing
+  read-only-mode grounding-tools case now also asserts `get_capabilities` stays usable there (a
+  read/grounding tool, same as `get_schema`).
+  AGENTS.md updated: `get_capabilities` added to the tools table, a new paragraph describing its
+  shape, and the "beyond the basic fields" paragraph now points to it for the per-feature index
+  (feeds issue #10's operator-doc-diet intent — future prose trims can point here instead of
+  restating detail).
+- `packages/bridge`: 36/36 tests passing (was 30). `pnpm -r build`/`typecheck`/`test` and
+  `pnpm check:repo` all green repo-wide.
+
 ## 2026-07-10: repair hints on validateCueSheet failures (issue #11)
 
 - **Goal**: where a validation failure has a mechanically computable fix, append it to the
