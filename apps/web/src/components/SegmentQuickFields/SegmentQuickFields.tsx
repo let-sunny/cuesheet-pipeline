@@ -12,6 +12,7 @@ import { INTRO_OUTRO_MAX_DURATION_S } from "../../clipPaths.js";
 import { narrationFileUrl, type NarrationFile } from "../../api.js";
 import { useNumericField } from "../../hooks/useNumericField.js";
 import type { MergeEligibility } from "../../lib/segmentMerge.js";
+import { segmentRangeError } from "../../lib/segmentRangeError.js";
 import { mergeSubtitleStyle } from "../../lib/subtitleOverlay.js";
 import { subtitleOverflowWarning } from "../../lib/subtitleOverflow.js";
 import { RangeGroup } from "./RangeGroup.js";
@@ -237,6 +238,7 @@ export function SegmentQuickFields({
         lengthS={segment.out - segment.in}
         inField={inField}
         outField={outField}
+        rangeError={segmentRangeError(segment)}
       />
 
       <PlaybackGroup speedField={speedField} volumeField={volumeField} speedAtCap={segment.speed >= 16} />

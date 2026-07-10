@@ -77,6 +77,18 @@ describe("SegmentQuickFields", () => {
     expect(screen.getByText("Length 7.0s")).not.toBeNull();
   });
 
+  it("shows the Range group's inline error when the segment's in >= out (Finding 1)", () => {
+    render(<SegmentQuickFields {...baseProps({ segment: segment({ in: 100, out: 30 }) })} />);
+    expect(screen.getByTestId("cut-range-error").textContent).toBe(
+      "in: in must be less than out (in < out) — swap to in=30, out=100",
+    );
+  });
+
+  it("shows no Range error for a valid in < out segment", () => {
+    render(<SegmentQuickFields {...baseProps()} />);
+    expect(screen.queryByTestId("cut-range-error")).toBeNull();
+  });
+
   it("shows the speed-cap note only at 16x", () => {
     const { rerender } = render(<SegmentQuickFields {...baseProps({ segment: segment({ speed: 2 }) })} />);
     expect(screen.queryByText(/Speed is capped at 16x/)).toBeNull();

@@ -14,4 +14,15 @@ export const styles = stylex.create({
     fontSize: 13,
     color: "var(--text-primary)",
   },
+  // Length readout's error treatment when in >= out (rangeError set) - same "error" color token
+  // IntroOutroEditor/MomentPalette already use for their own inline validation notes.
+  lengthErrorText: {
+    color: "var(--error-text)",
+    fontWeight: 600,
+  },
+  rangeError: {
+    margin: "4px 0 0",
+    fontSize: 12,
+    color: "var(--error-text)",
+  },
 });

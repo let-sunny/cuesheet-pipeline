@@ -7,6 +7,10 @@ export interface RangeGroupProps {
   lengthS: number;
   inField: NumericFieldBindings;
   outField: NumericFieldBindings;
+  /** Schema's own "in must be less than out" message (with its swap hint when derivable) when
+   * this cut's in/out is currently invalid - single-sourced from segmentRangeError so it never
+   * drifts from what Save would report. null when in/out is currently valid. */
+  rangeError: string | null;
 }
 
 /**
@@ -17,7 +21,7 @@ export interface RangeGroupProps {
  * It still needs to be copyable (selectable), so it's a span, not a disabled input (disabled
  * inputs block selection in some browsers).
  */
-export function RangeGroup({ clip, lengthS, inField, outField }: RangeGroupProps) {
+export function RangeGroup({ clip, lengthS, inField, outField, rangeError }: RangeGroupProps) {
   return (
     <div className="qf-group" data-testid="cut-settings-group-range">
       <div className="qf-group-label">Range</div>
@@ -53,8 +57,19 @@ export function RangeGroup({ clip, lengthS, inField, outField }: RangeGroupProps
             data-testid="cut-field-out"
           />
         </label>
-        <span className="qf-readonly">Length {lengthS.toFixed(1)}s</span>
+        <span
+          className="qf-readonly"
+          {...stylex.props(!!rangeError && styles.lengthErrorText)}
+          data-testid="cut-range-length"
+        >
+          Length {lengthS.toFixed(1)}s
+        </span>
       </div>
+      {rangeError ? (
+        <p {...stylex.props(styles.rangeError)} role="alert" data-testid="cut-range-error">
+          {rangeError}
+        </p>
+      ) : null}
     </div>
   );
 }
