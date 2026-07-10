@@ -1,6 +1,7 @@
 {
   "name": "@cuesheet/render",
   "version": "0.0.0",
+  "license": "MIT",
   "description": "Renders the final video from a cuesheet via ffmpeg commands",
   "type": "module",
   "main": "./dist/plan.js",

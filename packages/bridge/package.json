@@ -1,6 +1,7 @@
 {
   "name": "@cuesheet/bridge",
   "version": "0.0.0",
+  "license": "MIT",
   "description": "MCP bridge that Claude Code connects to for editing cuesheets (natural-language commands -> validated cuesheet changes)",
   "type": "module",
   "bin": {

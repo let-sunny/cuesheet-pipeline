@@ -1,6 +1,7 @@
 {
   "name": "@cuesheet/web",
   "version": "0.0.0",
+  "license": "MIT",
   "description": "Web app for live cuesheet preview and editing",
   "private": true,
   "type": "module",

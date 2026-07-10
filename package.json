@@ -1,6 +1,7 @@
 {
   "name": "cuesheet-pipeline",
   "version": "0.0.0",
+  "license": "MIT",
   "private": true,
   "description": "Cuesheet-driven video assembly pipeline (schema / render / web)",
   "type": "module",

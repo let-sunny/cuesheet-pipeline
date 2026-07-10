@@ -1,6 +1,7 @@
 {
   "name": "@cuesheet/schema",
   "version": "0.0.0",
+  "license": "MIT",
   "description": "Cuesheet type definitions and runtime validation shared across the pipeline",
   "type": "module",
   "main": "./dist/index.js",

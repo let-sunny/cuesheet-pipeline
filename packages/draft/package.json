@@ -1,6 +1,7 @@
 {
   "name": "@cuesheet/draft",
   "version": "0.0.0",
+  "license": "MIT",
   "description": "Auto-generates a rough-cut cuesheet from a raw footage folder (scan+frame extraction / assemble)",
   "type": "module",
   "main": "./dist/index.js",
