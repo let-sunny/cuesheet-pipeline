@@ -16,11 +16,11 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 
 | Location | Role | Status |
 |---|---|---|
-| `packages/schema` | Cuesheet types + validation (contract's center, zod) | Stable. 82 tests |
-| `packages/bridge` | MCP server for Claude Code connection (natural-language editing) | Stable. 26 tests |
-| `packages/render` | Cuesheet -> ffmpeg render (CLI + buildRenderPlan, incl. two-pass title fallback) | Stable. 110 tests, verified with a real render |
-| `apps/web` | Touch-up editor: cut editing, timeline trimming (scrub/handles/split), full timeline + BGM drag, proxy playback, export button | Actively evolving |
-| `packages/draft` | **Core**: raw footage folder -> automatic rough-cut cuesheet generation (CLI `cuesheet-draft`: scan for inventory + frame extraction -> assemble for assembly; vision judgment handled by Claude) | Promoted to a proper package. 7 tests, scan/assemble E2E verified against a real footage folder |
+| `packages/schema` | Cuesheet types + validation (contract's center, zod), `.describe()` field docs, mechanical repair hints on failures | Stable. 82 tests |
+| `packages/bridge` | MCP server for Claude Code connection (natural-language editing) | Stable. 36 tests. 5 tools (`get_cuesheet`/`update_cuesheet`/`validate_cuesheet`/`get_schema`/`get_capabilities`), structured edit receipts, change-summary diff, `CUESHEET_BRIDGE_READONLY` mode |
+| `packages/render` | Cuesheet -> ffmpeg render (CLI + buildRenderPlan, incl. two-pass fallback for captured-frames titles + large HEVC concats) | Stable. 112 tests, verified with real renders (single-pass and two-pass) |
+| `apps/web` | Touch-up editor: cut editing, single zoomable-filmstrip trim (TrimStrip), full timeline + BGM drag, proxy playback, export button | Actively evolving. 511 tests. Edit step's 3 columns now fit a 13-inch laptop (1280x800/1440x900) |
+| `packages/draft` | **Core**: raw footage folder -> automatic rough-cut cuesheet generation (CLI `cuesheet-draft`: scan for inventory + frame extraction -> assemble for assembly; vision judgment handled by Claude) | Promoted to a proper package. 44 tests (incl. `--json` envelope contract tests), scan/assemble E2E verified against a real footage folder |
 | `media/proxies/` | 720p H.264 proxies for web preview (auto-generated, git-ignored) | Automatic |
 | `media/dotmix_src` | Symlink to the user's raw footage folder (git-ignored) | — |
 | `proto_dotmix.cuesheet.json` | v1 auto-generated rough-cut sample (based on 12 local dotmix clips) | Verified |
@@ -34,6 +34,65 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 - **User editing grammar constants**: cut average 2.9s, finished length 4:30-5:30, coverage ~90%, shot vocabulary (hand closeup/object/cat/reveal/wearing) — reverse-engineered from 2 real edits
 - **Proxy playback**: original 4K HEVC can't play in-browser -> 720p H.264 proxy for preview, render uses the original
 - **iCloud rule**: must check `stat blocks=0` before reading source footage (reading a placeholder hangs forever), manage space with `brctl download/evict`
+- **AI-legibility as its own backlog**: a dedicated survey (wiki "AI-Legible System Design", covering astryx internals + shadcn/Stripe/GitHub/Cloudflare/Vercel/Storybook/v0) found the missing layer is turning CLAUDE.md's prose conventions into scripts that fail when broken, not more documentation — motivated `check:repo`, CI, `.describe()`-driven `get_schema`, `get_capabilities`, and the AGENTS.md smoke test (issues #5-#16)
+
+## 2026-07-10 late evening: QA sweep fixes + MIT license
+
+- **QA sweep** (direct fixes, no new feature): inline in/out error surfaced on the Range group's
+  Length readout instead of only in a toast; an undecodable video file (corrupt/unsupported
+  codec) is now distinguished from a genuinely missing one in the error banner; the face-policy
+  banner wraps instead of clipping mid-word; a newly selected clip no longer gets paired with a
+  stale debounced thumbnail timestamp left over from the previous clip; cut-list row subtitle
+  textareas clamp to 2 lines instead of growing the row. A sixth item from the same sweep, BGM
+  gutter bar alignment with covered rows' actual positions, shipped separately as **PR #17**
+  (merged) rather than as part of these direct commits.
+- **MIT license added**: root `LICENSE` file (`Copyright (c) 2026 let-sunny`) plus a `"license":
+  "MIT"` field in every package manifest (root + all 4 packages + apps/web) — verified present in
+  all 6 `package.json` files.
+- `pnpm -r test`/`typecheck` and `pnpm check:repo` green after this round.
+
+## 2026-07-10 evening: hook extraction round (App.tsx + CompactSegmentList)
+
+- **Goal**: continue pulling untested inline logic out of components into unit-testable modules,
+  per the "testability as the size limit" convention — no behavior change in any of these three.
+- **`useShuttle`** (`apps/web/src/hooks/useShuttle.ts`): `SequencePlayer` had its own inline copy
+  of `VideoPreview`'s J/K/L shuttle (speed ladder + approximate reverse playback), drifting out of
+  sync with it. Parameterized the shared hook (video-slot indirection via `getVideo`, a
+  configurable reverse floor/forward-snap, `onReset`/`onStop`/`onBackwardStart` extension points)
+  so both consumers share the same rAF/level-ladder mechanics while keeping their own bookkeeping
+  (preload-slot swapping, user-rate multiplier, playing state) as thin call-site glue.
+- **`useProjectResources` + `useRenderExecution`** (`apps/web/src/hooks/`): split ~90 lines of
+  `App.tsx`'s inline fetch effects (moments/clipDurations, narration files, bgm files) and
+  render-execution logic (poll loop, no-burn-subtitles toggle, `handleRender`) by concern, each
+  unit-tested with mocked `api.ts` calls.
+- **`bgmTrackDrag.ts`** (`apps/web/src/lib/`): extracted the BGM gutter's pointer-drag math
+  (start/extend range computation, row resolution from pointer Y) out of `CompactSegmentList` into
+  a pure module (`startBgmDrag`/`extendBgmDrag`/`resolveRowIndexFromBounds`) with dedicated unit
+  tests — this logic previously had zero unit coverage despite a real drag-reliability bug history
+  (BGM gutter alignment, see PR #17 above).
+- `apps/web`: 511 tests passing; `pnpm --filter @cuesheet/web typecheck`/`test` green.
+
+## 2026-07-10: AGENTS.md operator-doc diet + wiki index + smoke test (issues #14, #16)
+
+- **Operator-doc diet (issue #14)**: compressed the per-feature paragraphs issues #9-#13 (edit
+  receipts, validate diff, read-only mode, `get_capabilities`, schema feature list) had added to
+  AGENTS.md into the bridge tool table plus one-line pointers at the now-live discovery surfaces
+  (`get_capabilities`, `get_schema`), instead of restating their output in prose. AGENTS.md:
+  262 -> 162 lines; the workflow spine (tool table, CLI invocations, typical edit loop, file
+  conventions) is untouched. Issue #14 also added a curated **Wiki-Index page** (GitHub wiki,
+  topic-grouped page discovery) alongside a new "AI-Legible System Design" research page — the
+  survey behind this whole backlog (see the new key-decision-log entry above).
+- **Smoke test (issue #16)**: `scripts/checks/check-agents-doc.mjs` (wired into `check:repo`)
+  parses AGENTS.md for its code-ish surfaces — fenced CLI invocations, the bridge tool table,
+  backtick-wrapped HTTP endpoints, `CUESHEET_*` env var spans — and executes/asserts each instead
+  of trusting the prose: runs a real `scan -> assemble -> cuesheet-render` pipeline against one
+  synthetic clip proving `--json`/`--fps`/`--width`/`--height`/`--config`/`--boundary-pad` actually
+  change output; every other documented flag is checked against "is this flag still read in
+  source"; bridge tool names are matched 1:1 against the doc's table; HTTP endpoints are checked
+  statically against `routes.ts`. Parsing anchors on code-ish tokens only, so prose rewording never
+  trips it — verified against real drift by temporarily renaming a bridge tool and a CLI flag
+  (both caught, then reverted).
+- `pnpm check:repo` green (6 checks incl. this one); `apps/web` and bridge suites unaffected.
 
 ## 2026-07-10: component scaffolding generator (issue #15)
 
@@ -101,6 +160,19 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
   restating detail).
 - `packages/bridge`: 36/36 tests passing (was 30). `pnpm -r build`/`typecheck`/`test` and
   `pnpm check:repo` all green repo-wide.
+
+## 2026-07-10: bridge read-only mode (issue #12)
+
+- **Goal**: let an operator attach the bridge in a mode that guarantees `update_cuesheet` never
+  writes, for review/demo contexts where natural-language edits should be inspectable but not
+  applied.
+- **What was built**: `CUESHEET_BRIDGE_READONLY=1` makes `update_cuesheet` refuse every call with a
+  structured `{ok:false, errors:[...]}` response naming the env var to unset, leaving the file
+  untouched. The tool stays registered (its description is unchanged per-mode, since MCP clients
+  may cache `tools/list`) so a caller gets a clear refusal rather than a missing tool.
+  `get_cuesheet`, `validate_cuesheet`, and `get_schema` are unaffected — confirmed by
+  `server.test.ts`'s read-only-mode case that these three grounding/dry-run tools stay usable.
+- `packages/bridge`: part of the 36/36 passing suite; `pnpm check:repo` unaffected.
 
 ## 2026-07-10: repair hints on validateCueSheet failures (issue #11)
 
@@ -170,6 +242,68 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
   issue's own worked example). `packages/bridge`: 26/26 tests passing; `pnpm -r
   build`/`typecheck`/`test` and `pnpm check:repo` all green repo-wide.
 
+## 2026-07-10 morning: AI-legibility foundation batch (issues #5-#9)
+
+Five commits landed back-to-back this morning (08:16-09:28), each closing one issue from the
+AI-legibility backlog and each a prerequisite the afternoon's bridge/schema work (repair hints,
+`get_capabilities`, the read-only mode, the operator-doc diet — see their own sections above)
+built on:
+
+- **CI workflow (issue #5)**: minimal GitHub Actions workflow (`.github/workflows/ci.yml`) runs on
+  push to main and on pull request — `pnpm install --frozen-lockfile`, `pnpm test:checks`,
+  `pnpm -r build`, `pnpm -r typecheck`, `pnpm -r test`, then `pnpm check:repo` last (it imports
+  `packages/schema/dist`, so it must run after Build). Installs `ffmpeg` via `apt-get` first, since
+  `packages/render`/`packages/draft`'s test suites spawn a real ffmpeg/ffprobe binary
+  unconditionally and `ubuntu-latest` doesn't ship it — a deliberate deviation from the issue's own
+  suggestion to skip those tests in CI, verified rather than assumed.
+- **`check:repo` suite (issue #6)**: five node scripts under `scripts/checks/` (language, emoji,
+  component-anatomy, test-selector, schema-examples — a sixth, agents-doc, was added later the same
+  day by issue #16, see above), each backed by a pure/testable matcher in `scripts/checks/lib/`
+  with vitest coverage against fixture trees. `pnpm check:repo` chains all of them; `pnpm
+  test:checks` runs their own unit tests. This is the script that makes this very refresh's
+  language/emoji conventions machine-checked rather than self-reported.
+- **Schema `.describe()` docs (issue #7)**: every field across
+  project/crop/subtitle-style/title/transition/segment/bgm/ducking/narration in `cueSheetSchema`
+  now has a `.describe()`, sourced from the render/draft code paths that actually consume each
+  field — so the bridge's `get_schema` tool (previously shapes/types only) now tells an agent that
+  `in`/`out` are source-clip seconds, that `segment.clip` is a filename resolved against `clipDir`
+  while `bgm.file`/`intro`/`outro` are direct paths, that `speed >= 8` reads as a timelapse cut, and
+  the subtitle style merge order — without needing to read AGENTS.md prose the bridge never
+  surfaces. Zero validation-behavior change.
+  `packages/schema/test/jsonSchemaDescriptions.test.ts` walks the generated JSON Schema and fails
+  if any property is missing a description (self-enforcing for future fields).
+- **CLI `--json` contract tests (issue #8)**: extended the existing subprocess CLI tests
+  (`cuesheet-draft`/`cuesheet-render`) to assert the exact documented key set (not just a subset)
+  for scan/assemble/render success envelopes, plus failure-path coverage (invalid `moments.json`,
+  invalid cuesheet) asserting exit 1, a `field-path: reason` line on stderr, and no stdout JSON —
+  matching AGENTS.md's documented contract.
+- **Bridge structured edit receipts (issue #9)**: `update_cuesheet`'s success response used to be a
+  bare `"Saved"` string. It now returns `{ok:true, receipt:{segmentCount, durationS, warnings}}`
+  computed from the cuesheet that was just validated and written (ground truth, not the caller's
+  input), mirroring the `--json` receipts the CLIs already emit. Receipt-building lives in its own
+  pure module (`packages/bridge/src/receipt.ts`) so the later change-summary diff (issue #10, see
+  its own section above) could reuse it instead of duplicating "describe a cuesheet" logic.
+- All five: `pnpm -r build`/`typecheck`/`test` and `pnpm check:repo` green (schema 82, bridge 36 at
+  the time, draft/render's CLI suites extended in place).
+
+## 2026-07-10 early morning: StyleX migration batch 5 complete (closes issue #3)
+
+- **Batch 5 migrated the remaining large components to full component anatomy** (folder +
+  co-located `.styles.ts` + co-located `.test.tsx` + `index.ts`, per CLAUDE.md "Component
+  layering"): `VideoPreview` + `CropEditOverlay`, `MomentPalette`, `SequencePlayer`,
+  `MiniTimelineStrip` - then a wiring commit folded `App`'s own container rules into
+  `App.styles.ts`, and a cleanup commit deleted every `styles.css` rule migrated or made dead this
+  batch (shared tokens, documented cascade/specificity exceptions, and earlier-batch carryover are
+  all that remain).
+- **Verified reduction**: `styles.css` was 2154 lines at the start of the whole StyleX migration
+  (before batch 1); this batch alone took it from 1687 to 1110 lines (confirmed via `git show` at
+  each boundary commit). It currently sits at 1122 lines net of small subsequent changes (e.g.
+  TrimStrip's own cleanup removed 84 more lines the same day - see below).
+- Closes issue #3 ("Restructure packages/web: components are flat in one app and some files are
+  too large") - the StyleX mass-migration this issue tracked, deferred earlier in the week pending
+  a recipe (StepNav as the 0-pixel-diff exemplar, TitleOverlay as the new-component-anatomy
+  exemplar - both documented 2026-07-09), is now finished across all 5 batches.
+
 ## 2026-07-10: two-pass render fallback (captured-frames title + large HEVC concat deadlock)
 
 - **Bug**: the demo bisection found combining a captured-frames title overlay (gooey/melt/particle -
@@ -213,17 +347,79 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
   and are DERIVED from pass 2 (the final pass) when two-pass triggers - a caller that only reads
   `args` directly (rather than running every entry in `commands` in order) gets a fast, clear
   ffmpeg error (missing intermediate input) instead of silently shipping a video with no titles.
-  **Follow-up needed**: `apps/web`'s `POST /api/render` route currently runs `buildRenderPlan`'s
-  top-level `args` directly - it needs to iterate `plan.commands` in order instead to actually
-  support two-pass cuesheets (not changed here per this task's scope - apps/web was off limits,
-  concurrent work in progress there).
-- **Verified**: `pnpm --filter @cuesheet/render typecheck`/`test` green (110 tests, up from 89 -
+  **Follow-up resolved same morning**: `apps/web`'s `POST /api/render` route was flagged here as
+  still running `buildRenderPlan`'s top-level `args` directly (which fails fast on a two-pass
+  plan's missing intermediate) - fixed at 08:02 the same morning: the route now iterates
+  `plan.commands` in order, giving each pass an equal progress slice
+  (`overallRenderProgress` in `server/shared.ts`, unit-tested) and prefixing ffmpeg error summaries
+  with the failing pass's label.
+- **Verified**: `pnpm --filter @cuesheet/render typecheck`/`test` green (112 tests, up from 89 -
   21 new: `timeline.test.ts`, `twoPass.test.ts`, plus new dispatch cases in `plan.test.ts`).
   End-to-end: a real two-pass render (12 synthetic HEVC 720p clips + 1 gooey title) completed in
   ~6.5s total (pass 1 2.5s, pass 2 4.0s) and the title was confirmed visible only inside its
   [0s, 2s) window (frame-extracted and inspected at t=1 vs t=5). The existing CLI's single-pass
   path (`project.cuesheet.json`, no title) re-verified unaffected (13s output, matching the
   earlier real-render figure).
+
+## 2026-07-10 morning: 13-inch density fit for the Edit step
+
+- **Bug**: the cut list, video, and cut settings columns wrapped below one another below ~1480px
+  total width, leaving the cut settings panel effectively invisible on a 13-inch MacBook until
+  scrolling past the whole video block.
+- **Fix, via arrangement (not scaling type/spacing or restyling Astryx components)**:
+  `CompactSegmentList`'s cut list column narrows 480px -> 300px, moving the row's time
+  range/style badge/subtitle dot/reorder+delete actions onto their own line below the subtitle (a
+  two-line list-row convention matching Premiere's/Resolve's bin rows); `EditStep`'s cut settings
+  column narrows from a flexible 424-440px to a fixed 344px; the video column keeps its 480px min
+  and claims the freed-up width via its existing `flexGrow`.
+  New `useStickyColumnMaxHeight` hook (`apps/web/src/hooks/`) fixes the cut settings column's
+  `max-height` calc, which had assumed the sticky workspace was already pinned to its stuck `top` -
+  true only after scrolling past its natural position, so landing on the Edit step (the common
+  case) left the column's bottom below the fold even though the cap looked right on paper; it's now
+  computed from the column's actual measured offset.
+  `HeaderBar`'s Undo/Redo/?/Save/Export buttons take `size="sm"` (an official Astryx variant).
+- `docs/screen-spec.md` now records 1280x800/1440x900 as this app's baseline viewports and the new
+  column-width tokens. Also fixed `tests/e2e/journeys/bgm-track.spec.ts`: raw `page.mouse`
+  coordinates don't auto-scroll like locator actions do, so the taller cut list rows pushed row 4+
+  outside the default 720px-tall test viewport, landing drags on the wrong row - targets are now
+  scrolled into view first.
+
+## 2026-07-10: astryx contribution status update
+
+- **PR #3738 merged** (`fix(core): forward rest props (data-testid) to CheckboxInput's native
+  input`) - the gap CLAUDE.md's data-testid convention already flags (`CheckboxInput` declares the
+  same `BaseProps` type as `Button`/`Tab`/`Slider` but its implementation destructures a fixed prop
+  list with no `...rest` capture, so a `data-testid` passed to it was silently dropped).
+- **#3743** (fix Toast fallback viewport's theme mode instead of OS preference) and **#3660** (make
+  `theme-build` color-scheme decl mode-aware) both still open/in review upstream - unchanged from
+  their prior status, re-confirmed via `gh api` rather than assumed stale.
+
+## 2026-07-09 late evening: TrimStrip (single zoomable filmstrip replaces two-level trim)
+
+- **Why**: the previous two-level trim (an overview bar + a separately-zoomed detail bar) read as
+  an uninteractive blue box in user testing and was judged unintuitive - per the repo's
+  no-invented-UI-patterns rule, replaced with the researched convention from
+  `docs/research/trim-ux-conventions.md` section 4: one filmstrip.
+- **`TrimStrip`** (`apps/web/src/components/TrimStrip/`, new anatomy component): one strip of
+  `SegmentThumb` tiles (ruler-tick fallback per cell while thumbs load/are unavailable) with the
+  existing in/out drag handles + playhead overlaid on top, a zoom control row (-/Fit cut/Fit
+  clip/+), Ctrl/Cmd+wheel zoom pivoting on the cursor, Shift+Z fit-clip reset, and a
+  scrollbar-styled pan control (thumb body pans, thumb edges resize/zoom) that only appears once
+  zoomed in, with an always-visible min-2px cut tick. Viewport zoom/pan math lives in
+  `lib/trimWindow.ts`, time-field precision helpers in `lib/timeInput.ts` (both pure, unit tested).
+  `SegmentThumb` gained an optional `onResult` callback so consumers can detect load
+  success/failure per thumbnail.
+- **Wired into `VideoPreview`**, dropping the old two-level trim entirely (removed the dead
+  `.scrub-*`/`.trim-overview*` rules from `styles.css`); `MIN_GAP_S` moved from a private
+  `VideoPreview` constant to the shared `trimWindow.ts`. Also wired `project.fps` into
+  `SegmentQuickFields` so the In/Out fields' Up/Down frame-nudge is never hardcoded, and switched
+  those two fields from `type="number"` to `type="text"` - a native number input silently
+  sanitizes anything that isn't plain float syntax back to `""` (no leading `+`, no `:`), which
+  would have eaten the `M:SS.s`/relative-entry shorthand before `useNumericField`'s parser ever saw
+  it (caught by a failing unit test, not by inspection).
+- `docs/screen-spec.md` section 3 rewritten around TrimStrip; new Playwright E2E journeys added
+  (short-clip default view, long-clip zoom/drag/keyboard) with fixture clip filenames prefixed to
+  stop colliding with the real project's proxy cache.
 
 ## 2026-07-09: named subtitle style presets + title cards (PRD backlog #1+#2)
 
