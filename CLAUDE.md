@@ -419,3 +419,11 @@ Validated by schema, so only ever-valid cuesheets get saved.
 - Next candidate (excluded from this cycle): schema expansion (transitions/fades, etc.) — the
   default policy is "when there's an edit we can't express, that's when we grow schema+bridge
   tools."
+
+## Design principles (user charter, 2026-07-11)
+
+Every UI decision follows [docs/design-principles.md](./docs/design-principles.md): intuitive
+(follow conventions, never invent), hierarchy = actual importance, remove unnecessary
+information and decoration, components stay stock (Astryx defaults), minimal whitespace
+(13-inch first), and information structure matches workflow. Resolve ambiguous UI choices
+against it in order.

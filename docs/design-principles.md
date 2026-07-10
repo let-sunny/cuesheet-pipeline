@@ -1,0 +1,51 @@
+# Design principles
+
+The usability bar for this app, stated by the user (2026-07-11) and binding on every UI
+decision. When a design choice is ambiguous, resolve it against these in order. This is a
+personal, single-user editor on a 13-inch laptop — density and directness beat decoration.
+
+## 1. Intuitive — follow conventions, never invent
+
+Before designing any interaction (trim, scrubbing, lane editing, pickers, editing a title,
+deleting, cropping), research how established editors solve it (Premiere, Final Cut, CapCut,
+Descript, DaVinci, Notion/Docs for text) and adopt the convention. Users arrive with those
+instincts. An invented mechanism is a defect even if it "works".
+
+## 2. Hierarchy equals actual importance
+
+Visual weight must match real importance. One clear primary action per group; everything else
+recedes. A secondary control (mode toggle, "enter path manually") must never out-weigh the
+primary one (Play, choosing a file). If two things look equally important, the design has
+failed to decide.
+
+## 3. Remove unnecessary information
+
+Do not repeat what the user already knows from context. A panel titled "Cut settings" when
+it's obviously the cut settings, a thumbnail in the edit cut-list when clicking the row already
+shows the clip in the preview, a giant card around one line of read-only text — all cut.
+
+## 4. Remove unnecessary decoration
+
+Chrome scales to function. A large disclosure triangle becomes a small chevron; text buttons
+for repeated row actions become icon buttons; a one-line section is a row, not a full-width
+card. No ornament that doesn't carry information.
+
+## 5. Components stay stock
+
+Use Astryx components as designed, at their default variants. Customize only through named
+wrappers when genuinely needed; never restyle via global CSS. The less custom styling, the
+better — stock is the default, deviation needs a reason.
+
+## 6. Minimal whitespace, 13-inch first
+
+The target viewport is a 13-inch laptop (1280x800). Layouts must be dense: no wasted vertical
+space, sections right-sized to content, the page must not run long when it doesn't need to.
+Reclaim every gap that isn't doing separation work.
+
+## The principle behind the principles: structure matches flow
+
+Information architecture must match how the tool is actually used. A setting that affects the
+whole edit (narration enable) belongs before/during editing, not at the end (Finish). An action
+that needs an input first (Add BGM track needs a file) should ask for the input first, not
+create an empty shell. Where a control lives, and in what order steps appear, encodes something
+true about the workflow — get that right before styling anything.
