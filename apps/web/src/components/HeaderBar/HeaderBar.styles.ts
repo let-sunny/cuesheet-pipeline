@@ -30,6 +30,34 @@ export const styles = stylex.create({
     fontSize: 20,
     margin: 0,
   },
+  // Hover/focus affordance so the title reads as editable without inventing a new pattern (the
+  // standard Notion/Google-Docs "click straight into the text" convention) - a faint underline on
+  // hover, no visible border in the resting state.
+  titleEditable: {
+    cursor: "text",
+    borderRadius: 4,
+    padding: "2px 6px",
+    marginInline: -6,
+    borderBottomWidth: 1,
+    borderBottomStyle: "solid",
+    borderBottomColor: {
+      default: "transparent",
+      ":hover": "var(--border)",
+    },
+  },
+  titleInput: {
+    fontFamily: "inherit",
+    fontWeight: "inherit",
+    color: "inherit",
+    backgroundColor: "var(--surface-2)",
+    borderRadius: 4,
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: "var(--border)",
+    padding: "2px 6px",
+    marginInline: -6,
+    outline: "none",
+  },
   titleGroup: {
     display: "flex",
     alignItems: "center",

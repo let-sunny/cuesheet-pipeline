@@ -8,6 +8,7 @@ afterEach(cleanup);
 function baseProps() {
   return {
     projectName: "My Project",
+    onProjectNameChange: vi.fn(),
     dirty: false,
     saving: false,
     rendering: false,
@@ -29,6 +30,59 @@ describe("HeaderBar", () => {
   it("shows the project name, falling back to a placeholder when empty", () => {
     render(<HeaderBar {...baseProps()} projectName="" />);
     expect(screen.getByText("(no name)")).not.toBeNull();
+  });
+
+  it("clicking the title enters edit mode with an input pre-filled with the current name", () => {
+    render(<HeaderBar {...baseProps()} projectName="My Project" />);
+    fireEvent.click(screen.getByTestId("project-title"));
+    const input = screen.getByTestId("project-title-input") as HTMLInputElement;
+    expect(input.value).toBe("My Project");
+  });
+
+  it("typing and pressing Enter commits the new name", () => {
+    const onProjectNameChange = vi.fn();
+    render(<HeaderBar {...baseProps()} projectName="My Project" onProjectNameChange={onProjectNameChange} />);
+    fireEvent.click(screen.getByTestId("project-title"));
+    const input = screen.getByTestId("project-title-input") as HTMLInputElement;
+    // The Enter handler calls e.currentTarget.blur() - jsdom only fires a real blur event if the
+    // element is actually focused, so focus it first (as a real user would, by clicking into it).
+    input.focus();
+    fireEvent.change(input, { target: { value: "New Name" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onProjectNameChange).toHaveBeenCalledWith("New Name");
+    expect(screen.queryByTestId("project-title-input")).toBeNull();
+  });
+
+  it("blurring without pressing Enter also commits the new name", () => {
+    const onProjectNameChange = vi.fn();
+    render(<HeaderBar {...baseProps()} projectName="My Project" onProjectNameChange={onProjectNameChange} />);
+    fireEvent.click(screen.getByTestId("project-title"));
+    const input = screen.getByTestId("project-title-input");
+    fireEvent.change(input, { target: { value: "Renamed" } });
+    fireEvent.blur(input);
+    expect(onProjectNameChange).toHaveBeenCalledWith("Renamed");
+  });
+
+  it("pressing Escape cancels the edit without committing", () => {
+    const onProjectNameChange = vi.fn();
+    render(<HeaderBar {...baseProps()} projectName="My Project" onProjectNameChange={onProjectNameChange} />);
+    fireEvent.click(screen.getByTestId("project-title"));
+    const input = screen.getByTestId("project-title-input");
+    fireEvent.change(input, { target: { value: "Discarded" } });
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(onProjectNameChange).not.toHaveBeenCalled();
+    expect(screen.getByTestId("project-title").textContent).toBe("My Project");
+  });
+
+  it("rejects an empty/whitespace-only name, reverting to the previous name", () => {
+    const onProjectNameChange = vi.fn();
+    render(<HeaderBar {...baseProps()} projectName="My Project" onProjectNameChange={onProjectNameChange} />);
+    fireEvent.click(screen.getByTestId("project-title"));
+    const input = screen.getByTestId("project-title-input");
+    fireEvent.change(input, { target: { value: "   " } });
+    fireEvent.blur(input);
+    expect(onProjectNameChange).not.toHaveBeenCalled();
+    expect(screen.getByTestId("project-title").textContent).toBe("My Project");
   });
 
   it("shows the dirty badge only while dirty", () => {
