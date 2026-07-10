@@ -6,6 +6,8 @@ import type { ClipMoments } from "../../api.js";
 import { baseName } from "../../clipPaths.js";
 import { bgmCutRange, cumulativeCutStarts } from "../../lib/bgmCutMapping.js";
 import { assignBgmLanes, laneCount } from "../../lib/bgmLanes.js";
+import { extendBgmDrag, resolveRowIndexFromBounds, startBgmDrag } from "../../lib/bgmTrackDrag.js";
+import type { BgmDragMode, BgmDragState } from "../../lib/bgmTrackDrag.js";
 import { matchSceneInfo, shotTypeLabel } from "../../lib/sceneInfo.js";
 import { SegmentThumb } from "../SegmentThumb/index.js";
 import { styles } from "./CompactSegmentList.styles.js";
@@ -64,13 +66,7 @@ export function CompactSegmentList({
   const [rowRects, setRowRects] = useState<Array<{ top: number; height: number }>>([]);
   const [bgmGutterCollapsed, setBgmGutterCollapsed] = useState(false);
   const [dragHighlight, setDragHighlight] = useState<{ start: number; end: number } | null>(null);
-  const dragRef = useRef<{
-    bgmIndex: number;
-    mode: "move" | "resize-start" | "resize-end";
-    originStartCutIdx: number;
-    originEndCutIdx: number;
-    originRowIdx: number;
-  } | null>(null);
+  const dragRef = useRef<BgmDragState | null>(null);
 
   useEffect(() => {
     rowRefs.current = rowRefs.current.slice(0, segments.length);
@@ -154,17 +150,8 @@ export function CompactSegmentList({
   const gutterWidth = bgmGutterCollapsed ? BGM_GUTTER_COLLAPSED_WIDTH : lanes * BGM_LANE_TOTAL_WIDTH;
 
   const rowIndexAtClientY = (clientY: number): number => {
-    const rows = rowDivRefs.current;
-    for (let i = 0; i < rows.length; i += 1) {
-      const el = rows[i];
-      if (!el) {
-        continue;
-      }
-      if (clientY <= el.getBoundingClientRect().bottom) {
-        return i;
-      }
-    }
-    return Math.max(0, rows.length - 1);
+    const bottoms = rowDivRefs.current.map((el) => el?.getBoundingClientRect().bottom ?? null);
+    return resolveRowIndexFromBounds(bottoms, clientY);
   };
 
   // Drag reliability (2026-07-09 diagnosed fix): previously each bar/handle only listened to its
@@ -186,20 +173,9 @@ export function CompactSegmentList({
     }
     const rowIdx = rowIndexAtClientY(clientY);
     const lastIdx = segments.length - 1;
-    let newStart = drag.originStartCutIdx;
-    let newEnd = drag.originEndCutIdx;
-    if (drag.mode === "move") {
-      const delta = rowIdx - drag.originRowIdx;
-      const length = drag.originEndCutIdx - drag.originStartCutIdx;
-      newStart = Math.max(0, Math.min(lastIdx - length, drag.originStartCutIdx + delta));
-      newEnd = newStart + length;
-    } else if (drag.mode === "resize-start") {
-      newStart = Math.max(0, Math.min(drag.originEndCutIdx, rowIdx));
-    } else {
-      newEnd = Math.min(lastIdx, Math.max(drag.originStartCutIdx, rowIdx));
-    }
-    setDragHighlight({ start: newStart, end: newEnd });
-    onChangeBgmRange(drag.bgmIndex, newStart, newEnd);
+    const { start, end } = extendBgmDrag(drag, rowIdx, lastIdx);
+    setDragHighlight({ start, end });
+    onChangeBgmRange(drag.bgmIndex, start, end);
   };
 
   const endTrackDrag = () => {
@@ -221,19 +197,13 @@ export function CompactSegmentList({
   useEffect(() => endTrackDrag, []);
 
   const startTrackDrag =
-    (bgmIndex: number, mode: "move" | "resize-start" | "resize-end") =>
+    (bgmIndex: number, mode: BgmDragMode) =>
     (e: ReactPointerEvent<HTMLDivElement>) => {
       e.stopPropagation();
       endTrackDrag(); // clears any stale listeners left over from an interrupted previous drag
 
       const range = bgmCutRange(bgm[bgmIndex]!, cumStart);
-      dragRef.current = {
-        bgmIndex,
-        mode,
-        originStartCutIdx: range.startCutIdx,
-        originEndCutIdx: range.endCutIdx,
-        originRowIdx: rowIndexAtClientY(e.clientY),
-      };
+      dragRef.current = startBgmDrag(bgmIndex, mode, range, rowIndexAtClientY(e.clientY));
       onSelectBgm(bgmIndex);
 
       const onMove = (ev: PointerEvent) => applyTrackDrag(ev.clientY);
