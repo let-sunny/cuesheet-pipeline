@@ -28,6 +28,11 @@ export function SegmentThumb({ clip, t, className, onResult }: Props) {
   const [visible, setVisible] = useState(false);
   const [debouncedT, setDebouncedT] = useState(t);
   const [failed, setFailed] = useState(false);
+  // Tracks the clip the debounce below is currently running for, so a clip change (e.g. this row
+  // now points at an entirely different segment after a rapid undo/redo) can snap debouncedT to
+  // the new t immediately instead of riding out the leftover debounce window for the OLD clip -
+  // see the debounce effect's comment for why that matters.
+  const prevClipRef = useRef(clip);
 
   useEffect(() => {
     if (!clip) {
@@ -53,10 +58,23 @@ export function SegmentThumb({ clip, t, className, onResult }: Props) {
     return () => observer.disconnect();
   }, [visible]);
 
+  // Debounces t (so a drag doesn't fire a request per frame) - but only within the SAME clip.
+  // Bug fixed (QA finding 2026-07-10): this effect used to depend on `[t]` alone, so when `clip`
+  // changed without `t` happening to change too (or before the previous clip's pending timer had
+  // fired), the rendered <img> combined the new (live, undebounced) `clip` with a `debouncedT`
+  // still trailing the OLD clip - a mismatched (clip, t) pair that's often not even a valid
+  // timestamp for the new clip (e.g. exceeds its duration), so /api/thumb 500s. A clip change now
+  // snaps debouncedT to t immediately, skipping the debounce entirely - debouncing only ever made
+  // sense for smoothing repeated t changes while scrubbing the same clip's in point.
   useEffect(() => {
+    if (prevClipRef.current !== clip) {
+      prevClipRef.current = clip;
+      setDebouncedT(t);
+      return;
+    }
     const id = setTimeout(() => setDebouncedT(t), DEBOUNCE_MS);
     return () => clearTimeout(id);
-  }, [t]);
+  }, [clip, t]);
 
   useEffect(() => {
     setFailed(false);

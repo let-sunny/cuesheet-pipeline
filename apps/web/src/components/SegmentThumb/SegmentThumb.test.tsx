@@ -87,4 +87,45 @@ describe("SegmentThumb", () => {
     });
     expect(onResult).toHaveBeenCalledWith(false);
   });
+
+  it("snaps to the new clip's t immediately on a clip change, never pairing a new clip with a stale debounced t from the previous one (Finding 6)", () => {
+    vi.useFakeTimers();
+    const { container, rerender } = render(<SegmentThumb clip="cut_01.mp4" t={45} />);
+    fireIntersect();
+    let img = container.querySelector("img")!;
+    expect(img.src).toContain("clip=cut_01.mp4");
+    expect(img.src).toContain("t=45.0");
+
+    // Undo/redo churn: this row now points at a different segment (clip AND t both changed)
+    // before the previous debounce window (250ms) has elapsed.
+    rerender(<SegmentThumb clip="cut_02.mp4" t={2} />);
+    img = container.querySelector("img")!;
+    expect(img.src).toContain("clip=cut_02.mp4");
+    expect(img.src).toContain("t=2.0");
+
+    // Advancing time (the old debounce would have fired around here) must not revert/alter it.
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    img = container.querySelector("img")!;
+    expect(img.src).toContain("clip=cut_02.mp4");
+    expect(img.src).toContain("t=2.0");
+    vi.useRealTimers();
+  });
+
+  it("still debounces t changes within the same clip (no request per intermediate value while dragging)", () => {
+    vi.useFakeTimers();
+    const { container, rerender } = render(<SegmentThumb clip="cut_01.mp4" t={2} />);
+    fireIntersect();
+    rerender(<SegmentThumb clip="cut_01.mp4" t={5} />);
+    let img = container.querySelector("img")!;
+    // Same clip, t not yet settled - still shows the previous debounced value until the debounce elapses.
+    expect(img.src).toContain("t=2.0");
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    img = container.querySelector("img")!;
+    expect(img.src).toContain("t=5.0");
+    vi.useRealTimers();
+  });
 });
