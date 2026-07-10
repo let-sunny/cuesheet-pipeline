@@ -39,7 +39,7 @@ better — stock is the default, deviation needs a reason.
 ## 6. Minimal whitespace, 13-inch first
 
 The target viewport is a 13-inch laptop (1280x800). Layouts must be dense: no wasted vertical
-space, sections right-sized to content, the page must not run long when it doesn't need to.
+space, sections right-sized to content, the page must not run long when it does not need to. This applies to WIDTH too: a card whose content is narrow must not stretch full-width with an empty horizontal expanse — right-size boxes to their content on both axes.
 Reclaim every gap that isn't doing separation work.
 
 ## The principle behind the principles: structure matches flow
