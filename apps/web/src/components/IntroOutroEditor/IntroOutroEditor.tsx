@@ -4,6 +4,11 @@ import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { Button } from "@astryxdesign/core/Button";
 import { baseName, INTRO_OUTRO_MAX_DURATION_S } from "../../clipPaths.js";
 import { fetchClipFiles, uploadClip, type ClipFile } from "../../api.js";
+import {
+  classifyVideoSourceError,
+  videoSourceErrorMessage,
+  type VideoSourceErrorKind,
+} from "../../lib/videoSourceError.js";
 import { styles } from "./IntroOutroEditor.styles.js";
 
 interface Props {
@@ -33,8 +38,11 @@ interface UploadState {
  * intro/outro are independent file paths unrelated to clipDir (see the schema comment).
  */
 export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelectClip, onClear }: Props) {
-  const [introError, setIntroError] = useState(false);
-  const [outroError, setOutroError] = useState(false);
+  // null = no error. Distinguishes a missing source (fetch 404) from a file that exists but isn't
+  // playable video (QA finding 2026-07-10) - see lib/videoSourceError.ts for why this needs a
+  // supplementary fetch rather than the <video> error event's own MediaError.code.
+  const [introErrorKind, setIntroErrorKind] = useState<VideoSourceErrorKind | null>(null);
+  const [outroErrorKind, setOutroErrorKind] = useState<VideoSourceErrorKind | null>(null);
   const [files, setFiles] = useState<ClipFile[]>([]);
   const [filesNote, setFilesNote] = useState<string | undefined>(undefined);
   // The clipDir file list request runs ffprobe on every file to measure its duration (1-2s+ for
@@ -93,12 +101,21 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
   // Clear the previous error state whenever the path changes (whether from direct edits or a
   // fresh load) - same pattern as VideoPreview's missing state.
   useEffect(() => {
-    setIntroError(false);
+    setIntroErrorKind(null);
   }, [intro]);
 
   useEffect(() => {
-    setOutroError(false);
+    setOutroErrorKind(null);
   }, [outro]);
+
+  // The <video> error event's own MediaError.code can't distinguish "file doesn't exist" from
+  // "file exists but isn't playable video" (verified empirically - see lib/videoSourceError.ts) -
+  // a supplementary fetch of the same src is what actually tells the two apart.
+  const handleVideoError = useCallback((src: string, setKind: (kind: VideoSourceErrorKind) => void) => {
+    void fetch(src, { method: "HEAD" })
+      .then((res) => setKind(classifyVideoSourceError(res.ok)))
+      .catch(() => setKind("missing"));
+  }, []);
 
   const matchedIntroFile = matchedFileName(intro, clipDir, files);
   const matchedOutroFile = matchedFileName(outro, clipDir, files);
@@ -190,14 +207,16 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
           </label>
         </Collapsible>
         {intro ? (
-          introError ? (
-            <div className={`empty ${stylex.props(styles.missing).className}`}>Can't find the source: {intro}</div>
+          introErrorKind ? (
+            <div className={`empty ${stylex.props(styles.missing).className}`}>
+              {videoSourceErrorMessage(introErrorKind, intro)}
+            </div>
           ) : (
             <video
               {...stylex.props(styles.preview)}
               src={localVideoUrl(intro)}
               controls
-              onError={() => setIntroError(true)}
+              onError={(e) => handleVideoError(e.currentTarget.currentSrc || e.currentTarget.src, setIntroErrorKind)}
             />
           )
         ) : null}
@@ -288,14 +307,16 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
           </label>
         </Collapsible>
         {outro ? (
-          outroError ? (
-            <div className={`empty ${stylex.props(styles.missing).className}`}>Can't find the source: {outro}</div>
+          outroErrorKind ? (
+            <div className={`empty ${stylex.props(styles.missing).className}`}>
+              {videoSourceErrorMessage(outroErrorKind, outro)}
+            </div>
           ) : (
             <video
               {...stylex.props(styles.preview)}
               src={localVideoUrl(outro)}
               controls
-              onError={() => setOutroError(true)}
+              onError={(e) => handleVideoError(e.currentTarget.currentSrc || e.currentTarget.src, setOutroErrorKind)}
             />
           )
         ) : null}

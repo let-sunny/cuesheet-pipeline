@@ -95,6 +95,33 @@ describe("VideoPreview", () => {
     await waitFor(() => expect(screen.getByText(/Can't find the source/)).not.toBeNull());
   });
 
+  it("shows the missing-source message when the video errors and the supplementary fetch 404s (Finding 3)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(null, { status: 404 })),
+    );
+    const { container } = render(<VideoPreview {...baseProps()} />);
+    const video = container.querySelector("video")!;
+    video.dispatchEvent(new Event("error"));
+    await waitFor(() => expect(screen.getByText("Can't find the source: cut_01.mp4")).not.toBeNull());
+    vi.unstubAllGlobals();
+  });
+
+  it("shows a distinct undecodable-file message when the video errors but the file actually exists (Finding 3)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(null, { status: 200 })),
+    );
+    const { container } = render(<VideoPreview {...baseProps()} />);
+    const video = container.querySelector("video")!;
+    video.dispatchEvent(new Event("error"));
+    await waitFor(() =>
+      expect(screen.getByText(/can't be played as video/)).not.toBeNull(),
+    );
+    expect(screen.queryByText(/Can't find the source/)).toBeNull();
+    vi.unstubAllGlobals();
+  });
+
   it("shows a preparing-video notice while the clip's proxy is still generating", async () => {
     vi.mocked(fetchProxyStatus).mockResolvedValueOnce({ pending: [], generating: "cut_01.mp4" });
     render(<VideoPreview {...baseProps()} />);

@@ -10,6 +10,7 @@ import { cropPreviewStyle } from "../../lib/cropPreview.js";
 import { useCropEditor } from "../../hooks/useCropEditor.js";
 import { MAX_PLAYBACK_RATE, useShuttle } from "../../hooks/useShuttle.js";
 import { matchSceneInfo, shotTypeLabel } from "../../lib/sceneInfo.js";
+import { classifyVideoSourceError, videoSourceErrorMessage } from "../../lib/videoSourceError.js";
 import {
   mergeSubtitleStyle,
   subtitleBackgroundRgba,
@@ -84,7 +85,10 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
 ) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cropFrameRef = useRef<HTMLDivElement | null>(null);
-  const [missing, setMissing] = useState(false);
+  // null = no error. Distinguishes a missing source (fetch 404) from a file that exists but
+  // isn't playable video (Finding 3) - see lib/videoSourceError.ts for why this needs a
+  // supplementary fetch rather than the <video> error event's own MediaError.code.
+  const [missingKind, setMissingKind] = useState<"missing" | "undecodable" | null>(null);
   // The source video's own intrinsic pixel size (video.videoWidth/videoHeight), set once metadata
   // loads — used (with projectWidth/projectHeight) to derive the crop ratio-lock below.
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
@@ -119,7 +123,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   }, [autoPlay]);
 
   useEffect(() => {
-    setMissing(false);
+    setMissingKind(null);
     setDuration(0);
     setCurrentTime(0);
   }, [segment?.clip]);
@@ -138,8 +142,8 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   // Race caution: if the first check right after mount already responds "not preparing" (a clip
   // that never needed a proxy wait to begin with), reloadToken must not be bumped — at that
   // point the original <video> may already be loading its own src, and a remount from the key
-  // change would abort that in-flight request, wrongly landing on onError (missing=true) (missing
-  // only resets when segment.clip changes, so it would stay stuck from then on). So reloadToken
+  // change would abort that in-flight request, wrongly landing on onError (missingKind set) -
+  // missingKind only resets when segment.clip changes, so it would stay stuck from then on). So reloadToken
   // is only bumped when an actual "preparing -> ready" transition occurs (i.e. only after
   // stillPreparing===true has been observed at least once for this clip).
   useEffect(() => {
@@ -163,7 +167,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
           wasPreparing = true;
           timer = setTimeout(() => void check(), PROXY_STATUS_POLL_INTERVAL_MS);
         } else if (wasPreparing) {
-          setMissing(false);
+          setMissingKind(null);
           setReloadToken((v) => v + 1);
         }
       } catch {
@@ -414,8 +418,10 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
           {isGeneratingProxy ? "processing now" : `#${pendingIndex + 1} in line`})
         </div>
       ) : null}
-      {!isPreparingProxy && (missing || segment.clip === "") ? (
-        <div className="empty">Can't find the source: {segment.clip || "(no filename)"}</div>
+      {!isPreparingProxy && (missingKind || segment.clip === "") ? (
+        <div className="empty">
+          {videoSourceErrorMessage(missingKind ?? "missing", segment.clip)}
+        </div>
       ) : isPreparingProxy ? null : (
         <>
           {cropEditDraft ? (
@@ -440,7 +446,16 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
               ref={videoRef}
               {...stylex.props(styles.video)}
               src={`/clips/${encodeURIComponent(segment.clip)}`}
-              onError={() => setMissing(true)}
+              onError={(e) => {
+                // The <video> error event's own MediaError.code can't distinguish "file doesn't
+                // exist" from "file exists but isn't playable video" (verified empirically - see
+                // lib/videoSourceError.ts) - a supplementary fetch of the same src is what actually
+                // tells the two apart.
+                const src = e.currentTarget.currentSrc || e.currentTarget.src;
+                void fetch(src, { method: "HEAD" })
+                  .then((res) => setMissingKind(classifyVideoSourceError(res.ok)))
+                  .catch(() => setMissingKind("missing"));
+              }}
               style={
                 cropEditDraft
                   ? undefined

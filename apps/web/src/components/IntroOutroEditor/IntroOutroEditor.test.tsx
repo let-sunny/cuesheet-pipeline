@@ -56,13 +56,35 @@ describe("IntroOutroEditor", () => {
     expect(longOptions.every((o) => o.disabled)).toBe(true);
   });
 
-  it("shows the missing-source message when the intro video fails to load", async () => {
+  it("shows the missing-source message when the intro video fails to load and the file truly 404s", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(null, { status: 404 })),
+    );
     render(<IntroOutroEditor {...baseProps()} intro="media/clips/missing.mp4" />);
     await waitFor(() => expect(screen.queryAllByText(/Loading…/).length).toBe(0));
     const video = document.querySelector("video");
     expect(video).not.toBeNull();
     fireEvent.error(video!);
-    expect(screen.getByText(/Can't find the source: media\/clips\/missing\.mp4/)).not.toBeNull();
+    await waitFor(() =>
+      expect(screen.getByText(/Can't find the source: media\/clips\/missing\.mp4/)).not.toBeNull(),
+    );
+    vi.unstubAllGlobals();
+  });
+
+  it("shows a distinct undecodable-file message when the intro video fails to load but the file actually exists (Finding 3)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(null, { status: 200 })),
+    );
+    render(<IntroOutroEditor {...baseProps()} intro="media/clips/fake.mp4" />);
+    await waitFor(() => expect(screen.queryAllByText(/Loading…/).length).toBe(0));
+    const video = document.querySelector("video");
+    expect(video).not.toBeNull();
+    fireEvent.error(video!);
+    await waitFor(() => expect(screen.getByText(/can't be played as video/)).not.toBeNull());
+    expect(screen.queryByText(/Can't find the source/)).toBeNull();
+    vi.unstubAllGlobals();
   });
 
   it("marks the intro dropzone active while dragging a file over it, and clears it on drop", async () => {

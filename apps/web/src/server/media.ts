@@ -386,9 +386,12 @@ export function registerMediaMiddleware(server: ViteDevServer, filePath: string)
 
   // intro/outro are independent file paths unrelated to clipDir, so they're served from a
   // separate route rather than /clips. Relative paths are resolved against the repo root.
-  // Only read-only GET is allowed.
+  // Only read-only GET/HEAD is allowed. HEAD is used by the web app's own supplementary
+  // existence check (see lib/videoSourceError.ts) to distinguish a missing file from one that
+  // exists but isn't playable video - it must return the same status/headers as GET, just
+  // without a body.
   server.middlewares.use("/api/local-video", async (req, res) => {
-    if (req.method !== "GET") {
+    if (req.method !== "GET" && req.method !== "HEAD") {
       res.statusCode = 405;
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.end("Method not allowed");
@@ -416,6 +419,13 @@ export function registerMediaMiddleware(server: ViteDevServer, filePath: string)
 
     const stats = await stat(targetPath);
     const total = stats.size;
+
+    if (req.method === "HEAD") {
+      res.statusCode = 200;
+      res.setHeader("Content-Length", String(total));
+      res.end();
+      return;
+    }
 
     const rangeHeader = req.headers.range;
     if (!rangeHeader) {
