@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
+import { buildEditReceipt } from "./receipt.js";
 import { getCuesheet, getCuesheetJsonSchema, updateCuesheet, validateCuesheet } from "./store.js";
 
 /**
@@ -37,9 +38,13 @@ export function createServer(cuesheetPath: string): McpServer {
         "with the new value, validated against the schema — only saved if it passes. Read the " +
         "current value with get_cuesheet first, then send the whole object with only the needed " +
         "parts changed. When setting segment.crop, crop.w and crop.h (ratios) must be equal — " +
-        "they must match the project's aspect ratio (assumes a same-aspect source). " +
+        "they must match the project's aspect ratio (assumes a same-aspect source). On success, " +
+        "the response carries a receipt ({segmentCount, durationS, warnings}) computed from the " +
+        "cuesheet that was actually written, so you can confirm the edit landed as intended " +
+        "without a follow-up get_cuesheet call. " +
         "Example: update_cuesheet({cuesheet: {...same shape as get_cuesheet's data, edited...}}) " +
-        "-> \"Saved\" or a list of field-path: reason errors (nothing is written on failure).",
+        "-> {ok:true, receipt:{segmentCount:12, durationS:76.4, warnings:[]}} or a list of " +
+        "field-path: reason errors (nothing is written on failure).",
       inputSchema: { cuesheet: z.record(z.string(), z.unknown()) },
     },
     async ({ cuesheet }) => {
@@ -48,7 +53,9 @@ export function createServer(cuesheetPath: string): McpServer {
         content: [
           {
             type: "text" as const,
-            text: r.ok ? "Saved" : `Validation failed — not saved:\n${r.errors.join("\n")}`,
+            text: r.ok
+              ? JSON.stringify({ ok: true, receipt: buildEditReceipt(r.data) }, null, 2)
+              : `Validation failed — not saved:\n${r.errors.join("\n")}`,
           },
         ],
         isError: !r.ok,

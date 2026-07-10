@@ -139,6 +139,17 @@ Every edit is "read the whole cuesheet, compute the whole new cuesheet, send it 
 defaults to `./project.cuesheet.json`) selects which file is being edited; the web editor
 watches the same file and refreshes automatically when the bridge writes to it.
 
+`update_cuesheet` on success: emits a structured receipt instead of just "saved" — `{ok:true,
+receipt: {segmentCount, durationS, warnings}}`, mirroring the `--json` receipts the
+`cuesheet-draft`/`cuesheet-render` CLIs return (see CLI surface above). `segmentCount` and
+`durationS` (total post-speed output duration in seconds, intro/outro excluded — same v1
+limitation as the CLIs' own duration math) are computed from the cuesheet that was just validated
+and written, not from what you sent, so a caller can confirm an edit landed as intended without a
+follow-up `get_cuesheet` call. `warnings` flags cheap structural issues (e.g. an edit that leaves
+`segments` empty); it's aggregate facts about the new state only, not a field-by-field diff
+against the previous value. On failure, the response is unchanged: `field-path: reason` lines and
+nothing written.
+
 ## Web editor HTTP endpoints (agent-callable)
 
 The web editor's dev server (`pnpm --filter @cuesheet/web dev`, default `localhost:5173`) exposes

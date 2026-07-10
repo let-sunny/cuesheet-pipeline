@@ -78,7 +78,9 @@ describe("bridge MCP round-trip", () => {
       arguments: { cuesheet: sample() },
     });
     expect(saved.isError).toBeFalsy();
-    expect(textOf(saved)).toBe("Saved");
+    const savedResult = JSON.parse(textOf(saved));
+    expect(savedResult.ok).toBe(true);
+    expect(savedResult.receipt).toEqual({ segmentCount: 1, durationS: 5, warnings: [] });
     expect(existsSync(TMP)).toBe(true);
 
     const after = await client.callTool({ name: "get_cuesheet", arguments: {} });
