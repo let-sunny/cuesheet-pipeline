@@ -128,4 +128,18 @@ describe("bridge MCP round-trip", () => {
 
     await close();
   });
+
+  it("get_schema's JSON Schema carries field-level .describe() docs (schema.ts's semantics reach the bridge, not just AGENTS.md prose)", async () => {
+    const { client, close } = await connect();
+
+    const result = await client.callTool({ name: "get_schema", arguments: {} });
+    const schema = JSON.parse(textOf(result));
+    const segmentProps = schema.properties.segments.items.properties;
+
+    expect(segmentProps.clip.description).toContain("clipDir");
+    expect(segmentProps.in.description).toContain("SOURCE clip");
+    expect(segmentProps.speed.description).toContain("timelapse");
+
+    await close();
+  });
 });
