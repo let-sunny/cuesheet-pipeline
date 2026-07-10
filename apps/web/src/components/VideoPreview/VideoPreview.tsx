@@ -108,7 +108,11 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
 
   const { cropEditDraft, lockRatio, updateCropDraft, startCropEdit, applyCropEdit, cancelCropEdit, resetCropEditToFullFrame, clearCropEdit } =
     useCropEditor({ segment, projectWidth, projectHeight, naturalSize, onChange });
-  const { shuttleForward, shuttleBackward, shuttleStop, resetShuttle } = useShuttle({ videoRef, segment, setCurrentTime });
+  const { shuttleForward, shuttleBackward, shuttleStop, resetShuttle } = useShuttle({
+    getVideo: () => videoRef.current,
+    bounds: segment,
+    setCurrentTime,
+  });
 
   useEffect(() => {
     autoPlayRef.current = autoPlay;

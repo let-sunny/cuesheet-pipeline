@@ -10,6 +10,7 @@ import { matchSceneInfo } from "../../lib/sceneInfo.js";
 import { cumulativeCutStarts } from "../../lib/bgmCutMapping.js";
 import { formatClock } from "../../lib/segmentTiming.js";
 import { useSequenceAudio } from "../../hooks/useSequenceAudio.js";
+import { MAX_PLAYBACK_RATE, useShuttle } from "../../hooks/useShuttle.js";
 import {
   computeCurrentOutputPosition,
   pickActiveSlot,
@@ -102,12 +103,6 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
   // A one-shot channel for passing the source time that the next currentIndex effect should use
   // instead of seg.in, for when a progress-bar-click seek needs to jump to a different segment.
   const pendingSeekRef = useRef<{ index: number; time: number } | null>(null);
-  // J/K/L shuttle state (same approach as VideoPreview) — "stopped" means the shuttle isn't
-  // involved, i.e. normal playback/pause (handled by existing logic like userRate speed).
-  const shuttleDirectionRef = useRef<"stopped" | "forward" | "backward">("stopped");
-  const shuttleLevelRef = useRef(1);
-  const shuttleRafRef = useRef<number | null>(null);
-  const shuttleLastTsRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     segmentsRef.current = segments;
@@ -121,10 +116,6 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
   useEffect(() => {
     frontRef.current = front;
   }, [front]);
-  // Clean up on unmount so no reverse-playback rAF loop is left running.
-  useEffect(() => {
-    return () => stopShuttleRaf();
-  }, []);
   useEffect(() => {
     userRateRef.current = userRate;
     // Speed toggle while playing — apply it directly to the video being watched now, without waiting for a cut change.
@@ -149,62 +140,33 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
     return waitForMetadata(video);
   }
 
-  function stopShuttleRaf() {
-    if (shuttleRafRef.current !== null) {
-      cancelAnimationFrame(shuttleRafRef.current);
-      shuttleRafRef.current = null;
-    }
-  }
-
-  /** Resets the shuttle (J/K/L) to its normal state — restores the rate to seg.speed*userRate. */
-  function resetShuttle() {
-    stopShuttleRaf();
-    shuttleDirectionRef.current = "stopped";
-    shuttleLevelRef.current = 1;
-    const video = videoRefs[frontRef.current].current;
-    const seg = segmentsRef.current[currentIndex];
-    if (video) {
-      video.muted = false;
-      if (seg) {
+  // J/K/L shuttle (same mechanics as VideoPreview's per-cut trim view, shared via useShuttle) -
+  // parameterized for this component's two differences: the active <video> is one of two
+  // preload slots rather than a single stable ref, and reverse playback floors at 0 (the clip's
+  // absolute start) rather than the cut's `in`, since this component's <video> holds the whole
+  // source clip. The extra `playing`/playbackRate bookkeeping below (onReset/onStop/
+  // onBackwardStart, and the shuttleForward wrapper) restores exactly what the inline version did.
+  const {
+    shuttleForward: shuttleForwardLevel,
+    shuttleBackward,
+    shuttleStop,
+    resetShuttle,
+  } = useShuttle({
+    getVideo: () => videoRefs[frontRef.current].current,
+    bounds: segments[currentIndex],
+    setCurrentTime: setVideoNow,
+    reverseFloor: 0,
+    snapToInOnForwardStart: false,
+    onReset: () => {
+      const video = videoRefs[frontRef.current].current;
+      const seg = segmentsRef.current[currentIndex];
+      if (video && seg) {
         video.playbackRate = Math.min(seg.speed * userRateRef.current, MAX_PLAYBACK_RATE);
       }
-    }
-  }
-
-  function shuttleStop() {
-    const video = videoRefs[frontRef.current].current;
-    resetShuttle();
-    if (video) {
-      video.pause();
-    }
-    setPlaying(false);
-  }
-
-  /** Reverse playback frame loop — keeps the active slot's video paused and decrements
-      currentTime directly on every rAF (an approximation, since negative playbackRate isn't
-      supported). Doesn't cross the cut boundary; stops at 0. */
-  function reverseTick(ts: number) {
-    const video = videoRefs[frontRef.current].current;
-    if (!video || shuttleDirectionRef.current !== "backward") {
-      stopShuttleRaf();
-      return;
-    }
-    const last = shuttleLastTsRef.current;
-    shuttleLastTsRef.current = ts;
-    if (last === undefined) {
-      shuttleRafRef.current = requestAnimationFrame(reverseTick);
-      return;
-    }
-    const dt = (ts - last) / 1000;
-    const next = Math.max(0, video.currentTime - dt * shuttleLevelRef.current);
-    video.currentTime = next;
-    setVideoNow(next);
-    if (next <= 0) {
-      shuttleStop();
-      return;
-    }
-    shuttleRafRef.current = requestAnimationFrame(reverseTick);
-  }
+    },
+    onStop: () => setPlaying(false),
+    onBackwardStart: () => setPlaying(false),
+  });
 
   /** L: forward playback. Repeated presses raise the speed 1x -> 2x -> 4x (capped at 4x). If
       reverse playback is active, switches to forward 1x. */
@@ -214,40 +176,8 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
     if (!video || !seg) {
       return;
     }
-    if (shuttleDirectionRef.current === "forward") {
-      shuttleLevelRef.current = shuttleLevelRef.current >= 4 ? 4 : shuttleLevelRef.current * 2;
-    } else {
-      stopShuttleRaf();
-      shuttleDirectionRef.current = "forward";
-      shuttleLevelRef.current = 1;
-      video.muted = false;
-    }
-    video.playbackRate = Math.min(seg.speed * shuttleLevelRef.current, MAX_PLAYBACK_RATE);
-    video.volume = seg.volume;
+    shuttleForwardLevel();
     setPlaying(true);
-    void video.play().catch(() => {});
-  }
-
-  /** J: reverse playback (approximate). Repeated presses go 1x -> 2x -> 4x. Audio is meaningless
-      here so it's muted. If forward playback is active, switches to reverse 1x. */
-  function shuttleBackward() {
-    const video = videoRefs[frontRef.current].current;
-    const seg = segmentsRef.current[currentIndex];
-    if (!video || !seg) {
-      return;
-    }
-    if (shuttleDirectionRef.current === "backward") {
-      shuttleLevelRef.current = shuttleLevelRef.current >= 4 ? 4 : shuttleLevelRef.current * 2;
-      return;
-    }
-    video.pause();
-    setPlaying(false);
-    shuttleDirectionRef.current = "backward";
-    shuttleLevelRef.current = 1;
-    video.muted = true;
-    stopShuttleRaf();
-    shuttleLastTsRef.current = undefined;
-    shuttleRafRef.current = requestAnimationFrame(reverseTick);
   }
 
   // Switch to the current cut (currentIndex) — both mini-timeline clicks (external) and
@@ -644,8 +574,3 @@ function waitForMetadata(video: HTMLVideoElement): Promise<boolean> {
 
 /** User preview playback rate options. Applied multiplied with the segment's own speed. */
 const RATE_OPTIONS = [1, 1.5, 2] as const;
-
-/** Browsers throw a NotSupportedError setting HTMLMediaElement.playbackRate above 16 - the schema
- * also caps segment.speed at 16, but the user rate/shuttle multipliers above can still push the
- * product past that, so every assignment clamps defensively. */
-const MAX_PLAYBACK_RATE = 16;
