@@ -95,14 +95,17 @@ export const styles = stylex.create({
   },
   // Auto-exclusion reason banner - top of the card, full width. Must be far more noticeable than
   // a small corner badge (the previous problem where its smallness got misread as "dimmed = inactive").
+  // Wraps instead of truncating (QA finding 2026-07-10: nowrap+ellipsis cut "face exposure" down to
+  // "face exp…" mid-word at the card's 168px width, leaving the full reason visible only on hover) -
+  // consistent with this component's established "wrap over truncate/overlap" rule (see ioActions'
+  // comment above for the same call made on the intro/outro buttons).
   statusBanner: {
     padding: "4px 8px",
     fontSize: 11,
     fontWeight: 700,
     textAlign: "center",
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
+    whiteSpace: "normal",
+    overflowWrap: "break-word",
   },
   statusBannerFace: {
     backgroundColor: "var(--error-border)",
