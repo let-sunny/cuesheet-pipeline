@@ -216,6 +216,7 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
     <div {...stylex.props(styles.app)}>
       <HeaderBar
         projectName={draft.project.name}
+        onProjectNameChange={(name) => finishActions.updateProject({ name })}
         dirty={dirty}
         saving={saveState.status === "saving"}
         rendering={renderState.status === "rendering"}

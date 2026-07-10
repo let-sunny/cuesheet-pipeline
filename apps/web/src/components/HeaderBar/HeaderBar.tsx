@@ -2,10 +2,12 @@ import type { ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
 import type { ThemeModeSetting } from "../../lib/theme.js";
+import { useEditableTitle } from "../../hooks/useEditableTitle.js";
 import { styles } from "./HeaderBar.styles.js";
 
 interface Props {
   projectName: string;
+  onProjectNameChange: (name: string) => void;
   dirty: boolean;
   saving: boolean;
   rendering: boolean;
@@ -35,6 +37,7 @@ interface Props {
  */
 export function HeaderBar({
   projectName,
+  onProjectNameChange,
   dirty,
   saving,
   rendering,
@@ -50,10 +53,33 @@ export function HeaderBar({
   onThemeModeChange,
   onToggleShortcuts,
 }: Props) {
+  const titleEdit = useEditableTitle({ value: projectName, onCommit: onProjectNameChange });
+
   return (
     <div {...stylex.props(styles.row)}>
       <div {...stylex.props(styles.titleGroup)}>
-        <h1 {...stylex.props(styles.title)}>{projectName || "(no name)"}</h1>
+        {titleEdit.editing ? (
+          <input
+            type="text"
+            value={titleEdit.text}
+            onChange={titleEdit.onChange}
+            onBlur={titleEdit.onBlur}
+            onKeyDown={titleEdit.onKeyDown}
+            aria-label="Project name"
+            autoFocus
+            {...stylex.props(styles.title, styles.titleInput)}
+            data-testid="project-title-input"
+          />
+        ) : (
+          <h1
+            {...stylex.props(styles.title, styles.titleEditable)}
+            onClick={titleEdit.startEditing}
+            title="Click to rename"
+            data-testid="project-title"
+          >
+            {projectName || "(no name)"}
+          </h1>
+        )}
         {dirty ? (
           <span {...stylex.props(styles.dirtyBadge)} title="Click Save to write it to disk">
             ● Unsaved
