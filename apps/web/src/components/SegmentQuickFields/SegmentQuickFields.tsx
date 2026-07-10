@@ -231,8 +231,6 @@ export function SegmentQuickFields({
 
   return (
     <div className="quick-fields" data-testid="cut-settings-panel">
-      <h2 className="qf-panel-title">Cut settings</h2>
-
       <RangeGroup
         clip={segment.clip}
         lengthS={segment.out - segment.in}

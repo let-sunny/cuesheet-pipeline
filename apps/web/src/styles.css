@@ -452,17 +452,33 @@ body {
    VideoPreview.styles.ts; `.crop-edit-overlay`/`.crop-edit-box`/`.crop-edit-handle`(+8 `.handle-*`
    variants) moved to components/CropEditOverlay/CropEditOverlay.styles.ts. Kept here as documented
    exceptions (see VideoPreview.styles.ts's file comment for the full reasoning):
-   - `.playmode-toggle button.active` below - this button also carries the `.plain-button` marker
-     class, and overrides two of its properties (background/border-color) at higher specificity (a
-     descendant class+class+tag selector) - StyleX can't express that specificity edge. The
-     wrapper's own layout (`.playmode-toggle`'s flex/gap) still moved to StyleX - the div keeps both
-     the plain `playmode-toggle` className *and* the StyleX class so this selector keeps matching.
+   - `.playmode-toggle button` (+ `.active`) below - this button also carries the `.plain-button`
+     marker class, and overrides several of its properties (padding/font-size/color, plus
+     background/border-color on `.active`) at higher specificity (a descendant class+tag selector,
+     class+class+tag for `.active`) - StyleX can't express that specificity edge. The wrapper's own
+     layout (`.playmode-toggle`'s flex/gap) still moved to StyleX - the div keeps both the plain
+     `playmode-toggle` className *and* the StyleX class so these selectors keep matching.
    - `.video-subtitle-overlay` (+ variants, further down) - shared with SubtitleStyleSettings.tsx/
      SubtitleStylePresetsSettings.tsx, not owned solely by VideoPreview. */
+
+/* Deliberately smaller/quieter than the primary Play button above it (2026-07-11 hierarchy fix,
+   QA finding: this secondary playback-mode setting was rendering visually larger than Play, which
+   inverts the row's hierarchy). `.plain-button`'s own padding/font-size come from the ambient body
+   font-size (15px) with no cap, which is bigger than Astryx Button's own sm size (14px/28px) - so
+   this pair needs its own smaller sizing rather than just inheriting `.plain-button` as-is. The
+   border stays present (for the `.active` state below to color) but transparent by default, so an
+   unselected segment reads quieter without shifting box size when it becomes selected. */
+.playmode-toggle button {
+  padding: 3px 9px;
+  font-size: 12px;
+  border-color: transparent;
+  color: var(--text-tertiary);
+}
 
 .playmode-toggle button.active {
   border-color: var(--accent);
   background: var(--surface-3);
+  color: var(--text-primary);
 }
 
 /* Live overlay on the video to the right during inline subtitle editing (a rough CSS approximation

@@ -249,119 +249,134 @@ export function MomentPalette({
                         {rejectedLabel}
                       </div>
                     ) : null}
-                    {/* Astryx composition (2026-07-09, replaces the earlier hand-rolled .moment-thumb):
-                        Thumbnail (Astryx) is fixed-square with no overlay slot at all, so it never fit this
-                        card (16:9 frame + number chip + status badge). AspectRatio(16/9) + Overlay
-                        (position="top", scrim off so it doesn't dim the frame) is the documented
-                        composition instead — Overlay's own "top" content region replaces the old
-                        absolutely-positioned .moment-thumb-overlay div, so the chip/badge row itself no
-                        longer needs position/top/left, just flex layout. The row stays flex-wrap
-                        (space-between) so a long clip folder name still wraps the badge to the next line
-                        instead of overlapping or truncating it (2026-07-08 feedback). The index/timestamp
-                        chip stays a plain styled span, not a Badge — it's a caption of "which clip/where",
-                        not a status with color semantics, so Badge would be a semantic mismatch; the "in
-                        use" indicator IS a status, so that one is a real Badge (variant="success"). */}
-                    <Overlay
-                      scrim={false}
-                      showOn="always"
-                      position="top"
-                      content={
-                        <div {...stylex.props(styles.overlayRow)}>
-                          <span {...stylex.props(styles.number)}>
-                            {card.clipFolder} · {card.inS.toFixed(1)}s
-                          </span>
-                          {inUse ? (
-                            <Badge
-                              variant="success"
-                              label={`In use - cut ${cutNumber}`}
-                              className={stylex.props(styles.badgeInUse).className}
-                            />
+                    {/* Horizontal card layout (2026-07-11 QA fix - researched convention: Premiere's
+                        bin thumbnail view / Final Cut's event browser / DaVinci's media pool all lay
+                        out a clip card as thumbnail-left-at-a-usable-size + metadata-stacked-right,
+                        rather than a small thumbnail crammed above a narrow column, so previously-
+                        168px-wide cards read as "too small" - adopted as-is (CLAUDE.md "no invented
+                        UI patterns"). `thumbCol` fixes the thumbnail to its own wider column instead
+                        of letting AspectRatio's own `width: 100%` size it to the whole (now much
+                        wider) card; `cardRow` is the plain horizontal flex wrapper. The status banner
+                        above stays OUTSIDE this row (full card width, on its own line) per the
+                        existing exclusion-banner rule - only the thumbnail+body pairing goes
+                        side by side. */}
+                    <div {...stylex.props(styles.cardRow)}>
+                      {/* Astryx composition (2026-07-09, replaces the earlier hand-rolled .moment-thumb):
+                          Thumbnail (Astryx) is fixed-square with no overlay slot at all, so it never fit this
+                          card (16:9 frame + number chip + status badge). AspectRatio(16/9) + Overlay
+                          (position="top", scrim off so it doesn't dim the frame) is the documented
+                          composition instead — Overlay's own "top" content region replaces the old
+                          absolutely-positioned .moment-thumb-overlay div, so the chip/badge row itself no
+                          longer needs position/top/left, just flex layout. The row stays flex-wrap
+                          (space-between) so a long clip folder name still wraps the badge to the next line
+                          instead of overlapping or truncating it (2026-07-08 feedback). The index/timestamp
+                          chip stays a plain styled span, not a Badge — it's a caption of "which clip/where",
+                          not a status with color semantics, so Badge would be a semantic mismatch; the "in
+                          use" indicator IS a status, so that one is a real Badge (variant="success"). */}
+                      <div {...stylex.props(styles.thumbCol)}>
+                        <Overlay
+                          scrim={false}
+                          showOn="always"
+                          position="top"
+                          content={
+                            <div {...stylex.props(styles.overlayRow)}>
+                              <span {...stylex.props(styles.number)}>
+                                {card.clipFolder} · {card.inS.toFixed(1)}s
+                              </span>
+                              {inUse ? (
+                                <Badge
+                                  variant="success"
+                                  label={`In use - cut ${cutNumber}`}
+                                  className={stylex.props(styles.badgeInUse).className}
+                                />
+                              ) : null}
+                            </div>
+                          }
+                        >
+                          <AspectRatio ratio={16 / 9}>
+                            {frame ? (
+                              <img
+                                src={`/draft-frames/${encodeURIComponent(card.clipFolder)}/${encodeURIComponent(frame)}`}
+                                alt=""
+                                style={{ objectFit: "cover", width: "100%", height: "100%" }}
+                              />
+                            ) : (
+                              <div {...stylex.props(styles.thumbEmpty)} />
+                            )}
+                          </AspectRatio>
+                        </Overlay>
+                      </div>
+                      {/* Card hierarchy (screen-spec section 2): thumbnail -> status badge (top,
+                          thumbnail overlay) -> scene description (full text, wrapping allowed) ->
+                          meta (shot type/duration/quality) -> actions. Since this screen is for
+                          "reading and picking" scenes, the description clamp was removed
+                          (maxLines={0} = no clamp). Card-internal spacing rules (screen-spec 0-1/0-2):
+                          consistent 12px padding plus a clear gap between groups (description/meta/
+                          actions) are handled entirely by cardBody. */}
+                      <div {...stylex.props(styles.cardBody)}>
+                        <div {...stylex.props(styles.memoWrap)}>
+                          <Text type="supporting" maxLines={0}>
+                            {displayMemo}
+                          </Text>
+                        </div>
+                        <div {...stylex.props(styles.info)}>
+                          <Badge variant={meta.badgeVariant} label={meta.label} />
+                          <span className="moment-duration">{(card.outS - card.inS).toFixed(1)}s</span>
+                          {card.quality != null ? (
+                            <span {...stylex.props(styles.quality)}>Quality {card.quality}/5</span>
                           ) : null}
                         </div>
-                      }
-                    >
-                      <AspectRatio ratio={16 / 9}>
-                        {frame ? (
-                          <img
-                            src={`/draft-frames/${encodeURIComponent(card.clipFolder)}/${encodeURIComponent(frame)}`}
-                            alt=""
-                            style={{ objectFit: "cover", width: "100%", height: "100%" }}
-                          />
-                        ) : (
-                          <div {...stylex.props(styles.thumbEmpty)} />
-                        )}
-                      </AspectRatio>
-                    </Overlay>
-                    {/* Card hierarchy (screen-spec section 2): thumbnail -> status badge (top,
-                        thumbnail overlay) -> scene description (full text, wrapping allowed) ->
-                        meta (shot type/duration/quality) -> actions. Since this screen is for
-                        "reading and picking" scenes, the description clamp was removed
-                        (maxLines={0} = no clamp). Card-internal spacing rules (screen-spec 0-1/0-2):
-                        consistent 12px padding plus a clear gap between groups (description/meta/
-                        actions) are handled entirely by cardBody. */}
-                    <div {...stylex.props(styles.cardBody)}>
-                      <div {...stylex.props(styles.memoWrap)}>
-                        <Text type="supporting" maxLines={0}>
-                          {displayMemo}
-                        </Text>
-                      </div>
-                      <div {...stylex.props(styles.info)}>
-                        <Badge variant={meta.badgeVariant} label={meta.label} />
-                        <span className="moment-duration">{(card.outS - card.inS).toFixed(1)}s</span>
-                        {card.quality != null ? (
-                          <span {...stylex.props(styles.quality)}>Quality {card.quality}/5</span>
-                        ) : null}
-                      </div>
-                      <div {...stylex.props(styles.actionsGroup)}>
-                        {/* Single state-driven toggle (2026-07-09 diagnosed fix) replaces the old
-                            Add/Remove pair (one button always visually disabled, the other hidden
-                            via a same-space "placeholder" class) - one action, one button, the
-                            label/variant flips with whether the card is already added. Excluded
-                            (auto-filtered) cards keep the same confirm-before-adding flow either
-                            way (handleAdd's face-policy check runs regardless of this button). */}
-                        <div {...stylex.props(styles.cardActions)}>
-                          <SceneCardButton
-                            label={inUse ? "Remove" : "Add"}
-                            variant={inUse ? "destructive" : "primary"}
-                            size="sm"
-                            onClick={() =>
-                              inUse ? onRemoveSegment(card.clipFileName, card.inS, card.outS) : handleAdd(card)
-                            }
-                            data-testid={`palette-card-toggle-${card.key}`}
-                          />
-                        </div>
-                        {/* Set-as-intro/outro labels shortened "Set as intro/outro" -> "Set
-                            intro/outro" (2026-07-09 diagnosed fix) - the longer phrase truncated
-                            in this row's ~equal-width slot on typical card widths; the full
-                            meaning stays available via the tooltip. Kept as a same-row pair
-                            (screen-spec rule 0-4, "pairs sit side by side") rather than icons -
-                            introducing icon glyphs with no existing icon system in this app would
-                            be a bigger, separate call. */}
-                        <div {...stylex.props(styles.ioActions)}>
-                          <IntroOutroButton
-                            label={isIntro ? "Intro set" : "Set intro"}
-                            size="sm"
-                            active={isIntro}
-                            isDisabled={tooLongForIntroOutro}
-                            tooltip={
-                              introOutroDisabledTitle ??
-                              "Sets this whole clip as the intro (no range - the entire clip is inserted)"
-                            }
-                            onClick={() => onSetIntro(card.clipFileName)}
-                            data-testid={`palette-card-set-intro-${card.key}`}
-                          />
-                          <IntroOutroButton
-                            label={isOutro ? "Outro set" : "Set outro"}
-                            size="sm"
-                            active={isOutro}
-                            isDisabled={tooLongForIntroOutro}
-                            tooltip={
-                              introOutroDisabledTitle ??
-                              "Sets this whole clip as the outro (no range - the entire clip is inserted)"
-                            }
-                            onClick={() => onSetOutro(card.clipFileName)}
-                            data-testid={`palette-card-set-outro-${card.key}`}
-                          />
+                        <div {...stylex.props(styles.actionsGroup)}>
+                          {/* Single state-driven toggle (2026-07-09 diagnosed fix) replaces the old
+                              Add/Remove pair (one button always visually disabled, the other hidden
+                              via a same-space "placeholder" class) - one action, one button, the
+                              label/variant flips with whether the card is already added. Excluded
+                              (auto-filtered) cards keep the same confirm-before-adding flow either
+                              way (handleAdd's face-policy check runs regardless of this button). */}
+                          <div {...stylex.props(styles.cardActions)}>
+                            <SceneCardButton
+                              label={inUse ? "Remove" : "Add"}
+                              variant={inUse ? "destructive" : "primary"}
+                              size="sm"
+                              onClick={() =>
+                                inUse ? onRemoveSegment(card.clipFileName, card.inS, card.outS) : handleAdd(card)
+                              }
+                              data-testid={`palette-card-toggle-${card.key}`}
+                            />
+                          </div>
+                          {/* Set-as-intro/outro labels shortened "Set as intro/outro" -> "Set
+                              intro/outro" (2026-07-09 diagnosed fix) - the longer phrase truncated
+                              in this row's ~equal-width slot on typical card widths; the full
+                              meaning stays available via the tooltip. Kept as a same-row pair
+                              (screen-spec rule 0-4, "pairs sit side by side") rather than icons -
+                              introducing icon glyphs with no existing icon system in this app would
+                              be a bigger, separate call. */}
+                          <div {...stylex.props(styles.ioActions)}>
+                            <IntroOutroButton
+                              label={isIntro ? "Intro set" : "Set intro"}
+                              size="sm"
+                              active={isIntro}
+                              isDisabled={tooLongForIntroOutro}
+                              tooltip={
+                                introOutroDisabledTitle ??
+                                "Sets this whole clip as the intro (no range - the entire clip is inserted)"
+                              }
+                              onClick={() => onSetIntro(card.clipFileName)}
+                              data-testid={`palette-card-set-intro-${card.key}`}
+                            />
+                            <IntroOutroButton
+                              label={isOutro ? "Outro set" : "Set outro"}
+                              size="sm"
+                              active={isOutro}
+                              isDisabled={tooLongForIntroOutro}
+                              tooltip={
+                                introOutroDisabledTitle ??
+                                "Sets this whole clip as the outro (no range - the entire clip is inserted)"
+                              }
+                              onClick={() => onSetOutro(card.clipFileName)}
+                              data-testid={`palette-card-set-outro-${card.key}`}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>

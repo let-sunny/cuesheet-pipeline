@@ -129,6 +129,24 @@ describe("VideoPreview", () => {
     expect(screen.getByText(/processing now/)).not.toBeNull();
   });
 
+  it("flips the play/pause control's label and action with the video's actual play state (2026-07-11 QA fix - previously stuck on Play, with no way to pause from the button)", async () => {
+    const { container } = render(<VideoPreview {...baseProps()} />);
+    const video = container.querySelector("video")!;
+    const button = screen.getByTestId("video-control-play");
+    expect(button.textContent).toBe("Play");
+
+    fireEvent.click(button);
+    // jsdom's play()/pause() stubs (see beforeAll above) don't dispatch play/pause events on their
+    // own the way a real browser does - dispatch it manually to simulate that, same pattern as the
+    // video error-event tests above (which likewise await the resulting state update via waitFor).
+    video.dispatchEvent(new Event("play"));
+    await waitFor(() => expect(screen.getByTestId("video-control-play").textContent).toBe("Pause"));
+
+    fireEvent.click(screen.getByTestId("video-control-play"));
+    video.dispatchEvent(new Event("pause"));
+    await waitFor(() => expect(screen.getByTestId("video-control-play").textContent).toBe("Play"));
+  });
+
   it("toggles the active playmode button between Loop range and Full clip", () => {
     render(<VideoPreview {...baseProps()} />);
     const loopButton = screen.getByTestId("video-playmode-loop");

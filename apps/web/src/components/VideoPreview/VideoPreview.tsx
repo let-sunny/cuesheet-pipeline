@@ -94,6 +94,11 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number } | null>(null);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
+  // Drives the playback-controls button's Play/Pause label - kept in sync with the <video>
+  // element's own play/pause events (below) rather than tracked independently, so it can never
+  // drift from what's actually playing (e.g. when the shuttle's reverse-playback loop pauses the
+  // element on its own).
+  const [isPlaying, setIsPlaying] = useState(false);
   // TrimStrip's own current viewport (seconds) - purely for the "Now/In/Out" readout below to
   // also show the visible range while zoomed in; TrimStrip owns the actual viewport state.
   const [viewport, setViewport] = useState<TrimWindow>({ start: 0, end: 0 });
@@ -126,6 +131,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     setMissingKind(null);
     setDuration(0);
     setCurrentTime(0);
+    setIsPlaying(false);
   }, [segment?.clip]);
 
   // When the selected cut changes, discard any in-progress crop edit (a draft based on a
@@ -237,13 +243,21 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
         video.currentTime = segment.in;
       }
     };
+    // Reflects the element's actual playing state (not just what handlePlay/handlePause think it
+    // is) - also catches the shuttle's reverse-playback loop pausing the video on its own.
+    const handlePlayEvent = () => setIsPlaying(true);
+    const handlePauseEvent = () => setIsPlaying(false);
     video.addEventListener("loadedmetadata", handleLoadedMetadata);
     video.addEventListener("timeupdate", handleTimeUpdate);
+    video.addEventListener("play", handlePlayEvent);
+    video.addEventListener("pause", handlePauseEvent);
     video.playbackRate = Math.min(segment.speed, MAX_PLAYBACK_RATE);
     video.volume = segment.volume;
     return () => {
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
       video.removeEventListener("timeupdate", handleTimeUpdate);
+      video.removeEventListener("play", handlePlayEvent);
+      video.removeEventListener("pause", handlePauseEvent);
     };
   }, [segment, playMode]);
 
@@ -281,6 +295,15 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     video.playbackRate = Math.min(segment.speed, MAX_PLAYBACK_RATE);
     video.volume = segment.volume;
     void video.play().catch(() => {});
+  };
+
+  const handlePause = () => {
+    const video = videoRef.current;
+    if (!video) {
+      return;
+    }
+    resetShuttle();
+    video.pause();
   };
 
   const handleSetIn = () => {
@@ -344,8 +367,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
         if (video.paused) {
           handlePlay();
         } else {
-          resetShuttle();
-          video.pause();
+          handlePause();
         }
       },
       seekBy: (deltaSeconds: number) => {
@@ -541,7 +563,13 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
 
           {/* Playback controls — a single row attached directly below the video(+scrub) (screen-spec section 3). */}
           <div {...stylex.props(styles.videoControlsRow)}>
-            <Button label="Play" variant="primary" size="sm" onClick={handlePlay} data-testid="video-control-play" />
+            <Button
+              label={isPlaying ? "Pause" : "Play"}
+              variant="primary"
+              size="sm"
+              onClick={isPlaying ? handlePause : handlePlay}
+              data-testid="video-control-play"
+            />
             <Button
               label="Set In here"
               variant="secondary"
@@ -575,8 +603,17 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
           </div>
 
           {/* `playmode-toggle` stays alongside the StyleX class as a marker so the
-              `.playmode-toggle button.active` descendant-selector exception (styles.css) keeps
-              matching - see VideoPreview.styles.ts's file comment. */}
+              `.playmode-toggle button` / `.playmode-toggle button.active` descendant-selector
+              exceptions (styles.css) keep matching - see VideoPreview.styles.ts's file comment.
+              Sized deliberately smaller/quieter than the primary Play button above (2026-07-11
+              hierarchy fix) - this is a secondary playback setting, not the primary action of this
+              control area, so it must never read as visually bigger than Play. Astryx's
+              SegmentedControl/SegmentedControlItem would be the researched primitive for this
+              exact "grouped toggle" shape, but SegmentedControlItem's implementation destructures a
+              fixed prop list with no `...rest` capture (confirmed by reading its source), so a
+              data-testid passed to it is silently dropped - same footgun CLAUDE.md documents for
+              CheckboxInput - which would break the video-playmode-loop/free testids this toggle
+              needs to keep. Kept as the existing plain-button pair, restyled down instead. */}
           <div className={`playmode-toggle ${stylex.props(styles.playModeToggle).className}`}>
             <button
               type="button"

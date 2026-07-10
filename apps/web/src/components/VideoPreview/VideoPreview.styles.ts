@@ -12,14 +12,14 @@ import * as stylex from "@stylexjs/stylex";
  *   deliberately render the exact same classes for their own live-preview stages so the preview
  *   never drifts from this component's real overlay (see SubtitleStyleSettings.tsx's file
  *   comment). Not owned solely by this component.
- * - `.playmode-toggle button.active` — this button also carries the `.plain-button` marker class,
- *   and overrides two of its properties (background/border-color) at higher specificity (a
- *   descendant class+class+tag selector), same root cause as HeaderBar's theme toggle / Compact-
- *   SegmentList's compact-list-actions button - StyleX can't express that specificity edge. The
- *   wrapper's own layout (`.playmode-toggle`'s flex/gap, below as `playModeToggle`) still moves to
- *   StyleX - the div keeps both the plain `playmode-toggle` className *and* the StyleX class so the
- *   descendant selector keeps matching (same hybrid pattern as CompactSegmentList's
- *   `compact-list-actions`).
+ * - `.playmode-toggle button` (+ `.active`) — this button also carries the `.plain-button` marker
+ *   class, and overrides several of its properties (padding/font-size/color, plus background/
+ *   border-color on `.active`) at higher specificity (a descendant class+tag selector, class+
+ *   class+tag for `.active`), same root cause as HeaderBar's theme toggle / CompactSegmentList's
+ *   compact-list-actions button - StyleX can't express that specificity edge. The wrapper's own
+ *   layout (`.playmode-toggle`'s flex/gap, below as `playModeToggle`) still moves to StyleX - the
+ *   div keeps both the plain `playmode-toggle` className *and* the StyleX class so the descendant
+ *   selectors keep matching (same hybrid pattern as CompactSegmentList's `compact-list-actions`).
  * - `.empty` (the "can't find the source" message) — shared with IntroOutroEditor.tsx (both render
  *   the same generic missing-source message). Not owned solely by this component.
  *

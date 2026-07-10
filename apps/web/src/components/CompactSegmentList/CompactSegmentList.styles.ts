@@ -158,15 +158,6 @@ export const styles = stylex.create({
     fontSize: 13,
     color: "var(--text-secondary)",
   },
-  thumb: {
-    flexGrow: 0,
-    flexShrink: 0,
-    flexBasis: "auto",
-    width: 40,
-    height: 23,
-    borderRadius: 3,
-    overflow: "hidden",
-  },
   text: {
     flexGrow: 1,
     flexShrink: 1,

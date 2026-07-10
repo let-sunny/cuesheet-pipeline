@@ -62,6 +62,13 @@ steady (clean) state; the header's own group has its own state-dependent primary
 [Category filter row][Status filter row (All / In use only / Excluded only)]
 [Candidate grid — cards]
 ```
+**Horizontal card layout (2026-07-11 QA fix)**: cards changed from thumbnail-stacked-on-top to a
+**horizontal card** — a larger thumbnail column on the left, metadata stacked on the right — per
+the researched convention (Premiere's bin thumbnail view, Final Cut's event browser, DaVinci's
+media pool all lay clip cards out this way; no invented UI patterns, CLAUDE.md). The full-width
+exclusion-reason banner (item b below) stays above this left/right split, spanning the whole card,
+unchanged from before.
+
 Card-internal hierarchy: thumbnail -> status badge (in-use / excluded reason) -> scene
 description (full text, not clamped — this screen exists to read the description and
 choose, so it must never be truncated) -> metadata (clip, timestamp, shot type, quality) ->
@@ -117,18 +124,38 @@ metadata text keep full contrast (not dimmed).
 ```
 [Timeline (zoom controls at the far right)]
 [Play all button]
-[BGM gutter header: collapse toggle + count badge | + Add track]
+[BGM section header: chevron + "Background music" (+count) ..... + Add track]
 +gu+- Cut list -----------+ +- Video column (sticky) ------------+
-|tt| row: thumbnail|       | | scene header (#n, badge, desc)     |
-|er| subtitle (inline)     | | video (reframe, subtitle overlay)  |
-|  |   |scene line|badge   | | TrimStrip (filmstrip, drag In/Out) |
+|tt| row: subtitle (inline)| | scene header (#n, badge, desc)     |
+|er|   |scene line|badge   | | video (reframe, subtitle overlay)  |
+|  |                        | | TrimStrip (filmstrip, drag In/Out) |
 |  |                        | |   zoom row (-/Fit cut/Fit clip/+)  |
 |  |                        | |   pan control (only while zoomed)  |
-|  |                        | | playback controls (one row: play,  |
-|  |                        | |   In, Out, split — hugs the video) |
+|  |                        | | playback controls (one row: Play/  |
+|  |                        | |   Pause, In, Out, split, capture)  |
+|  |                        | |   playback-mode toggle (secondary, |
+|  |                        | |   smaller than Play — Loop/Full)   |
 |  |                        | +- Cut settings OR BGM settings -----+
 +--+------------------------+   (right column swaps per selection)
 ```
+
+**No thumbnail in the cut list row (2026-07-11 QA fix)**: the row's subtitle text + scene
+description already identify the cut, and clicking a row shows it in the right-side VideoPreview,
+so the thumbnail was redundant width on a compact list whose whole point is fitting beside the
+video column. The freed ~50px (thumbnail + its gap) goes to the subtitle text column. The Scenes
+step's cards (section 2) keep thumbnails — that screen has no right-side preview to fall back on.
+
+**Play/Pause + control-row hierarchy (2026-07-11 QA fix)**: the playback-controls Play button now
+reflects actual `<video>` play state (label/action flip to Pause while playing) instead of only
+ever offering Play — previously there was no way to stop playback from this row. The playback-mode
+toggle (Loop range / Full clip) below it is a secondary setting, not this area's primary action, so
+it's sized and colored quieter than the primary Play/Pause button (never visually larger than it).
+
+**BGM section header (2026-07-11 QA fix)**: restyled onto the standard collapsible-section-header
+convention (Notion toggle / VS Code sidebar section) — a small, quiet chevron + title on the left,
+"+ Add track" as the section's action on the right of the same header line. The header row's own
+height is independent of collapsed/track-count state; only the vertical BGM gutter's *width*
+(a lane strip beside the cut list, not a block above/below it) changes with collapse.
 
 **BGM gutter (2026-07-09, replaces the earlier "Timeline · Background music (BGM)" section
 that lived in the Export step)**: background music editing moved next to the cut list because
@@ -235,6 +262,12 @@ With these three changes, at 1280x800 the cut list (300px) + video (480px min) +
 the video column via its own `flexGrow`.
 
 ## 4. Cut settings group definitions (fixed order and layout)
+
+**No panel title (2026-07-11 QA fix)**: the "Cut settings" `<h2>` above G1 was removed — the
+panel's context is already obvious while scrolling vertically through it (`data-testid="cut-
+settings-panel"` stays as the stable test hook, just with no visible title). G1 now sits at the
+panel's own top padding via the pre-existing `.qf-group:first-child` rule, which already zeroed a
+first group's own top padding/divider for exactly this case.
 
 **G1. Range** — one row: `In [narrow] Out [narrow] Length 12.3s (read-only)`
 **G2. Playback** — one row: `Speed [narrow]x Volume [narrow]%` (paired alignment, never
@@ -386,6 +419,15 @@ Buttons that belong to one group render inside one container (not spread across 
 stay visually together, and action groups in banners/dialog footers are right-aligned.
 
 ## Changelog
+- 2026-07-11 — live-testing QA round, six fixes: (1) Edit-tab video controls' Play button now
+  reflects real play state (flips to Pause, section 3); (2) the cut list row's thumbnail removed
+  (section 3) - subtitle/scene text + the right-side VideoPreview already identify the cut; (3)
+  Scenes cards (section 2) changed to a horizontal thumbnail-left/metadata-right layout with a
+  larger thumbnail, per the researched clip-browser convention; (4) the playback-mode toggle
+  (Loop range/Full clip) restyled smaller/quieter than the primary Play/Pause button, fixing an
+  inverted hierarchy; (5) the "Cut settings" panel title removed (section 4) - the panel's context
+  is already obvious while scrolling; (6) the BGM section header restyled onto the standard
+  collapsible-section-header convention (chevron + title left, "+ Add track" right, section 3).
 - 2026-07-10 — 13-inch density pass (section 3): established **1280x800/1440x900** as this app's
   baseline viewports. The (2) Edit step's cut list column narrowed 480px -> 300px (its row's
   time/badge/actions moved onto a second line to compensate) and the cut settings column narrowed

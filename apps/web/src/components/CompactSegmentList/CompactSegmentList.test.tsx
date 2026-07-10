@@ -6,14 +6,9 @@ import type { BgmCue, Segment } from "@cuesheet/schema";
 import type { ClipMoments } from "../../api.js";
 import { CompactSegmentList } from "./CompactSegmentList.js";
 
-// jsdom doesn't implement IntersectionObserver (SegmentThumb) or scrollIntoView (the
-// selected-row-scroll effect) - stub both so rendering doesn't throw.
+// jsdom doesn't implement scrollIntoView (the selected-row-scroll effect) - stub it so
+// rendering doesn't throw.
 beforeAll(() => {
-  (globalThis as { IntersectionObserver?: unknown }).IntersectionObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
   HTMLElement.prototype.scrollIntoView = () => {};
 });
 
@@ -55,6 +50,12 @@ describe("CompactSegmentList", () => {
     render(<CompactSegmentList {...baseProps()} />);
     expect(screen.getByText("1")).not.toBeNull();
     expect(screen.getByText("2")).not.toBeNull();
+  });
+
+  it("renders no thumbnail image in a cut row (2026-07-11 QA fix - subtitle/scene text + the right-side VideoPreview already identify the cut)", () => {
+    render(<CompactSegmentList {...baseProps()} />);
+    const row = screen.getByTestId("cut-row-0");
+    expect(row.querySelector("img")).toBeNull();
   });
 
   it("marks the selected row (className carries the selected variant)", () => {

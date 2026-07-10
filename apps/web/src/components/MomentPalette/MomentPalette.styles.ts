@@ -66,17 +66,40 @@ export const styles = stylex.create({
     // same row. Each row independently (not masonry) takes only its own content's height.
     alignItems: "flex-start",
   },
+  // 168 -> 440 (2026-07-11 QA fix, horizontal card layout - see cardRow/thumbCol below): a
+  // stacked-thumbnail-on-top card could stay narrow, but a horizontal thumbnail+metadata pairing
+  // needs enough width for the thumbnail column to actually read as "larger", per the researched
+  // convention (Premiere bin / Final Cut event browser / DaVinci media pool).
   cardWrap: {
-    width: 168,
+    width: 440,
   },
   // Background/border/rounded corners are handled by Astryx Card (variant="default") - this only
-  // adds size/layout within the grid and overflow-hidden (for clipping the thumbnail's top
-  // corners).
+  // adds size/layout within the grid and overflow-hidden (for clipping the thumbnail's corners).
   card: {
     width: "100%",
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
+  },
+  // Horizontal split (2026-07-11 QA fix): thumbnail column + metadata body side by side, below the
+  // full-width exclusion banner (which stays a sibling of this row, not inside it, so it keeps
+  // spanning the whole card). `alignItems: flex-start` (not `stretch`) deliberately leaves the
+  // thumbnail's own 16:9 aspect-ratio height alone rather than forcing it to match the body's
+  // (variable, description-length-dependent) height.
+  cardRow: {
+    display: "flex",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    width: "100%",
+  },
+  // Fixes the thumbnail to its own column instead of letting AspectRatio's own `width: 100%` size
+  // it to the whole (now much wider) card - a ~45% share of the card, matching the researched
+  // convention's proportions.
+  thumbCol: {
+    flexGrow: 0,
+    flexShrink: 0,
+    flexBasis: 200,
+    minWidth: 0,
   },
   // Rules for representing excluded (auto-filtered) card and in-use card state (screen-spec
   // section 2) - both a full-opacity dimming and a thumbnail-only desaturation were abandoned
@@ -163,10 +186,14 @@ export const styles = stylex.create({
     fontSize: 13,
     color: "var(--text-tertiary)",
   },
-  // Container for the card's internal hierarchy (screen-spec section 2) - below the thumbnail
-  // (full width, no padding), lays out the description/meta/action three groups with consistent
-  // padding + a clear gap between groups.
+  // Container for the card's internal hierarchy (screen-spec section 2) - to the right of the
+  // thumbnail column (2026-07-11 QA fix, horizontal layout), lays out the description/meta/action
+  // three groups with consistent padding + a clear gap between groups. flexGrow fills the row's
+  // remaining width; the left padding is what creates the visual gap from the thumbnail (no
+  // separate gap needed on cardRow).
   cardBody: {
+    flexGrow: 1,
+    minWidth: 0,
     display: "flex",
     flexDirection: "column",
     gap: 10,
@@ -187,11 +214,12 @@ export const styles = stylex.create({
     display: "flex",
     gap: 6,
   },
-  // Stacked (not side by side): at the card's 168px width (144px after cardBody's 12px padding),
-  // two side-by-side buttons only get ~69px each and Button's label doesn't wrap - "Set as intro"/
-  // "Set as outro" would truncate to unreadable fragments. Stacking (full 144px per button) is the
-  // safe layout, consistent with this component's "wrap over truncate/overlap" rule used elsewhere
-  // (overlayRow, info).
+  // Stacked (not side by side): left unchanged by the 2026-07-11 horizontal-card rework (that
+  // changed the card's overall width/orientation, not this group's own layout risk) - cardBody's
+  // own content width (~216px, after thumbCol and padding) still isn't comfortably measured for two
+  // side-by-side buttons without real-browser verification, same caution as the original 168px-wide
+  // card. Stacking (full content width per button) stays the safe layout, consistent with this
+  // component's "wrap over truncate/overlap" rule used elsewhere (overlayRow, info).
   ioActions: {
     display: "flex",
     flexDirection: "column",

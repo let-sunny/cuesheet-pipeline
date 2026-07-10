@@ -9,7 +9,6 @@ import { assignBgmLanes, laneCount } from "../../lib/bgmLanes.js";
 import { extendBgmDrag, resolveRowIndexFromBounds, startBgmDrag } from "../../lib/bgmTrackDrag.js";
 import type { BgmDragMode, BgmDragState } from "../../lib/bgmTrackDrag.js";
 import { matchSceneInfo, shotTypeLabel } from "../../lib/sceneInfo.js";
-import { SegmentThumb } from "../SegmentThumb/index.js";
 import { styles } from "./CompactSegmentList.styles.js";
 
 interface Props {
@@ -34,10 +33,15 @@ interface Props {
 
 /**
  * Left-side cut list for the Edit step (②) — combined touch-up/bulk-write mode. Alongside
- * the number/thumbnail, a textarea for editing the subtitle right there is always visible
+ * the row number, a textarea for editing the subtitle right there is always visible
  * (clicking/focusing a row selects that cut, and the video/fields on the right follow it),
  * and Tab/Shift+Tab moves to the next/previous cut's subtitle input, supporting a bulk-writing
- * flow. The 2nd line shows the rough-cut vision-read scene description (memo).
+ * flow. The 2nd line shows the rough-cut vision-read scene description (memo). No thumbnail here
+ * (2026-07-11 QA fix) — the subtitle text + scene description already identify the cut, and
+ * clicking a row shows it in the right-side VideoPreview, so a thumbnail was redundant width
+ * spent on a compact list whose whole point is fitting beside the video column (the Scenes tab's
+ * MomentPalette cards are where thumbnails still earn their keep, since that screen has no
+ * right-side preview to fall back on).
  *
  * A collapsible BGM gutter sits to the left of the list (screen-spec section 3) — each bgm cue
  * renders as a vertical bar spanning the cut rows it covers, anchored to cut boundaries (not
@@ -156,7 +160,11 @@ export function CompactSegmentList({
   const cumStart = cumulativeCutStarts(segments);
   const laneItems = assignBgmLanes(bgm, cumStart);
   const lanes = Math.max(1, laneCount(laneItems));
-  const gutterWidth = bgmGutterCollapsed ? BGM_GUTTER_COLLAPSED_WIDTH : lanes * BGM_LANE_TOTAL_WIDTH;
+  // Collapsed OR no tracks yet both fall back to the thin collapsed width (2026-07-11 QA fix) -
+  // with 0 tracks, `lanes` still reserved a full lane's width (`Math.max(1, ...)`, needed so a
+  // single bar has somewhere to sit once one exists) for an empty strip with nothing to show.
+  const gutterWidth =
+    bgmGutterCollapsed || bgm.length === 0 ? BGM_GUTTER_COLLAPSED_WIDTH : lanes * BGM_LANE_TOTAL_WIDTH;
 
   const rowIndexAtClientY = (clientY: number): number => {
     const bottoms = rowDivRefs.current.map((el) => el?.getBoundingClientRect().bottom ?? null);
@@ -315,7 +323,6 @@ export function CompactSegmentList({
                 data-testid={`cut-row-${i}`}
               >
                 <span {...stylex.props(styles.index)}>{i + 1}</span>
-                <SegmentThumb clip={seg.clip} t={seg.in + 0.3} className={stylex.props(styles.thumb).className} />
                 <div {...stylex.props(styles.text)}>
                   {/* Fixed 2-line height with internal scroll (QA finding 2026-07-10) - this row
                       is a compact quick-edit surface, not the primary place to write long
