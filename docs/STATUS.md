@@ -16,7 +16,7 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 
 | Location | Role | Status |
 |---|---|---|
-| `packages/schema` | Cuesheet types + validation (contract's center, zod) | Stable. 42 tests |
+| `packages/schema` | Cuesheet types + validation (contract's center, zod) | Stable. 82 tests |
 | `packages/bridge` | MCP server for Claude Code connection (natural-language editing) | Stable. 26 tests |
 | `packages/render` | Cuesheet -> ffmpeg render (CLI + buildRenderPlan, incl. two-pass title fallback) | Stable. 110 tests, verified with a real render |
 | `apps/web` | Touch-up editor: cut editing, timeline trimming (scrub/handles/split), full timeline + BGM drag, proxy playback, export button | Actively evolving |
@@ -34,6 +34,44 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 - **User editing grammar constants**: cut average 2.9s, finished length 4:30-5:30, coverage ~90%, shot vocabulary (hand closeup/object/cat/reveal/wearing) — reverse-engineered from 2 real edits
 - **Proxy playback**: original 4K HEVC can't play in-browser -> 720p H.264 proxy for preview, render uses the original
 - **iCloud rule**: must check `stat blocks=0` before reading source footage (reading a placeholder hangs forever), manage space with `brctl download/evict`
+
+## 2026-07-10: repair hints on validateCueSheet failures (issue #11)
+
+- **Goal**: where a validation failure has a mechanically computable fix, append it to the
+  error string as a `— <hint>` suffix, e.g. `segments[0].speed: speed must be <= 16 — clamp to
+  16`. Zero effect on what passes/fails - hints only change error message content.
+- **Design**: `packages/schema/src/hints.ts` exports a pure `deriveHint(issue)` that reads a
+  single zod issue and returns an optional suggestion string. Two rule families: (1) a generic
+  rule for any `too_small`/`too_big` issue with a numeric, INCLUSIVE bound (covers segment
+  in/out/speed/volume and, for free, every other clamp-shaped field in the schema - margin,
+  opacity, padding, fadeIn/OutS, title/transition durationS, ducking amount/fadeS, bgm volume,
+  narration.volume) -> `clamp to <bound>`; exclusive bounds (e.g. `speed > 0`) get no hint, since
+  the boundary value itself isn't legal there and there's no clean single value to suggest. (2)
+  two schema-specific `custom`-issue rules matched by path+message: project.width/height's "must
+  be even" refine -> `round to nearest even (<n-1> or <n+1>)`, and a segment's `in >= out` refine
+  when `in > out` -> `swap to in=<out>, out=<in>` (no hint when `in === out`, since swapping
+  wouldn't fix it and there's no other mechanical value). Presets/shape errors (wrong type,
+  missing key, unknown stylePreset name) are deliberately left alone - matches the issue's "do
+  not guess fixes needing human judgment" scope.
+- **Wiring**: `validateCueSheet` now calls `safeParse(json, { reportInput: true })` so
+  `issue.input` is available to the custom-issue rules (the swap/round-to-even hints need the
+  actual invalid value; the generic clamp rule doesn't, since the bound comes from the schema
+  itself). `formatIssue` appends the hint after the existing `fieldpath: reason` text, which is
+  untouched byte-for-byte - callers matching on that prefix (all three CLIs, the MCP bridge,
+  the web save endpoint) are unaffected since none of them assert the full error string exactly,
+  only `startsWith`/`toMatch`/`includes` on the reason portion. No consumer code changes were
+  needed - bridge/CLIs/web all just forward/join `errors: string[]` as-is, so the hint suffix
+  flows through automatically. `ValidationResult`'s shape is unchanged (`{ok:false, errors:
+  string[]}`); documented the new suffix convention in AGENTS.md instead of adding a field.
+- **Tests**: `packages/schema/test/hints.test.ts` (16 cases, one per rule branch incl. "no hint"
+  cases: inclusive/exclusive too_big/too_small, non-numeric bound, width/height even in both
+  directions, wrong field, missing input, in/out swap in both outcomes, wrong path, missing
+  input, unrelated custom issue, invalid_type, unrecognized_keys) + 5 new integration cases in
+  `validate.test.ts` asserting the exact end-to-end string for speed/volume/in-out/width and one
+  confirming no hint is added for the stylePreset shape error. `packages/schema`: 82/82 tests
+  passing (was 77 before this issue, all pre-existing tests unchanged and still green - none of
+  them assert an exact error string). `pnpm -r build`/`typecheck`/`test` and `pnpm check:repo`
+  all green repo-wide (bridge 26, draft 44, render 112, web 448 - all unaffected).
 
 ## 2026-07-10: bridge change-summary diff on `validate_cuesheet` (issue #10)
 

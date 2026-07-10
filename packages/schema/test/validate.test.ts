@@ -727,3 +727,73 @@ describe("validateCueSheet - failure cases", () => {
     }
   });
 });
+
+describe("validateCueSheet - repair hints (additive suffix, byte-stable field:reason prefix)", () => {
+  it("appends a clamp hint when speed exceeds the inclusive max of 16", () => {
+    const bad = {
+      ...(sample as Record<string, unknown>),
+      segments: [{ clip: "a.mp4", in: 0, out: 1, speed: 16.1, subtitle: "" }],
+    };
+    const result = validateCueSheet(bad);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      const line = result.errors.find((e) => e.startsWith("segments[0].speed:"));
+      expect(line).toBe("segments[0].speed: speed must be <= 16 — clamp to 16");
+    }
+  });
+
+  it("appends a clamp hint when volume exceeds the inclusive max of 1.0", () => {
+    const bad = {
+      ...(sample as Record<string, unknown>),
+      bgm: [{ file: "b.mp3", start: 0, end: 10, volume: 1.5 }],
+    };
+    const result = validateCueSheet(bad);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      const line = result.errors.find((e) => e.startsWith("bgm[0].volume:"));
+      expect(line).toContain(" — clamp to 1");
+    }
+  });
+
+  it("appends a swap hint when in > out", () => {
+    const bad = {
+      ...(sample as Record<string, unknown>),
+      segments: [{ clip: "a.mp4", in: 5, out: 3, speed: 1, subtitle: "" }],
+    };
+    const result = validateCueSheet(bad);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      const line = result.errors.find((e) => e.startsWith("segments[0].in:"));
+      expect(line).toBe("segments[0].in: in must be less than out (in < out) — swap to in=3, out=5");
+    }
+  });
+
+  it("appends a round-to-even hint when project.width is odd", () => {
+    const bad = {
+      ...(sample as Record<string, unknown>),
+      project: { ...(sample as { project: Record<string, unknown> }).project, width: 1921 },
+    };
+    const result = validateCueSheet(bad);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      const line = result.errors.find((e) => e.startsWith("project.width:"));
+      expect(line).toBe("project.width: must be even for video encoding — round to nearest even (1920 or 1922)");
+    }
+  });
+
+  it("gives no hint for a shape error that needs human judgment (unknown stylePreset name)", () => {
+    const bad = {
+      ...(sample as Record<string, unknown>),
+      subtitleStylePresets: { shout: { size: 60 } },
+      segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", stylePreset: "inner-voice" }],
+    };
+    const result = validateCueSheet(bad);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      const line = result.errors.find((e) => e.startsWith("segments[0].stylePreset:"));
+      expect(line).toBe(
+        'segments[0].stylePreset: stylePreset "inner-voice" does not reference an existing preset name',
+      );
+    }
+  });
+});

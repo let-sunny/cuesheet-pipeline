@@ -26,6 +26,12 @@ downstream ever reads anything else.
 - Every validation error string is `fieldpath: reason`, e.g. `segments[0].in: in must be less
   than out`. This format is consistent across the schema, both CLIs, the MCP bridge, and the
   web app's save endpoint — parse it the same way regardless of which layer produced it.
+  When a fix is mechanically computable (a numeric bound that can be clamped, an odd
+  width/height, `in >= out`), the string carries an additional ` — <hint>` suffix, e.g.
+  `segments[0].speed: speed must be <= 16 — clamp to 16`. The `fieldpath: reason` part before
+  the suffix never changes, so match on that prefix rather than the full string; the hint is
+  only ever a suggestion, not applied automatically (`{ok:false, errors: string[]}`'s shape is
+  unchanged — see `packages/schema/src/hints.ts`).
 - Units are seconds everywhere in the cuesheet (never frames); only `@cuesheet/render` converts
   to frames, using `project.fps`.
 - `segment.clip` is a filename only — the folder is the separate `clipDir` field, so moving the
