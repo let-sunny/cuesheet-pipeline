@@ -94,9 +94,36 @@ describe("cuesheet-draft CLI --json", () => {
       const stdoutLines = result.stdout.trim().split("\n").filter(Boolean);
       expect(stdoutLines).toHaveLength(1);
       const parsed = JSON.parse(stdoutLines[0] as string);
+      // Pins the exact documented envelope (AGENTS.md / README): exactly these 4 keys, no more.
+      expect(Object.keys(parsed).sort()).toEqual(["clips", "evicted", "frames", "manifestPath"].sort());
       expect(parsed).toMatchObject({ clips: 1, evicted: 0 });
+      expect(typeof parsed.frames).toBe("number");
       expect(parsed.frames).toBeGreaterThan(0);
+      expect(typeof parsed.manifestPath).toBe("string");
       expect(parsed.manifestPath).toContain("manifest.json");
+    } finally {
+      rmSync(srcDir, { recursive: true, force: true });
+      rmSync(workDir, { recursive: true, force: true });
+    }
+  }, 30_000);
+
+  it("scan (no --json) still succeeds and emits no JSON on stdout", () => {
+    const srcDir = mkdtempSync(join(tmpdir(), "cuesheet-draft-cli-scan-human-src-"));
+    const workDir = mkdtempSync(join(tmpdir(), "cuesheet-draft-cli-scan-human-work-"));
+    try {
+      execFileSync(
+        "ffmpeg",
+        ["-y", "-f", "lavfi", "-i", "testsrc=duration=2:size=64x36:rate=10", join(srcDir, "clip.mp4")],
+        { stdio: "ignore" },
+      );
+
+      const result = spawnSync("node", [cliPath, "scan", srcDir, "--out", workDir], {
+        encoding: "utf-8",
+      });
+
+      expect(result.status).toBe(0);
+      expect(result.stderr).toContain("Scan complete");
+      expect(result.stdout.trim()).toBe("");
     } finally {
       rmSync(srcDir, { recursive: true, force: true });
       rmSync(workDir, { recursive: true, force: true });
@@ -150,8 +177,117 @@ describe("cuesheet-draft CLI --json", () => {
       const stdoutLines = result.stdout.trim().split("\n").filter(Boolean);
       expect(stdoutLines).toHaveLength(1);
       const parsed = JSON.parse(stdoutLines[0] as string);
+      // Pins the exact documented envelope (AGENTS.md / README): exactly these 5 keys, no more.
+      expect(Object.keys(parsed).sort()).toEqual(
+        ["segments", "durationS", "connectors", "validationOk", "outPath"].sort(),
+      );
       expect(parsed).toMatchObject({ segments: 1, connectors: 0, validationOk: true, outPath });
+      expect(typeof parsed.durationS).toBe("number");
       expect(parsed.durationS).toBeGreaterThan(0);
+    } finally {
+      rmSync(workDir, { recursive: true, force: true });
+    }
+  }, 30_000);
+
+  it("assemble (no --json) still succeeds and emits no JSON on stdout", () => {
+    const workDir = mkdtempSync(join(tmpdir(), "cuesheet-draft-cli-assemble-human-"));
+    try {
+      const manifest: Manifest = {
+        clips: [{ name: "a.mp4", durS: 20, interval: 5, frames: [] }],
+        evicted: [],
+      };
+      const manifestPath = join(workDir, "manifest.json");
+      writeFileSync(manifestPath, JSON.stringify(manifest));
+
+      const moments: ClipMoments[] = [
+        {
+          clip: "a.mp4",
+          clipSummary: "요약",
+          moments: [{ inS: 2, outS: 5, shotType: "object", memo: "채택", quality: 5 }],
+          monotonousRanges: [],
+        },
+      ];
+      const momentsPath = join(workDir, "moments.json");
+      writeFileSync(momentsPath, JSON.stringify(moments));
+
+      const outPath = join(workDir, "out.cuesheet.json");
+      const result = spawnSync(
+        "node",
+        [
+          cliPath,
+          "assemble",
+          "--manifest",
+          manifestPath,
+          "--moments",
+          momentsPath,
+          "--clip-dir",
+          "/src",
+          "--project-name",
+          "테스트",
+          "--out",
+          outPath,
+        ],
+        { encoding: "utf-8" },
+      );
+
+      expect(result.status).toBe(0);
+      expect(result.stderr).toContain("Assembly complete");
+      expect(result.stdout.trim()).toBe("");
+      expect(existsSync(outPath)).toBe(true);
+    } finally {
+      rmSync(workDir, { recursive: true, force: true });
+    }
+  }, 30_000);
+
+  it("assemble --json fails on invalid moments.json: exit 1, field-path: reason on stderr, no stdout JSON", () => {
+    const workDir = mkdtempSync(join(tmpdir(), "cuesheet-draft-cli-assemble-invalid-"));
+    try {
+      const manifest: Manifest = {
+        clips: [{ name: "a.mp4", durS: 20, interval: 5, frames: [] }],
+        evicted: [],
+      };
+      const manifestPath = join(workDir, "manifest.json");
+      writeFileSync(manifestPath, JSON.stringify(manifest));
+
+      // quality must be a number per momentSchema - a string value fails momentsFileSchema.
+      const invalidMoments = [
+        {
+          clip: "a.mp4",
+          clipSummary: "요약",
+          moments: [{ inS: 2, outS: 5, shotType: "object", memo: "채택", quality: "high" }],
+          monotonousRanges: [],
+        },
+      ];
+      const momentsPath = join(workDir, "moments.json");
+      writeFileSync(momentsPath, JSON.stringify(invalidMoments));
+
+      const outPath = join(workDir, "out.cuesheet.json");
+      const result = spawnSync(
+        "node",
+        [
+          cliPath,
+          "assemble",
+          "--manifest",
+          manifestPath,
+          "--moments",
+          momentsPath,
+          "--clip-dir",
+          "/src",
+          "--project-name",
+          "테스트",
+          "--out",
+          outPath,
+          "--json",
+        ],
+        { encoding: "utf-8" },
+      );
+
+      expect(result.status).toBe(1);
+      expect(result.stderr).toContain("moments.json validation failed");
+      // field-path: reason format (e.g. "[0].moments[0].quality: ...")
+      expect(result.stderr).toMatch(/quality:.+/);
+      expect(result.stdout.trim()).toBe("");
+      expect(existsSync(outPath)).toBe(false);
     } finally {
       rmSync(workDir, { recursive: true, force: true });
     }
