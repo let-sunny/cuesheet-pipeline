@@ -49,6 +49,15 @@ test("a new track starts at cut 1, and its bar can be dragged (default placement
   // anchored to whichever cut happened to be selected, so it could start mid-list instead.
   await expect(page.getByTestId("bgm-field-start")).toHaveValue("1");
 
+  // Alignment regression guard (2026-07-10 fix): the bar's top edge must sit flush with its
+  // covered row's top edge (cut 1 = row 0 here). Before the fix, the bar rendered a large
+  // constant offset below every row it covered (a stale offsetTop-vs-gutter-containing-block
+  // coordinate mismatch - see CompactSegmentList.tsx's measureRows comment), so this would have
+  // failed regardless of which row the track actually started at.
+  const row0Top = (await page.getByTestId("cut-row-0").boundingBox())!.y;
+  const bar0TopAtCut1 = (await page.getByTestId("bgm-bar-0").boundingBox())!.y;
+  expect(Math.abs(bar0TopAtCut1 - row0Top)).toBeLessThanOrEqual(1);
+
   // Drag the end handle down to cut row 4 (index 4, cut 5) - the range readout should extend.
   const endHandle = page.getByTestId("bgm-bar-0-handle-end");
   await endHandle.scrollIntoViewIfNeeded();
@@ -87,4 +96,14 @@ test("a new track starts at cut 1, and its bar can be dragged (default placement
   const endAfter = Number(await page.getByTestId("bgm-field-end").inputValue());
   expect(startAfter).toBeGreaterThan(startBefore);
   expect(endAfter - startAfter).toBe(endBefore - startBefore);
+
+  // Mid-list alignment (same regression guard as the cut-1 case above, now for a track that no
+  // longer starts at cut 1): the bar's top must still track its actual covered row exactly, not
+  // just the original default position.
+  const midListRowIdx = startAfter - 1; // "Start" field is 1-based, row testids are 0-based.
+  const midRow = page.getByTestId(`cut-row-${midListRowIdx}`);
+  await midRow.scrollIntoViewIfNeeded();
+  const midRowTop = (await midRow.boundingBox())!.y;
+  const barTopMidList = (await bar.boundingBox())!.y;
+  expect(Math.abs(barTopMidList - midRowTop)).toBeLessThanOrEqual(1);
 });
