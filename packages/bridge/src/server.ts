@@ -4,12 +4,25 @@ import { buildCuesheetDiff } from "./diff.js";
 import { buildEditReceipt } from "./receipt.js";
 import { getCuesheet, getCuesheetJsonSchema, updateCuesheet, validateCuesheet } from "./store.js";
 
+/** Options controlling how {@link createServer} behaves. */
+export interface CreateServerOptions {
+  /**
+   * When true, `update_cuesheet` refuses every call with a structured error instead of writing —
+   * see issue #12. The tool stays registered (its description doesn't change per-mode, since MCP
+   * clients may cache `tools/list`) so a caller always gets a clear, actionable refusal rather
+   * than a "tool not found" dead end. Read/grounding tools (`get_cuesheet`, `validate_cuesheet`,
+   * `get_schema`) are unaffected — read-only mode never blocks them.
+   */
+  readOnly?: boolean;
+}
+
 /**
  * Builds the MCP server Claude Code connects to (see package README/AGENTS.md for the tool
  * surface). Split out from index.ts so tests can drive it over an in-memory transport instead
  * of spawning a stdio subprocess.
  */
-export function createServer(cuesheetPath: string): McpServer {
+export function createServer(cuesheetPath: string, options: CreateServerOptions = {}): McpServer {
+  const readOnly = options.readOnly ?? false;
   const server = new McpServer({ name: "cuesheet-bridge", version: "0.0.0" });
 
   server.registerTool(
@@ -42,13 +55,37 @@ export function createServer(cuesheetPath: string): McpServer {
         "they must match the project's aspect ratio (assumes a same-aspect source). On success, " +
         "the response carries a receipt ({segmentCount, durationS, warnings}) computed from the " +
         "cuesheet that was actually written, so you can confirm the edit landed as intended " +
-        "without a follow-up get_cuesheet call. " +
+        "without a follow-up get_cuesheet call. If the bridge is running in read-only mode " +
+        "(CUESHEET_BRIDGE_READONLY set), this call is refused with a structured error instead of " +
+        "writing — get_cuesheet/validate_cuesheet/get_schema remain usable. " +
         "Example: update_cuesheet({cuesheet: {...same shape as get_cuesheet's data, edited...}}) " +
         "-> {ok:true, receipt:{segmentCount:12, durationS:76.4, warnings:[]}} or a list of " +
         "field-path: reason errors (nothing is written on failure).",
       inputSchema: { cuesheet: z.record(z.string(), z.unknown()) },
     },
     async ({ cuesheet }) => {
+      if (readOnly) {
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  ok: false,
+                  errors: [
+                    "update_cuesheet: refused — the bridge is running in read-only mode " +
+                      "(CUESHEET_BRIDGE_READONLY is set). Unset CUESHEET_BRIDGE_READONLY (or set " +
+                      "it to 0) and restart the bridge to allow writes again.",
+                  ],
+                },
+                null,
+                2,
+              ),
+            },
+          ],
+          isError: true,
+        };
+      }
       const r = updateCuesheet(cuesheetPath, cuesheet);
       return {
         content: [

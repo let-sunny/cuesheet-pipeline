@@ -28,8 +28,10 @@ function sample() {
 }
 
 /** Connects a fresh Client<->Server pair over an in-memory transport (full initialize handshake). */
-async function connect(): Promise<{ client: Client; close: () => Promise<void> }> {
-  const server = createServer(TMP);
+async function connect(
+  options: { readOnly?: boolean } = {},
+): Promise<{ client: Client; close: () => Promise<void> }> {
+  const server = createServer(TMP, options);
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test-client", version: "0.0.0" });
   await Promise.all([client.connect(clientTransport), server.connect(serverTransport)]);
@@ -183,6 +185,72 @@ describe("bridge MCP round-trip", () => {
     expect(segmentProps.clip.description).toContain("clipDir");
     expect(segmentProps.in.description).toContain("SOURCE clip");
     expect(segmentProps.speed.description).toContain("timelapse");
+
+    await close();
+  });
+});
+
+describe("bridge read-only mode (issue #12)", () => {
+  it("tools/list still exposes all four tools — read-only omits writes at call time, not from registration", async () => {
+    const { client, close } = await connect({ readOnly: true });
+    const { tools } = await client.listTools();
+    expect(tools.map((t) => t.name).sort()).toEqual([
+      "get_cuesheet",
+      "get_schema",
+      "update_cuesheet",
+      "validate_cuesheet",
+    ]);
+    await close();
+  });
+
+  it("update_cuesheet refuses with a structured error and leaves the file untouched", async () => {
+    const { client, close } = await connect({ readOnly: true });
+
+    const result = await client.callTool({
+      name: "update_cuesheet",
+      arguments: { cuesheet: sample() },
+    });
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(textOf(result));
+    expect(parsed.ok).toBe(false);
+    expect(parsed.errors).toHaveLength(1);
+    expect(parsed.errors[0]).toContain("read-only mode");
+    expect(parsed.errors[0]).toContain("CUESHEET_BRIDGE_READONLY");
+    expect(existsSync(TMP)).toBe(false);
+
+    await close();
+  });
+
+  it("get_cuesheet, validate_cuesheet, and get_schema keep working in read-only mode", async () => {
+    const { client, close } = await connect({ readOnly: true });
+
+    const before = await client.callTool({ name: "get_cuesheet", arguments: {} });
+    expect(before.isError).toBe(true); // file doesn't exist — read-only mode didn't cause this
+
+    const validated = await client.callTool({
+      name: "validate_cuesheet",
+      arguments: { cuesheet: sample() },
+    });
+    expect(validated.isError).toBeFalsy();
+    expect(JSON.parse(textOf(validated)).ok).toBe(true);
+    expect(existsSync(TMP)).toBe(false);
+
+    const schema = await client.callTool({ name: "get_schema", arguments: {} });
+    expect(schema.isError).toBeFalsy();
+
+    await close();
+  });
+
+  it("read-only mode off (default) behaves exactly as before — update_cuesheet writes normally", async () => {
+    const { client, close } = await connect();
+
+    const result = await client.callTool({
+      name: "update_cuesheet",
+      arguments: { cuesheet: sample() },
+    });
+    expect(result.isError).toBeFalsy();
+    expect(JSON.parse(textOf(result)).ok).toBe(true);
+    expect(existsSync(TMP)).toBe(true);
 
     await close();
   });

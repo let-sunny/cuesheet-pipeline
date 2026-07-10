@@ -145,6 +145,14 @@ Every edit is "read the whole cuesheet, compute the whole new cuesheet, send it 
 defaults to `./project.cuesheet.json`) selects which file is being edited; the web editor
 watches the same file and refreshes automatically when the bridge writes to it.
 
+Setting `CUESHEET_BRIDGE_READONLY=1` runs the bridge in read-only mode (issue #12): every
+`update_cuesheet` call is refused with a structured `{ok:false, errors:[...]}` response naming
+`CUESHEET_BRIDGE_READONLY` as the variable to unset, and nothing is written. The tool stays in
+`tools/list` either way (its description doesn't change per-mode, since MCP clients may cache the
+list) — read-only shows up as a call-time refusal, not a missing tool. `get_cuesheet`,
+`validate_cuesheet`, and `get_schema` are unaffected in read-only mode: exactly what a review-only
+or demo session needs.
+
 `update_cuesheet` on success: emits a structured receipt instead of just "saved" — `{ok:true,
 receipt: {segmentCount, durationS, warnings}}`, mirroring the `--json` receipts the
 `cuesheet-draft`/`cuesheet-render` CLIs return (see CLI surface above). `segmentCount` and

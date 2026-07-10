@@ -50,6 +50,16 @@ The path to the cuesheet file being edited. Defaults to `./project.cuesheet.json
 unspecified. The `@cuesheet/web` dev server watches the same file via `fs.watch`, so edits made
 through the bridge are reflected in the web preview immediately.
 
+## CUESHEET_BRIDGE_READONLY
+
+Set `CUESHEET_BRIDGE_READONLY=1` to run the bridge in read-only mode — for review-only sessions
+or demos where nothing should be written. `update_cuesheet` stays registered (so `tools/list`
+doesn't change shape, since MCP clients may cache it) but refuses every call with a structured
+`{ok:false, errors:[...]}` response naming `CUESHEET_BRIDGE_READONLY` as the variable to unset,
+instead of writing. `get_cuesheet`, `validate_cuesheet`, and `get_schema` are unaffected — reads
+and dry-run validation (including `validate_cuesheet`'s diff) keep working fully. Unset (or
+`=0`) by default, matching today's read/write behavior.
+
 ## Build / typecheck / test
 
 ```bash
