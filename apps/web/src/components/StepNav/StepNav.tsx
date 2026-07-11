@@ -1,5 +1,7 @@
 import { TabList } from "@astryxdesign/core/TabList";
 import { Badge } from "@astryxdesign/core/Badge";
+import { Icon } from "@astryxdesign/core/Icon";
+import { Download, Film, Scissors } from "lucide-react";
 import { NavTab } from "../ui/NavTab/index.js";
 
 /** The 3 stages of the editing journey. Free navigation (no gating) — one click moves to any stage. */
@@ -22,17 +24,19 @@ export function StepNav({ step, onChange, sceneInUse, sceneTotal, subtitleFilled
     <TabList value={step} onChange={(v) => onChange(v as Step)} hasDivider size="lg">
       <NavTab
         value="compose"
-        label="① Scenes"
+        label="Scenes"
+        icon={<Icon icon={Film} />}
         endContent={<Badge variant="neutral" label={`${sceneInUse}/${sceneTotal}`} />}
         data-testid="step-tab-compose"
       />
       <NavTab
         value="edit"
-        label="② Edit"
+        label="Edit"
+        icon={<Icon icon={Scissors} />}
         endContent={<Badge variant="neutral" label={`${subtitleFilled}/${subtitleTotal} subtitled`} />}
         data-testid="step-tab-edit"
       />
-      <NavTab value="finish" label="③ Export" data-testid="step-tab-finish" />
+      <NavTab value="finish" label="Export" icon={<Icon icon={Download} />} data-testid="step-tab-finish" />
     </TabList>
   );
 }
