@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
+import { Heading } from "@astryxdesign/core/Heading";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Icon } from "@astryxdesign/core/Icon";
 import { IconButton } from "@astryxdesign/core/IconButton";
@@ -88,9 +89,15 @@ export function BgmSettingsPanel({
 
   return (
     <VStack gap={1} paddingBlock={3} paddingInline={4} xstyle={styles.panel} data-testid="bgm-settings-panel">
-      <Text type="label" weight="semibold" as="h2" xstyle={styles.panelTitle}>
+      {/* This panel's own title - the same tier as FinishSettingsSection's section heading
+          (Heading level={2}, 2026-07-11 typography-cascade fix), since this panel has no other
+          enclosing section heading of its own (it's a standalone right-column panel, a sibling of
+          the Cut settings panel, not nested under a FinishSettingsSection). Previously a plain
+          Text type="label" (14px) forced as="h2" for semantics only - same visual size as the
+          group labels below it, so nothing in the panel visually dominated. */}
+      <Heading level={2} xstyle={styles.panelTitle}>
         Background music track {bgmIndex + 1}
-      </Text>
+      </Heading>
 
       {/* File - pre-listen before assigning: a play/stop button next to each candidate, separate
           from picking it, so auditioning doesn't require committing first. First group in this

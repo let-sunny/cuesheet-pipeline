@@ -12,7 +12,7 @@ describe("FinishSettingsSection", () => {
         <p>a field</p>
       </FinishSettingsSection>,
     );
-    expect(screen.getByRole("heading", { level: 3, name: "Project" })).not.toBeNull();
+    expect(screen.getByRole("heading", { level: 2, name: "Project" })).not.toBeNull();
     expect(screen.getByText("Episode-wide settings.")).not.toBeNull();
     expect(screen.getByText("a field")).not.toBeNull();
     expect(screen.getByTestId("a-section")).not.toBeNull();
@@ -24,6 +24,6 @@ describe("FinishSettingsSection", () => {
         <p>a field</p>
       </FinishSettingsSection>,
     );
-    expect(screen.getByRole("heading", { level: 3, name: "Output" })).not.toBeNull();
+    expect(screen.getByRole("heading", { level: 2, name: "Output" })).not.toBeNull();
   });
 });
