@@ -38,10 +38,6 @@ export function PlaybackGroup({ speedField, volumeField, speedAtCap }: PlaybackG
             one meaningful surface for this; a passive always-on hover hint isn't worth that
             conflict. */}
         <NumericInput field={speedField} label="Speed" testId="cut-field-speed" width={60} />
-        {/* Multiplication SIGN (U+00D7), not the letter "x" - the speed unit ("1.5x" playback).
-            Astryx/lucide have no "multiply" glyph in their icon sets (only a close X, which would
-            read as a delete), so the correct typographic symbol is used here. */}
-        <Text type="supporting">{"×"}</Text>
         <NumericInput field={volumeField} label="Volume" testId="cut-field-volume" width={60} />
         {/* Volume unit - the Percent icon (the field's "Volume" label already carries the meaning,
             so the icon is a decorative unit marker). */}
