@@ -1,7 +1,7 @@
 /** Light/dark/system three-way theme toggle state. Maps directly onto @astryxdesign/core's Theme `mode` prop. */
 export type ThemeModeSetting = "system" | "light" | "dark";
 
-/** Reads the theme preference stored in localStorage. Falls back to "system" if missing or corrupted. */
+/** Reads the theme preference stored in localStorage. Falls back to "light" if missing or corrupted (light-first: dark reads poorly for this content). */
 export function loadThemeMode(): ThemeModeSetting {
   try {
     const raw = localStorage.getItem(THEME_MODE_KEY);
@@ -11,7 +11,7 @@ export function loadThemeMode(): ThemeModeSetting {
   } catch {
     // Silently ignore if localStorage is inaccessible (best-effort feature).
   }
-  return "system";
+  return "light";
 }
 
 /** Remembers the theme preference in localStorage. */
