@@ -6,7 +6,7 @@ import { Button } from "@astryxdesign/core/Button";
 import { Icon } from "@astryxdesign/core/Icon";
 import { IconButton } from "@astryxdesign/core/IconButton";
 import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
-import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
+import { ChevronFirst, Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { cropPreviewStyle } from "../../lib/cropPreview.js";
 import { TitleOverlay } from "../TitleOverlay/index.js";
 import type { ClipMoments, NarrationFile } from "../../api.js";
@@ -395,6 +395,21 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
     }
   }
 
+  /** Jump to the very start of the whole sequence - the first cut's `in` point. */
+  function goToStart() {
+    const startTime = segments[0]?.in ?? 0;
+    if (currentIndex === 0) {
+      const video = videoRefs[frontRef.current].current;
+      if (video) {
+        video.currentTime = startTime;
+        setVideoNow(startTime);
+      }
+      return;
+    }
+    pendingSeekRef.current = { index: 0, time: startTime };
+    onIndexChange(0);
+  }
+
   // Progress bar click seek — click position (ratio on the output timeline) -> corresponding cut index + source offset within the cut.
   function handleProgressClick(e: MouseEvent<HTMLDivElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -503,6 +518,15 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
 
       <div {...stylex.props(styles.controls)}>
         <div {...stylex.props(styles.transport)}>
+          <IconButton
+            label="Go to start"
+            icon={<Icon icon={ChevronFirst} />}
+            variant="ghost"
+            tooltip="Go to start"
+            isDisabled={currentIndex <= 0 && videoNow <= (segments[0]?.in ?? 0)}
+            onClick={goToStart}
+            data-testid="sequence-go-to-start"
+          />
           <IconButton
             label="Previous cut"
             icon={<Icon icon={SkipBack} />}
