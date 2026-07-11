@@ -7,7 +7,6 @@ import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { Icon } from "@astryxdesign/core/Icon";
 import { Overlay } from "@astryxdesign/core/Overlay";
 import { Text } from "@astryxdesign/core/Text";
-import { ToggleButtonGroup } from "@astryxdesign/core/ToggleButton";
 import type { Segment } from "@cuesheet/schema";
 import { FilterChip } from "../ui/FilterChip/index.js";
 import { SceneCardButton } from "../ui/SceneCardButton/index.js";
@@ -136,41 +135,49 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
         />
       ) : (
         <>
-          {/* Category/status filter chips (2026-07-11 stock-component migration) - a stock Astryx
-              ToggleButtonGroup (type="single") replaces the old raw `.plain-button` row. Clicking the
-              already-active chip deselects to null (ToggleButtonGroup's built-in single-select
-              behavior) - mapped back to "all" here rather than fought, which doubles as a handy
-              "click again to clear the filter" affordance. `xstyle` only adds flex-wrap (categories
-              can exceed one row's width on a 13" viewport) - the chips' own look is entirely stock. */}
+          {/* Category/status filter chips. Deliberately STANDALONE controlled `ToggleButton`s
+              (`isPressed`/`onPressedChange`), NOT wrapped in `ToggleButtonGroup` - the group
+              coordinates selection through a React context, and Astryx's Vite/StyleX dev setup
+              loads `@astryxdesign/core`'s `ToggleButtonGroup` source module twice (once pre-bundled
+              `?v=hash`, once raw via the `source` export condition), so the provider and the
+              `useToggleButtonGroup()` consumer end up on two different context objects - the hook
+              reads null and every chip click is a silent no-op (confirmed in a real browser; jsdom
+              can't reproduce Vite's dual-instance resolution, so unit tests passed while the running
+              app was dead). Driving each chip's pressed state directly from our own
+              selectedCategory/statusFilter state sidesteps the context entirely. Clicking the active
+              chip clears back to "all" (the single-select affordance we had before). */}
           <div {...stylex.props(styles.filterBar)}>
-            <ToggleButtonGroup
-              type="single"
-              label="Filter by category"
-              value={selectedCategory}
-              onChange={(v) => setSelectedCategory((v ?? "all") as Category | "all")}
-              size="sm"
-              xstyle={styles.filtersCategory}
-            >
-              <FilterChip value="all" label={`All (${cards.length})`} />
+            <div role="group" aria-label="Filter by category" {...stylex.props(styles.filtersCategory)}>
+              <FilterChip
+                size="sm"
+                label={`All (${cards.length})`}
+                isPressed={selectedCategory === "all"}
+                onPressedChange={() => setSelectedCategory("all")}
+              />
               {CATEGORY_ORDER.filter((cat) => (counts.get(cat) ?? 0) > 0).map((cat) => (
-                <FilterChip key={cat} value={cat} label={`${CATEGORY_META[cat].label} (${counts.get(cat) ?? 0})`} />
+                <FilterChip
+                  key={cat}
+                  size="sm"
+                  label={`${CATEGORY_META[cat].label} (${counts.get(cat) ?? 0})`}
+                  isPressed={selectedCategory === cat}
+                  onPressedChange={() => setSelectedCategory(selectedCategory === cat ? "all" : cat)}
+                />
               ))}
-            </ToggleButtonGroup>
+            </div>
 
             <div {...stylex.props(styles.filterDivider)} aria-hidden="true" />
 
-            <ToggleButtonGroup
-              type="single"
-              label="Filter by status"
-              value={statusFilter}
-              onChange={(v) => setStatusFilter((v ?? "all") as StatusFilter)}
-              size="sm"
-              xstyle={styles.filtersStatus}
-            >
+            <div role="group" aria-label="Filter by status" {...stylex.props(styles.filtersStatus)}>
               {(["all", "in-use", "excluded"] as const).map((f) => (
-                <FilterChip key={f} value={f} label={STATUS_FILTER_LABEL[f]} />
+                <FilterChip
+                  key={f}
+                  size="sm"
+                  label={STATUS_FILTER_LABEL[f]}
+                  isPressed={statusFilter === f}
+                  onPressedChange={() => setStatusFilter(statusFilter === f ? "all" : f)}
+                />
               ))}
-            </ToggleButtonGroup>
+            </div>
           </div>
 
           <div {...stylex.props(styles.grid)}>
