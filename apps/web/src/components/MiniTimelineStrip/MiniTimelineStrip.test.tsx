@@ -52,19 +52,30 @@ describe("MiniTimelineStrip", () => {
     expect(screen.getByText("0:07")).not.toBeNull();
   });
 
+  // stylex.props resolves to content-hashed atomic class names (not literal strings like
+  // "selected"/"clip-boundary"), so the conditional variant is asserted by class-list membership
+  // change, not a substring match (same pattern as IntroOutroEditor.test.tsx's dropzone-active
+  // case).
   it("marks only the selected block as selected", () => {
     render(<MiniTimelineStrip {...baseProps({ selectedIndex: 1 })} />);
-    expect(screen.getByTestId("mini-strip-block-0").className).not.toContain("selected");
-    expect(screen.getByTestId("mini-strip-block-1").className).toContain("selected");
-    expect(screen.getByTestId("mini-strip-block-2").className).not.toContain("selected");
+    // Block 0 (not selected) and block 1 (selected) share the same clip as each other (neither is
+    // a clip boundary), so `blockSelected`'s atoms (overriding border/background color) show up as
+    // a class-list difference on block 1 that block 0 doesn't have.
+    const block0Classes = new Set(screen.getByTestId("mini-strip-block-0").className.split(" "));
+    const block1Classes = new Set(screen.getByTestId("mini-strip-block-1").className.split(" "));
+    const added = [...block1Classes].filter((c) => !block0Classes.has(c));
+    expect(added.length).toBeGreaterThan(0);
   });
 
   it("marks a block as a clip boundary only where the clip filename changes from the previous block", () => {
     render(<MiniTimelineStrip {...baseProps()} />);
-    // Block 0 has no previous block, block 1 shares cut_01.mp4 with block 0, block 2 switches to cut_02.mp4.
-    expect(screen.getByTestId("mini-strip-block-0").className).not.toContain("clip-boundary");
-    expect(screen.getByTestId("mini-strip-block-1").className).not.toContain("clip-boundary");
-    expect(screen.getByTestId("mini-strip-block-2").className).toContain("clip-boundary");
+    // Block 1 shares cut_01.mp4 with block 0 (no boundary); block 2 switches to cut_02.mp4 (a
+    // boundary). Neither is selected (selectedIndex defaults to 0), so `blockClipBoundary`'s atoms
+    // show up as a class-list difference on block 2 that block 1 doesn't have.
+    const block1Classes = new Set(screen.getByTestId("mini-strip-block-1").className.split(" "));
+    const block2Classes = new Set(screen.getByTestId("mini-strip-block-2").className.split(" "));
+    const added = [...block2Classes].filter((c) => !block1Classes.has(c));
+    expect(added.length).toBeGreaterThan(0);
   });
 
   it("calls onSelect with the block's index when clicked", () => {

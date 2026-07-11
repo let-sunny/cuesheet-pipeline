@@ -3,7 +3,11 @@ import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
 import { Layout, LayoutContent } from "@astryxdesign/core/Layout";
 import { Button } from "@astryxdesign/core/Button";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
+import { Heading } from "@astryxdesign/core/Heading";
+import { Section } from "@astryxdesign/core/Section";
 import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
+import { Text } from "@astryxdesign/core/Text";
+import { VStack } from "@astryxdesign/core/VStack";
 import type { Project } from "@cuesheet/schema";
 import { formatClock } from "../../lib/segmentTiming.js";
 import { styles } from "./RenderSettingsDialog.styles.js";
@@ -65,71 +69,70 @@ export function RenderSettingsDialog({
         header={<DialogHeader title="Export" onOpenChange={onOpenChange} />}
         content={
           <LayoutContent>
-            {/* "render-dialog" stays a literal className (in addition to the migrated stylex
-                properties) because styles.css's `.render-dialog .settings-group` override still
-                needs it as an ancestor selector hook — `.settings-group` itself is a shared class
-                used by several not-yet-migrated components, so it isn't being touched here. */}
-            <div
-              className={`render-dialog ${stylex.props(styles.dialog).className}`}
-              data-testid="render-dialog"
-            >
-              <div className="settings-group">
-                <h3>Resolution</h3>
-                {/* Resolution preset toggle (2026-07-11 stock-component migration) - a stock Astryx
-                    SegmentedControl replaces the old raw `.plain-button` row. SegmentedControlItem
-                    doesn't forward `data-testid` (see CLAUDE.md's CheckboxInput footgun note), so
-                    the old render-dialog-resolution-* testids are gone - tests select by role/name
-                    instead. */}
-                <SegmentedControl
-                  value={`${project.width}x${project.height}`}
-                  onChange={(v) => {
-                    const preset = RESOLUTION_PRESETS.find((p) => `${p.width}x${p.height}` === v);
-                    if (preset) {
-                      handlePickResolution(preset.width, preset.height);
-                    }
-                  }}
-                  label="Resolution"
-                  size="sm"
-                >
-                  {RESOLUTION_PRESETS.map((preset) => (
-                    <SegmentedControlItem key={preset.label} value={`${preset.width}x${preset.height}`} label={preset.label} />
-                  ))}
-                </SegmentedControl>
-                {!RESOLUTION_PRESETS.some((p) => p.width === project.width && p.height === project.height) ? (
-                  <p className="render-note">
-                    Current setting: {project.width}x{project.height} (custom)
-                  </p>
-                ) : null}
-                {project.width === 3840 && project.height === 2160 ? (
-                  <p className="render-note">
-                    4K takes much longer to export (roughly 3-5x for native 4K sources).
-                  </p>
-                ) : null}
-              </div>
+            <VStack gap={4} data-testid="render-dialog">
+              <Section variant="transparent" padding={0}>
+                <VStack gap={2}>
+                  <Heading level={3}>Resolution</Heading>
+                  {/* Resolution preset toggle (2026-07-11 stock-component migration) - a stock Astryx
+                      SegmentedControl replaces the old raw `.plain-button` row. SegmentedControlItem
+                      doesn't forward `data-testid` (see CLAUDE.md's CheckboxInput footgun note), so
+                      the old render-dialog-resolution-* testids are gone - tests select by role/name
+                      instead. */}
+                  <SegmentedControl
+                    value={`${project.width}x${project.height}`}
+                    onChange={(v) => {
+                      const preset = RESOLUTION_PRESETS.find((p) => `${p.width}x${p.height}` === v);
+                      if (preset) {
+                        handlePickResolution(preset.width, preset.height);
+                      }
+                    }}
+                    label="Resolution"
+                    size="sm"
+                  >
+                    {RESOLUTION_PRESETS.map((preset) => (
+                      <SegmentedControlItem key={preset.label} value={`${preset.width}x${preset.height}`} label={preset.label} />
+                    ))}
+                  </SegmentedControl>
+                  {!RESOLUTION_PRESETS.some((p) => p.width === project.width && p.height === project.height) ? (
+                    <Text type="supporting" color="secondary">
+                      Current setting: {project.width}x{project.height} (custom)
+                    </Text>
+                  ) : null}
+                  {project.width === 3840 && project.height === 2160 ? (
+                    <Text type="supporting" color="secondary">
+                      4K takes much longer to export (roughly 3-5x for native 4K sources).
+                    </Text>
+                  ) : null}
+                </VStack>
+              </Section>
 
-              <div className="settings-group">
-                <h3>Subtitles</h3>
-                {/* CheckboxInput doesn't forward data-* props to the DOM - select by role/name in
-                    tests: getByRole("checkbox", { name: "Export without subtitles (for CC)" }). */}
-                <CheckboxInput
-                  label="Export without subtitles (for CC)"
-                  value={noBurnSubtitles}
-                  onChange={onToggleNoBurnSubtitles}
-                />
-              </div>
+              <Section variant="transparent" padding={0}>
+                <VStack gap={2}>
+                  <Heading level={3}>Subtitles</Heading>
+                  {/* CheckboxInput doesn't forward data-* props to the DOM - select by role/name in
+                      tests: getByRole("checkbox", { name: "Export without subtitles (for CC)" }). */}
+                  <CheckboxInput
+                    label="Export without subtitles (for CC)"
+                    value={noBurnSubtitles}
+                    onChange={onToggleNoBurnSubtitles}
+                  />
+                </VStack>
+              </Section>
 
-              <div className="settings-group">
-                <h3>Summary</h3>
-                <p {...stylex.props(styles.summaryLine)}>Project: {project.name || "(no name)"}</p>
-                <p {...stylex.props(styles.summaryLine)}>Resolution: {project.width}x{project.height}</p>
-                <p {...stylex.props(styles.summaryLine)}>Cuts: {segmentCount}</p>
-                <p {...stylex.props(styles.summaryLine)}>Estimated output length: {formatClock(outputSeconds, true)}</p>
-              </div>
+              <Section variant="transparent" padding={0}>
+                <VStack gap={2}>
+                  <Heading level={3}>Summary</Heading>
+                  <p {...stylex.props(styles.summaryLine)}>Project: {project.name || "(no name)"}</p>
+                  <p {...stylex.props(styles.summaryLine)}>Resolution: {project.width}x{project.height}</p>
+                  <p {...stylex.props(styles.summaryLine)}>Cuts: {segmentCount}</p>
+                  <p {...stylex.props(styles.summaryLine)}>Estimated output length: {formatClock(outputSeconds, true)}</p>
+                </VStack>
+              </Section>
 
               {dirty ? (
-                <p className="render-note render-note-error">
+                <Text type="supporting" xstyle={styles.dirtyNote}>
                   You have unsaved edits — save first, then export.
-                </p>
+                </Text>
               ) : null}
 
               <div {...stylex.props(styles.actions)}>
@@ -147,7 +150,7 @@ export function RenderSettingsDialog({
                   data-testid="render-dialog-start"
                 />
               </div>
-            </div>
+            </VStack>
           </LayoutContent>
         }
       />

@@ -1,11 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
+import { Field } from "@astryxdesign/core/Field";
+import { FormLayout } from "@astryxdesign/core/FormLayout";
 import { Slider } from "@astryxdesign/core/Slider";
 import { Button } from "@astryxdesign/core/Button";
 import type { Segment, SubtitleBackground, SubtitleStyle, SubtitleStyleOverride } from "@cuesheet/schema";
 import { useNumericField } from "../../hooks/useNumericField.js";
-import { toColorInputValue } from "../../lib/subtitleOverlay.js";
-import { Swatch } from "../Swatch/index.js";
+import { ColorField } from "../ui/ColorField/index.js";
 import { styles } from "./SegmentStyleOverride.styles.js";
 
 interface Props {
@@ -57,116 +58,86 @@ export function SegmentStyleOverride({
       </div>
 
       {override ? (
-          <div className="style-override-fields">
-            <label className="settings-field">
-              <span>Size</span>
-              <input type="number" className="plain-field" min={1} {...sizeField} />
-            </label>
+        <div {...stylex.props(styles.fields)}>
+          {/* horizontal-labels: labels beside inputs, same arrangement as the global subtitle
+              style panel this shares its field set with (SubtitleStyleSettings.tsx) - Size stays a
+              native <input> bound to useNumericField (see that hook's file comment), Color/Outline
+              color/Background color use the shared `ColorField` wrapper. */}
+          <FormLayout direction="horizontal-labels">
+            <Field label="Size" inputID="style-override-size">
+              <input id="style-override-size" type="number" min={1} {...stylex.props(styles.numberInput)} {...sizeField} />
+            </Field>
 
-            <label className="settings-field">
-              <span>
-                Color <Swatch color={override.color ?? globalStyle.color} />
-              </span>
-              <div className="color-field-inputs">
-                <input
-                  type="color"
-                  value={toColorInputValue(override.color ?? globalStyle.color)}
-                  onChange={(e) => onChangeOverride({ color: e.target.value })}
-                />
-                <input
-                  type="text"
-                  className="plain-field"
-                  value={override.color ?? globalStyle.color}
-                  onChange={(e) => onChangeOverride({ color: e.target.value })}
-                />
-              </div>
-            </label>
-
-            <label className="settings-field">
-              <span>
-                Outline color{" "}
-                <Swatch color={override.outlineColor ?? globalStyle.outlineColor} />
-              </span>
-              <div className="color-field-inputs">
-                <input
-                  type="color"
-                  value={toColorInputValue(override.outlineColor ?? globalStyle.outlineColor)}
-                  onChange={(e) => onChangeOverride({ outlineColor: e.target.value })}
-                />
-                <input
-                  type="text"
-                  className="plain-field"
-                  value={override.outlineColor ?? globalStyle.outlineColor}
-                  onChange={(e) => onChangeOverride({ outlineColor: e.target.value })}
-                />
-              </div>
-            </label>
-
-            <CheckboxInput
-              label="Background box"
-              value={override.background != null}
-              onChange={(checked) =>
-                onChangeOverride({
-                  background: checked ? override.background ?? DEFAULT_OVERRIDE_BACKGROUND : null,
-                })
-              }
+            <ColorField
+              label="Color"
+              inputID="style-override-color"
+              value={override.color ?? globalStyle.color}
+              onChange={(value) => onChangeOverride({ color: value })}
             />
+
+            <ColorField
+              label="Outline color"
+              inputID="style-override-outline-color"
+              value={override.outlineColor ?? globalStyle.outlineColor}
+              onChange={(value) => onChangeOverride({ outlineColor: value })}
+            />
+
+            <Field label="Background box" inputID="style-override-bg-toggle" isLabelHidden>
+              <CheckboxInput
+                label="Background box"
+                value={override.background != null}
+                onChange={(checked) =>
+                  onChangeOverride({
+                    background: checked ? override.background ?? DEFAULT_OVERRIDE_BACKGROUND : null,
+                  })
+                }
+              />
+            </Field>
             {override.background ? (
               <>
-                <label className="settings-field">
-                  <span>
-                    Background color <Swatch color={override.background.color} />
-                  </span>
-                  <div className="color-field-inputs">
-                    <input
-                      type="color"
-                      value={toColorInputValue(override.background.color)}
-                      onChange={(e) =>
-                        onChangeOverride({ background: { ...override.background!, color: e.target.value } })
-                      }
-                    />
-                    <input
-                      type="text"
-                      className="plain-field"
-                      value={override.background.color}
-                      onChange={(e) =>
-                        onChangeOverride({ background: { ...override.background!, color: e.target.value } })
-                      }
-                    />
-                  </div>
-                </label>
+                <ColorField
+                  label="Background color"
+                  inputID="style-override-bg-color"
+                  value={override.background.color}
+                  onChange={(value) => onChangeOverride({ background: { ...override.background!, color: value } })}
+                />
                 {/* Value folded into the label, valueDisplay="none" (2026-07-09 diagnosed fix -
                     see SegmentQuickFields/TitleGroup.tsx's Backdrop dim slider for the full
                     rationale). */}
-                <Slider
-                  label={`Background opacity (${Math.round(override.background.opacity * 100)}%)`}
-                  value={Math.round(override.background.opacity * 100)}
-                  min={0}
-                  max={100}
-                  step={5}
-                  valueDisplay="none"
-                  onChange={(v: number) =>
-                    onChangeOverride({ background: { ...override.background!, opacity: v / 100 } })
-                  }
-                />
+                <Field label="Background opacity" inputID="style-override-bg-opacity" isLabelHidden>
+                  <Slider
+                    label={`Background opacity (${Math.round(override.background.opacity * 100)}%)`}
+                    value={Math.round(override.background.opacity * 100)}
+                    min={0}
+                    max={100}
+                    step={5}
+                    valueDisplay="none"
+                    onChange={(v: number) =>
+                      onChangeOverride({ background: { ...override.background!, opacity: v / 100 } })
+                    }
+                  />
+                </Field>
               </>
             ) : null}
 
-            <Slider
-              label={`Edge margin (${override.margin ?? globalStyle.margin ?? 40}px)`}
-              value={override.margin ?? globalStyle.margin ?? 40}
-              min={8}
-              max={600}
-              step={1}
-              valueDisplay="none"
-              onChange={(v: number) => onChangeOverride({ margin: v })}
-            />
+            <Field label="Edge margin" inputID="style-override-margin" isLabelHidden>
+              <Slider
+                label={`Edge margin (${override.margin ?? globalStyle.margin ?? 40}px)`}
+                value={override.margin ?? globalStyle.margin ?? 40}
+                min={8}
+                max={600}
+                step={1}
+                valueDisplay="none"
+                onChange={(v: number) => onChangeOverride({ margin: v })}
+              />
+            </Field>
+          </FormLayout>
 
-            <div {...stylex.props(styles.actions)}>
-              <Button label="Apply to all cuts" variant="secondary" size="sm" onClick={onPromote} />
-              <Button label="Remove override" variant="ghost" size="sm" onClick={onClear} />
-            </div>
+          <div {...stylex.props(styles.actions)}>
+            <Button label="Apply to all cuts" variant="secondary" size="sm" onClick={onPromote} />
+            <Button label="Remove override" variant="ghost" size="sm" onClick={onClear} />
           </div>
+        </div>
       ) : null}
     </div>
   );

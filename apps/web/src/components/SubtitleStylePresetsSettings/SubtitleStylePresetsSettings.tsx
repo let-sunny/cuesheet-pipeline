@@ -1,16 +1,19 @@
 import { useState } from "react";
+import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
 import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { Field } from "@astryxdesign/core/Field";
 import { FormLayout } from "@astryxdesign/core/FormLayout";
 import { HStack } from "@astryxdesign/core/HStack";
+import { Section } from "@astryxdesign/core/Section";
 import { Slider } from "@astryxdesign/core/Slider";
 import { Text } from "@astryxdesign/core/Text";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { VStack } from "@astryxdesign/core/VStack";
 import type { SubtitleStyle, SubtitleStyleOverride, SubtitleStylePresets } from "@cuesheet/schema";
-import { mergeSubtitleStyle, subtitleBackgroundRgba, subtitleOutlineStyle, toCqw, toColorInputValue } from "../../lib/subtitleOverlay.js";
-import { Swatch } from "../Swatch/index.js";
+import { mergeSubtitleStyle, subtitleBackgroundRgba, subtitleOutlineStyle, toCqw } from "../../lib/subtitleOverlay.js";
+import { ColorField } from "../ui/ColorField/index.js";
+import { styles } from "./SubtitleStylePresetsSettings.styles.js";
 
 export interface SubtitleStylePresetsSettingsProps {
   presets: SubtitleStylePresets | undefined;
@@ -96,8 +99,8 @@ function PresetRow({ name, override, globalStyle, onRename, onDelete, onChange }
   const effective = mergeSubtitleStyle(globalStyle, undefined, undefined, override);
 
   return (
-    <div className="preset-row">
-      <div className="preset-row-header">
+    <Section variant="transparent" padding={0} paddingBlock={2} dividers={["bottom"]}>
+      <HStack gap={3} wrap="wrap" vAlign="center">
         <TextInput
           label="Name"
           value={nameDraft}
@@ -112,9 +115,9 @@ function PresetRow({ name, override, globalStyle, onRename, onDelete, onChange }
         />
         {/* Compact preview - same overlay CSS/merge helper the Edit step's video and the global
             style's own preview stage use, so this can never visually drift from the real thing. */}
-        <div className="preset-preview-chip">
+        <div {...stylex.props(styles.previewChip)}>
           <span
-            className="video-subtitle-overlay-text preset-preview-text"
+            className={`video-subtitle-overlay-text ${stylex.props(styles.previewText).className}`}
             style={{
               color: effective.color,
               fontFamily: effective.font,
@@ -129,7 +132,7 @@ function PresetRow({ name, override, globalStyle, onRename, onDelete, onChange }
           </span>
         </div>
         <Button label="Delete" variant="destructive" size="sm" onClick={onDelete} />
-      </div>
+      </HStack>
 
       <Collapsible trigger={`Edit "${name}"`}>
         <FormLayout direction="horizontal-labels">
@@ -140,49 +143,26 @@ function PresetRow({ name, override, globalStyle, onRename, onDelete, onChange }
             <input
               id={`preset-${name}-size`}
               type="number"
-              className="plain-field"
               min={1}
-              style={{ maxWidth: 140 }}
+              {...stylex.props(styles.numberInput)}
               value={override.size ?? globalStyle.size}
               onChange={(e) => onChange({ size: Number(e.target.value) })}
             />
           </Field>
 
-          <Field label="Color" inputID={`preset-${name}-color`}>
-            <div className="color-field-inputs">
-              <input
-                id={`preset-${name}-color`}
-                type="color"
-                value={toColorInputValue(override.color ?? globalStyle.color)}
-                onChange={(e) => onChange({ color: e.target.value })}
-              />
-              <input
-                type="text"
-                className="plain-field"
-                value={override.color ?? globalStyle.color}
-                onChange={(e) => onChange({ color: e.target.value })}
-              />
-              <Swatch color={override.color ?? globalStyle.color} />
-            </div>
-          </Field>
+          <ColorField
+            label="Color"
+            inputID={`preset-${name}-color`}
+            value={override.color ?? globalStyle.color}
+            onChange={(value) => onChange({ color: value })}
+          />
 
-          <Field label="Outline color" inputID={`preset-${name}-outline-color`}>
-            <div className="color-field-inputs">
-              <input
-                id={`preset-${name}-outline-color`}
-                type="color"
-                value={toColorInputValue(override.outlineColor ?? globalStyle.outlineColor)}
-                onChange={(e) => onChange({ outlineColor: e.target.value })}
-              />
-              <input
-                type="text"
-                className="plain-field"
-                value={override.outlineColor ?? globalStyle.outlineColor}
-                onChange={(e) => onChange({ outlineColor: e.target.value })}
-              />
-              <Swatch color={override.outlineColor ?? globalStyle.outlineColor} />
-            </div>
-          </Field>
+          <ColorField
+            label="Outline color"
+            inputID={`preset-${name}-outline-color`}
+            value={override.outlineColor ?? globalStyle.outlineColor}
+            onChange={(value) => onChange({ outlineColor: value })}
+          />
 
           {/* Value folded into the label, valueDisplay="none" (2026-07-09 diagnosed fix - see
               SegmentQuickFields/TitleGroup.tsx's Backdrop dim slider for the full rationale). */}
@@ -202,6 +182,6 @@ function PresetRow({ name, override, globalStyle, onRename, onDelete, onChange }
           </Field>
         </FormLayout>
       </Collapsible>
-    </div>
+    </Section>
   );
 }

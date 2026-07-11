@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
 import * as stylex from "@stylexjs/stylex";
+import { Badge } from "@astryxdesign/core/Badge";
 import { Button } from "@astryxdesign/core/Button";
 import { Icon } from "@astryxdesign/core/Icon";
 import { IconButton } from "@astryxdesign/core/IconButton";
@@ -11,6 +12,7 @@ import { bgmCutRange, cumulativeCutStarts } from "../../lib/bgmCutMapping.js";
 import { assignBgmLanes, laneCount } from "../../lib/bgmLanes.js";
 import { extendBgmDrag, resolveRowIndexFromBounds, startBgmDrag } from "../../lib/bgmTrackDrag.js";
 import type { BgmDragMode, BgmDragState } from "../../lib/bgmTrackDrag.js";
+import { shotTypeBadgeVariant, TIMELAPSE_BADGE_VARIANT } from "../../lib/momentCards.js";
 import { matchSceneInfo, shotTypeLabel } from "../../lib/sceneInfo.js";
 import { styles } from "./CompactSegmentList.styles.js";
 
@@ -355,12 +357,12 @@ export function CompactSegmentList({
                       is a compact quick-edit surface, not the primary place to write long
                       subtitles (that's the right panel's Subtitle group), so it deliberately does
                       NOT grow to fit arbitrarily long pasted text anymore; see the height/
-                      line-height/overflow-y rule on .compact-list-subtitle-input in styles.css. */}
+                      line-height/overflow-y rule on `subtitleInput` in CompactSegmentList.styles.ts. */}
                   <textarea
                     ref={(el) => {
                       rowRefs.current[i] = el;
                     }}
-                    className="plain-field plain-field-textarea compact-list-subtitle-input"
+                    {...stylex.props(styles.subtitleInput)}
                     value={seg.subtitle}
                     rows={2}
                     placeholder={seg.clip || "(no filename)"}
@@ -375,12 +377,14 @@ export function CompactSegmentList({
                     title={sceneTooltip}
                   >
                     {sceneInfo.kind === "moment" ? (
-                      <span className={`scene-shot-badge shot-${sceneInfo.shotType}`}>
-                        {shotTypeLabel(sceneInfo.shotType)}
-                      </span>
+                      <Badge
+                        variant={shotTypeBadgeVariant(sceneInfo.shotType)}
+                        label={shotTypeLabel(sceneInfo.shotType)}
+                        xstyle={styles.sceneBadge}
+                      />
                     ) : null}
                     {sceneInfo.kind === "monotonous" ? (
-                      <span className="scene-shot-badge shot-monotonous">Timelapse cut</span>
+                      <Badge variant={TIMELAPSE_BADGE_VARIANT} label="Timelapse cut" xstyle={styles.sceneBadge} />
                     ) : null}
                     {sceneText}
                   </span>

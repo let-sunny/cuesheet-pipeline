@@ -1,27 +1,12 @@
 :root {
   font-family: system-ui, -apple-system, "Pretendard", sans-serif;
 
-  /*
-   * Color-token migration (2026-07-11, design-principles.md #5 strict rule, completing the
-   * stock-audit): this app's old bespoke `--surface-*`/`--border*`/`--text-*`/`--accent*`/
-   * `--success-*`/`--error-*`/`--warning-*`/`--tag-*`/`--bgm-cue-*`/`--context-box-*` custom
-   * properties (previously defined here with their own hardcoded light-dark() hex pairs) are gone.
-   * Every rule that used them now reads Astryx's own `--color-*` tokens directly (via `colorVars`
-   * in StyleX files, or the raw CSS custom property here) - see each rule's own comment/nearby
-   * mapping for which Astryx token replaced which old variable. This is what makes the THEME
-   * switcher (stone/y2k/neutral) actually recolor every surface, not just light/dark mode: Astryx's
-   * theme.css defines `--color-*` per theme, and this file no longer shadows any of them with a
-   * fixed palette of its own.
-   *
-   * `--stage-bg` below is the one deliberate exception, kept as a literal - see its own comment.
-   */
-
   /* Always-dark tone — used only for the video stage/timeline thumbnail background (kept always
      dark regardless of theme, per video editing convention). Deliberately NOT an Astryx `--color-*`
-     token (2026-07-11 color migration): every Astryx background token is light-dark()-reactive by
-     design, which is exactly what this element must NOT do - a video/thumbnail canvas stays dark
-     regardless of theme or light/dark mode, the same way a real video letterbox would. Flagged as a
-     semantically-required literal, not a missed migration. */
+     token: every Astryx background token is light-dark()-reactive by design, which is exactly what
+     this element must NOT do - a video/thumbnail canvas stays dark regardless of theme or
+     light/dark mode, the same way a real video letterbox would. Flagged as a semantically-required
+     literal, not a missed migration. */
   --stage-bg: #12141a;
 }
 
@@ -32,15 +17,12 @@
  * white box fully covering the label. This is fixed by redefining both values directly with
  * light-dark() (branching on the color function instead of data-theme, so it stays semi-transparent
  * even when the OS picks dark under system mode).
- */
-/*
- * Same upstream bug as above, but for --color-overlay itself - the token Dialog's ::backdrop
- * uses for the full-viewport scrim behind the dialog. Light mode is #25252a80 (proper alpha,
- * dims correctly), but dark mode is the opaque #28282a (no alpha at all) - since that's nearly
- * the same tone as this app's own dark surfaces (this app's old --surface-0/--surface-1, now
- * Astryx's --color-background-body/-surface), an opaque flat fill reads as almost no dimming at
- * all (measured 2026-07-09 QA pass: indistinguishable
- * from the plain background). Redefined with real alpha in both directions so the dialog scrim
+ *
+ * Same upstream bug, but for --color-overlay itself - the token Dialog's ::backdrop uses for the
+ * full-viewport scrim behind the dialog. Light mode is #25252a80 (proper alpha, dims correctly),
+ * but dark mode is the opaque #28282a (no alpha at all) - since that's nearly the same tone as this
+ * app's own dark surfaces (Astryx's --color-background-body/-surface), an opaque flat fill reads as
+ * almost no dimming at all. Redefined with real alpha in both directions so the dialog scrim
  * actually dims what's behind it regardless of theme.
  */
 [data-astryx-theme="stone"] {
@@ -70,10 +52,6 @@ html:not([data-theme]) {
   color-scheme: light dark;
 }
 
-/* font-size: 15px -> var(--font-size-base) (2026-07-11 typography pass, design-principles.md #6
-   "dense, 13-inch") - the app-wide text base now tracks Astryx's own type-scale anchor (14px)
-   instead of a literal px pulled out of thin air, so every component that doesn't set its own
-   font-size still lands on the same scale. */
 body {
   margin: 0;
   background: var(--color-background-body);
@@ -81,246 +59,12 @@ body {
   font-size: var(--font-size-base);
 }
 
-/* .project(+.field .label/.value) removed (2026-07-11 typography pass) - dead: repo-wide grep
-   found no call site rendering className="project" (the old starter viewer this predates has long
-   since been replaced by HeaderBar/CompactSegmentList/MomentPalette), same category as the
-   .timeline/.segment removal below. */
-
-/* .timeline/.segment(+.selected/.clip/.meta/.subtitle) removed (StyleX migration batch 4) - dead:
-   CompactSegmentList replaced this cut-list rendering long ago and no component renders
-   className="timeline"/"segment" anymore (repo-wide grep confirmed zero call sites). `.empty`
-   below is unrelated to `.segment .subtitle`'s content despite the similar old context - it's
-   still live (VideoPreview's "can't find the source" message) and stays until VideoPreview itself
-   gets a component anatomy folder (category (d), deferred). `.swatch` was migrated (not dead) -
-   see components/Swatch/. */
-
-.empty {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-}
-
-.status {
-  padding: 40px;
-  text-align: center;
-  color: var(--color-text-secondary);
-}
-
-/*
- * Scoped to raw (non-Astryx) buttons only, via the .plain-button marker class — NOT a bare
- * `button` element selector. Astryx's own <Button> also renders a plain <button> element, and
- * its variant styling (primary/secondary/ghost/destructive) lives inside StyleX's `@layer
- * astryx-base` (see @astryxdesign/build's layer wrapping). Per the CSS cascade-layers spec,
- * *any* unlayered rule always beats *every* layered rule for the same property, regardless of
- * specificity — so a bare `button {}` here would silently flatten every Astryx Button variant to
- * this single background, which is exactly what happened before this rule was scoped (see
- * screen-spec.md section 0, rule 8). Every remaining raw <button> in the codebase carries
- * className="plain-button" explicitly for this reason — do not remove it, and give any new raw
- * <button> the same class instead of relying on the bare tag.
- */
-.plain-button {
-  font: inherit;
-  color: inherit;
-  background: var(--color-background-muted);
-  border: 1px solid var(--color-border-emphasized);
-  border-radius: 6px;
-  padding: 6px 12px;
-  cursor: pointer;
-}
-
-/* color-mix over Astryx's own --color-tint-hover (black in light mode, white in dark - "used with
-   color-mix for hover states" per its doc comment), rather than a second fixed hover color, so this
-   hover step still tracks whichever theme/mode is active (2026-07-11 color migration). */
-.plain-button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-background-muted), var(--color-tint-hover) 8%);
-}
-
-.plain-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/*
- * Scoped to raw (non-Astryx) text/number inputs, selects, and textareas only, via the
- * .plain-field marker class — see the .plain-button comment above for why a bare element
- * selector here would be unsafe (currently no Astryx Field/Input/Select equivalent is used in
- * this codebase, so this isn't clobbering anything today, but it's scoped the same way as
- * .plain-button on principle — see screen-spec.md section 0 rule 8). input[type="color"] and
- * input[type="file"] are deliberately left unstyled (native chrome is fine for those).
- */
-.plain-field {
-  font: inherit;
-  color: inherit;
-  background: var(--color-background-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  padding: 4px 8px;
-}
-
-/*
- * A second single-class selector (not textarea.plain-field) on purpose: combining the element
- * and the class would raise specificity above single-class overrides like
- * .compact-list-subtitle-input declared further down, and silently win a fight it used to lose.
- */
-.plain-field-textarea {
-  padding: 6px 8px;
-}
-
-/* The header's theme toggle (HeaderBar) is now a stock Astryx SegmentedControl (2026-07-11 stock-
-   component migration) - no plain-CSS look left to keep here. */
-
-/* .banner/.banner-actions migrated to components/Banner/ (StyleX migration batch 4).
-   .banner.success/.banner.error(+ul/pre) were NOT migrated - dead: repo-wide grep found no call
-   site ever applying those modifier classes (both current banners in App.tsx render the plain
-   look), so they were deleted rather than ported. */
-
-.settings {
-  display: flex;
-  gap: 24px;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
-
-.settings-group {
-  flex: 1 1 260px;
-  padding: 16px;
-  background: var(--color-background-surface);
-  border-radius: 8px;
-  box-sizing: border-box;
-}
-
-/* The subtitle style panel holds a compact live preview stage, so it grows a bit wider. */
-.settings-group-wide {
-  flex: 2 1 480px;
-}
-
-.settings-group h3 {
-  margin: 0 0 12px;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-/* Label sits in a fixed-width column immediately to the LEFT of its field (never pushed to the
-   opposite edge via space-between) - the field itself is sized by its width-token modifier below
-   (.field-narrow/.field-medium/.field-text-medium/.wide-input), not by stretching to fill the row. */
-.settings-field {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-  font-size: var(--font-size-sm);
-}
-
-.settings-field > span:first-child {
-  flex: 0 0 120px;
-  white-space: nowrap;
-  color: var(--color-text-secondary);
-}
-
-.settings-field input,
-.settings-field select {
-  flex: 0 0 auto;
-  /* Fallback for fields that don't opt into a width token below - same as the narrow number token,
-     since most untokened fields left here are short. */
-  width: 80px;
-}
-
-.settings-field input[type="checkbox"],
-.settings-field input[type="range"] {
-  width: auto;
-}
-
-/* Free text where 180px (the shared .field-medium select/short-text token) reads cramped - Name,
-   Font, and similar single-word/short-phrase fields. */
-.field-text-medium input {
-  width: 240px;
-}
-
-.color-field-inputs {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 0 0 auto;
-}
-
-.color-field-inputs input[type="color"] {
-  width: 32px;
-  height: 26px;
-  padding: 0;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: none;
-  cursor: pointer;
-}
-
-.color-field-inputs input[type="text"] {
-  width: 90px;
-}
-
-.settings-note {
-  margin: 12px 0 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-
-/*
- * 3 width tokens (finalized in screen-spec sections 0-2/4, 2026-07-08) — shared across screens
- * with label+input pairs (cut settings/finishing, etc). narrow=5 digits (IN/OUT/speed/volume),
- * medium=select/short text, full=textarea/slider.
- * The narrow width was finalized at 64px -> 80px — 64px had a problem where a measured value like
- * "39.87" (5 digits + decimal point) overlapped and got clipped by the native number spinner
- * arrows (reproduced in cut-settings screenshots). 80px fits 5 digits + decimal + spinner without clipping.
- */
-.field-narrow input,
-.field-narrow select {
-  width: 80px;
-  flex: 0 0 auto;
-}
-
-.field-medium input,
-.field-medium select {
-  width: 180px;
-  flex: 0 0 auto;
-}
-
-.field-full {
-  width: 100%;
-}
-
-.field-full input,
-.field-full select,
-.field-full textarea {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* .segment-field(+.narrow/.wide/.checkbox)/.segment-row-actions/.add-button removed (2026-07-11
-   typography pass) - dead: repo-wide grep found no call site rendering any of these classNames
-   (CompactSegmentList's row/index/text/scene/time/actions classes replaced this old per-row inline
-   field layout long ago), same category as the .project and .timeline/.segment removals above. */
-
-/* VideoPreview + CropEditOverlay migration (docs/styling-migration.md, StyleX migration batch 5) -
-   `.video-preview`(+`.empty`)/`.video-context-*`/`.video-crop-frame`(+`video`)/`.crop-edit-toolbar`/
-   `.crop-edit-actions`/`.time-readout`/`.video-controls-row`/`.notice`(+`.proxy-preparing`) moved to
-   VideoPreview.styles.ts; `.crop-edit-overlay`/`.crop-edit-box`/`.crop-edit-handle`(+8 `.handle-*`
-   variants) moved to components/CropEditOverlay/CropEditOverlay.styles.ts. The playback-range
-   toggle is now a stock Astryx SegmentedControl (2026-07-11 stock-component migration) - the old
-   `.playmode-toggle button`(+`.active`) plain-CSS exception is gone with it. Kept here as a
-   documented exception (see VideoPreview.styles.ts's file comment for the full reasoning):
-   - `.video-subtitle-overlay` (+ variants, further down) - shared with SubtitleStyleSettings.tsx/
-     SubtitleStylePresetsSettings.tsx, not owned solely by VideoPreview. */
-
-/* Live overlay on the video to the right during inline subtitle editing (a rough CSS approximation
-   — the render is the ground truth). Same pattern as .sequence-subtitle but relative to
-   video-crop-frame (the video's natural aspect ratio). Shared by VideoPreview.tsx,
-   SubtitleStyleSettings.tsx, and SubtitleStylePresetsSettings.tsx (all three deliberately render
-   the exact same classes for their own preview stages so none of them can visually drift from this
-   one) - not owned solely by any single component, so this stays a plain-CSS shared token.
-   `font-size`/`font-weight` NOT tokenized (2026-07-11 typography pass) - all 3 consumers always
-   override `font-size` inline via `toCqw(...)` (a % of the frame's rendered width, since this is
-   the actual subtitle-content preview, not app chrome), so the literal values here are an unused
-   fallback rather than user-visible chrome - out of scope for the UI type-scale pass. */
+/* Live overlay on the video during inline subtitle editing (a rough CSS approximation - the render
+   is the ground truth). Shared by VideoPreview.tsx, SubtitleStyleSettings.tsx, and
+   SubtitleStylePresetsSettings.tsx (all three deliberately render the exact same classes for their
+   own preview stages so none of them can visually drift from this one) - not owned solely by any
+   single component, so this stays a plain-CSS shared token (see design-principles.md's "components
+   stay stock" carve-out for genuinely domain-custom, no-stock-equivalent chrome). */
 .video-subtitle-overlay {
   position: absolute;
   left: 0;
@@ -359,195 +103,18 @@ body {
   overflow-wrap: anywhere;
 }
 
-/* Guidance shown when there are no scene candidates yet (draft not generated), telling the user
-   what to do next - PRD section 8 "No draft (empty state)" catalog. Shared by App.tsx (the
-   cuesheet-load-error state) and MomentPalette.tsx (the no-scene-candidates state) - not owned
-   solely by either, so this stays a plain-CSS shared token. */
-.empty-state {
-  padding: 24px 16px;
-  text-align: center;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-}
-
-.empty-state code {
-  padding: 1px 6px;
-  background: var(--color-background-muted);
-  border-radius: 4px;
-  color: var(--color-text-primary);
-}
-
-/* MomentPalette migration (docs/styling-migration.md, StyleX migration batch 5) -
-   `.moment-palette`/`.moment-quality`/`.moment-palette-header`/`.moment-grid`/`.moment-card-wrap`/
-   `.moment-card`(+`.status-rejected-face`/`.status-rejected-quality`)/`.moment-status-banner`
-   (+`.face`/`.quality`)/`.moment-thumb-empty`/`.moment-overlay-row`/`.moment-number`/
-   `.moment-badge-in-use`/`.moment-info`/`.moment-card-body`/`.moment-memo-wrap`/
-   `.moment-actions-group`/`.moment-card-actions`/`.moment-io-actions` all moved to
-   MomentPalette.styles.ts. `.moment-palette.status` folded into that file's `paletteStatus` (see
-   its comment). The category/status filter chips are now a stock Astryx ToggleButtonGroup/
-   ToggleButton pair (2026-07-11 stock-component migration) - the old `.moment-filters button` (+
-   `.active`) plain-CSS exception is gone with them. */
-
-/* ---- 4-step editing journey shell ---- */
-
-/* `.step-body`/`.mini-strip-row` migrated to App.styles.ts (StyleX migration batch 5) - App.tsx's
-   own container layout wrapping MiniTimelineStrip/the step content, not those components' own
-   root styles (same reasoning as `.edit-layout` below). */
-
-/* MiniTimelineStrip migration (docs/styling-migration.md, StyleX migration batch 5) -
-   `.mini-strip`/`.mini-strip-viewport`/`.mini-strip-track`/`.mini-strip-zoom-controls`(own layout)/
-   `.mini-strip-total`/`.mini-strip-thumb` all moved to MiniTimelineStrip.styles.ts. Kept here as a
-   documented exception (see MiniTimelineStrip.styles.ts's file comment for the full reasoning):
-   - `.mini-strip-block` (+ `.selected`/`.clip-boundary`) below - each block is a raw `<button>`
-     that also carries the `.plain-button` marker class, and overrides several of `.plain-button`'s
-     own properties (background/border/border-radius/padding) at equal (single-class) specificity -
-     StyleX's injected-before-this-file output would lose that cascade tie.
-   The zoom-controls buttons are now stock Astryx Button/IconButton (2026-07-11 typography/stock-
-   component pass) - the old `.mini-strip-zoom-controls button` plain-CSS exception is gone with
-   them. */
-
-/* Background is intentionally fixed dark regardless of theme — since this is a timeline canvas
-   that holds a video frame thumbnail, it stays dark even in light theme (spec item 3). */
-.mini-strip-block {
-  position: relative;
-  height: 20px;
-  padding: 0;
-  overflow: hidden;
-  background: var(--stage-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 3px;
-  cursor: pointer;
-}
-
-/* Adds a thin divider so clip boundaries stand out even in the zoomed-out (full view) state. */
-.mini-strip-block.clip-boundary {
-  border-left: 2px solid var(--color-accent);
-}
-
-.mini-strip-block.selected {
-  border-color: var(--color-accent);
-  background: var(--color-accent-muted);
-}
-
-/* Step ② Edit */
-
-/* .edit-layout/.trim-layout/.trim-workspace/.trim-video-col/.trim-fields-col migrated to
-   App.styles.ts (StyleX migration batch 4) - App.tsx's own Edit-step container layout, not a
-   separate component. .segment-thumb(+img) migrated to components/SegmentThumb/ (same batch). */
-
-/* CompactSegmentList migration (docs/styling-migration.md, StyleX migration batch 3) -
-   `.compact-list`/`.compact-list-row`(+`.selected`)/`.compact-list-index`/`.compact-list-thumb`/
-   `.compact-list-text`/`.compact-list-scene`(+`.empty`)/`.compact-list-time`/
-   `.compact-list-subtitle-dot`(+`.filled`)/`.compact-list-actions`(own layout) all moved to
-   CompactSegmentList.styles.ts (no property conflicts with any marker class). The row actions
-   (move up/down, delete) are now stock Astryx IconButtons (2026-07-11 stock-component migration) -
-   the old `.compact-list-actions button` plain-CSS exception is gone with them. Kept here as a
-   documented exception (see CompactSegmentList.styles.ts's file comment for the full reasoning):
-   - `.compact-list-subtitle-input` (+ `:focus`) below - overrides `.plain-field`/
-     `.plain-field-textarea` at equal (single-class) specificity, winning today only via being
-     later in this file's source order; StyleX's injected-before-this-file output would lose that
-     tie.
-   - `.scene-shot-badge` (+ `.shot-*`) further down - shared with VideoPreview.tsx, not owned
-     solely by this component. */
-
-/* Inline input for fixing subtitles right in place on a cut list row — the core of merging
-   trim/batch-writing. Fixed at a 2-line height (rows=2) with internal scroll once text exceeds
-   that (QA finding 2026-07-10: a ~500-char pasted subtitle used to auto-grow the textarea to fit
-   its full content, ballooning the row to ~35 lines and the whole list along with it — the row is
-   a fixed-height list-row convention (Premiere/Resolve bin rows), so it must not grow with content
-   the way a free-form document editor would). Full-length editing still happens in the right
-   panel's Subtitle group (SubtitleGroup.tsx), which keeps growing/scrolling normally — this row is
-   only ever a compact in-place preview/quick-edit, not the primary editing surface for long text.
-   line-height is set explicitly (rather than left to the browser default) so the 2-line height can
-   be computed directly: height = 2 * line-height + vertical padding + vertical border (box-sizing
-   stays border-box, kept from before this fix, so width:100% keeps meaning "100% of the row
-   column" exactly as it did — only height/overflow changed). */
-.compact-list-subtitle-input {
-  width: 100%;
-  min-width: 0;
-  box-sizing: border-box;
-  padding: 3px 6px;
-  font-size: var(--font-size-base);
-  font-family: inherit;
-  line-height: 18px;
-  height: 44px;
-  color: inherit;
-  background: var(--color-background-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  resize: none;
-  overflow-y: auto;
-}
-
-.compact-list-subtitle-input:focus {
-  outline: none;
-  border-color: var(--color-accent);
-}
-
-.scene-shot-badge {
-  flex: 0 0 auto;
-  padding: 1px 5px;
-  border-radius: 3px;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  white-space: nowrap;
-  background: var(--color-background-blue);
-  color: var(--color-text-blue);
-}
-
-.scene-shot-badge.shot-hand-closeup {
-  background: var(--color-background-blue);
-  color: var(--color-text-blue);
-}
-
-.scene-shot-badge.shot-object {
-  background: var(--color-background-green);
-  color: var(--color-text-green);
-}
-
-.scene-shot-badge.shot-cat {
-  background: var(--color-background-purple);
-  color: var(--color-text-purple);
-}
-
-.scene-shot-badge.shot-change {
-  background: var(--color-background-cyan);
-  color: var(--color-text-cyan);
-}
-
-.scene-shot-badge.shot-reveal {
-  background: var(--color-background-orange);
-  color: var(--color-text-orange);
-}
-
-.scene-shot-badge.shot-wearing {
-  background: var(--color-background-pink);
-  color: var(--color-text-pink);
-}
-
-.scene-shot-badge.shot-other {
-  background: var(--color-background-gray);
-  color: var(--color-text-gray);
-}
-
-.scene-shot-badge.shot-monotonous {
-  background: var(--color-background-teal);
-  color: var(--color-text-teal);
-}
-
-/* CompactSegmentList migration (docs/styling-migration.md, StyleX migration batch 3) -
-   `.compact-list-panel`/`.bgm-gutter-header`/`.bgm-gutter-count-badge`/`.compact-list-body`/
-   `.bgm-gutter`/`.bgm-gutter-bar`(+`.selected`)/`.bgm-gutter-handle`/`.bgm-gutter-bar-label`/
-   `.compact-list-row.bgm-drag-highlight` all moved to CompactSegmentList.styles.ts (no property
-   conflicts with any marker class). The BGM gutter toggle is now a stock Astryx Button (2026-07-11
-   stock-component migration) - the old `.bgm-gutter-toggle` plain-CSS exception is gone with it. */
-
-/* BgmSettingsPanel migration (docs/styling-migration.md, StyleX migration batch 2) -
-   .bgm-file-list/.bgm-file-row (no `.plain-button`, no property conflict) moved to
-   BgmSettingsPanel.styles.ts. The file preview/select buttons are now stock Astryx IconButton/
-   Button (2026-07-11 stock-component migration) - the old `.bgm-file-play`/`.bgm-file-name`/
-   `.bgm-file-row.selected .bgm-file-name` plain-CSS exceptions are gone with them (the selected
-   look is now Button's own `variant="secondary"`). */
+/*
+ * ---- Cut settings (Edit step) + BGM track panel - deferred stock-audit follow-up ----
+ * Everything below is shared by SegmentQuickFields's groups (RangeGroup/PlaybackGroup/TitleGroup/
+ * TransitionsGroup/SubtitleGroup/SegmentQuickFields.tsx itself) and BgmSettingsPanel, which sit
+ * side by side as siblings in the Edit step and intentionally share this grid/marker-class system
+ * (screen-spec sections 0-4). The rest of the app (Finish/Export step, MomentPalette, CompactSegmentList,
+ * MiniTimelineStrip, VideoPreview) has moved to stock Astryx Field/FormLayout/Selector/Section
+ * components + component-owned StyleX (2026-07-11 stock-audit completion pass) - this is the one
+ * remaining scope flagged as a follow-up rather than half-migrated: `useNumericField`-bound native
+ * inputs (`.plain-field`/`.plain-field-textarea`) plus the `.qf-*`/`.field-*` grid/label system that
+ * arranges them. Time-boxed out of this pass; revisit as its own dedicated batch.
+ */
 
 .quick-fields {
   display: flex;
@@ -558,12 +125,6 @@ body {
   border-radius: 8px;
 }
 
-/* Cut settings (PRD section 4's canonical name for the "inspector") panel title — identifies what
-   the entire right-side field panel belongs to. Also absorbs the old `.app h2` rule's effect
-   (StyleX migration batch 4, see App.styles.ts's comment): that class+tag selector had higher
-   specificity than this single class, so it silently won font-size/margin on these same <h2>
-   elements and uniquely supplied text-transform/letter-spacing (no other rule set those) - folded
-   in below so the rendered look is unchanged now that `.app h2` is gone. */
 .qf-panel-title {
   margin: 28px 0 12px;
   font-size: var(--font-size-base);
@@ -573,8 +134,6 @@ body {
   color: var(--color-text-secondary);
 }
 
-/* Common shell for groups G1-G6 — each group makes its "belongs to a named section" explicit via
-   a small label header + a divider (except the first group) (screen-spec 0-1). */
 .qf-group {
   padding-top: 10px;
   border-top: 1px dashed var(--color-border-emphasized);
@@ -594,7 +153,6 @@ body {
   color: var(--color-text-secondary);
 }
 
-/* Common row placing a pair (IN/OUT, speed/volume, etc.) side by side on one row — screen-spec 0-4 "pairs go side by side". */
 .qf-row {
   display: flex;
   align-items: baseline;
@@ -620,18 +178,12 @@ body {
   white-space: nowrap;
 }
 
-/* screen-spec 0-2 "labels are a left-aligned single column" — for fields that place a pair on one
-   row like G1 (start/end) and G2 (speed/volume), the label width is fixed so the input's starting
-   x doesn't get jagged row to row.
-   Measured (2026-07-08): when the label width was automatic (end=1 char vs volume=2 chars), the
-   second field's input starting position drifted by up to 24px per row, which was the cause of it "looking skewed to the right". */
+/* Fixed label width so a paired row's (IN/OUT, speed/volume) second field doesn't drift x position
+   row to row (measured 2026-07-08: up to 24px drift with an automatic label width). */
 .qf-row .qf-field > span:first-child {
   width: 40px;
 }
 
-/* The field slot itself is also a fixed width — this prevents the unit suffix (qf-suffix) present
-   only on G2 (speed x/volume %) from making the second field's (end/volume) starting x drift row
-   to row again (G1's unitless start/end also occupies the same width, aligning via empty space). */
 .qf-row .field-narrow {
   width: 144px;
 }
@@ -646,35 +198,18 @@ body {
   color: var(--color-text-secondary);
 }
 
-/* Guidance text below a qf-row (e.g. the speed-cap note) - same treatment as .settings-note. */
 .qf-note {
   margin: 4px 0 0;
   font-size: var(--font-size-sm);
   color: var(--color-text-yellow);
 }
 
-.style-override-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-/* SegmentQuickFields migration (docs/styling-migration.md, StyleX migration batch 3) -
-   `.qf-note-neutral`/`.qf-transition`/`.qf-readonly-value`/`.qf-subtitle-field textarea`/
-   `.narration-warning`/`.quick-fields-narration-preview`(+`audio`) all moved to
-   SegmentQuickFields.styles.ts (no property conflicts with any marker class - see that file's
-   comment for the full reasoning). `.qf-actions-row` below is kept as a documented exception: it
-   overrides the shared `.qf-row`'s `gap` (16px -> 8px) at equal specificity, winning today only by
-   being later in this file's source order - moving it into StyleX (injected before this file)
-   would lose that cascade tie to `.qf-row`. */
+/* Overrides .qf-row's gap (16px -> 8px) at equal specificity for the cut-actions row - winning
+   today only by being later in this file's source order. */
 .qf-actions-row {
   gap: 8px;
 }
 
-/* Delete (a dangerous action) is separated from the cut-operations group into its own zone at the
-   bottom of the panel (screen-spec section 4, revised 2026-07-08) - clearly divided by a divider
-   (error color) + spacing, so it can't be accidentally pressed alongside other actions. */
 .qf-danger-zone {
   margin-top: 14px;
   padding-top: 10px;
@@ -689,190 +224,52 @@ body {
   color: var(--color-text-secondary);
 }
 
-/* Subtitle style presets (Export step) */
-
-.preset-row {
-  padding: 10px 0;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.preset-row:last-of-type {
-  border-bottom: none;
-}
-
-.preset-row-header {
-  /* Owns its own flex display now (2026-07-09 diagnosed fix) - this row used to rely on being
-     paired with the qf-row marker class for display:flex/flex-wrap, but qf-row's descendant
-     selector on .qf-field forced a 40px label column (Cut settings' token, meant for short labels
-     like In/Out) onto this row's "Name" field, clipping it. Switched to settings-field (Export
-     step's own 120px label token) instead, so this class now provides its own layout. */
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-}
-
-.preset-preview-chip {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 40px;
-  border-radius: 6px;
-  background: var(--stage-bg);
-  overflow: hidden;
-  container-type: inline-size;
-}
-
-/* color: #ffffff is a flagged literal (2026-07-11 color migration), same carve-out as `--stage-bg`
-   right above - this text overlays that always-dark preview chip, so it must stay light regardless
-   of theme/mode, not an Astryx `--color-*` token (every one of those is light-dark()-reactive by
-   design). */
-.preset-preview-text {
-  white-space: nowrap;
-  color: #ffffff;
-}
-
-/* Renamed from .preset-create-row (2026-07-09 diagnosed fix, same root cause as
-   .preset-row-header above) - this row no longer pairs with qf-row, so it owns its own
-   display:flex/flex-wrap; its field uses settings-field/field-text-medium (120px label,
-   240px text input), not qf-field, so "New preset name" no longer clips. */
-.settings-create-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 12px;
-  margin-top: 12px;
-}
-
-/* Step ③ Finish */
-
-.finish-layout {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* If this vertical column layout directly inherited .settings-group/.settings-group-wide's
-   flex:1 1 260px / 2 1 480px (meant only for the horizontal flex-wrap layout, see the old
-   FinishingSettings), each section would be forced by flex-grow to divide up and fill the leftover
-   vertical space, growing a large empty gap below the content (the same bug already hit once in
-   .render-dialog) — so here too, grow/basis are turned off so a section only takes up its content's
-   height. Width is additionally capped at a readable column (screen-spec section 5, revised
-   2026-07-09 - the "right-skewed, tiny inputs" fix): with flex-grow off but the parent's default
-   align-items:stretch, each section still stretched to the full step-body width (up to ~2000px on
-   a wide viewport), and inside it .settings-field's rows used to justify-content:space-between,
-   which threw the label to the far left and the input to the far right with a giant gap between -
-   the "inputs are tiny and right-skewed" complaint. Capping width here (not on the base class, so
-   the horizontal row layouts elsewhere - IntroOutroEditor's side-by-side groups, RenderSettingsDialog
-   - keep their own flex:1 1 260px grow/shrink behavior) keeps the column at a natural reading width,
-   left-anchored; the empty space to the right of it is deliberate. */
-.finish-layout > .settings-group,
-.finish-layout > .settings-group-wide {
+/*
+ * Width tokens (screen-spec sections 0-2/4) shared across Cut settings/BGM label+input pairs -
+ * narrow=5 digits (IN/OUT/speed/volume), medium=select/short text, full=textarea/slider.
+ */
+.field-narrow input,
+.field-narrow select {
+  width: 80px;
   flex: 0 0 auto;
+}
+
+.field-medium input,
+.field-medium select {
+  width: 180px;
+  flex: 0 0 auto;
+}
+
+.field-full {
   width: 100%;
-  max-width: 620px;
 }
 
-.finish-layout > .settings-group-wide {
-  /* The subtitle style section holds a compact live preview stage - a bit wider so the stage
-     (360px) and its own padding/labels don't feel cramped. */
-  max-width: 680px;
-}
-
-.finish-layout h3 {
-  font-size: var(--font-size-base);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-secondary);
-  margin: 0 0 12px;
-}
-
-.settings-field.wide-input {
-  flex: 1 1 320px;
-  min-width: 0;
-}
-
-.settings-field.wide-input input,
-.settings-field.wide-input select {
-  flex: 1 1 auto;
-  min-width: 0;
+.field-full input,
+.field-full select,
+.field-full textarea {
   width: 100%;
   box-sizing: border-box;
 }
 
-.render-cta {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.render-note {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-
-.render-note-error {
-  color: var(--color-text-yellow);
-}
-
-/* Wraps the short error summary + the full raw ffmpeg dump's collapsible - the summary always
-   shows, the (much longer) raw dump only when expanded, so the failure reads as one message
-   instead of the toast and this area both dumping the same wall of text (screen-spec fix). */
-.render-error-block {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.render-error-detail summary {
-  cursor: pointer;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-}
-
-.render-error-detail pre {
-  max-height: 240px;
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-all;
-  margin: 6px 0 0;
-  padding: 8px;
-  background: var(--color-background-muted);
+/*
+ * Scoped to raw (non-Astryx) text/number inputs and textareas only, via the .plain-field marker
+ * class - Astryx's own <Button>/inputs render their variant styling inside StyleX's `@layer
+ * astryx-base`, and per the CSS cascade-layers spec, any unlayered rule always beats every layered
+ * rule for the same property regardless of specificity - so a bare element selector here would
+ * silently flatten every Astryx input's look. Every native input still bound to useNumericField in
+ * the Cut settings/BGM scope above carries this class explicitly for that reason.
+ */
+.plain-field {
+  font: inherit;
+  color: inherit;
+  background: var(--color-background-surface);
   border: 1px solid var(--color-border);
   border-radius: 4px;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
+  padding: 4px 8px;
 }
 
-
-/* Render settings dialog (RenderSettingsDialog) — the dialog's own layout
-   (display/flex-direction/gap), the resolution options row's own layout, the summary line, and
-   the actions row all migrated to RenderSettingsDialog.styles.ts. */
-
-/* If this vertical column dialog directly inherited .settings-group's flex:1 1 260px (meant only
-   for the horizontal flex-wrap layout of FinishingSettings, etc.), the 3 groups would be forced by
-   flex-grow:1 to equally divide the dialog height and stretch out (~260px each), and there was a
-   measured bug where the [Cancel]/[Start render] buttons (.render-dialog-actions), pushed down by
-   that much, ended up outside a 900px viewport, unclickable — so here too, grow is turned off so a
-   group only takes up its content's height. `.render-dialog` stays a plain marker class on the
-   dialog's root element (alongside its migrated stylex properties) purely so this descendant
-   selector still has an ancestor to key off — `.settings-group` itself is a shared class used by
-   several not-yet-migrated components, so it isn't being touched here. */
-.render-dialog .settings-group {
-  flex: 0 1 auto;
+/* A second single-class selector (not textarea.plain-field) on purpose - see SubtitleGroup.tsx's
+   subtitle textarea, which combines this with its own StyleX class at equal specificity. */
+.plain-field-textarea {
+  padding: 6px 8px;
 }
-
-/* The resolution preset toggle is now a stock Astryx SegmentedControl (2026-07-11 stock-component
-   migration) - the old `.render-resolution-options button.active` plain-CSS exception is gone. */
-
-/* SequencePlayer migration (docs/styling-migration.md, StyleX migration batch 5) - `.sequence-
-   player`/`.sequence-player-stage`/`.sequence-video`(+`.hidden`)/`.sequence-subtitle`(+`-bottom`/
-   `-top`/`-center`/`-text`)/`.sequence-scene-hint`/`.sequence-player-ended`/`.sequence-player-
-   progress`(+`-fill`)/`.sequence-player-controls`/`.sequence-player-transport`/`.sequence-player-
-   counter` all moved to SequencePlayer.styles.ts. `.proxy-preparing` (VideoPreview's own proxy-
-   generating notice) moved to VideoPreview.styles.ts. `.sequence-player-sticky` (App's own wrapper
-   around SequencePlayer) moved to App.styles.ts. The playback-speed toggle is now a stock Astryx
-   SegmentedControl (2026-07-11 stock-component migration) - the old `.sequence-player-speed-
-   toggle button`(+`.active`) plain-CSS exception is gone with it. */

@@ -131,8 +131,14 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
     // Fixed 2-column grid (not the responsive minWidth API) - with exactly 2 children, minWidth's
     // auto-fill/auto-fit math can add a phantom 3rd track on a wide section and starve both real
     // columns (measured via a Playwright screenshot pass on FinishSettingsSection's own heading|
-    // fields grid, same root cause) - a fixed count sidesteps that entirely.
-    <Grid columns={2} gap={6}>
+    // fields grid, same root cause) - a fixed count sidesteps that entirely. `xstyle={styles.grid}`
+    // additionally overrides the track template to `minmax(0, 1fr)` (2026-07-11 overflow fix,
+    // finish-and-count-diagnosis.md) - Grid's own `columns={2}` template defaults each track to
+    // `minmax(auto, 1fr)`, whose `auto` minimum equals the widest child's min-content width; the
+    // "Choose file" select's longest option text (a filename + duration + "over 15s" suffix)
+    // measured wider than the fields column's available width, so without an explicit 0 minimum
+    // the whole Grid (and the page) was forced 208px wider than the 1280px viewport.
+    <Grid columns={2} gap={6} xstyle={styles.grid}>
       <VStack gap={3}>
         <Heading level={4}>Intro</Heading>
         {intro ? (
@@ -143,13 +149,20 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
         ) : null}
         {/* The file list is dynamic (server-fetched) with per-item disabled options (over the
             duration cap) and a loading placeholder - kept as a native <select> wrapped in Field
-            rather than swapped to Astryx's Selector, which is a popover/combobox component (see
-            its dist source), not a drop-in replacement for a plain enum <select> with this much
-            dynamic state; flagged as a follow-up once that's worth the behavioral risk. */}
+            rather than swapped to Astryx's Selector (2026-07-11 stock-audit completion pass,
+            re-verified against Selector's own docs/dist source): Selector is a popover/combobox
+            whose option list only renders (as ARIA `role="option"` elements, not native
+            `<option>`s with a real `.disabled` property) once the popover is open, not a drop-in
+            replacement for this native `<select>` - IntroOutroEditor.test.tsx's own
+            "disables select options for files over the intro/outro duration cap" case asserts
+            exactly that (`HTMLOptionElement`s, `.disabled`), so swapping would break real,
+            intentional test coverage of the disabled-option behavior, not just cosmetics. Flagged
+            as a follow-up if a Selector-based rewrite (re-deriving that test around an opened
+            popover + aria-disabled) is ever worth the behavioral risk. */}
         <Field label="Choose file" inputID="intro-file-select" width="100%">
           <select
             id="intro-file-select"
-            className="plain-field"
+            {...stylex.props(styles.select)}
             value={matchedIntroFile ?? ""}
             onChange={(e) => {
               if (e.target.value !== "") {
@@ -222,7 +235,7 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
         </Collapsible>
         {intro ? (
           introErrorKind ? (
-            <div className={`empty ${stylex.props(styles.missing).className}`}>
+            <div {...stylex.props(styles.missing)}>
               {videoSourceErrorMessage(introErrorKind, intro)}
             </div>
           ) : (
@@ -247,7 +260,7 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
         <Field label="Choose file" inputID="outro-file-select" width="100%">
           <select
             id="outro-file-select"
-            className="plain-field"
+            {...stylex.props(styles.select)}
             value={matchedOutroFile ?? ""}
             onChange={(e) => {
               if (e.target.value !== "") {
@@ -320,7 +333,7 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
         </Collapsible>
         {outro ? (
           outroErrorKind ? (
-            <div className={`empty ${stylex.props(styles.missing).className}`}>
+            <div {...stylex.props(styles.missing)}>
               {videoSourceErrorMessage(outroErrorKind, outro)}
             </div>
           ) : (

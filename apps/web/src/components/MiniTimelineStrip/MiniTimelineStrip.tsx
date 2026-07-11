@@ -114,9 +114,11 @@ export function MiniTimelineStrip({ segments, selectedIndex, onSelect, onGoToEdi
               <button
                 type="button"
                 key={i}
-                className={`plain-button mini-strip-block${i === selectedIndex ? " selected" : ""}${
-                  isClipBoundary ? " clip-boundary" : ""
-                }`}
+                {...stylex.props(
+                  styles.block,
+                  i === selectedIndex && styles.blockSelected,
+                  isClipBoundary && styles.blockClipBoundary,
+                )}
                 style={{ flexGrow: play, flexBasis: 0 }}
                 onClick={() => onSelect(i)}
                 onDoubleClick={(e) => {

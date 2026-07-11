@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { useToast } from "@astryxdesign/core/Toast";
 import { Button } from "@astryxdesign/core/Button";
+import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { buildClipPath } from "./clipPaths.js";
 import { useBlockingOverlay } from "./lib/modalStack.js";
 import { useCueSheetServer } from "./hooks/useCueSheetServer.js";
@@ -205,12 +206,24 @@ export function App({ themeMode, onThemeModeChange, themeName, onThemeNameChange
 
   if (loadError) {
     if (loadError.kind === "not-found") {
-      return <div className="status empty-state">{loadError.message}</div>;
+      return (
+        <div {...stylex.props(styles.bootStatus)}>
+          <EmptyState title="Cuesheet not found" description={loadError.message} />
+        </div>
+      );
     }
-    return <div className="status">Failed to load: {loadError.message}</div>;
+    return (
+      <div {...stylex.props(styles.bootStatus)}>
+        <EmptyState title="Failed to load" description={loadError.message} />
+      </div>
+    );
   }
   if (!draft) {
-    return <div className="status">Loading cuesheet…</div>;
+    return (
+      <div {...stylex.props(styles.bootStatus)}>
+        <EmptyState title="Loading cuesheet…" />
+      </div>
+    );
   }
 
   const subtitleFilled = draft.segments.filter((s) => s.subtitle.trim() !== "").length;

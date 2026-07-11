@@ -226,5 +226,20 @@ const SHOT_TYPE_CATEGORY: Record<ShotType, Category> = {
   other: "other",
 };
 
+/**
+ * Shot type -> the same Badge variant its category already uses in the Scenes palette
+ * (`CATEGORY_META`) - reused so the Edit step's per-cut scene badge (CompactSegmentList,
+ * VideoPreview) never invents a second color mapping for the same shot types (CLAUDE.md
+ * "component layering": dedup, don't restyle). "Timelapse cut" (a monotonous speed-range, not a
+ * shotType) isn't in this map - it uses the "knit-range" category's own teal directly
+ * (`TIMELAPSE_BADGE_VARIANT`), since a speed-up connector is conceptually the same "monotonous
+ * knitting range" category.
+ */
+export function shotTypeBadgeVariant(shotType: ShotType): BadgeVariant {
+  return CATEGORY_META[SHOT_TYPE_CATEGORY[shotType]].badgeVariant;
+}
+
+export const TIMELAPSE_BADGE_VARIANT: BadgeVariant = CATEGORY_META["knit-range"].badgeVariant;
+
 const MISTAKE_PATTERN = /풀|실수|다시\s*뜨/;
 const OUTING_PATTERN = /가게|야외|밖에|거리|걷|매장/;

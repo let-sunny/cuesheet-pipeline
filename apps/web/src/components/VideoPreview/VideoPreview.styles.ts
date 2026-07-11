@@ -19,8 +19,14 @@ import {
  *   deliberately render the exact same classes for their own live-preview stages so the preview
  *   never drifts from this component's real overlay (see SubtitleStyleSettings.tsx's file
  *   comment). Not owned solely by this component.
- * - `.empty` (the "can't find the source" message) — shared with IntroOutroEditor.tsx (both render
- *   the same generic missing-source message). Not owned solely by this component.
+ *
+ * `.empty` (the "can't find the source" message) is gone from styles.css (2026-07-11 stock-audit
+ * completion pass) - `missing` below ports its 2 properties directly, duplicated identically in
+ * IntroOutroEditor.styles.ts's own `missing` style rather than kept as a shared global class, since
+ * a 2-property rule doesn't earn a shared component of its own. The scene-shot badge
+ * (`scene-shot-badge`+`shot-*`) is gone too - replaced by a stock Astryx `Badge`, colored via
+ * `shotTypeBadgeVariant`/`TIMELAPSE_BADGE_VARIANT` (lib/momentCards.ts), the same category-color
+ * mapping the Scenes palette already uses (dedup, not a second color system).
  *
  * `background`/`border` shorthands are written out as their longhand equivalents - see
  * HeaderBar.styles.ts's comment for why (StyleX silently drops the shorthand form).
@@ -87,6 +93,16 @@ export const styles = stylex.create({
   contextIndex: {
     fontWeight: fontWeightVars["--font-weight-bold"],
     color: colorVars["--color-text-primary"],
+  },
+  // Badge has no `size` prop - trims its default padding/font-size down to the compact scale this
+  // inline context-header badge needs (same override as MomentPalette.styles.ts's `categoryBadge`).
+  sceneBadge: {
+    fontSize: textSizeVars["--font-size-xs"],
+    padding: `1px ${spacingVars["--spacing-1-5"]}`,
+  },
+  missing: {
+    color: colorVars["--color-text-secondary"],
+    fontSize: textSizeVars["--font-size-sm"],
   },
   contextSceneLabel: {
     fontSize: textSizeVars["--font-size-xs"],

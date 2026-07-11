@@ -5,13 +5,14 @@ import { colorVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex"
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 5) — rules ported
  * 1:1 from the old `.mini-strip*` classes in styles.css (all owned solely by this component).
  *
- * NOT migrated here (stay plain CSS, see styles.css):
- * - `.mini-strip-block` (+ `.selected`/`.clip-boundary`) — each block is a raw `<button>` that also
- *   carries the `.plain-button` marker class, and overrides several of `.plain-button`'s own
- *   properties (background/border/border-radius/padding) at equal (single-class) specificity. This
- *   app's StyleX output is injected *before* styles.css, so a same-specificity StyleX atomic class
- *   would lose that cascade tie to the later-in-source `.plain-button` rule for every overlapping
- *   property — same root cause as HeaderBar's theme toggle / BgmSettingsPanel's bgm-file-play/name.
+ * `.mini-strip-block` (+ `.selected`/`.clip-boundary`) is gone from styles.css too (2026-07-11
+ * stock-audit completion pass) - folded into `block`/`blockSelected`/`blockClipBoundary` below,
+ * combining what used to be the `.plain-button` base look (this block is a raw `<button>` with no
+ * Astryx Button equivalent - a variable-width flex-grow timeline scrubber block holding a thumbnail
+ * image, not a labeled action button; CLAUDE.md's "domain-custom areas ... keep their own CSS"
+ * carve-out) with `.mini-strip-block`'s own overrides. Both now live in one StyleX object instead
+ * of two same-specificity global classes racing on cascade order, so there's no more cascade-tie
+ * concern to document (`.plain-button` no longer exists at all).
  *
  * The zoom-controls buttons (2026-07-11 typography/stock-component pass) are now stock Astryx
  * Button/IconButton instead of raw `.plain-button` elements - the old `.mini-strip-zoom-controls
@@ -72,5 +73,32 @@ export const styles = stylex.create({
   thumb: {
     position: "absolute",
     inset: 0,
+  },
+  // Background is intentionally fixed dark regardless of theme — since this is a timeline canvas
+  // that holds a video frame thumbnail, it stays dark even in light theme (same reasoning as
+  // SubtitleStyleSettings.styles.ts's preview stage - see `--stage-bg`'s own doc comment in
+  // styles.css for why it's a literal, not an Astryx `--color-*` token).
+  block: {
+    position: "relative",
+    height: 20,
+    padding: 0,
+    overflow: "hidden",
+    fontFamily: "inherit",
+    color: "inherit",
+    backgroundColor: "var(--stage-bg)",
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: colorVars["--color-border"],
+    borderRadius: 3,
+    cursor: "pointer",
+  },
+  // Adds a thin divider so clip boundaries stand out even in the zoomed-out (full view) state.
+  blockClipBoundary: {
+    borderLeftWidth: 2,
+    borderLeftColor: colorVars["--color-accent"],
+  },
+  blockSelected: {
+    borderColor: colorVars["--color-accent"],
+    backgroundColor: colorVars["--color-accent-muted"],
   },
 });

@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
+import { Badge } from "@astryxdesign/core/Badge";
 import { Button } from "@astryxdesign/core/Button";
 import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import type { Segment, SubtitleStyle, SubtitleStylePresets } from "@cuesheet/schema";
@@ -11,6 +12,7 @@ import { cropPreviewStyle } from "../../lib/cropPreview.js";
 import { useCropEditor } from "../../hooks/useCropEditor.js";
 import { MAX_PLAYBACK_RATE, useShuttle } from "../../hooks/useShuttle.js";
 import { matchSceneInfo, shotTypeLabel } from "../../lib/sceneInfo.js";
+import { shotTypeBadgeVariant, TIMELAPSE_BADGE_VARIANT } from "../../lib/momentCards.js";
 import { classifyVideoSourceError, videoSourceErrorMessage } from "../../lib/videoSourceError.js";
 import {
   mergeSubtitleStyle,
@@ -430,12 +432,14 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
             #{selectedIndex + 1}
           </span>
           {sceneInfo.kind === "moment" ? (
-            <span className={`scene-shot-badge shot-${sceneInfo.shotType}`}>
-              {shotTypeLabel(sceneInfo.shotType)}
-            </span>
+            <Badge
+              variant={shotTypeBadgeVariant(sceneInfo.shotType)}
+              label={shotTypeLabel(sceneInfo.shotType)}
+              xstyle={styles.sceneBadge}
+            />
           ) : null}
           {sceneInfo.kind === "monotonous" ? (
-            <span className="scene-shot-badge shot-monotonous">Timelapse cut</span>
+            <Badge variant={TIMELAPSE_BADGE_VARIANT} label="Timelapse cut" xstyle={styles.sceneBadge} />
           ) : null}
           <span {...stylex.props(styles.contextSceneLabel)}>Scene</span>
           <span {...stylex.props(styles.contextSceneText)}>{sceneText}</span>
@@ -451,7 +455,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
         </div>
       ) : null}
       {!isPreparingProxy && (missingKind || segment.clip === "") ? (
-        <div className="empty">
+        <div {...stylex.props(styles.missing)}>
           {videoSourceErrorMessage(missingKind ?? "missing", segment.clip)}
         </div>
       ) : isPreparingProxy ? null : (

@@ -6,12 +6,13 @@ import { colorVars, spacingVars, textSizeVars } from "@astryxdesign/core/theme/t
  * `.render-dialog`/`.render-resolution-options*`/`.render-dialog-summary-line`/
  * `.render-dialog-actions` classes in styles.css.
  *
- * Left behind in styles.css (not migrated): `.settings-group` (shared with SubtitleStyleSettings/
- * NarrationSettings/IntroOutroEditor/ProjectMetaFields/App — this component still renders it as a plain
- * className), `.render-dialog .settings-group` (the descendant override that turns off that
- * shared class's flex-grow inside this dialog — can't move to stylex since the target class
- * itself stays a plain global token), and `.render-note`/`.render-note-error` (shared with
- * App.tsx's own render-note banner).
+ * 2026-07-11 stock-audit completion pass: `.settings-group`/`.render-dialog`/`.render-note`/
+ * `.render-note-error` are all gone from this component - the 3 resolution/subtitles/summary
+ * groups are now stock Astryx `Section`(transparent)/`Heading`/`VStack` (each section just takes
+ * up its content's height by default, so the old `.render-dialog .settings-group { flex: 0 1
+ * auto }` descendant override that used to turn off `.settings-group`'s shared flex-grow no longer
+ * has anything to override), and the resolution/dirty notes are `Text`. `dirtyNote` below is the
+ * one property (`--color-text-yellow`) `Text`'s own `color` prop has no option for.
  *
  * The resolution preset toggle is now a stock Astryx SegmentedControl (2026-07-11 stock-component
  * migration) - the old `.render-resolution-options button.active` plain-CSS exception and this
@@ -21,15 +22,13 @@ import { colorVars, spacingVars, textSizeVars } from "@astryxdesign/core/theme/t
  * MomentPalette.styles.ts's comment): `gap`/`margin` read from Astryx's `spacingVars`.
  */
 export const styles = stylex.create({
-  dialog: {
-    display: "flex",
-    flexDirection: "column",
-    gap: spacingVars["--spacing-4"],
-  },
   summaryLine: {
     margin: `0 0 ${spacingVars["--spacing-1"]}`,
     fontSize: textSizeVars["--font-size-sm"],
     color: colorVars["--color-text-primary"],
+  },
+  dirtyNote: {
+    color: colorVars["--color-text-yellow"],
   },
   actions: {
     display: "flex",

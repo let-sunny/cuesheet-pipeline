@@ -3,6 +3,7 @@ import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { Badge } from "@astryxdesign/core/Badge";
+import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { Icon } from "@astryxdesign/core/Icon";
 import { Overlay } from "@astryxdesign/core/Overlay";
 import { Text } from "@astryxdesign/core/Text";
@@ -121,9 +122,11 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
       </div>
 
       {collapsed ? null : cards.length === 0 ? (
-        <div className="empty-state">
-          No scene candidates yet - run <code>pnpm episode</code> with a source folder to generate them automatically.
-        </div>
+        <EmptyState
+          title="No scene candidates yet"
+          description="Run `pnpm episode` with a source folder to generate them automatically."
+          isCompact
+        />
       ) : (
         <>
           {/* Category/status filter chips (2026-07-11 stock-component migration) - a stock Astryx

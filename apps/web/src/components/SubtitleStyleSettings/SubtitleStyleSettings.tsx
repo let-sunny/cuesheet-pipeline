@@ -3,6 +3,7 @@ import * as stylex from "@stylexjs/stylex";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { Field } from "@astryxdesign/core/Field";
 import { FormLayout } from "@astryxdesign/core/FormLayout";
+import { Selector } from "@astryxdesign/core/Selector";
 import { Slider } from "@astryxdesign/core/Slider";
 import { Text } from "@astryxdesign/core/Text";
 import { TextInput } from "@astryxdesign/core/TextInput";
@@ -13,9 +14,8 @@ import {
   subtitleOutlineStyle,
   subtitlePositionStyle,
   toCqw,
-  toColorInputValue,
 } from "../../lib/subtitleOverlay.js";
-import { Swatch } from "../Swatch/index.js";
+import { ColorField } from "../ui/ColorField/index.js";
 import { styles } from "./SubtitleStyleSettings.styles.js";
 
 export interface SubtitleStyleSettingsProps {
@@ -89,57 +89,34 @@ export function SubtitleStyleSettings({
       {/* horizontal-labels: labels beside inputs (FormLayout.doc.mjs's settings-page guidance).
           Size/Outline width stay native <input>s bound to useNumericField (see that hook's file
           comment on why NumberInput's value/onChange/onBlur shape doesn't match), wrapped in Field
-          for the label/layout only. Color/Outline color/Background color are a native color-picker
-          + hex-text pair plus a Swatch preview - a composite control with no single Astryx input
-          equivalent, so they stay native too, grouped under one Field label each. Position is a
-          native <select> kept for the same reason (see IntroOutroEditor's file comment - Astryx's
-          Selector is a popover/combobox, not a drop-in replacement for a plain enum <select>). */}
+          for the label/layout only. Color/Outline color/Background color use the shared
+          `ColorField` wrapper (native color-picker + hex-text pair + Swatch preview - a composite
+          control with no single Astryx input equivalent). Position is a stock Astryx `Selector`
+          (2026-07-11 stock-audit completion pass) - a fixed 3-option enum, unlike IntroOutroEditor's
+          dynamic file pickers, so Selector's option model is a clean fit. */}
       <FormLayout direction="horizontal-labels">
         <TextInput label="Font" value={subtitleStyle.font} onChange={(value) => onSubtitleStyleChange({ font: value })} />
         <Field label="Size" inputID="subtitle-size">
-          <input id="subtitle-size" type="number" className="plain-field" min={1} style={NARROW_INPUT_STYLE} {...sizeField} />
+          <input id="subtitle-size" type="number" min={1} {...stylex.props(styles.numberInput)} {...sizeField} />
         </Field>
-        <Field label="Color" inputID="subtitle-color">
-          <div className="color-field-inputs">
-            <input
-              id="subtitle-color"
-              type="color"
-              value={toColorInputValue(subtitleStyle.color)}
-              onChange={(e) => onSubtitleStyleChange({ color: e.target.value })}
-            />
-            <input
-              type="text"
-              className="plain-field"
-              value={subtitleStyle.color}
-              onChange={(e) => onSubtitleStyleChange({ color: e.target.value })}
-            />
-            <Swatch color={subtitleStyle.color} />
-          </div>
-        </Field>
-        <Field label="Outline color" inputID="subtitle-outline-color">
-          <div className="color-field-inputs">
-            <input
-              id="subtitle-outline-color"
-              type="color"
-              value={toColorInputValue(subtitleStyle.outlineColor)}
-              onChange={(e) => onSubtitleStyleChange({ outlineColor: e.target.value })}
-            />
-            <input
-              type="text"
-              className="plain-field"
-              value={subtitleStyle.outlineColor}
-              onChange={(e) => onSubtitleStyleChange({ outlineColor: e.target.value })}
-            />
-            <Swatch color={subtitleStyle.outlineColor} />
-          </div>
-        </Field>
+        <ColorField
+          label="Color"
+          inputID="subtitle-color"
+          value={subtitleStyle.color}
+          onChange={(value) => onSubtitleStyleChange({ color: value })}
+        />
+        <ColorField
+          label="Outline color"
+          inputID="subtitle-outline-color"
+          value={subtitleStyle.outlineColor}
+          onChange={(value) => onSubtitleStyleChange({ outlineColor: value })}
+        />
         <Field label="Outline width" inputID="subtitle-outline-width">
           <input
             id="subtitle-outline-width"
             type="number"
-            className="plain-field"
             min={0}
-            style={NARROW_INPUT_STYLE}
+            {...stylex.props(styles.numberInput)}
             {...outlineWidthField}
           />
         </Field>
@@ -161,23 +138,12 @@ export function SubtitleStyleSettings({
         </Field>
         {background ? (
           <>
-            <Field label="Background color" inputID="subtitle-bg-color">
-              <div className="color-field-inputs">
-                <input
-                  id="subtitle-bg-color"
-                  type="color"
-                  value={toColorInputValue(background.color)}
-                  onChange={(e) => patchBackground({ color: e.target.value })}
-                />
-                <input
-                  type="text"
-                  className="plain-field"
-                  value={background.color}
-                  onChange={(e) => patchBackground({ color: e.target.value })}
-                />
-                <Swatch color={background.color} />
-              </div>
-            </Field>
+            <ColorField
+              label="Background color"
+              inputID="subtitle-bg-color"
+              value={background.color}
+              onChange={(value) => patchBackground({ color: value })}
+            />
             {/* Value folded into the label, valueDisplay="none" (2026-07-09 diagnosed fix - see
                 SegmentQuickFields/TitleGroup.tsx's Backdrop dim slider for the full rationale: near
                 the slider's max, the thumb overlaps an adjacent same-row text display regardless of
@@ -197,10 +163,9 @@ export function SubtitleStyleSettings({
               <input
                 id="subtitle-bg-padding"
                 type="number"
-                className="plain-field"
                 min={0}
                 max={120}
-                style={NARROW_INPUT_STYLE}
+                {...stylex.props(styles.numberInput)}
                 {...paddingField}
               />
             </Field>
@@ -211,22 +176,12 @@ export function SubtitleStyleSettings({
             one qf-row squeezed the panel enough to clip the "Position" label and cramp the slider -
             they have plenty of vertical room here, so there's no reason to force them onto one
             line). */}
-        <Field label="Position" inputID="subtitle-position">
-          <select
-            id="subtitle-position"
-            className="plain-field"
-            value={subtitleStyle.position}
-            onChange={(e) =>
-              onSubtitleStyleChange({
-                position: e.target.value as SubtitleStyle["position"],
-              })
-            }
-          >
-            <option value="bottom">Bottom</option>
-            <option value="top">Top</option>
-            <option value="center">Center</option>
-          </select>
-        </Field>
+        <Selector
+          label="Position"
+          value={subtitleStyle.position}
+          onChange={(value) => onSubtitleStyleChange({ position: value as SubtitleStyle["position"] })}
+          options={POSITION_OPTIONS}
+        />
         <Field label="Edge margin" inputID="subtitle-edge-margin" isLabelHidden>
           <Slider
             label={`Edge margin (${margin}px)`}
@@ -332,8 +287,8 @@ const DEFAULT_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75
  */
 const DEFAULT_MARGIN = 40;
 
-/** Field's own `width` prop only applies in its default (non horizontal-labels) rendering mode, so
- * for this FormLayout it has no effect (confirmed via Field's dist source) - capping the native
- * `<input>`'s own width is what keeps short numeric fields from stretching to the fields column's
- * full width (docs/design-principles.md's density rule). */
-const NARROW_INPUT_STYLE = { maxWidth: 140 };
+const POSITION_OPTIONS = [
+  { value: "bottom", label: "Bottom" },
+  { value: "top", label: "Top" },
+  { value: "center", label: "Center" },
+];

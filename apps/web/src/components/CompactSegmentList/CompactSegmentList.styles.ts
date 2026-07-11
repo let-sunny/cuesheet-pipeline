@@ -12,16 +12,14 @@ import {
  * ported 1:1 from the old `.compact-list-*`/`.bgm-gutter-*` classes in styles.css (all owned
  * solely by this component).
  *
- * NOT migrated here (stay plain CSS, see styles.css):
- * - `.scene-shot-badge` (+ `.shot-*` variants) — shared with VideoPreview.tsx (both render the
- *   same scene-info badge), so it's a shared token, not owned solely by this component.
- * - `.compact-list-subtitle-input` (+ `:focus`) — overrides `.plain-field`/`.plain-field-textarea`
- *   (border/background/border-radius/padding). Both are single-class selectors tied on
- *   specificity, and this app's StyleX output is injected *before* styles.css, so a same-
- *   specificity StyleX atomic class would lose that cascade tie to the later-in-source
- *   `.plain-field`/`.plain-field-textarea` rules for every overlapping property — styles.css's own
- *   comment on `.plain-field-textarea` documents this exact selector as the reason it's kept a
- *   bare single-class rule instead of `textarea.plain-field` in the first place.
+ * `.scene-shot-badge` (+ `.shot-*` variants) is gone from styles.css (2026-07-11 stock-audit
+ * completion pass) - replaced by a stock Astryx `Badge` (`sceneBadge` below trims its default size,
+ * same override as VideoPreview.styles.ts's own `sceneBadge`), colored via
+ * `shotTypeBadgeVariant`/`TIMELAPSE_BADGE_VARIANT` (lib/momentCards.ts) - the same category-color
+ * mapping the Scenes palette already uses, not a second color system. `.compact-list-subtitle-
+ * input` (+ `:focus`) is gone too - ported 1:1 into `subtitleInput` below (StyleX's own cascade
+ * layer no longer needs to out-order a global `.plain-field`/`.plain-field-textarea` marker class,
+ * since those are gone from this component's markup).
  *
  * The BGM gutter toggle and the row action buttons (move up/down, delete) are now stock Astryx
  * Button/IconButton (2026-07-11 stock-component migration) - the old `.bgm-gutter-toggle`/
@@ -203,6 +201,38 @@ export const styles = stylex.create({
   sceneEmpty: {
     fontStyle: "italic",
     color: colorVars["--color-text-disabled"],
+  },
+  // Badge has no `size` prop - trims its default padding/font-size down to fit inline in `scene`
+  // (same override as VideoPreview.styles.ts's own `sceneBadge` - the two intentionally match,
+  // since it's the same badge shown in the Edit step's context header and this cut-list row).
+  sceneBadge: {
+    fontSize: textSizeVars["--font-size-xs"],
+    padding: `1px ${spacingVars["--spacing-1-5"]}`,
+  },
+  // Ported 1:1 from the old `.compact-list-subtitle-input`(+`:focus`) rule in styles.css - a fixed
+  // 2-line-height inline quick-edit textarea (see the call site's comment for why it doesn't grow
+  // with content).
+  subtitleInput: {
+    width: "100%",
+    minWidth: 0,
+    boxSizing: "border-box",
+    padding: "3px 6px",
+    fontSize: textSizeVars["--font-size-base"],
+    fontFamily: "inherit",
+    lineHeight: "18px",
+    height: 44,
+    color: "inherit",
+    backgroundColor: colorVars["--color-background-surface"],
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: colorVars["--color-border"],
+    borderRadius: radiusVars["--radius-inner"],
+    resize: "none",
+    overflowY: "auto",
+    ":focus": {
+      outline: "none",
+      borderColor: colorVars["--color-accent"],
+    },
   },
   // Second line under the scene text (13-inch density pass, 2026-07-10) - time/style badge/
   // subtitle dot/reorder+delete actions used to sit beside `text` as direct row siblings, which
