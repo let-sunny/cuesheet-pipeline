@@ -88,7 +88,13 @@ describe("useEditStepActions", () => {
     const { result } = setup(threeSegmentSheet());
 
     act(() => result.current.toggleSegmentTitle(0, true));
-    expect(result.current.draft?.segments[0]?.title).toEqual({ text: "Title", preset: "typing", durationS: 3 });
+    expect(result.current.draft?.segments[0]?.title).toEqual({
+      text: "Title",
+      preset: "typing",
+      durationS: 3,
+      color: "#3a3128",
+      size: 72,
+    });
 
     act(() => result.current.toggleSegmentTitle(0, false));
     expect(result.current.draft?.segments[0]?.title).toBeUndefined();

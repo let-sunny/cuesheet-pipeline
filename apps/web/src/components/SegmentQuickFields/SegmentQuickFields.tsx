@@ -180,6 +180,11 @@ export function SegmentQuickFields({
     coerce: (n) => Math.min(10, Math.max(0.5, n)),
     onCommit: (next) => onChangeTitle({ durationS: next }),
   });
+  const titleSizeField = useNumericField({
+    value: segment?.title?.size ?? DEFAULT_TITLE_SIZE_PX,
+    coerce: (n) => Math.max(1, Math.round(n)),
+    onCommit: (next) => onChangeTitle({ size: next }),
+  });
   // Transition durations are cross-validated against each other (their sum can't exceed this
   // cut's own output length, e.g. a 1s cut can't fit a 0.5s transition on both ends) - each
   // field's coerce clamps against the *other* side's current duration, not just its own 0.2-2s
@@ -348,6 +353,7 @@ export function SegmentQuickFields({
             onToggle={onToggleTitle}
             onChangeTitle={onChangeTitle}
             titleDurationField={titleDurationField}
+            titleSizeField={titleSizeField}
           />
 
           <TransitionsGroup
@@ -367,6 +373,9 @@ export function SegmentQuickFields({
 
 /** Matches the schema's title.durationS default (3) - the value shown right after the toggle is turned on, before onChangeTitle's first patch lands. */
 const DEFAULT_TITLE_DURATION_S = 3;
+
+/** Matches the schema's title.size default (72) - see packages/render/src/remotion/titleCardStyle.ts's TITLE_FONT_SIZE_PX. */
+const DEFAULT_TITLE_SIZE_PX = 72;
 
 /** Matches the schema's transition.durationS default (0.5) - the value shown right after a
  * transition toggle is turned on, before onChangeTransition's first patch lands. */

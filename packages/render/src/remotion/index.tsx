@@ -1,6 +1,6 @@
 import { Composition, registerRoot } from "remotion";
 import { TitleCard, type TitleCardProps } from "./TitleCard.js";
-import { TITLE_TEXT_COLOR } from "./titleCardStyle.js";
+import { TITLE_FONT_SIZE_PX, TITLE_TEXT_COLOR } from "./titleCardStyle.js";
 
 /**
  * Remotion bundle entry point (see title.ts's prepareTitleAssets, which points @remotion/bundler's
@@ -41,6 +41,7 @@ const DEFAULT_PROPS: TitleCardProps = {
   durationInSeconds: 1,
   fps: 30,
   color: TITLE_TEXT_COLOR,
+  fontSize: TITLE_FONT_SIZE_PX,
   width: 1920,
   height: 1080,
 };

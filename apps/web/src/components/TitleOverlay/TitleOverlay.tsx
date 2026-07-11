@@ -4,7 +4,7 @@ import { Player } from "@remotion/player";
 import type { PlayerRef } from "@remotion/player";
 import { IconButton } from "@astryxdesign/core/IconButton";
 import type { Title } from "@cuesheet/schema";
-import { TitleCard, TITLE_TEXT_COLOR } from "@cuesheet/render/remotion";
+import { TitleCard, TITLE_FONT_SIZE_PX, TITLE_TEXT_COLOR } from "@cuesheet/render/remotion";
 import type { TitleCardProps } from "@cuesheet/render/remotion";
 import { styles } from "./TitleOverlay.styles.js";
 
@@ -57,7 +57,11 @@ export function TitleOverlay({ title, projectWidth, projectHeight, projectFps }:
     preset: title.preset,
     durationInSeconds: title.durationS,
     fps: projectFps,
-    color: TITLE_TEXT_COLOR,
+    // title.color/title.size are schema fields with defaults, so they're always present on a
+    // validated cuesheet - the ?? fallback only matters for a title object built before the
+    // fields existed (e.g. a stale in-memory draft not yet round-tripped through validation).
+    color: title.color ?? TITLE_TEXT_COLOR,
+    fontSize: title.size ?? TITLE_FONT_SIZE_PX,
     width: projectWidth,
     height: projectHeight,
   };

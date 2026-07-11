@@ -7,6 +7,7 @@ import { TextInput } from "@astryxdesign/core/TextInput";
 import { VStack } from "@astryxdesign/core/VStack";
 import type { Title } from "@cuesheet/schema";
 import type { NumericFieldBindings } from "../../hooks/useNumericField.js";
+import { ColorField } from "../ui/ColorField/index.js";
 import { NumericInput } from "../ui/NumericInput/index.js";
 import { SelectField } from "../ui/SelectField/index.js";
 import { styles } from "./TitleGroup.styles.js";
@@ -16,6 +17,7 @@ export interface TitleGroupProps {
   onToggle: (enabled: boolean) => void;
   onChangeTitle: (patch: Partial<Title>) => void;
   titleDurationField: NumericFieldBindings;
+  titleSizeField: NumericFieldBindings;
 }
 
 /**
@@ -23,7 +25,7 @@ export interface TitleGroupProps {
  * Transitions). Turning it on starts with a default typing title (screen-spec's "starts from a
  * sane default" pattern) so the preview shows something immediately.
  */
-export function TitleGroup({ title, onToggle, onChangeTitle, titleDurationField }: TitleGroupProps) {
+export function TitleGroup({ title, onToggle, onChangeTitle, titleDurationField, titleSizeField }: TitleGroupProps) {
   return (
     <VStack gap={1.5} xstyle={styles.groupBorder} data-testid="cut-settings-group-title">
       <Text type="label" color="secondary" weight="semibold" xstyle={styles.groupLabel}>
@@ -66,6 +68,20 @@ export function TitleGroup({ title, onToggle, onChangeTitle, titleDurationField 
             <NumericInput field={titleDurationField} label="Dur." width={80} />
             <Text type="supporting">s</Text>
           </HStack>
+          {/* Color/Size mirror subtitle style's own color/size fields (SegmentStyleOverride.tsx) -
+              ColorField doesn't self-wrap in FormLayoutContext the way ui/NumericInput does, so
+              this row provides it locally for label-beside-input density. */}
+          <FormLayoutContext value={{ direction: "horizontal-labels" }}>
+            <HStack gap={4} vAlign="center" wrap="wrap">
+              <ColorField
+                label="Color"
+                inputID="cut-field-title-color"
+                value={title.color}
+                onChange={(value) => onChangeTitle({ color: value })}
+              />
+              <NumericInput field={titleSizeField} label="Size" width={80} testId="cut-field-title-size" />
+            </HStack>
+          </FormLayoutContext>
           <Slider
             // Value folded into the label (valueDisplay="none") rather than Astryx's own adjacent
             // text display (2026-07-09 diagnosed fix) - at the slider's max, the thumb's own width

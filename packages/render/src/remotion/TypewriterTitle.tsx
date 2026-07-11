@@ -1,9 +1,10 @@
 import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
-import { TITLE_FONT_FAMILY, TITLE_FONT_SIZE_PX } from "./titleCardStyle.js";
+import { TITLE_FONT_FAMILY } from "./titleCardStyle.js";
 
 export interface TypewriterTitleProps {
   text: string;
   color: string;
+  fontSize: number;
 }
 
 /**
@@ -12,7 +13,7 @@ export interface TypewriterTitleProps {
  * advances one character every CHAR_FRAMES frames (>= 2, a calm pace rather than a jittery one),
  * followed by a smooth blinking block cursor while text remains to reveal.
  */
-export function TypewriterTitle({ text, color }: TypewriterTitleProps) {
+export function TypewriterTitle({ text, color, fontSize }: TypewriterTitleProps) {
   const frame = useCurrentFrame();
   const chars = Array.from(text);
   const charsShown = Math.min(chars.length, Math.floor(frame / CHAR_FRAMES));
@@ -25,7 +26,7 @@ export function TypewriterTitle({ text, color }: TypewriterTitleProps) {
 
   return (
     <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
-      <div style={{ fontFamily: TITLE_FONT_FAMILY, fontSize: TITLE_FONT_SIZE_PX, color, display: "flex", alignItems: "center" }}>
+      <div style={{ fontFamily: TITLE_FONT_FAMILY, fontSize, color, display: "flex", alignItems: "center" }}>
         <span>{shown}</span>
         <span
           style={{

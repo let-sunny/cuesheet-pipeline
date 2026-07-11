@@ -7,21 +7,23 @@ import { normalizeFrameFilenames, prepareTitleAssets, titleCacheKey } from "../s
 
 const project = { width: 1920, height: 1080, fps: 30 };
 
+const baseTitleForKey = { text: "Cast on", preset: "fade" as const, durationS: 3, color: "#3a3128", size: 72 };
+
 describe("titleCacheKey", () => {
-  it("is stable for identical (text, preset, durationS, project) inputs", () => {
-    const a = titleCacheKey({ text: "Cast on", preset: "fade", durationS: 3 }, project);
-    const b = titleCacheKey({ text: "Cast on", preset: "fade", durationS: 3 }, project);
+  it("is stable for identical (text, preset, durationS, color, size, project) inputs", () => {
+    const a = titleCacheKey(baseTitleForKey, project);
+    const b = titleCacheKey({ ...baseTitleForKey }, project);
     expect(a).toBe(b);
   });
 
-  it("differs when text, preset, duration, or project dimensions differ", () => {
-    const base = titleCacheKey({ text: "Cast on", preset: "fade", durationS: 3 }, project);
-    expect(titleCacheKey({ text: "Bind off", preset: "fade", durationS: 3 }, project)).not.toBe(base);
-    expect(titleCacheKey({ text: "Cast on", preset: "highlight", durationS: 3 }, project)).not.toBe(base);
-    expect(titleCacheKey({ text: "Cast on", preset: "fade", durationS: 4 }, project)).not.toBe(base);
-    expect(titleCacheKey({ text: "Cast on", preset: "fade", durationS: 3 }, { ...project, width: 1280 })).not.toBe(
-      base,
-    );
+  it("differs when text, preset, duration, color, size, or project dimensions differ", () => {
+    const base = titleCacheKey(baseTitleForKey, project);
+    expect(titleCacheKey({ ...baseTitleForKey, text: "Bind off" }, project)).not.toBe(base);
+    expect(titleCacheKey({ ...baseTitleForKey, preset: "highlight" }, project)).not.toBe(base);
+    expect(titleCacheKey({ ...baseTitleForKey, durationS: 4 }, project)).not.toBe(base);
+    expect(titleCacheKey({ ...baseTitleForKey, color: "#ffffff" }, project)).not.toBe(base);
+    expect(titleCacheKey({ ...baseTitleForKey, size: 90 }, project)).not.toBe(base);
+    expect(titleCacheKey(baseTitleForKey, { ...project, width: 1280 })).not.toBe(base);
   });
 });
 

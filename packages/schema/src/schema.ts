@@ -247,6 +247,17 @@ export const titleSchema = z.object({
   backdrop: titleBackdropSchema
     .optional()
     .describe("Optional dim layer behind the title card; omitted means no dim (title shown directly over the raw footage)."),
+  // Default kept in sync with packages/render/src/remotion/titleCardStyle.ts's TITLE_TEXT_COLOR
+  // (the value every title card used before this field existed).
+  color: hexColor
+    .default("#3a3128")
+    .describe("Title card text color; defaults to the cozy brown every title card used before this field existed."),
+  // Default kept in sync with packages/render/src/remotion/titleCardStyle.ts's TITLE_FONT_SIZE_PX.
+  size: z
+    .number()
+    .positive("size must be positive")
+    .default(72)
+    .describe("Title font size in pixels, relative to the project's output resolution (like subtitleStyle.size)."),
 });
 
 /**
