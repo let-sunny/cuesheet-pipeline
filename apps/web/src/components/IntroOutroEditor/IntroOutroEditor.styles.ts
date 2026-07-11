@@ -91,6 +91,6 @@ export const styles = stylex.create({
     flexBasis: "100%",
     margin: 0,
     fontSize: textSizeVars["--font-size-sm"],
-    color: colorVars["--color-text-red"],
+    color: colorVars["--color-error"],
   },
 });

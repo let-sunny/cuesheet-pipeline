@@ -34,7 +34,7 @@ export const styles = stylex.create({
     letterSpacing: "0.05em",
   },
   groupBorder: {
-    paddingTop: 10,
+    paddingTop: spacingVars["--spacing-2"],
     borderTopWidth: 1,
     borderTopStyle: "dashed",
     borderTopColor: colorVars["--color-border-emphasized"],
@@ -48,13 +48,15 @@ export const styles = stylex.create({
     color: colorVars["--color-text-secondary"],
   },
   emptyNote: {
-    margin: "4px 0 0",
+    margin: `${spacingVars["--spacing-1"]} 0 0`,
     fontSize: textSizeVars["--font-size-sm"],
     color: colorVars["--color-text-secondary"],
   },
+  // --color-border-red used as a danger-zone top border - a border-tuned tint, not status text;
+  // left as-is per the semantic-token pass (see HeaderBar.styles.ts's raw-vs-semantic comment).
   dangerZone: {
-    marginTop: 14,
-    paddingTop: 10,
+    marginTop: spacingVars["--spacing-3"],
+    paddingTop: spacingVars["--spacing-2"],
     borderTopWidth: 1,
     borderTopStyle: "dashed",
     borderTopColor: colorVars["--color-border-red"],

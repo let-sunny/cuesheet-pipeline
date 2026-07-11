@@ -12,7 +12,7 @@ import { colorVars, spacingVars, textSizeVars } from "@astryxdesign/core/theme/t
  * up its content's height by default, so the old `.render-dialog .settings-group { flex: 0 1
  * auto }` descendant override that used to turn off `.settings-group`'s shared flex-grow no longer
  * has anything to override), and the resolution/dirty notes are `Text`. `dirtyNote` below is the
- * one property (`--color-text-yellow`) `Text`'s own `color` prop has no option for.
+ * one property (`--color-warning`) `Text`'s own `color` prop has no option for.
  *
  * The resolution preset toggle is now a stock Astryx SegmentedControl (2026-07-11 stock-component
  * migration) - the old `.render-resolution-options button.active` plain-CSS exception and this
@@ -28,7 +28,7 @@ export const styles = stylex.create({
     color: colorVars["--color-text-primary"],
   },
   dirtyNote: {
-    color: colorVars["--color-text-yellow"],
+    color: colorVars["--color-warning"],
   },
   actions: {
     display: "flex",
