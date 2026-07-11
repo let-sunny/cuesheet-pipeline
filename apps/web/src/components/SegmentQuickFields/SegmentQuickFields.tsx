@@ -6,7 +6,7 @@ import { TabList } from "@astryxdesign/core/TabList";
 import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
 import { NavTab } from "../ui/NavTab/index.js";
-import { InlineField } from "../ui/InlineField/index.js";
+import { SelectField } from "../ui/SelectField/index.js";
 import type {
   Segment,
   SubtitleStyle,
@@ -266,24 +266,19 @@ export function SegmentQuickFields({
               <Text type="label" color="secondary" weight="semibold" xstyle={styles.groupLabel}>
                 Narration
               </Text>
-              <InlineField label="File" inputID="cut-field-narration-file">
-                <select
-                  id="cut-field-narration-file"
-                  {...stylex.props(styles.plainField, styles.selectMedium)}
-                  value={segment.narration ?? ""}
-                  onChange={(e) =>
-                    onChange({ narration: e.target.value === "" ? null : e.target.value })
-                  }
-                >
-                  <option value="">(none)</option>
-                  {narrationFiles.map((f) => (
-                    <option key={f.name} value={f.name}>
-                      {f.name}
-                      {f.durationS != null ? ` (${f.durationS.toFixed(1)}s)` : ""}
-                    </option>
-                  ))}
-                </select>
-              </InlineField>
+              <SelectField
+                label="File"
+                value={segment.narration ?? ""}
+                options={[
+                  { value: "", label: "(none)" },
+                  ...narrationFiles.map((f) => ({
+                    value: f.name,
+                    label: f.durationS != null ? `${f.name} (${f.durationS.toFixed(1)}s)` : f.name,
+                  })),
+                ]}
+                onChange={(value) => onChange({ narration: value === "" ? null : value })}
+                width={180}
+              />
               {narrationFiles.length === 0 && narrationNote ? (
                 <Text type="supporting" xstyle={styles.narrationEmptyNote}>
                   {narrationNote}

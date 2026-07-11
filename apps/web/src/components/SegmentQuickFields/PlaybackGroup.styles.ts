@@ -2,7 +2,9 @@ import * as stylex from "@stylexjs/stylex";
 import { colorVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /** Owned solely by PlaybackGroup - see RangeGroup.styles.ts's comment for why `groupBorder`/
- * `groupLabel`/`plainField` are duplicated per group component rather than shared globally. */
+ * `groupLabel` are duplicated per group component rather than shared globally. Speed/Volume's
+ * native-input chrome (`plainField`/`inputNarrow`) is gone (2026-07-11 stock-input migration) -
+ * they're now a stock Astryx `TextInput` via the shared `ui/NumericInput` adapter. */
 export const styles = stylex.create({
   groupBorder: {
     paddingTop: 10,
@@ -13,19 +15,6 @@ export const styles = stylex.create({
   groupLabel: {
     textTransform: "uppercase",
     letterSpacing: "0.05em",
-  },
-  plainField: {
-    font: "inherit",
-    color: "inherit",
-    backgroundColor: colorVars["--color-background-surface"],
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderColor: colorVars["--color-border"],
-    borderRadius: 4,
-    padding: "4px 8px",
-  },
-  inputNarrow: {
-    width: 80,
   },
   note: {
     margin: "4px 0 0",

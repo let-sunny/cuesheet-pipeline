@@ -9,7 +9,7 @@ import { VStack } from "@astryxdesign/core/VStack";
 import type { BgmCue } from "@cuesheet/schema";
 import { bgmFileStreamUrl, type BgmFile } from "../../api.js";
 import { useNumericField } from "../../hooks/useNumericField.js";
-import { InlineField } from "../ui/InlineField/index.js";
+import { NumericInput } from "../ui/NumericInput/index.js";
 import { styles } from "./BgmSettingsPanel.styles.js";
 
 interface Props {
@@ -155,29 +155,9 @@ export function BgmSettingsPanel({
           Range
         </Text>
         <HStack gap={4} vAlign="center" wrap="wrap">
-          <InlineField label="Start" inputID="bgm-field-start">
-            <input
-              id="bgm-field-start"
-              type="number"
-              min={1}
-              max={endCutIdx + 1}
-              {...stylex.props(styles.plainField, styles.inputNarrow)}
-              {...startField}
-              data-testid="bgm-field-start"
-            />
-          </InlineField>
+          <NumericInput field={startField} label="Start" testId="bgm-field-start" width={80} />
           <Text type="supporting">cut</Text>
-          <InlineField label="End" inputID="bgm-field-end">
-            <input
-              id="bgm-field-end"
-              type="number"
-              min={startCutIdx + 1}
-              max={cutCount}
-              {...stylex.props(styles.plainField, styles.inputNarrow)}
-              {...endField}
-              data-testid="bgm-field-end"
-            />
-          </InlineField>
+          <NumericInput field={endField} label="End" testId="bgm-field-end" width={80} />
           <Text type="supporting">cut</Text>
         </HStack>
         <Text type="supporting" xstyle={styles.readonlyText}>
@@ -190,18 +170,7 @@ export function BgmSettingsPanel({
           Playback
         </Text>
         <HStack gap={4} vAlign="center" wrap="wrap">
-          <InlineField label="Volume" inputID="bgm-field-volume">
-            <input
-              id="bgm-field-volume"
-              type="number"
-              min={0}
-              max={100}
-              step={1}
-              {...stylex.props(styles.plainField, styles.inputNarrow)}
-              {...volumeField}
-              data-testid="bgm-field-volume"
-            />
-          </InlineField>
+          <NumericInput field={volumeField} label="Volume" testId="bgm-field-volume" width={80} />
           <Text type="supporting">%</Text>
         </HStack>
       </VStack>

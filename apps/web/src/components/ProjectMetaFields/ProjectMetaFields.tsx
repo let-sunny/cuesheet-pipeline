@@ -1,11 +1,9 @@
 import { useState } from "react";
-import * as stylex from "@stylexjs/stylex";
-import { Field } from "@astryxdesign/core/Field";
 import { FormLayout } from "@astryxdesign/core/FormLayout";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import type { Project } from "@cuesheet/schema";
 import { useNumericField } from "../../hooks/useNumericField.js";
-import { styles } from "./ProjectMetaFields.styles.js";
+import { NumericInput } from "../ui/NumericInput/index.js";
 
 interface Props {
   project: Project;
@@ -60,11 +58,11 @@ export function ProjectMetaFields({ project, clipDir, onChange, onClipDirChange 
 
   return (
     // horizontal-labels: labels beside inputs (FormLayout.doc.mjs's own settings-page guidance),
-    // collapsing to vertical under 480px. Width/Height/Fade fields keep the native <input> bound to
-    // useNumericField (transient in-progress text decoupled from the committed value - see that
-    // hook's file comment) rather than swapping to NumberInput, whose value/onChange/onBlur shape
-    // doesn't match the hook's DOM-binding contract - kept native, wrapped in Field for the
-    // label/status/layout only.
+    // collapsing to vertical under 480px. Width/Height/Fade fields are a stock Astryx TextInput
+    // via the shared ui/NumericInput adapter, bound to useNumericField (transient in-progress text
+    // decoupled from the committed value - see that hook's file comment) - not NumberInput, whose
+    // value/onChange/onBlur shape doesn't match the hook's DOM-binding contract (2026-07-11 native-
+    // input stock-audit).
     <FormLayout direction="horizontal-labels">
       <TextInput
         label="Source folder"
@@ -74,61 +72,29 @@ export function ProjectMetaFields({ project, clipDir, onChange, onClipDirChange 
         data-testid="project-clip-dir"
       />
       <TextInput label="Name" value={project.name} onChange={(value) => onChange({ name: value })} />
-      <Field label="FPS" inputID="project-fps">
-        <input id="project-fps" type="number" min={1} {...stylex.props(styles.numberInput)} {...fpsField} />
-      </Field>
-      <Field
+      <NumericInput field={fpsField} label="FPS" />
+      <NumericInput
+        field={widthField}
         label="Width"
-        inputID="project-width"
         status={widthNote ? { type: "warning", message: widthNote } : undefined}
-      >
-        <input
-          id="project-width"
-          type="number"
-          min={2}
-          step={2}
-          {...stylex.props(styles.numberInput)}
-          {...widthField}
-          onFocus={() => setWidthNote(null)}
-        />
-      </Field>
-      <Field
+        onFocus={() => setWidthNote(null)}
+      />
+      <NumericInput
+        field={heightField}
         label="Height"
-        inputID="project-height"
         status={heightNote ? { type: "warning", message: heightNote } : undefined}
-      >
-        <input
-          id="project-height"
-          type="number"
-          min={2}
-          step={2}
-          {...stylex.props(styles.numberInput)}
-          {...heightField}
-          onFocus={() => setHeightNote(null)}
-        />
-      </Field>
-      <Field label="Fade in" inputID="project-fade-in" description="Seconds faded in at the very start of the export.">
-        <input
-          id="project-fade-in"
-          type="number"
-          min={0}
-          max={3}
-          step={0.1}
-          {...stylex.props(styles.numberInput)}
-          {...fadeInField}
-        />
-      </Field>
-      <Field label="Fade out" inputID="project-fade-out" description="Seconds faded out at the very end of the export.">
-        <input
-          id="project-fade-out"
-          type="number"
-          min={0}
-          max={3}
-          step={0.1}
-          {...stylex.props(styles.numberInput)}
-          {...fadeOutField}
-        />
-      </Field>
+        onFocus={() => setHeightNote(null)}
+      />
+      <NumericInput
+        field={fadeInField}
+        label="Fade in"
+        description="Seconds faded in at the very start of the export."
+      />
+      <NumericInput
+        field={fadeOutField}
+        label="Fade out"
+        description="Seconds faded out at the very end of the export."
+      />
     </FormLayout>
   );
 }

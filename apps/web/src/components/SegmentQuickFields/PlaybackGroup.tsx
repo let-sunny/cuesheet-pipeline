@@ -1,9 +1,8 @@
-import * as stylex from "@stylexjs/stylex";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
 import type { NumericFieldBindings } from "../../hooks/useNumericField.js";
-import { InlineField } from "../ui/InlineField/index.js";
+import { NumericInput } from "../ui/NumericInput/index.js";
 import { styles } from "./PlaybackGroup.styles.js";
 
 export interface PlaybackGroupProps {
@@ -25,32 +24,15 @@ export function PlaybackGroup({ speedField, volumeField, speedAtCap }: PlaybackG
         Playback
       </Text>
       <HStack gap={4} vAlign="center" wrap="wrap">
-        <InlineField label="Speed" inputID="cut-field-speed">
-          <input
-            id="cut-field-speed"
-            type="number"
-            min={0.1}
-            max={16}
-            step={0.1}
-            title="Speed is capped at 16x - browsers can't play video faster than that"
-            {...stylex.props(styles.plainField, styles.inputNarrow)}
-            {...speedField}
-            data-testid="cut-field-speed"
-          />
-        </InlineField>
+        {/* No labelTooltip here (unlike some other NumericInput call sites) - Astryx's tooltip
+            content mounts in the DOM unconditionally (shown/hidden only via CSS), which would
+            make the "capped at 16x" text always findable and defeat the conditional `note` below
+            that shows it only once the cut is actually at the cap. The conditional note is the
+            one meaningful surface for this; a passive always-on hover hint isn't worth that
+            conflict. */}
+        <NumericInput field={speedField} label="Speed" testId="cut-field-speed" width={80} />
         <Text type="supporting">x</Text>
-        <InlineField label="Volume" inputID="cut-field-volume">
-          <input
-            id="cut-field-volume"
-            type="number"
-            min={0}
-            max={100}
-            step={1}
-            {...stylex.props(styles.plainField, styles.inputNarrow)}
-            {...volumeField}
-            data-testid="cut-field-volume"
-          />
-        </InlineField>
+        <NumericInput field={volumeField} label="Volume" testId="cut-field-volume" width={80} />
         <Text type="supporting">%</Text>
       </HStack>
       {speedAtCap ? (

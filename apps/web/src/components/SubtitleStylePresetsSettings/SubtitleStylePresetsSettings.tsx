@@ -136,19 +136,20 @@ function PresetRow({ name, override, globalStyle, onRename, onDelete, onChange }
 
       <Collapsible trigger={`Edit "${name}"`}>
         <FormLayout direction="horizontal-labels">
-          {/* Field's own `width` prop only applies outside horizontal-labels mode (confirmed via
-              Field's dist source), so the native input's own max-width is what actually keeps this
-              short numeric field from stretching to the fields column's full width. */}
-          <Field label="Size" inputID={`preset-${name}-size`}>
-            <input
-              id={`preset-${name}-size`}
-              type="number"
-              min={1}
-              {...stylex.props(styles.numberInput)}
-              value={override.size ?? globalStyle.size}
-              onChange={(e) => onChange({ size: Number(e.target.value) })}
-            />
-          </Field>
+          {/* Stock Astryx TextInput (2026-07-11 stock-input migration) - unlike the other Size
+              fields in this file's sibling components, this one isn't bound to useNumericField (no
+              transient-text/commit decoupling here, just a directly-controlled value), so it goes
+              straight on TextInput rather than through the ui/NumericInput adapter. TextInput's own
+              `width` prop is a no-op in horizontal-labels mode (confirmed via Field's dist source),
+              so `xstyle` is what actually keeps this short numeric field from stretching to the
+              fields column's full width. */}
+          <TextInput
+            label="Size"
+            type="text"
+            value={String(override.size ?? globalStyle.size)}
+            onChange={(value) => onChange({ size: Number(value) })}
+            xstyle={styles.sizeField}
+          />
 
           <ColorField
             label="Color"

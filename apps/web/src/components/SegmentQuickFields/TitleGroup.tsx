@@ -1,12 +1,14 @@
-import * as stylex from "@stylexjs/stylex";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
+import { FormLayoutContext } from "@astryxdesign/core/FormLayout";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Slider } from "@astryxdesign/core/Slider";
 import { Text } from "@astryxdesign/core/Text";
+import { TextInput } from "@astryxdesign/core/TextInput";
 import { VStack } from "@astryxdesign/core/VStack";
 import type { Title } from "@cuesheet/schema";
 import type { NumericFieldBindings } from "../../hooks/useNumericField.js";
-import { InlineField } from "../ui/InlineField/index.js";
+import { NumericInput } from "../ui/NumericInput/index.js";
+import { SelectField } from "../ui/SelectField/index.js";
 import { styles } from "./TitleGroup.styles.js";
 
 export interface TitleGroupProps {
@@ -33,46 +35,35 @@ export function TitleGroup({ title, onToggle, onChangeTitle, titleDurationField 
       <CheckboxInput label="Title card for this cut" value={!!title} onChange={onToggle} />
       {title ? (
         <>
-          <InlineField label="Text" inputID="cut-field-title-text" width="100%">
-            <input
-              id="cut-field-title-text"
+          {/* FormLayoutContext forced to "horizontal-labels" locally (same mechanism as
+              ui/NumericInput's file comment) so the Text field's label sits beside it, matching
+              this group's density, without needing a FormLayout ancestor. */}
+          <FormLayoutContext value={{ direction: "horizontal-labels" }}>
+            <TextInput
+              label="Text"
               type="text"
-              maxLength={80}
-              {...stylex.props(styles.plainField, styles.inputFull)}
+              xstyle={styles.inputFull}
               value={title.text}
-              onChange={(e) => onChangeTitle({ text: e.target.value })}
+              // 80-char cap enforced here (not a native maxLength - BaseProps omits it, along with
+              // most obscure/footgun HTML attributes) since Astryx TextInput's typed props don't
+              // expose it either.
+              onChange={(value) => onChangeTitle({ text: value.slice(0, 80) })}
               data-testid="cut-field-title-text"
             />
-          </InlineField>
+          </FormLayoutContext>
           <HStack gap={4} vAlign="center" wrap="wrap">
-            <InlineField label="Preset" inputID="cut-field-title-preset">
-              <select
-                id="cut-field-title-preset"
-                {...stylex.props(styles.plainField, styles.selectMedium)}
-                value={title.preset}
-                onChange={(e) => onChangeTitle({ preset: e.target.value as Title["preset"] })}
-                data-testid="cut-field-title-preset"
-              >
-                <option value="typing">Typing</option>
-                <option value="gooey">Gooey</option>
-                <option value="melt">Melt</option>
-                <option value="particle">Particle</option>
-              </select>
-            </InlineField>
+            <SelectField
+              label="Preset"
+              value={title.preset}
+              options={TITLE_PRESET_OPTIONS}
+              onChange={(value) => onChangeTitle({ preset: value as Title["preset"] })}
+              testId="cut-field-title-preset"
+              width={180}
+            />
             {/* "Dur." (not "Duration") - the row's compact width budget (screen-spec section 4's
                 measured G1/G2 width tokens) was tuned for short labels like Speed/Volume;
                 "Duration" overflowed it and visually collided with the input. */}
-            <InlineField label="Dur." inputID="cut-field-title-duration">
-              <input
-                id="cut-field-title-duration"
-                type="number"
-                min={0.5}
-                max={10}
-                step={0.5}
-                {...stylex.props(styles.plainField, styles.inputNarrow)}
-                {...titleDurationField}
-              />
-            </InlineField>
+            <NumericInput field={titleDurationField} label="Dur." width={80} />
             <Text type="supporting">s</Text>
           </HStack>
           <Slider
@@ -94,3 +85,10 @@ export function TitleGroup({ title, onToggle, onChangeTitle, titleDurationField 
     </VStack>
   );
 }
+
+const TITLE_PRESET_OPTIONS: Array<{ value: Title["preset"]; label: string }> = [
+  { value: "typing", label: "Typing" },
+  { value: "gooey", label: "Gooey" },
+  { value: "melt", label: "Melt" },
+  { value: "particle", label: "Particle" },
+];

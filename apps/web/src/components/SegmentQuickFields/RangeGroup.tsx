@@ -3,7 +3,7 @@ import { HStack } from "@astryxdesign/core/HStack";
 import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
 import type { NumericFieldBindings } from "../../hooks/useNumericField.js";
-import { InlineField } from "../ui/InlineField/index.js";
+import { NumericInput } from "../ui/NumericInput/index.js";
 import { styles } from "./RangeGroup.styles.js";
 
 export interface RangeGroupProps {
@@ -47,31 +47,13 @@ export function RangeGroup({ clip, lengthS, inField, outField, rangeError, isFir
         </span>
       </HStack>
       <HStack gap={4} vAlign="center" wrap="wrap">
-        <InlineField label="In" inputID="cut-field-in">
-          <input
-            id="cut-field-in"
-            // type="text", not "number" - a native number input sanitizes any value that isn't
-            // plain float syntax back to "" (no leading "+", no ":"), which would silently eat the
-            // M:SS.s shorthand and relative +/-n entry (trim-ux-conventions.md section 4.4) before
-            // our own parser ever sees it. Up/Down frame-stepping is handled entirely in JS
-            // (useNumericField's step/bigStep), so the native spinner isn't needed either.
-            type="text"
-            inputMode="decimal"
-            {...stylex.props(styles.plainField, styles.inputNarrow)}
-            {...inField}
-            data-testid="cut-field-in"
-          />
-        </InlineField>
-        <InlineField label="Out" inputID="cut-field-out">
-          <input
-            id="cut-field-out"
-            type="text"
-            inputMode="decimal"
-            {...stylex.props(styles.plainField, styles.inputNarrow)}
-            {...outField}
-            data-testid="cut-field-out"
-          />
-        </InlineField>
+        {/* NumericInput binds useNumericField's transient text/commit contract to a stock Astryx
+            TextInput (type="text", not NumberInput - see that hook's file comment: NumberInput
+            sanitizes non-numeric keystrokes, which would eat the M:SS.s shorthand and relative
+            +/-n entry (trim-ux-conventions.md section 4.4) before our own parser ever sees it).
+            Up/Down frame-stepping is handled entirely in JS (useNumericField's step/bigStep). */}
+        <NumericInput field={inField} label="In" testId="cut-field-in" width={80} />
+        <NumericInput field={outField} label="Out" testId="cut-field-out" width={80} />
         <Text
           type="supporting"
           xstyle={!!rangeError && styles.lengthErrorText}

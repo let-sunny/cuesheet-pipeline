@@ -9,7 +9,7 @@ import type {
   SubtitleStylePresets,
 } from "@cuesheet/schema";
 import { SegmentStyleOverride } from "../SegmentStyleOverride/index.js";
-import { InlineField } from "../ui/InlineField/index.js";
+import { SelectField } from "../ui/SelectField/index.js";
 import { styles } from "./SubtitleGroup.styles.js";
 
 export interface SubtitleGroupProps {
@@ -72,21 +72,16 @@ export function SubtitleGroup({
       ) : null}
 
       {subtitleStylePresets && Object.keys(subtitleStylePresets).length > 0 ? (
-        <InlineField label="Style preset" inputID="cut-field-style-preset">
-          <select
-            id="cut-field-style-preset"
-            {...stylex.props(styles.plainField, styles.selectMedium)}
-            value={segment.stylePreset ?? ""}
-            onChange={(e) => onChangeStylePreset(e.target.value === "" ? null : e.target.value)}
-          >
-            <option value="">(none)</option>
-            {Object.keys(subtitleStylePresets).map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </InlineField>
+        <SelectField
+          label="Style preset"
+          value={segment.stylePreset ?? ""}
+          options={[
+            { value: "", label: "(none)" },
+            ...Object.keys(subtitleStylePresets).map((name) => ({ value: name, label: name })),
+          ]}
+          onChange={(value) => onChangeStylePreset(value === "" ? null : value)}
+          width={180}
+        />
       ) : null}
 
       <SegmentStyleOverride

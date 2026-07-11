@@ -1,5 +1,4 @@
 import * as stylex from "@stylexjs/stylex";
-import { colorVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md) — rules ported 1:1 from the old
@@ -10,9 +9,9 @@ import { colorVars } from "@astryxdesign/core/theme/tokens.stylex";
  * completion pass) - the field set is now a stock Astryx `FormLayout`/`Field` (matching
  * SubtitleStyleSettings.tsx's own arrangement, since the two intentionally share this control
  * pattern), with color fields on the shared `ui/ColorField` wrapper. `fields` below replaces that
- * old layout, and `numberInput` ports the old shared plain-input marker class's look 1:1 for the
- * Size field (a native `<input>` bound to useNumericField - see that hook's file comment), now
- * owned solely by this component instead of a global class. `.swatch` was migrated separately
+ * old layout. The Size field's native-input chrome (`numberInput`) is gone (2026-07-11 stock-input
+ * migration) - it's now a stock Astryx `TextInput` via the shared `ui/NumericInput` adapter, which
+ * gets its width via `xstyle` instead of a co-located rule. `.swatch` was migrated separately
  * (batch 4) into its own `components/Swatch/` component, now used indirectly via `ui/ColorField`.
  *
  * `override`'s left border/padding (marking this as "belongs to Subtitle") was dropped
@@ -33,17 +32,6 @@ export const styles = stylex.create({
     flexDirection: "column",
     gap: 10,
     marginTop: 8,
-  },
-  numberInput: {
-    font: "inherit",
-    color: "inherit",
-    backgroundColor: colorVars["--color-background-surface"],
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderColor: colorVars["--color-border"],
-    borderRadius: 4,
-    padding: "4px 8px",
-    maxWidth: 140,
   },
   actions: {
     display: "flex",

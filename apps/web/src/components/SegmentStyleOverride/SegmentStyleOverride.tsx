@@ -7,6 +7,7 @@ import { Button } from "@astryxdesign/core/Button";
 import type { Segment, SubtitleBackground, SubtitleStyle, SubtitleStyleOverride } from "@cuesheet/schema";
 import { useNumericField } from "../../hooks/useNumericField.js";
 import { ColorField } from "../ui/ColorField/index.js";
+import { NumericInput } from "../ui/NumericInput/index.js";
 import { styles } from "./SegmentStyleOverride.styles.js";
 
 interface Props {
@@ -60,13 +61,12 @@ export function SegmentStyleOverride({
       {override ? (
         <div {...stylex.props(styles.fields)}>
           {/* horizontal-labels: labels beside inputs, same arrangement as the global subtitle
-              style panel this shares its field set with (SubtitleStyleSettings.tsx) - Size stays a
-              native <input> bound to useNumericField (see that hook's file comment), Color/Outline
-              color/Background color use the shared `ColorField` wrapper. */}
+              style panel this shares its field set with (SubtitleStyleSettings.tsx) - Size is a
+              stock Astryx TextInput via the shared ui/NumericInput adapter, bound to
+              useNumericField (see that hook's file comment), Color/Outline color/Background color
+              use the shared `ColorField` wrapper. */}
           <FormLayout direction="horizontal-labels">
-            <Field label="Size" inputID="style-override-size">
-              <input id="style-override-size" type="number" min={1} {...stylex.props(styles.numberInput)} {...sizeField} />
-            </Field>
+            <NumericInput field={sizeField} label="Size" width={140} />
 
             <ColorField
               label="Color"

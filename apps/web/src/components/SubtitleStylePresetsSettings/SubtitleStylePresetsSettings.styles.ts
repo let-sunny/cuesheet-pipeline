@@ -1,14 +1,16 @@
 import * as stylex from "@stylexjs/stylex";
-import { colorVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
- * Ported 1:1 from the old `.preset-preview-chip`/`.preset-preview-text`/plain-input-marker rules in
- * styles.css (2026-07-11 stock-audit completion pass) - `.preset-row`/`.preset-row-header` became
- * a stock Astryx `Section`(dividers)/`HStack` instead (see SubtitleStylePresetsSettings.tsx), and
- * the color composites moved to the shared `ui/ColorField` wrapper, but the compact subtitle-style
- * preview chip has no stock equivalent (an always-dark preview stage over which the sample text is
- * always rendered light, regardless of theme - same reasoning as `--stage-bg` and its "flagged
- * literal" color:#ffffff carve-out documented in styles.css).
+ * Ported 1:1 from the old `.preset-preview-chip`/`.preset-preview-text` rules in styles.css
+ * (2026-07-11 stock-audit completion pass) - `.preset-row`/`.preset-row-header` became a stock
+ * Astryx `Section`(dividers)/`HStack` instead (see SubtitleStylePresetsSettings.tsx), and the color
+ * composites moved to the shared `ui/ColorField` wrapper, but the compact subtitle-style preview
+ * chip has no stock equivalent (an always-dark preview stage over which the sample text is always
+ * rendered light, regardless of theme - same reasoning as `--stage-bg` and its "flagged literal"
+ * color:#ffffff carve-out documented in styles.css). The old plain-input-marker rule
+ * (`numberInput`) is gone (2026-07-11 stock-input migration) - the Size field is now a stock Astryx
+ * `TextInput`; `sizeField` is just its width (a stock TextInput needs no border/background/padding
+ * chrome of its own).
  */
 export const styles = stylex.create({
   previewChip: {
@@ -29,15 +31,7 @@ export const styles = stylex.create({
     whiteSpace: "nowrap",
     color: "#ffffff",
   },
-  numberInput: {
-    font: "inherit",
-    color: "inherit",
-    backgroundColor: colorVars["--color-background-surface"],
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderColor: colorVars["--color-border"],
-    borderRadius: 4,
-    padding: "4px 8px",
-    maxWidth: 140,
+  sizeField: {
+    width: 140,
   },
 });

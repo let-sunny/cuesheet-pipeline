@@ -1,4 +1,3 @@
-import * as stylex from "@stylexjs/stylex";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { HStack } from "@astryxdesign/core/HStack";
 import { Slider } from "@astryxdesign/core/Slider";
@@ -6,7 +5,8 @@ import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
 import type { Transition } from "@cuesheet/schema";
 import type { NumericFieldBindings } from "../../hooks/useNumericField.js";
-import { InlineField } from "../ui/InlineField/index.js";
+import { NumericInput } from "../ui/NumericInput/index.js";
+import { SelectField } from "../ui/SelectField/index.js";
 import { styles } from "./TransitionsGroup.styles.js";
 
 export interface TransitionsGroupProps {
@@ -49,29 +49,19 @@ export function TransitionsGroup({
         {transitionIn ? (
           <>
             <HStack gap={4} vAlign="center" wrap="wrap">
-              <InlineField label="Type" inputID="cut-field-transition-in-type">
-                <select
-                  id="cut-field-transition-in-type"
-                  {...stylex.props(styles.plainField, styles.selectMedium)}
-                  value={transitionIn.type}
-                  onChange={(e) => onChangeTransition("in", { type: e.target.value as Transition["type"] })}
-                >
-                  <option value="fade">Fade</option>
-                  <option value="dip">Dip</option>
-                </select>
-              </InlineField>
-              <InlineField label="Dur." inputID="cut-field-transition-in-duration">
-                <input
-                  id="cut-field-transition-in-duration"
-                  type="number"
-                  min={0.2}
-                  max={2}
-                  step={0.1}
-                  {...stylex.props(styles.plainField, styles.inputNarrow)}
-                  {...transitionInDurationField}
-                  data-testid="cut-field-transition-in-duration"
-                />
-              </InlineField>
+              <SelectField
+                label="Type"
+                value={transitionIn.type}
+                options={TRANSITION_TYPE_OPTIONS}
+                onChange={(value) => onChangeTransition("in", { type: value as Transition["type"] })}
+                width={180}
+              />
+              <NumericInput
+                field={transitionInDurationField}
+                label="Dur."
+                testId="cut-field-transition-in-duration"
+                width={80}
+              />
               <Text type="supporting">s</Text>
             </HStack>
             {transitionIn.type === "dip" ? (
@@ -96,29 +86,19 @@ export function TransitionsGroup({
         {transitionOut ? (
           <>
             <HStack gap={4} vAlign="center" wrap="wrap">
-              <InlineField label="Type" inputID="cut-field-transition-out-type">
-                <select
-                  id="cut-field-transition-out-type"
-                  {...stylex.props(styles.plainField, styles.selectMedium)}
-                  value={transitionOut.type}
-                  onChange={(e) => onChangeTransition("out", { type: e.target.value as Transition["type"] })}
-                >
-                  <option value="fade">Fade</option>
-                  <option value="dip">Dip</option>
-                </select>
-              </InlineField>
-              <InlineField label="Dur." inputID="cut-field-transition-out-duration">
-                <input
-                  id="cut-field-transition-out-duration"
-                  type="number"
-                  min={0.2}
-                  max={2}
-                  step={0.1}
-                  {...stylex.props(styles.plainField, styles.inputNarrow)}
-                  {...transitionOutDurationField}
-                  data-testid="cut-field-transition-out-duration"
-                />
-              </InlineField>
+              <SelectField
+                label="Type"
+                value={transitionOut.type}
+                options={TRANSITION_TYPE_OPTIONS}
+                onChange={(value) => onChangeTransition("out", { type: value as Transition["type"] })}
+                width={180}
+              />
+              <NumericInput
+                field={transitionOutDurationField}
+                label="Dur."
+                testId="cut-field-transition-out-duration"
+                width={80}
+              />
               <Text type="supporting">s</Text>
             </HStack>
             {transitionOut.type === "dip" ? (
@@ -146,3 +126,8 @@ export function TransitionsGroup({
     </VStack>
   );
 }
+
+const TRANSITION_TYPE_OPTIONS: Array<{ value: Transition["type"]; label: string }> = [
+  { value: "fade", label: "Fade" },
+  { value: "dip", label: "Dip" },
+];

@@ -3,7 +3,6 @@ import * as stylex from "@stylexjs/stylex";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { Field } from "@astryxdesign/core/Field";
 import { FormLayout } from "@astryxdesign/core/FormLayout";
-import { Selector } from "@astryxdesign/core/Selector";
 import { Slider } from "@astryxdesign/core/Slider";
 import { Text } from "@astryxdesign/core/Text";
 import { TextInput } from "@astryxdesign/core/TextInput";
@@ -16,6 +15,8 @@ import {
   toCqw,
 } from "../../lib/subtitleOverlay.js";
 import { ColorField } from "../ui/ColorField/index.js";
+import { NumericInput } from "../ui/NumericInput/index.js";
+import { SelectField } from "../ui/SelectField/index.js";
 import { styles } from "./SubtitleStyleSettings.styles.js";
 
 export interface SubtitleStyleSettingsProps {
@@ -87,18 +88,16 @@ export function SubtitleStyleSettings({
       />
 
       {/* horizontal-labels: labels beside inputs (FormLayout.doc.mjs's settings-page guidance).
-          Size/Outline width stay native <input>s bound to useNumericField (see that hook's file
-          comment on why NumberInput's value/onChange/onBlur shape doesn't match), wrapped in Field
-          for the label/layout only. Color/Outline color/Background color use the shared
-          `ColorField` wrapper (native color-picker + hex-text pair + Swatch preview - a composite
-          control with no single Astryx input equivalent). Position is a stock Astryx `Selector`
-          (2026-07-11 stock-audit completion pass) - a fixed 3-option enum, unlike IntroOutroEditor's
-          dynamic file pickers, so Selector's option model is a clean fit. */}
+          Size/Outline width are a stock Astryx TextInput via the shared ui/NumericInput adapter,
+          bound to useNumericField (see that hook's file comment on why NumberInput's
+          value/onChange/onBlur shape doesn't match). Color/Outline color/Background color use the
+          shared `ColorField` wrapper (native color-picker + hex-text pair + Swatch preview - a
+          composite control with no single Astryx input equivalent). Position is a stock Astryx
+          `Selector` via the shared `ui/SelectField` adapter - a fixed 3-option enum, unlike
+          IntroOutroEditor's dynamic file pickers, so Selector's option model is a clean fit. */}
       <FormLayout direction="horizontal-labels">
         <TextInput label="Font" value={subtitleStyle.font} onChange={(value) => onSubtitleStyleChange({ font: value })} />
-        <Field label="Size" inputID="subtitle-size">
-          <input id="subtitle-size" type="number" min={1} {...stylex.props(styles.numberInput)} {...sizeField} />
-        </Field>
+        <NumericInput field={sizeField} label="Size" width={140} />
         <ColorField
           label="Color"
           inputID="subtitle-color"
@@ -111,15 +110,7 @@ export function SubtitleStyleSettings({
           value={subtitleStyle.outlineColor}
           onChange={(value) => onSubtitleStyleChange({ outlineColor: value })}
         />
-        <Field label="Outline width" inputID="subtitle-outline-width">
-          <input
-            id="subtitle-outline-width"
-            type="number"
-            min={0}
-            {...stylex.props(styles.numberInput)}
-            {...outlineWidthField}
-          />
-        </Field>
+        <NumericInput field={outlineWidthField} label="Outline width" width={140} />
 
         {/* Background box group (toggle+color+opacity+padding). CheckboxInput/Slider aren't
             FormLayoutContext-aware (only Field/TextInput/NumberInput/Selector split themselves
@@ -159,16 +150,7 @@ export function SubtitleStyleSettings({
                 onChange={(v: number) => patchBackground({ opacity: v / 100 })}
               />
             </Field>
-            <Field label="Background padding (px)" inputID="subtitle-bg-padding">
-              <input
-                id="subtitle-bg-padding"
-                type="number"
-                min={0}
-                max={120}
-                {...stylex.props(styles.numberInput)}
-                {...paddingField}
-              />
-            </Field>
+            <NumericInput field={paddingField} label="Background padding (px)" width={140} />
           </>
         ) : null}
 
@@ -176,7 +158,7 @@ export function SubtitleStyleSettings({
             one shared row squeezed the panel enough to clip the "Position" label and cramp the
             slider - they have plenty of vertical room here, so there's no reason to force them
             onto one line). */}
-        <Selector
+        <SelectField
           label="Position"
           value={subtitleStyle.position}
           onChange={(value) => onSubtitleStyleChange({ position: value as SubtitleStyle["position"] })}

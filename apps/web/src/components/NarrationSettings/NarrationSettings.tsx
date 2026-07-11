@@ -1,6 +1,4 @@
-import * as stylex from "@stylexjs/stylex";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
-import { Field } from "@astryxdesign/core/Field";
 import { Heading } from "@astryxdesign/core/Heading";
 import { Section } from "@astryxdesign/core/Section";
 import { Slider } from "@astryxdesign/core/Slider";
@@ -9,7 +7,7 @@ import { TextInput } from "@astryxdesign/core/TextInput";
 import { VStack } from "@astryxdesign/core/VStack";
 import type { Ducking, NarrationConfig } from "@cuesheet/schema";
 import { useNumericField } from "../../hooks/useNumericField.js";
-import { styles } from "./NarrationSettings.styles.js";
+import { NumericInput } from "../ui/NumericInput/index.js";
 
 export interface NarrationSettingsProps {
   narration: NarrationConfig | undefined;
@@ -87,17 +85,7 @@ export function NarrationSettings({ narration, onNarrationChange }: NarrationSet
                   valueDisplay="none"
                   onChange={(v: number) => patchDucking({ amount: v / 100 })}
                 />
-                <Field label="Fade duration (s)" inputID="narration-ducking-fade">
-                  <input
-                    id="narration-ducking-fade"
-                    type="number"
-                    min={0.1}
-                    max={1}
-                    step={0.1}
-                    {...stylex.props(styles.numberInput)}
-                    {...fadeField}
-                  />
-                </Field>
+                <NumericInput field={fadeField} label="Fade duration (s)" width={140} />
                 <Text type="supporting" color="secondary">
                   Play all now plays background music/narration audio, so this dip is audible
                   in-editor too - the exported render applies the same shape via ffmpeg.

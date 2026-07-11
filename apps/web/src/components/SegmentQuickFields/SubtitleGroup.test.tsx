@@ -1,10 +1,22 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Segment, SubtitleStyle } from "@cuesheet/schema";
 import { SubtitleGroup } from "./SubtitleGroup.js";
 
 afterEach(cleanup);
+
+// Style preset (Astryx Selector) opens its option list via the Popover API, which jsdom doesn't
+// implement - mocked the same minimal way Astryx's own Selector.test.tsx does (also used by
+// HeaderBar.test.tsx in this app), so fireEvent.click on the trigger actually reveals the options.
+beforeEach(() => {
+  HTMLElement.prototype.showPopover = vi.fn(function (this: HTMLElement) {
+    this.setAttribute("popover-open", "");
+  });
+  HTMLElement.prototype.hidePopover = vi.fn(function (this: HTMLElement) {
+    this.removeAttribute("popover-open");
+  });
+});
 
 const globalSubtitleStyle: SubtitleStyle = {
   font: "Pretendard",
@@ -63,8 +75,8 @@ describe("SubtitleGroup", () => {
         {...baseProps({ subtitleStylePresets: { loud: {}, quiet: {} }, onChangeStylePreset })}
       />,
     );
-    const select = screen.getByRole("combobox", { name: "Style preset" });
-    fireEvent.change(select, { target: { value: "loud" } });
+    fireEvent.click(screen.getByRole("combobox", { name: "Style preset" }));
+    fireEvent.click(screen.getByRole("option", { name: "loud", hidden: true }));
     expect(onChangeStylePreset).toHaveBeenCalledWith("loud");
   });
 

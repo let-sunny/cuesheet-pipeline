@@ -14,13 +14,15 @@ import { colorVars, radiusVars, spacingVars, textSizeVars } from "@astryxdesign/
  * MomentPalette.styles.ts's comment): `gap` reads from Astryx's `spacingVars`. `maxHeight: 220`
  * (the scrollable file list's own height budget) stays literal - structural sizing, not spacing.
  *
- * `panel`/`panelTitle`/`groupBorder`/`groupLabel`/`plainField`/`inputNarrow`/`readonlyText`/
- * `dangerZone` (2026-07-11 Cut-settings grid migration) replace the old shared panel-shell/panel-
- * title/group/group-label/plain-input/narrow-input-width/readonly-text/danger-zone classes - this
- * panel keeps its own copy rather than importing SegmentQuickFields's (same duplication precedent
- * as `numberInput` elsewhere; the two panels sit side by side as siblings in the Edit step but are
- * otherwise independent components). `border` shorthand is written out as its longhand equivalents
- * - see HeaderBar.styles.ts's comment for why (StyleX silently drops the shorthand form).
+ * `panel`/`panelTitle`/`groupBorder`/`groupLabel`/`readonlyText`/`dangerZone` (2026-07-11 Cut-
+ * settings grid migration) replace the old shared panel-shell/panel-title/group/group-label/
+ * readonly-text/danger-zone classes - this panel keeps its own copy rather than importing
+ * SegmentQuickFields's (the two panels sit side by side as siblings in the Edit step but are
+ * otherwise independent components). Start/End/Volume's native-input chrome (`plainField`/
+ * `inputNarrow`) is gone (2026-07-11 stock-input migration) - they're now a stock Astryx
+ * `TextInput` via the shared `ui/NumericInput` adapter. `border` shorthand is written out as its
+ * longhand equivalents - see HeaderBar.styles.ts's comment for why (StyleX silently drops the
+ * shorthand form).
  */
 export const styles = stylex.create({
   panel: {
@@ -40,19 +42,6 @@ export const styles = stylex.create({
   groupLabel: {
     textTransform: "uppercase",
     letterSpacing: "0.05em",
-  },
-  plainField: {
-    font: "inherit",
-    color: "inherit",
-    backgroundColor: colorVars["--color-background-surface"],
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderColor: colorVars["--color-border"],
-    borderRadius: 4,
-    padding: "4px 8px",
-  },
-  inputNarrow: {
-    width: 80,
   },
   readonlyText: {
     fontSize: textSizeVars["--font-size-sm"],
