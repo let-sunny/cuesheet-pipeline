@@ -191,6 +191,20 @@ arrive with those instincts. Motivating incident: an invented "overview bar + zo
 bar" two-level trim read as an uninteractive blue box and was judged unintuitive;
 it is being replaced with the researched convention.
 
+## Read the guide before adopting or working around a tool (user rule, 2026-07-11)
+
+Whenever you introduce a new library/SDK/feature — or one already in use misbehaves at runtime —
+read its official docs/guide FIRST, before reverse-engineering its source, theorizing a cause, or
+building a workaround or replacement. Modern tools document both their capabilities and their common
+runtime failure modes (autoplay, flickering, bundling, "troubleshooting" pages); the fix is usually
+already written down. Do not neglect this step under time pressure — guessing and rebuilding are both
+slower than reading. Motivating incident: the `@remotion/player` title preview stayed frozen at
+frame 0, and several guess-based rounds (bundler dedupe, a `play()` retry hack, and an almost-shipped
+full plain-React reimplementation) were spent before reading Remotion's own "combatting autoplay"
+guide — which named the one-line fix (`initiallyMuted`: the Player pre-mounts silent audio tags, so
+the browser autoplay policy blocked its unmuted, non-gesture playback). See the GitHub wiki page
+"Working With AI Tools and Libraries", principle 9.
+
 ## Composition rule: groups are components, panels are arrangements (user rule, 2026-07-09)
 
 A settings panel (cut settings, export sections) never accretes inline field groups.
