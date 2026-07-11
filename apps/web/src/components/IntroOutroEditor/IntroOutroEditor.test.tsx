@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { IntroOutroEditor } from "./IntroOutroEditor.js";
 
 vi.mock("../../api.js", () => ({
@@ -14,6 +14,18 @@ vi.mock("../../api.js", () => ({
 }));
 
 afterEach(cleanup);
+
+// The file pickers are Astryx Selectors, which open their option list via the Popover API that
+// jsdom doesn't implement - mocked the same minimal way Astryx's own Selector.test.tsx / this
+// app's SubtitleGroup.test.tsx do, so fireEvent.click on the trigger actually reveals the options.
+beforeEach(() => {
+  HTMLElement.prototype.showPopover = vi.fn(function (this: HTMLElement) {
+    this.setAttribute("popover-open", "");
+  });
+  HTMLElement.prototype.hidePopover = vi.fn(function (this: HTMLElement) {
+    this.removeAttribute("popover-open");
+  });
+});
 
 function baseProps() {
   return {
@@ -48,12 +60,15 @@ describe("IntroOutroEditor", () => {
     expect(onClear).toHaveBeenCalledWith("intro");
   });
 
-  it("disables select options for files over the intro/outro duration cap", async () => {
+  it("disables file options over the intro/outro duration cap", async () => {
     render(<IntroOutroEditor {...baseProps()} />);
     await waitFor(() => expect(screen.queryAllByText(/Loading…/).length).toBe(0));
-    const longOptions = screen.getAllByText(/cut_02\.mp4.*over 15s/) as HTMLOptionElement[];
+    // cut_02.mp4 is 20s, over the 15s cap - its option (present in both the intro and outro
+    // Selectors) must be disabled (aria-disabled) so it can't be picked, exactly as the old native
+    // <option disabled> did. Both pickers render it, hence getAllByRole + every.
+    const longOptions = screen.getAllByRole("option", { name: /cut_02\.mp4.*over 15s/, hidden: true });
     expect(longOptions.length).toBe(2);
-    expect(longOptions.every((o) => o.disabled)).toBe(true);
+    expect(longOptions.every((o) => o.getAttribute("aria-disabled") === "true")).toBe(true);
   });
 
   it("shows the missing-source message when the intro video fails to load and the file truly 404s", async () => {

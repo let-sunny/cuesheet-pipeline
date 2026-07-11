@@ -37,19 +37,6 @@ export const styles = stylex.create({
   grid: {
     gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   },
-  select: {
-    font: "inherit",
-    color: "inherit",
-    backgroundColor: colorVars["--color-background-surface"],
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderColor: colorVars["--color-border"],
-    borderRadius: radiusVars["--radius-element"],
-    padding: `${spacingVars["--spacing-1"]} ${spacingVars["--spacing-2"]}`,
-    width: "100%",
-    boxSizing: "border-box",
-    minWidth: 0,
-  },
   current: {
     display: "flex",
     alignItems: "center",

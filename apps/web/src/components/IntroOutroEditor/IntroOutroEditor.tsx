@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { Button } from "@astryxdesign/core/Button";
-import { Field } from "@astryxdesign/core/Field";
+import { SelectField } from "../ui/SelectField/index.js";
 import { Grid } from "@astryxdesign/core/Grid";
 import { Heading } from "@astryxdesign/core/Heading";
 import { Text } from "@astryxdesign/core/Text";
@@ -127,6 +127,22 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
   const matchedIntroFile = matchedFileName(intro, clipDir, files);
   const matchedOutroFile = matchedFileName(outro, clipDir, files);
 
+  // Shared option list for both the intro and outro pickers. A file over the intro/outro duration
+  // cap (or with unknown duration) is a disabled option - Astryx's Selector honors per-option
+  // `disabled` just like the old native <select>'s `<option disabled>` did. The leading "" option
+  // is the placeholder (dynamic label for the loading/empty/ready states).
+  const fileOptions = [
+    {
+      value: "",
+      label: filesLoading ? "Loading…" : files.length === 0 ? "(no files in clipDir)" : "Select…",
+    },
+    ...files.map((f) => ({
+      value: f.name,
+      label: optionLabel(f),
+      disabled: f.durationS == null || f.durationS > INTRO_OUTRO_MAX_DURATION_S,
+    })),
+  ];
+
   return (
     // Fixed 2-column grid (not the responsive minWidth API) - with exactly 2 children, minWidth's
     // auto-fill/auto-fit math can add a phantom 3rd track on a wide section and starve both real
@@ -147,39 +163,21 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
             <Button label="Clear" variant="ghost" size="sm" onClick={() => onClear("intro")} />
           </div>
         ) : null}
-        {/* The file list is dynamic (server-fetched) with per-item disabled options (over the
-            duration cap) and a loading placeholder - kept as a native <select> wrapped in Field
-            rather than swapped to Astryx's Selector (2026-07-11 stock-audit completion pass,
-            re-verified against Selector's own docs/dist source): Selector is a popover/combobox
-            whose option list only renders (as ARIA `role="option"` elements, not native
-            `<option>`s with a real `.disabled` property) once the popover is open, not a drop-in
-            replacement for this native `<select>` - IntroOutroEditor.test.tsx's own
-            "disables select options for files over the intro/outro duration cap" case asserts
-            exactly that (`HTMLOptionElement`s, `.disabled`), so swapping would break real,
-            intentional test coverage of the disabled-option behavior, not just cosmetics. Flagged
-            as a follow-up if a Selector-based rewrite (re-deriving that test around an opened
-            popover + aria-disabled) is ever worth the behavioral risk. */}
-        <Field label="Choose file" inputID="intro-file-select" width="100%">
-          <select
-            id="intro-file-select"
-            {...stylex.props(styles.select)}
-            value={matchedIntroFile ?? ""}
-            onChange={(e) => {
-              if (e.target.value !== "") {
-                onSelectClip("intro", e.target.value);
-              }
-            }}
-          >
-            <option value="">
-              {filesLoading ? "Loading…" : files.length === 0 ? "(no files in clipDir)" : "Select…"}
-            </option>
-            {files.map((f) => (
-              <option key={f.name} value={f.name} disabled={f.durationS == null || f.durationS > INTRO_OUTRO_MAX_DURATION_S}>
-                {optionLabel(f)}
-              </option>
-            ))}
-          </select>
-        </Field>
+        {/* Stock Astryx Selector (2026-07-11) - replaces the old native <select> whose native
+            border clashed with the themed inputs elsewhere (esp. y2k). Selector honors per-option
+            `disabled` for over-cap files, so the behavior the old native <select> had is preserved. */}
+        <SelectField
+          label="Choose file"
+          testId="intro-file-select"
+          width="100%"
+          value={matchedIntroFile ?? ""}
+          options={fileOptions}
+          onChange={(value) => {
+            if (value !== "") {
+              onSelectClip("intro", value);
+            }
+          }}
+        />
         {!filesLoading && files.length === 0 && filesNote ? (
           <Text type="supporting" color="secondary">
             {filesNote}
@@ -257,27 +255,18 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
             <Button label="Clear" variant="ghost" size="sm" onClick={() => onClear("outro")} />
           </div>
         ) : null}
-        <Field label="Choose file" inputID="outro-file-select" width="100%">
-          <select
-            id="outro-file-select"
-            {...stylex.props(styles.select)}
-            value={matchedOutroFile ?? ""}
-            onChange={(e) => {
-              if (e.target.value !== "") {
-                onSelectClip("outro", e.target.value);
-              }
-            }}
-          >
-            <option value="">
-              {filesLoading ? "Loading…" : files.length === 0 ? "(no files in clipDir)" : "Select…"}
-            </option>
-            {files.map((f) => (
-              <option key={f.name} value={f.name} disabled={f.durationS == null || f.durationS > INTRO_OUTRO_MAX_DURATION_S}>
-                {optionLabel(f)}
-              </option>
-            ))}
-          </select>
-        </Field>
+        <SelectField
+          label="Choose file"
+          testId="outro-file-select"
+          width="100%"
+          value={matchedOutroFile ?? ""}
+          options={fileOptions}
+          onChange={(value) => {
+            if (value !== "") {
+              onSelectClip("outro", value);
+            }
+          }}
+        />
         {!filesLoading && files.length === 0 && filesNote ? (
           <Text type="supporting" color="secondary">
             {filesNote}
