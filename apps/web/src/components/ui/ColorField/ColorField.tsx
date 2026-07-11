@@ -1,7 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import { Field } from "@astryxdesign/core/Field";
 import { toColorInputValue } from "../../../lib/subtitleOverlay.js";
-import { Swatch } from "../../Swatch/index.js";
 import { styles } from "./ColorField.styles.js";
 
 export interface ColorFieldProps {
@@ -20,6 +19,10 @@ export interface ColorFieldProps {
  * SegmentStyleOverride x3 - CLAUDE.md "component layering": the same tweak appearing more than
  * once is the signal to promote it to a wrapper). `toColorInputValue` coerces the stored color
  * (which may be a named/short form) into the 6-digit hex `input[type=color]` requires.
+ *
+ * Just the native color-swatch input (left) + the hex text input - the separate preview Swatch that
+ * used to sit on the right was redundant (the `input[type=color]` on the left already shows the
+ * current color) and was removed (2026-07-11 user feedback).
  */
 export function ColorField({ label, inputID, value, onChange }: ColorFieldProps) {
   return (
@@ -39,7 +42,6 @@ export function ColorField({ label, inputID, value, onChange }: ColorFieldProps)
           onChange={(e) => onChange(e.target.value)}
           aria-label={`${label} (hex)`}
         />
-        <Swatch color={value} />
       </div>
     </Field>
   );

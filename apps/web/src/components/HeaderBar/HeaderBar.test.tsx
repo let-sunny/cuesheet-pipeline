@@ -110,9 +110,11 @@ describe("HeaderBar", () => {
     const onUndo = vi.fn();
     const onRedo = vi.fn();
     render(<HeaderBar {...baseProps()} canUndo={false} canRedo onUndo={onUndo} onRedo={onRedo} />);
-    expect(screen.getByRole("button", { name: "Undo" }).hasAttribute("disabled")).toBe(true);
+    // Undo/Redo are icon-only buttons; Astryx marks their disabled state with aria-disabled (they
+    // stay focusable) rather than the native `disabled` attribute.
+    expect(screen.getByRole("button", { name: "Undo" }).getAttribute("aria-disabled")).toBe("true");
     const redo = screen.getByRole("button", { name: "Redo" });
-    expect(redo.hasAttribute("disabled")).toBe(false);
+    expect(redo.getAttribute("aria-disabled")).not.toBe("true");
     fireEvent.click(redo);
     expect(onRedo).toHaveBeenCalledTimes(1);
   });

@@ -17,9 +17,11 @@ export interface ActionsGroupProps {
 }
 
 /**
- * G8. Cut actions - one row: [Split] [Merge with next cut] [Duplicate] [Set as intro] [Set as
- * outro]. No primary in this row - none of these five is a dominant/default action (screen-spec
- * section 4). Delete lives separately in the panel's own danger zone, not here.
+ * G8. Cut actions - two rows: [Split] [Merge with next cut] [Duplicate] on the first, and the
+ * intro/outro assignments [Set as intro] [Set as outro] on their own second row (2026-07-11 user
+ * feedback - they're a distinct kind of action from the edit-this-cut buttons, so they read more
+ * clearly on their own line). No primary in this group - none of these is a dominant/default action
+ * (screen-spec section 4). Delete lives separately in the panel's own danger zone, not here.
  */
 export function ActionsGroup({
   mergeEligibility,
@@ -61,6 +63,8 @@ export function ActionsGroup({
           onClick={onDuplicate}
           data-testid="cut-action-duplicate"
         />
+      </HStack>
+      <HStack gap={2} wrap="wrap">
         <Button
           label="Set as intro"
           variant="ghost"

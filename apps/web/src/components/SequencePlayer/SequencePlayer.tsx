@@ -3,6 +3,7 @@ import type { MouseEvent } from "react";
 import * as stylex from "@stylexjs/stylex";
 import type { CueSheet, Segment, SubtitleStyle, SubtitleStylePresets } from "@cuesheet/schema";
 import { Button } from "@astryxdesign/core/Button";
+import { IconButton } from "@astryxdesign/core/IconButton";
 import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import { cropPreviewStyle } from "../../lib/cropPreview.js";
 import { TitleOverlay } from "../TitleOverlay/index.js";
@@ -500,18 +501,31 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
 
       <div {...stylex.props(styles.controls)}>
         <div {...stylex.props(styles.transport)}>
-          <Button label="Previous cut" variant="ghost" isDisabled={currentIndex <= 0} onClick={goToPrevCut} />
-          <Button
+          <IconButton
+            label="Previous cut"
+            icon={<span aria-hidden="true">⏮</span>}
+            variant="ghost"
+            tooltip="Previous cut"
+            isDisabled={currentIndex <= 0}
+            onClick={goToPrevCut}
+            data-testid="sequence-prev-cut"
+          />
+          <IconButton
             label={playing ? "Pause" : "Play"}
+            icon={<span aria-hidden="true">{playing ? "⏸" : "⏵"}</span>}
             variant="secondary"
             isDisabled={!currentSegment}
             onClick={() => setPlaying((p) => !p)}
+            data-testid="sequence-playpause"
           />
-          <Button
+          <IconButton
             label="Next cut"
+            icon={<span aria-hidden="true">⏭</span>}
             variant="ghost"
+            tooltip="Next cut"
             isDisabled={currentIndex >= segments.length - 1}
             onClick={goToNextCut}
+            data-testid="sequence-next-cut"
           />
         </div>
 
