@@ -30,11 +30,15 @@ export const styles = stylex.create({
   },
   // containerType opens a container query context, so the subtitle overlay can use cqw units for
   // a font size/outline width that's "a % of this stage's actual rendered width".
+  // Keep a strict 16:9 box: `aspectRatio` derives the height from the width, and the height cap is
+  // expressed as a WIDTH cap (40vh worth of a 16:9 box = 40vh * 16/9 = 71.11vh) instead of a
+  // `maxHeight`. A `maxHeight` here would cap the height while `width: 100%` kept the full width,
+  // breaking the aspect ratio into a wide-short box that pillarboxed the (16:9) video and oversized
+  // the width-relative (cqw) subtitle - the 2026-07-12 "subtitle too big / video letterboxed" bug.
   stage: {
     position: "relative",
     width: "100%",
-    maxWidth: 960,
-    maxHeight: "40vh",
+    maxWidth: "min(960px, 71.11vh)",
     aspectRatio: "16 / 9",
     backgroundColor: "black",
     borderRadius: radiusVars["--radius-element"],
