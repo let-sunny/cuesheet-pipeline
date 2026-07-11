@@ -156,7 +156,7 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
     // the whole Grid (and the page) was forced 208px wider than the 1280px viewport.
     <Grid columns={2} gap={6} xstyle={styles.grid}>
       <VStack gap={3}>
-        <Heading level={4}>Intro</Heading>
+        <Heading level={3}>Intro</Heading>
         {intro ? (
           <div {...stylex.props(styles.current)}>
             <span {...stylex.props(styles.clipName)}>Clip: {clipLabel(intro, clipDir)}</span>
@@ -248,7 +248,7 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
       </VStack>
 
       <VStack gap={3}>
-        <Heading level={4}>Outro</Heading>
+        <Heading level={3}>Outro</Heading>
         {outro ? (
           <div {...stylex.props(styles.current)}>
             <span {...stylex.props(styles.clipName)}>Clip: {clipLabel(outro, clipDir)}</span>

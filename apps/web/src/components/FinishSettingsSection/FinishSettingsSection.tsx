@@ -36,7 +36,7 @@ export function FinishSettingsSection({
     <Section variant="section" padding={4} dividers={hasDivider ? ["bottom"] : undefined} data-testid={testId}>
       <Grid columns={2} gap={8} xstyle={styles.grid}>
         <VStack gap={1}>
-          <Heading level={3}>{heading}</Heading>
+          <Heading level={2}>{heading}</Heading>
           {description ? (
             <Text type="supporting" color="secondary">
               {description}

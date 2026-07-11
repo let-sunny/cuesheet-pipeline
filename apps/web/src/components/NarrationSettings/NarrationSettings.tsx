@@ -36,7 +36,7 @@ export function NarrationSettings({ narration, onNarrationChange }: NarrationSet
   return (
     <Section variant="section" padding={4}>
       <VStack gap={3}>
-        <Heading level={3}>Narration</Heading>
+        <Heading level={2}>Narration</Heading>
         <CheckboxInput
           label="Enable narration"
           value={narration?.enabled ?? false}
