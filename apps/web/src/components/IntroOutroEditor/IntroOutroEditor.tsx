@@ -225,7 +225,7 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
           <span {...stylex.props(styles.dropzoneHint)}>or drag and drop a video file here</span>
           {introUpload.error ? <p {...stylex.props(styles.uploadError)}>{introUpload.error}</p> : null}
         </div>
-        <Collapsible trigger="Enter path manually" defaultIsOpen={!matchedIntroFile && intro != null}>
+        <Collapsible trigger={<Text type="label">Enter path manually</Text>} defaultIsOpen={!matchedIntroFile && intro != null}>
           <TextInput
             label="Path"
             value={intro ?? ""}
@@ -323,7 +323,7 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
           <span {...stylex.props(styles.dropzoneHint)}>or drag and drop a video file here</span>
           {outroUpload.error ? <p {...stylex.props(styles.uploadError)}>{outroUpload.error}</p> : null}
         </div>
-        <Collapsible trigger="Enter path manually" defaultIsOpen={!matchedOutroFile && outro != null}>
+        <Collapsible trigger={<Text type="label">Enter path manually</Text>} defaultIsOpen={!matchedOutroFile && outro != null}>
           <TextInput
             label="Path"
             value={outro ?? ""}
