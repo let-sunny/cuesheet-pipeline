@@ -99,6 +99,28 @@ identical** to before.
   calculation doesn't include intro length (intro length can't be known without probing the
   file — using an intro together with narration may shift the offset).
 
+### Title cards (Remotion)
+
+All four title presets (`fade`/`wordStagger`/`typing`/`highlight` - see `@cuesheet/schema`'s
+`titlePresetSchema`) render through **Remotion** (`packages/render/src/remotion/`): a headless
+Chrome Headless Shell (`@remotion/renderer`'s `ensureBrowser`) captures each preset's React
+composition frame-by-frame into a transparent PNG sequence (`prepareTitleAssets` in `title.ts`),
+which `buildRenderPlan` then overlays onto the base footage via `overlay=0:0` (a two-pass render
+kicks in above a certain input count - see `twoPass.ts`). The webpack bundle
+(`@remotion/bundler`'s `bundle()`) is built once per `prepareTitleAssets` call and reused across
+every title in the same cuesheet - only cache misses (content-addressed by
+text/preset/durationS/project dimensions) pay for it at all.
+
+Remotion's own output filenames don't reliably match the `frame_%04d.png` contract the rest of
+the pipeline depends on (its zero-padding width depends on the total frame count of that
+particular render), so `prepareTitleAssets` always renders into an isolated scratch directory
+first and then normalizes/renames the results into place (see `normalizeFrameFilenames`).
+
+**Licensing note**: Remotion is free for individuals and companies up to 3 people; above that,
+a commercial/company license is required (their "cloud rendering" automation tier is priced
+per-render, roughly $0.01/render at the time this was adopted). Worth revisiting if this project
+is ever productized/hosted for others.
+
 ## Notes
 
 - **ffmpeg must be installed for actual encoding to happen.** If it's missing, the CLI raises a

@@ -38,7 +38,6 @@ function make(segmentCount: number, overrides: Record<string, unknown> = {}): Cu
 }
 
 const framesAsset: TitleAsset = { kind: "frames", dir: "/cache/abc", frameCount: 60, fps: 30 };
-const assAsset: TitleAsset = { kind: "ass", path: "/cache/abc.ass" };
 
 describe("totalConcatInputCount", () => {
   it("counts segments plus intro/outro", () => {
@@ -48,16 +47,23 @@ describe("totalConcatInputCount", () => {
 });
 
 describe("frameTitleSegmentIndices", () => {
-  it("only picks segments whose resolved title asset is a captured-frames sequence", () => {
+  it("picks every titled segment that has a prepared asset - every preset is frame-kind now", () => {
     const cue = make(3, {
       segments: [
-        makeSegment({ title: { text: "A", preset: "gooey", durationS: 2 } }),
+        makeSegment({ title: { text: "A", preset: "fade", durationS: 2 } }),
         makeSegment({ title: { text: "B", preset: "typing", durationS: 2 } }),
         makeSegment(),
       ],
     });
-    const indices = frameTitleSegmentIndices(cue, { 0: framesAsset, 1: assAsset });
-    expect(indices).toEqual([0]);
+    const indices = frameTitleSegmentIndices(cue, { 0: framesAsset, 1: framesAsset });
+    expect(indices).toEqual([0, 1]);
+  });
+
+  it("skips a titled segment with no prepared asset entry yet", () => {
+    const cue = make(2, {
+      segments: [makeSegment({ title: { text: "A", preset: "fade", durationS: 2 } }), makeSegment()],
+    });
+    expect(frameTitleSegmentIndices(cue, {})).toEqual([]);
   });
 
   it("returns an empty array when there are no titles at all", () => {
@@ -101,7 +107,7 @@ describe("buildTitleOverlayPass", () => {
     const cue = make(3, {
       segments: [
         makeSegment({ out: 5 }),
-        makeSegment({ out: 4, title: { text: "Hi", preset: "gooey", durationS: 2 } }),
+        makeSegment({ out: 4, title: { text: "Hi", preset: "fade", durationS: 2 } }),
         makeSegment({ out: 3 }),
       ],
     });
@@ -120,8 +126,8 @@ describe("buildTitleOverlayPass", () => {
   it("chains multiple titles sequentially, each at its own offset", () => {
     const cue = make(2, {
       segments: [
-        makeSegment({ out: 5, title: { text: "One", preset: "gooey", durationS: 1 } }),
-        makeSegment({ out: 4, title: { text: "Two", preset: "melt", durationS: 1 } }),
+        makeSegment({ out: 5, title: { text: "One", preset: "fade", durationS: 1 } }),
+        makeSegment({ out: 4, title: { text: "Two", preset: "wordStagger", durationS: 1 } }),
       ],
     });
     const cmd = buildTitleOverlayPass(cue, "/tmp/i.mp4", "out.mp4", [0, 1], {
@@ -138,7 +144,7 @@ describe("buildTitleOverlayPass", () => {
   it("applies a shifted backdrop dim overlay before the title overlay when title.backdrop is set", () => {
     const cue = make(1, {
       segments: [
-        makeSegment({ out: 4, title: { text: "Hi", preset: "particle", durationS: 2, backdrop: { dim: 0.6 } } }),
+        makeSegment({ out: 4, title: { text: "Hi", preset: "highlight", durationS: 2, backdrop: { dim: 0.6 } } }),
       ],
     });
     const cmd = buildTitleOverlayPass(cue, "/tmp/i.mp4", "out.mp4", [0], { 0: framesAsset });
@@ -147,11 +153,11 @@ describe("buildTitleOverlayPass", () => {
     expect(cmd.filterComplex).toMatch(/\[0:v\]\[dim0\]overlay/);
   });
 
-  it("skips an index whose title asset is not a captured-frames kind (defensive; frameTitleSegmentIndices normally filters this out already)", () => {
+  it("skips an index with no prepared asset entry (defensive; frameTitleSegmentIndices normally filters this out already)", () => {
     const cue = make(1, {
       segments: [makeSegment({ out: 4, title: { text: "Hi", preset: "typing", durationS: 2 } })],
     });
-    const cmd = buildTitleOverlayPass(cue, "/tmp/i.mp4", "out.mp4", [0], { 0: assAsset });
+    const cmd = buildTitleOverlayPass(cue, "/tmp/i.mp4", "out.mp4", [0], {});
     expect(cmd.filterComplex).toBe("");
     expect(cmd.args.filter((a) => a === "-i").length).toBe(1);
   });

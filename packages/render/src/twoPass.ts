@@ -124,12 +124,14 @@ export function needsTwoPassRender(cue: CueSheet, frameTitleIndices: number[]): 
 }
 
 /**
- * Segment indices whose title resolves to a captured-frames asset (gooey/melt/particle) rather
- * than an ASS file (typing) - only the frames kind is implicated in the concat+overlay deadlock
- * (see needsTwoPassRender), since only it wires in an extra image2-sequence ffmpeg input feeding
- * an `overlay` branch ahead of `concat`. A "typing" (ASS) title stays in pass 1 unconditionally -
- * it composites via the `subtitles=` filter (reads its own file off disk, no extra ffmpeg input,
- * no overlay branch), which was never implicated.
+ * Segment indices whose title resolves to a captured-frames asset - every preset (fade/
+ * wordStagger/typing/highlight) renders via Remotion's headless frame capture now (see
+ * docs/research/title-render-spike.md for the ASS/hand-rolled-HTML approaches this replaced), so
+ * every titled segment with a prepared asset ends up here. Kept as its own function (rather than
+ * inlining `s.title && titleAssets?.[i]`) since it's the one place the concat+overlay deadlock
+ * (see needsTwoPassRender) cares about "which segments wire in an extra image2-sequence ffmpeg
+ * input feeding an `overlay` branch ahead of `concat`" - if a second, non-frames title asset kind
+ * is ever reintroduced, only this function needs to change.
  */
 export function frameTitleSegmentIndices(
   cue: CueSheet,
@@ -137,7 +139,7 @@ export function frameTitleSegmentIndices(
 ): number[] {
   const indices: number[] = [];
   cue.segments.forEach((s, i) => {
-    if (s.title && titleAssets?.[i]?.kind === "frames") indices.push(i);
+    if (s.title && titleAssets?.[i]) indices.push(i);
   });
   return indices;
 }

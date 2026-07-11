@@ -2,7 +2,7 @@ import { join } from "node:path";
 import type { CueSheet, Segment } from "@cuesheet/schema";
 import { buildDuckingGainExpression, deriveDuckingWindows } from "./ducking.js";
 import { computeSegmentOutputTimings } from "./timeline.js";
-import { escapeFilterPath, type TitleAsset } from "./title.js";
+import type { TitleAsset } from "./title.js";
 import {
   buildTitleOverlayPass,
   deriveIntermediatePath,
@@ -16,13 +16,8 @@ export { buildDuckingGainExpression, deriveDuckingWindows, mergeDuckingWindows }
 export type { DuckingWindow } from "./ducking.js";
 
 export { buildSrt, secondsToSrtTimestamp } from "./srt.js";
-export {
-  buildTitleAssContent,
-  DEFAULT_TITLE_CACHE_DIR,
-  prepareTitleAssets,
-  titleCacheKey,
-} from "./title.js";
-export type { TitleAsset, TitleAssAsset, TitleFramesAsset } from "./title.js";
+export { DEFAULT_TITLE_CACHE_DIR, prepareTitleAssets, titleCacheKey } from "./title.js";
+export type { TitleAsset, TitleFramesAsset } from "./title.js";
 
 export { computeSegmentOutputTimings } from "./timeline.js";
 export type { SegmentOutputTiming } from "./timeline.js";
@@ -88,11 +83,11 @@ export interface RenderPlanOptions {
    */
   sourceDimensions?: Record<string, SourceDimensions>;
   /**
-   * Prepared title-card assets (ASS file paths / captured PNG-sequence directories), keyed by
+   * Prepared title-card assets (Remotion-captured, transparent PNG-sequence directories), keyed by
    * segment index - see title.ts's prepareTitleAssets. buildRenderPlan itself stays pure/sync (no
-   * ffprobe, no Playwright); the CLI/web server call prepareTitleAssets first and pass the result
-   * here. A segment with a `title` but no matching entry here throws a fieldpath-style error
-   * (segments[i].title: ...) rather than silently skipping the title.
+   * ffprobe, no Remotion/browser calls); the CLI/web server call prepareTitleAssets first and pass
+   * the result here. A segment with a `title` but no matching entry here throws a fieldpath-style
+   * error (segments[i].title: ...) rather than silently skipping the title.
    */
   titleAssets?: Record<number, TitleAsset>;
   /**
@@ -116,10 +111,11 @@ export interface RenderPlanOptions {
  * Units are seconds. Clip paths are assembled from clipDir + filename (so moving the folder
  * doesn't break things).
  *
- * Two-pass dispatch: a cuesheet with a captured-frames title (gooey/melt/particle) combined with
- * a large HEVC concat graph (needsTwoPassRender - see twoPass.ts) deadlocks ffmpeg's filter-graph
- * scheduler in a single pass. Below that threshold (the overwhelming majority of cuesheets),
- * behavior is unchanged from before this existed: one command, byte-identical args/filterComplex.
+ * Two-pass dispatch: a cuesheet with a captured-frames title (any preset - all four render via
+ * Remotion now) combined with a large HEVC concat graph (needsTwoPassRender - see twoPass.ts)
+ * deadlocks ffmpeg's filter-graph scheduler in a single pass. Below that threshold (the
+ * overwhelming majority of cuesheets), behavior is unchanged from before this existed: one
+ * command, byte-identical args/filterComplex.
  * At/above it, this builds two commands instead (pass 1: base cut -> intermediate file; pass 2:
  * title overlays -> final output) - see RenderPlan.commands's doc for the API-compatibility note.
  */
@@ -159,8 +155,9 @@ const EMPTY_DEFER_SET: ReadonlySet<number> = new Set();
 interface BasePassControl {
   /**
    * Segment indices whose title/backdrop rendering is skipped in THIS pass (deferred to pass 2's
-   * buildTitleOverlayPass instead). Always a subset of frame-kind-titled segments - an ASS
-   * ("typing") title is never deferred, see frameTitleSegmentIndices's doc.
+   * buildTitleOverlayPass instead). Every titled segment is frame-kind now (see
+   * frameTitleSegmentIndices's doc), so this can be any subset of them - for pass 1 of a two-pass
+   * render, it's every frame-titled segment (none render in pass 1 at all).
    */
   deferFrameTitleIndices: ReadonlySet<number>;
   /** Overrides the trailing `-c:v ...` encode args (default: today's single-pass delivery encode). */
@@ -190,8 +187,8 @@ function buildBasePassCommand(
   const warnings: string[] = [];
   let clipCount = 0;
   let idx = 0;
-  // Set when any segment wires in a captured-frames title (gooey/melt/particle) - see the
-  // -filter_complex_threads note near the end of this function for why.
+  // Set when any segment wires in a captured-frames title (any preset - all four render via
+  // Remotion now) - see the -filter_complex_threads note near the end of this function for why.
   let usesFrameOverlayTitle = false;
 
   function addClip(
@@ -268,20 +265,14 @@ function buildBasePassCommand(
         vLabel = dimmedLabel;
       }
 
-      if (o.titleAsset.kind === "ass") {
-        const assLabel = `vass${i}`;
-        filters.push(`[${vLabel}]subtitles=${escapeFilterPath(o.titleAsset.path)}[${assLabel}]`);
-        vLabel = assLabel;
-      } else {
-        usesFrameOverlayTitle = true;
-        inputs.push("-framerate", String(o.titleAsset.fps), "-i", join(o.titleAsset.dir, "frame_%04d.png"));
-        const titleInputIdx = idx++;
-        const titleLabel = `vtitle${i}`;
-        filters.push(
-          `[${vLabel}][${titleInputIdx}:v]overlay=0:0:format=auto:enable='between(t,0,${durationS})'[${titleLabel}]`,
-        );
-        vLabel = titleLabel;
-      }
+      usesFrameOverlayTitle = true;
+      inputs.push("-framerate", String(o.titleAsset.fps), "-i", join(o.titleAsset.dir, "frame_%04d.png"));
+      const titleInputIdx = idx++;
+      const titleLabel = `vtitle${i}`;
+      filters.push(
+        `[${vLabel}][${titleInputIdx}:v]overlay=0:0:format=auto:enable='between(t,0,${durationS})'[${titleLabel}]`,
+      );
+      vLabel = titleLabel;
     }
 
     // Per-cut fade/dip (PRD backlog #3) - applied last in the video chain (after title/backdrop),
@@ -439,7 +430,8 @@ function buildBasePassCommand(
   }
 
   const filterComplex = filters.join(";");
-  // Multiple simultaneous captured-frames title overlays (gooey/melt/particle) in one render -
+  // Multiple simultaneous captured-frames title overlays (any preset - all four render via
+  // Remotion now) in one render -
   // each its own image2-sequence input feeding an `overlay` branch ahead of `concat` - deadlocks
   // ffmpeg's default multi-threaded filter graph scheduler (empirically confirmed 2026-07-09:
   // reproducible with 3+ such branches in one filter_complex, CPU usage flatlines mid-encode with

@@ -32,12 +32,4 @@ export const styles = stylex.create({
     textShadow: "0 0 6px rgba(0,0,0,0.6), 0 0 2px rgba(0,0,0,0.8)",
     whiteSpace: "pre",
   },
-  svgStage: {
-    width: "100%",
-    height: "100%",
-  },
-  canvasStage: {
-    width: "100%",
-    height: "100%",
-  },
 });

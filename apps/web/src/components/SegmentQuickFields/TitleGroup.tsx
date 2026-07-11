@@ -87,8 +87,8 @@ export function TitleGroup({ title, onToggle, onChangeTitle, titleDurationField 
 }
 
 const TITLE_PRESET_OPTIONS: Array<{ value: Title["preset"]; label: string }> = [
+  { value: "fade", label: "Fade" },
+  { value: "wordStagger", label: "Word stagger" },
   { value: "typing", label: "Typing" },
-  { value: "gooey", label: "Gooey" },
-  { value: "melt", label: "Melt" },
-  { value: "particle", label: "Particle" },
+  { value: "highlight", label: "Highlight" },
 ];

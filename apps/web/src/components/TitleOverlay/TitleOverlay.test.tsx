@@ -2,13 +2,7 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Title } from "@cuesheet/schema";
-import {
-  TitleOverlay,
-  backdropOpacity,
-  isTitleVisible,
-  lineFadeOpacity,
-  typingRevealedCount,
-} from "./TitleOverlay.js";
+import { TitleOverlay, backdropOpacity, isTitleVisible, typingRevealedCount } from "./TitleOverlay.js";
 
 afterEach(cleanup);
 
@@ -43,14 +37,6 @@ describe("backdropOpacity", () => {
   });
 });
 
-describe("lineFadeOpacity", () => {
-  it("fades in, holds at 1, and fades out, mirroring the ASS \\fad envelope", () => {
-    expect(lineFadeOpacity(2, 0)).toBeCloseTo(0, 5);
-    expect(lineFadeOpacity(2, 1)).toBeCloseTo(1, 5);
-    expect(lineFadeOpacity(2, 2)).toBeCloseTo(0, 5);
-  });
-});
-
 describe("typingRevealedCount", () => {
   it("reveals characters proportionally to elapsed time", () => {
     expect(typingRevealedCount(4, 2, 0)).toBe(0);
@@ -74,28 +60,42 @@ describe("TitleOverlay", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("renders the typing preset's characters, revealing more as localTimeS advances", () => {
+  it("renders the typing preset's characters via string slicing, revealing more as localTimeS advances", () => {
     const early = render(<TitleOverlay title={baseTitle} localTimeS={0.1} />);
-    const earlyVisible = early.container.querySelectorAll("span span[style*='opacity: 1']").length;
+    const earlyText = early.container.querySelector('[data-testid="title-overlay"]')?.textContent ?? "";
     early.unmount();
     const late = render(<TitleOverlay title={baseTitle} localTimeS={1.9} />);
-    const lateVisible = late.container.querySelectorAll("span span[style*='opacity: 1']").length;
+    const lateText = late.container.querySelector('[data-testid="title-overlay"]')?.textContent ?? "";
     late.unmount();
-    expect(lateVisible).toBeGreaterThan(earlyVisible);
+    expect(lateText.length).toBeGreaterThan(earlyText.length);
+    expect(baseTitle.text.startsWith(lateText)).toBe(true);
   });
 
-  it("renders an SVG stage for gooey and melt, and a canvas stage for particle", () => {
-    const gooey = render(<TitleOverlay title={{ ...baseTitle, preset: "gooey" }} localTimeS={1} />);
-    expect(gooey.container.querySelector("svg")).not.toBeNull();
-    gooey.unmount();
+  it("renders the fade preset's text", () => {
+    const { container } = render(<TitleOverlay title={{ ...baseTitle, preset: "fade" }} localTimeS={1} />);
+    expect(container.textContent).toContain("Cast on");
+  });
 
-    const melt = render(<TitleOverlay title={{ ...baseTitle, preset: "melt" }} localTimeS={1} />);
-    expect(melt.container.querySelector("svg")).not.toBeNull();
-    melt.unmount();
+  it("renders one span per word for the wordStagger preset", () => {
+    const { container } = render(
+      <TitleOverlay title={{ ...baseTitle, text: "Cast on today", preset: "wordStagger" }} localTimeS={1} />,
+    );
+    // Words are separate sibling spans laid out with a CSS flex gap (no space character in the
+    // DOM text itself), so each word's own span is queried individually rather than reading
+    // container.textContent as one string.
+    const words = Array.from(container.querySelectorAll("[data-testid='title-overlay'] div > span")).map(
+      (el) => el.textContent,
+    );
+    expect(words).toEqual(["Cast", "on", "today"]);
+  });
 
-    const particle = render(<TitleOverlay title={{ ...baseTitle, preset: "particle" }} localTimeS={1} />);
-    expect(particle.container.querySelector("canvas")).not.toBeNull();
-    particle.unmount();
+  it("renders a pastel marker behind the last word for the highlight preset", () => {
+    const { container } = render(
+      <TitleOverlay title={{ ...baseTitle, text: "Cast on", preset: "highlight" }} localTimeS={1} />,
+    );
+    expect(container.textContent).toBe("Caston");
+    // jsdom normalizes the inline hex color to rgb() - #A7C7E7 === rgb(167, 199, 231).
+    expect(container.innerHTML).toContain("rgb(167, 199, 231)");
   });
 
   it("renders a backdrop dim layer only when title.backdrop is set", () => {

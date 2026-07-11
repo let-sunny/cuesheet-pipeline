@@ -763,8 +763,9 @@ export function registerRoutes(
     const outputPath = renderOutputPathFor(result.data.project.name);
     await mkdir(renderOutputDir, { recursive: true });
 
-    // Title cards (gooey/melt/particle) need their frames captured (or read from cache) before
-    // buildRenderPlan can reference them - buildRenderPlan itself stays pure/sync (see plan.ts).
+    // Title cards (any preset - all render via Remotion) need their frames captured (or read from
+    // cache) before buildRenderPlan can reference them - buildRenderPlan itself stays pure/sync
+    // (see plan.ts).
     let titleAssets;
     try {
       titleAssets = result.data.segments.some((s) => s.title)
