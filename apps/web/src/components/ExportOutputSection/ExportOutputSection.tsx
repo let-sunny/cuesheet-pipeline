@@ -59,9 +59,13 @@ export function ExportOutputSection({ dirty, renderState, onOpenRenderDialog, on
         Export runs against the cuesheet that was saved when it started — edits/saves made while exporting won't be included in this export.
       </Text>
 
+      {/* ghost, not secondary: this is a minor auxiliary export next to the one primary [Export]
+          CTA, so it should read below it. As a full-width secondary it competed with Export as a
+          co-equal filled bar (loudest in y2k, whose secondary fill is saturated - QA 2026-07-11);
+          ghost drops the fill entirely so the hierarchy holds across every theme. */}
       <Button
         label="Download subtitles (.srt)"
-        variant="secondary"
+        variant="ghost"
         isDisabled={dirty}
         onClick={onDownloadSrt}
         data-testid="export-download-srt"
