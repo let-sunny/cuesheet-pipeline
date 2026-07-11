@@ -92,6 +92,36 @@ describe("MomentPalette card action toggle", () => {
   });
 });
 
+describe("MomentPalette category filter", () => {
+  const twoCategories: ClipMoments[] = [
+    {
+      clip: "cut_10.mp4",
+      clipSummary: "",
+      moments: [{ inS: 1, outS: 3, shotType: "hand-closeup", memo: "knitting a sock cuff", quality: 4 }],
+      monotonousRanges: [],
+    },
+    {
+      clip: "cut_11.mp4",
+      clipSummary: "",
+      moments: [{ inS: 0, outS: 2, shotType: "cat", memo: "the cat walks in", quality: 4 }],
+      monotonousRanges: [],
+    },
+  ];
+
+  it("filters the card grid to the picked category when its chip is clicked", async () => {
+    vi.mocked(fetchMoments).mockResolvedValue(twoCategories);
+    render(<MomentPalette {...baseProps()} />);
+    await waitFor(() => expect(screen.getByText("knitting a sock cuff")).not.toBeNull());
+    // Both cards visible under the default "all" filter.
+    expect(screen.getByText("the cat walks in")).not.toBeNull();
+
+    // Clicking the "Cat (1)" category chip should drop the knitting card.
+    fireEvent.click(screen.getByRole("button", { name: "Cat (1)" }));
+    await waitFor(() => expect(screen.queryByText("knitting a sock cuff")).toBeNull());
+    expect(screen.getByText("the cat walks in")).not.toBeNull();
+  });
+});
+
 describe("MomentPalette load states", () => {
   it("shows a loading message before moments resolve", () => {
     vi.mocked(fetchMoments).mockReturnValue(new Promise(() => {}));
