@@ -150,8 +150,6 @@ export function EditStep({
                 onSetOutro={() =>
                   selectedSegment && setIntroOutroFromClip("outro", selectedSegment.clip)
                 }
-                onClearCrop={() => actions.clearSegmentCrop(selectedIndex)}
-                onEditCrop={() => videoPreviewRef.current?.startCropEdit()}
                 mergeEligibility={computeMergeEligibility(draft, selectedIndex)}
                 onMergeNext={() => actions.mergeSegmentWithNext(selectedIndex)}
                 onSplit={() => videoPreviewRef.current?.splitAtCurrent()}

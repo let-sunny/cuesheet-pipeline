@@ -1,5 +1,7 @@
+import { useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
+import { Tab, TabList } from "@astryxdesign/core/TabList";
 import type {
   Segment,
   SubtitleStyle,
@@ -20,9 +22,14 @@ import { PlaybackGroup } from "./PlaybackGroup.js";
 import { SubtitleGroup } from "./SubtitleGroup.js";
 import { TitleGroup } from "./TitleGroup.js";
 import { TransitionsGroup } from "./TransitionsGroup.js";
-import { ReframeGroup } from "./ReframeGroup.js";
 import { ActionsGroup } from "./ActionsGroup.js";
 import { styles } from "./SegmentQuickFields.styles.js";
+
+/** The panel's two tabs (2026-07-11, 13-inch density pass) - "Cut" groups the edits made while
+ * actually trimming/arranging a cut (Range/Playback/Narration/Actions); "Effects" groups the
+ * cosmetic overlay edits (Subtitle/Title/Transitions). Splitting cuts the panel's vertical length
+ * roughly in half so it fits a 13-inch viewport without scrolling. */
+type QuickFieldsTab = "cut" | "effects";
 
 interface Props {
   segment: Segment | undefined;
@@ -39,10 +46,6 @@ interface Props {
   /** Sets this cut's entire source clip file (ignoring in/out) as the intro/outro. */
   onSetIntro: () => void;
   onSetOutro: () => void;
-  /** Clears the reframe (crop) applied to this cut. */
-  onClearCrop: () => void;
-  /** Enters reframe edit mode (adjust directly by dragging the overlay on the preview). */
-  onEditCrop: () => void;
   /** Whether the [Merge with next cut] button is enabled, and why not if disabled. */
   mergeEligibility: MergeEligibility;
   /** Merges with the next cut (same action as Cmd+J). */
@@ -80,20 +83,22 @@ interface Props {
 
 /**
  * Cut settings (right-hand field panel in the touch-up step, canonical name from PRD section 4 —
- * formerly the "Inspector") - follows screen-spec section 4's G1-G8 group order as-is: Range ->
- * Playback -> Subtitle (+ per-cut subtitle style preset select/override) -> Title (title card,
- * PRD backlog #2) -> Transitions (fade/dip, PRD backlog #3) -> Narration (shown only when in use)
- * -> Reframe -> Cut actions. The clip filename field's group membership was ambiguous - the spec
- * doesn't specify it, making it the one element in this panel that needed a judgment call, but
- * since it determines which clip the "Range" applies to, it's placed at the top of the G1 (Range)
- * group.
+ * formerly the "Inspector") - two tabs (2026-07-11, 13-inch density pass): "Cut" (Range ->
+ * Playback -> Narration, shown only when in use -> Cut actions) and "Effects" (Subtitle, incl. the
+ * per-cut subtitle style preset select/override -> Title, PRD backlog #2 -> Transitions, PRD
+ * backlog #3). Reframe (crop) is no longer a group here at all - it moved onto VideoPreview's own
+ * toolbar (2026-07-11, "structure matches flow": reframe edits happen ON the video via an
+ * overlay, so its entry point belongs there, next to Capture frame). The clip filename field's
+ * group membership was ambiguous - the spec doesn't specify it, making it the one element in this
+ * panel that needed a judgment call, but since it determines which clip the "Range" applies to,
+ * it's placed at the top of the Range group.
  *
  * Composition rule (CLAUDE.md, "groups are components, panels are arrangements"): each functional
  * group is its own component with its own tests (Range/Playback/Subtitle/Title/Transitions/
- * Reframe/ActionsGroup) - this panel only owns the numeric-field hooks (a single source of truth
- * per field, shared with nothing else) and cross-group derived values (warnings, disabled states),
- * and arranges the groups in order. Narration (G6, small and conditionally shown) and the
- * destructive-zone Delete button stay inline here rather than becoming their own group components.
+ * ActionsGroup) - this panel only owns the numeric-field hooks (a single source of truth per
+ * field, shared with nothing else), cross-group derived values (warnings, disabled states), and
+ * the active-tab arrangement. Narration (small and conditionally shown) and the destructive-zone
+ * Delete button stay inline here rather than becoming their own group components.
  */
 export function SegmentQuickFields({
   segment,
@@ -105,8 +110,6 @@ export function SegmentQuickFields({
   clipDurationS,
   onSetIntro,
   onSetOutro,
-  onClearCrop,
-  onEditCrop,
   mergeEligibility,
   onMergeNext,
   onSplit,
@@ -127,6 +130,8 @@ export function SegmentQuickFields({
   onToggleTransition,
   onChangeTransition,
 }: Props) {
+  const [activeTab, setActiveTab] = useState<QuickFieldsTab>("cut");
+
   // This cut's actual output length (after speed applied) - used both for the narration-overlap
   // warning below and to cross-validate the two transition durations against it.
   const outputDurationS = segment ? (segment.out - segment.in) / segment.speed : 0;
@@ -231,114 +236,124 @@ export function SegmentQuickFields({
 
   return (
     <div className="quick-fields" data-testid="cut-settings-panel">
-      <RangeGroup
-        clip={segment.clip}
-        lengthS={segment.out - segment.in}
-        inField={inField}
-        outField={outField}
-        rangeError={segmentRangeError(segment)}
-      />
+      <TabList value={activeTab} onChange={(v) => setActiveTab(v as QuickFieldsTab)} size="sm">
+        <Tab value="cut" label="Cut" data-testid="cut-settings-tab-cut" />
+        <Tab value="effects" label="Effects" data-testid="cut-settings-tab-effects" />
+      </TabList>
 
-      <PlaybackGroup speedField={speedField} volumeField={volumeField} speedAtCap={segment.speed >= 16} />
+      {activeTab === "cut" ? (
+        <>
+          <RangeGroup
+            clip={segment.clip}
+            lengthS={segment.out - segment.in}
+            inField={inField}
+            outField={outField}
+            rangeError={segmentRangeError(segment)}
+          />
 
-      <SubtitleGroup
-        segment={segment}
-        subtitleWarning={subtitleWarning}
-        subtitleStylePresets={subtitleStylePresets}
-        onChangeSubtitle={(subtitle) => onChange({ subtitle })}
-        onChangeStylePreset={onChangeStylePreset}
-        globalSubtitleStyle={globalSubtitleStyle}
-        onToggleStyleOverride={onToggleStyleOverride}
-        onChangeStyleOverride={onChangeStyleOverride}
-        onPromoteStyleOverride={onPromoteStyleOverride}
-        onClearStyleOverride={onClearStyleOverride}
-      />
+          <PlaybackGroup speedField={speedField} volumeField={volumeField} speedAtCap={segment.speed >= 16} />
 
-      <TitleGroup
-        title={segment.title}
-        onToggle={onToggleTitle}
-        onChangeTitle={onChangeTitle}
-        titleDurationField={titleDurationField}
-      />
-
-      <TransitionsGroup
-        transitionIn={segment.transitionIn}
-        transitionOut={segment.transitionOut}
-        onToggle={onToggleTransition}
-        onChangeTransition={onChangeTransition}
-        transitionInDurationField={transitionInDurationField}
-        transitionOutDurationField={transitionOutDurationField}
-        crossValidationNote={transitionsCrossValidationNote}
-      />
-
-      {/* G6. Narration (shown only when in use) - small and always conditional, kept inline rather
-          than promoted to its own group component. */}
-      {narrationEnabled ? (
-        <div className="qf-group" data-testid="cut-settings-group-narration">
-          <div className="qf-group-label">Narration</div>
-          <label className="qf-field field-medium">
-            <span>File</span>
-            <select
-              className="plain-field"
-              value={segment.narration ?? ""}
-              onChange={(e) =>
-                onChange({ narration: e.target.value === "" ? null : e.target.value })
-              }
-            >
-              <option value="">(none)</option>
-              {narrationFiles.map((f) => (
-                <option key={f.name} value={f.name}>
-                  {f.name}
-                  {f.durationS != null ? ` (${f.durationS.toFixed(1)}s)` : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-          {narrationFiles.length === 0 && narrationNote ? (
-            <p className="narration-empty-note">{narrationNote}</p>
-          ) : null}
-          {selectedNarrationFile ? (
-            <div {...stylex.props(styles.narrationPreview)}>
-              <audio
-                {...stylex.props(styles.narrationAudio)}
-                controls
-                src={narrationFileUrl(selectedNarrationFile.name, narrationDir)}
-              />
-              {narrationDurationWarning ? (
-                <p {...stylex.props(styles.narrationWarning)}>{narrationDurationWarning}</p>
+          {/* Narration (shown only when in use) - small and always conditional, kept inline
+              rather than promoted to its own group component. */}
+          {narrationEnabled ? (
+            <div className="qf-group" data-testid="cut-settings-group-narration">
+              <div className="qf-group-label">Narration</div>
+              <label className="qf-field field-medium">
+                <span>File</span>
+                <select
+                  className="plain-field"
+                  value={segment.narration ?? ""}
+                  onChange={(e) =>
+                    onChange({ narration: e.target.value === "" ? null : e.target.value })
+                  }
+                >
+                  <option value="">(none)</option>
+                  {narrationFiles.map((f) => (
+                    <option key={f.name} value={f.name}>
+                      {f.name}
+                      {f.durationS != null ? ` (${f.durationS.toFixed(1)}s)` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {narrationFiles.length === 0 && narrationNote ? (
+                <p className="narration-empty-note">{narrationNote}</p>
+              ) : null}
+              {selectedNarrationFile ? (
+                <div {...stylex.props(styles.narrationPreview)}>
+                  <audio
+                    {...stylex.props(styles.narrationAudio)}
+                    controls
+                    src={narrationFileUrl(selectedNarrationFile.name, narrationDir)}
+                  />
+                  {narrationDurationWarning ? (
+                    <p {...stylex.props(styles.narrationWarning)}>{narrationDurationWarning}</p>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           ) : null}
-        </div>
-      ) : null}
 
-      <ReframeGroup hasCrop={!!segment.crop} onEditCrop={onEditCrop} onClearCrop={onClearCrop} />
+          <ActionsGroup
+            mergeEligibility={mergeEligibility}
+            onMergeNext={onMergeNext}
+            onSplit={onSplit}
+            onDuplicate={onDuplicate}
+            onSetIntro={onSetIntro}
+            onSetOutro={onSetOutro}
+            tooLongForIntroOutro={tooLongForIntroOutro}
+            introOutroDisabledTitle={introOutroDisabledTitle}
+          />
 
-      <ActionsGroup
-        mergeEligibility={mergeEligibility}
-        onMergeNext={onMergeNext}
-        onSplit={onSplit}
-        onDuplicate={onDuplicate}
-        onSetIntro={onSetIntro}
-        onSetOutro={onSetOutro}
-        tooLongForIntroOutro={tooLongForIntroOutro}
-        introOutroDisabledTitle={introOutroDisabledTitle}
-      />
+          {/* Danger zone: Delete is separated out (screen-spec section 4, revised 2026-07-08) - a
+              divider + spacing clearly separates it from the cut actions group above, to prevent
+              accidental deletion from being pressed alongside other buttons. Grouped with the Cut
+              tab (not Effects) since deleting a cut is itself a cut action, not a cosmetic one. */}
+          <div className="qf-danger-zone" data-testid="cut-settings-group-danger">
+            <Button
+              label="Delete"
+              variant="destructive"
+              size="sm"
+              isDisabled={!canDelete}
+              tooltip={canDelete ? undefined : "Can't delete the last remaining cut"}
+              onClick={onDelete}
+              data-testid="cut-action-delete"
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          <SubtitleGroup
+            segment={segment}
+            subtitleWarning={subtitleWarning}
+            subtitleStylePresets={subtitleStylePresets}
+            onChangeSubtitle={(subtitle) => onChange({ subtitle })}
+            onChangeStylePreset={onChangeStylePreset}
+            globalSubtitleStyle={globalSubtitleStyle}
+            onToggleStyleOverride={onToggleStyleOverride}
+            onChangeStyleOverride={onChangeStyleOverride}
+            onPromoteStyleOverride={onPromoteStyleOverride}
+            onClearStyleOverride={onClearStyleOverride}
+          />
 
-      {/* Danger zone: Delete is separated out (screen-spec section 4, revised 2026-07-08) - a
-          divider + spacing clearly separates it from the cut actions group above, to prevent
-          accidental deletion from being pressed alongside other buttons. */}
-      <div className="qf-danger-zone" data-testid="cut-settings-group-danger">
-        <Button
-          label="Delete"
-          variant="destructive"
-          size="sm"
-          isDisabled={!canDelete}
-          tooltip={canDelete ? undefined : "Can't delete the last remaining cut"}
-          onClick={onDelete}
-          data-testid="cut-action-delete"
-        />
-      </div>
+          <TitleGroup
+            title={segment.title}
+            onToggle={onToggleTitle}
+            onChangeTitle={onChangeTitle}
+            titleDurationField={titleDurationField}
+          />
+
+          <TransitionsGroup
+            transitionIn={segment.transitionIn}
+            transitionOut={segment.transitionOut}
+            onToggle={onToggleTransition}
+            onChangeTransition={onChangeTransition}
+            transitionInDurationField={transitionInDurationField}
+            transitionOutDurationField={transitionOutDurationField}
+            crossValidationNote={transitionsCrossValidationNote}
+          />
+        </>
+      )}
     </div>
   );
 }

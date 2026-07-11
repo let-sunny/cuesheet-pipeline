@@ -217,6 +217,13 @@ export function CompactSegmentList({
     (bgmIndex: number, mode: BgmDragMode) =>
     (e: ReactPointerEvent<HTMLDivElement>) => {
       e.stopPropagation();
+      // Also suppresses the browser's default drag behavior (2026-07-11 QA fix) - without this,
+      // dragging the pointer (button held) across a cut row's subtitle textarea mid-drag can
+      // trigger the browser's native text-field focus-on-drag-over behavior, silently stealing
+      // focus onto that textarea's cut (which calls onSelect -> setSelectedBgmIndex(null),
+      // dropping back to Cut settings mid-drag). Diagnosed via a real E2E drag-reliability
+      // regression exposed once CompactSegmentList's rows got shorter (thumbnail removed).
+      e.preventDefault();
       endTrackDrag(); // clears any stale listeners left over from an interrupted previous drag
 
       const range = bgmCutRange(bgm[bgmIndex]!, cumStart);

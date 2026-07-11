@@ -3,6 +3,7 @@ import * as stylex from "@stylexjs/stylex";
 import { AspectRatio } from "@astryxdesign/core/AspectRatio";
 import { Card } from "@astryxdesign/core/Card";
 import { Badge } from "@astryxdesign/core/Badge";
+import { Icon } from "@astryxdesign/core/Icon";
 import { Overlay } from "@astryxdesign/core/Overlay";
 import { Text } from "@astryxdesign/core/Text";
 import type { Segment } from "@cuesheet/schema";
@@ -330,29 +331,36 @@ export function MomentPalette({
                           {/* Single state-driven toggle (2026-07-09 diagnosed fix) replaces the old
                               Add/Remove pair (one button always visually disabled, the other hidden
                               via a same-space "placeholder" class) - one action, one button, the
-                              label/variant flips with whether the card is already added. Excluded
-                              (auto-filtered) cards keep the same confirm-before-adding flow either
-                              way (handleAdd's face-policy check runs regardless of this button). */}
-                          <div {...stylex.props(styles.cardActions)}>
-                            <SceneCardButton
-                              label={inUse ? "Remove" : "Add"}
-                              variant={inUse ? "destructive" : "primary"}
-                              size="sm"
-                              onClick={() =>
-                                inUse ? onRemoveSegment(card.clipFileName, card.inS, card.outS) : handleAdd(card)
-                              }
-                              data-testid={`palette-card-toggle-${card.key}`}
-                            />
-                          </div>
-                          {/* Set-as-intro/outro labels shortened "Set as intro/outro" -> "Set
-                              intro/outro" (2026-07-09 diagnosed fix) - the longer phrase truncated
-                              in this row's ~equal-width slot on typical card widths; the full
-                              meaning stays available via the tooltip. Kept as a same-row pair
-                              (screen-spec rule 0-4, "pairs sit side by side") rather than icons -
-                              introducing icon glyphs with no existing icon system in this app would
-                              be a bigger, separate call. */}
+                              label/variant/icon flips with whether the card is already added.
+                              Excluded (auto-filtered) cards keep the same confirm-before-adding flow
+                              either way (handleAdd's face-policy check runs regardless). Icon-only
+                              (2026-07-11 QA fix, design-principles.md #4 "decoration scales to
+                              function" - repeated card actions read as too large as text buttons);
+                              `label` still carries the accessible name (announced via IconButton's
+                              aria-label) and `tooltip` supplies the visible hint the icon alone
+                              can't. */}
+                          <SceneCardButton
+                            icon={<Icon icon={inUse ? "close" : "check"} size="sm" />}
+                            label={inUse ? "Remove" : "Add"}
+                            variant={inUse ? "destructive" : "primary"}
+                            size="sm"
+                            tooltip={inUse ? "Remove from cuts" : "Add to cuts"}
+                            onClick={() =>
+                              inUse ? onRemoveSegment(card.clipFileName, card.inS, card.outS) : handleAdd(card)
+                            }
+                            data-testid={`palette-card-toggle-${card.key}`}
+                          />
+                          {/* Set intro/outro - a secondary pair pushed to the row's far end
+                              (styles.ioActions' marginLeft:auto), separated from the primary Add/
+                              Remove toggle by real space rather than just order (design-
+                              principles.md #2 "hierarchy equals actual importance"). chevronLeft/
+                              chevronRight read as "send to the start/end of the timeline" (the
+                              same left/right convention as media-transport skip-to-start/skip-to-
+                              end controls) - the closest stock-icon match for "use this whole clip
+                              as the intro/outro"; the full meaning stays in the tooltip. */}
                           <div {...stylex.props(styles.ioActions)}>
                             <IntroOutroButton
+                              icon={<Icon icon="chevronLeft" size="sm" />}
                               label={isIntro ? "Intro set" : "Set intro"}
                               size="sm"
                               active={isIntro}
@@ -365,6 +373,7 @@ export function MomentPalette({
                               data-testid={`palette-card-set-intro-${card.key}`}
                             />
                             <IntroOutroButton
+                              icon={<Icon icon="chevronRight" size="sm" />}
                               label={isOutro ? "Outro set" : "Set outro"}
                               size="sm"
                               active={isOutro}

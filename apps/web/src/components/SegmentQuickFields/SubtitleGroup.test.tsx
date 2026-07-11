@@ -70,6 +70,6 @@ describe("SubtitleGroup", () => {
 
   it("renders the per-cut SegmentStyleOverride toggle", () => {
     render(<SubtitleGroup {...baseProps()} />);
-    expect(screen.getByLabelText("Subtitle style for this cut")).not.toBeNull();
+    expect(screen.getByLabelText("Custom style for this cut")).not.toBeNull();
   });
 });

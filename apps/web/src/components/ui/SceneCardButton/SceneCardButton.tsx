@@ -1,24 +1,14 @@
-import * as stylex from "@stylexjs/stylex";
-import { Button } from "@astryxdesign/core/Button";
-import type { ButtonProps } from "@astryxdesign/core/Button";
-
-const styles = stylex.create({
-  equalWidth: {
-    flex: 1,
-    minWidth: 0,
-    paddingBlock: "6px",
-    paddingInline: "4px",
-  },
-});
+import { IconButton } from "@astryxdesign/core/IconButton";
+import type { IconButtonProps } from "@astryxdesign/core/IconButton";
 
 /**
- * Role: an Astryx Button for a full-width action inside a scene candidate card (e.g.
- * MomentPalette's Add/Remove toggle) — flexes to fill the row instead of sizing to its own
- * label. Same API as Button — this wrapper only adds the equal-width xstyle on top.
- *
- * Promoted from a tweak that was repeated at 2 call sites (CLAUDE.md "Component layering").
+ * Role: the scene candidate card's primary Add/Remove toggle action (MomentPalette) — an
+ * Astryx IconButton so repeated card actions stay dense (design-principles.md #4, "decoration
+ * scales to function"). Converted from a full-width text Button (2026-07-11) - icon-only removes
+ * the need for that equal-width sizing tweak entirely, so this wrapper is now a plain named
+ * alias, kept so this call site stays consistent/greppable alongside its sibling card action
+ * (IntroOutroButton), same as before (CLAUDE.md "wrapper naming: purpose, not appearance").
  */
-export function SceneCardButton(props: ButtonProps) {
-  const { xstyle, ...rest } = props;
-  return <Button {...rest} xstyle={[styles.equalWidth, xstyle]} />;
+export function SceneCardButton(props: IconButtonProps) {
+  return <IconButton {...props} />;
 }

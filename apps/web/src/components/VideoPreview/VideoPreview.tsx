@@ -392,6 +392,15 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     );
   }
 
+  // Split discoverability (2026-07-11 QA fix): previously a click near either edge silently
+  // showed a "Too close to the edge to split" notice after the fact - the button itself gave no
+  // advance signal that the current playhead position wasn't splittable, which was especially
+  // common right after selecting a cut (the head starts at `in`, itself inside the margin).
+  // Disabling the button ahead of time (with a tooltip explaining why, and where to move instead)
+  // surfaces that up front. handleSplit's own edge check (below) stays as-is for the keyboard
+  // shortcut (Cmd/Ctrl+B) path, which bypasses this button entirely.
+  const canSplit = currentTime - segment.in >= SPLIT_MARGIN && segment.out - currentTime >= SPLIT_MARGIN;
+
   const subtitleSummary = segment.subtitle.trim() !== "" ? segment.subtitle.trim() : "(no subtitle)";
   // If this cut has its own style override, use the result of merging it into the global
   // subtitleStyle for the overlay (render and preview both follow the same merge rule — see subtitleOverlay.ts).
@@ -588,6 +597,8 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
               label="Split"
               variant="secondary"
               size="sm"
+              isDisabled={!canSplit}
+              tooltip={canSplit ? undefined : "Move the playhead away from the cut's edges to split here"}
               onClick={handleSplit}
               data-testid="video-control-split"
             />
@@ -600,6 +611,20 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
               onClick={handleCapture}
               data-testid="video-control-capture-frame"
             />
+            {/* Reframe entry point (2026-07-11 QA fix, "structure matches flow" - reframe/crop
+                edits happen ON the video via an overlay, so its entry button belongs beside the
+                other video-toolbar actions, not as a separate cut-settings group). Hidden while
+                already editing (cropEditToolbar above takes over with Full frame/Apply/Cancel/
+                Clear) so there's only ever one reframe-related control visible at a time. */}
+            {!cropEditDraft ? (
+              <Button
+                label={segment.crop ? "Adjust reframe" : "Reframe"}
+                variant="secondary"
+                size="sm"
+                onClick={startCropEdit}
+                data-testid="video-control-reframe"
+              />
+            ) : null}
           </div>
 
           {/* `playmode-toggle` stays alongside the StyleX class as a marker so the

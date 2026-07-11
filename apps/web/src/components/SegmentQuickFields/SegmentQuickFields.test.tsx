@@ -36,8 +36,6 @@ function baseProps(overrides: Partial<ComponentProps<typeof SegmentQuickFields>>
     clipDurationS: 10,
     onSetIntro: vi.fn(),
     onSetOutro: vi.fn(),
-    onClearCrop: vi.fn(),
-    onEditCrop: vi.fn(),
     mergeEligibility: { eligible: true } as const,
     onMergeNext: vi.fn(),
     onSplit: vi.fn(),
@@ -61,6 +59,12 @@ function baseProps(overrides: Partial<ComponentProps<typeof SegmentQuickFields>>
   };
 }
 
+/** Title/Subtitle/Transitions live on the Effects tab (2026-07-11 Cut/Effects split) - switches
+ * there before asserting on their fields, same as a real user would click the tab first. */
+function switchToEffectsTab() {
+  fireEvent.click(screen.getByRole("button", { name: "Effects" }));
+}
+
 describe("SegmentQuickFields", () => {
   it("renders nothing when there's no selected segment", () => {
     const { container } = render(<SegmentQuickFields {...baseProps({ segment: undefined })} />);
@@ -70,6 +74,16 @@ describe("SegmentQuickFields", () => {
   it("shows the clip filename read-only", () => {
     render(<SegmentQuickFields {...baseProps()} />);
     expect(screen.getByTitle("cut_01.mp4")).not.toBeNull();
+  });
+
+  it("defaults to the Cut tab (Range visible, Subtitle hidden), and Effects flips that", () => {
+    render(<SegmentQuickFields {...baseProps()} />);
+    expect(screen.getByTestId("cut-settings-group-range")).not.toBeNull();
+    expect(screen.queryByTestId("cut-settings-group-subtitle")).toBeNull();
+
+    switchToEffectsTab();
+    expect(screen.queryByTestId("cut-settings-group-range")).toBeNull();
+    expect(screen.getByTestId("cut-settings-group-subtitle")).not.toBeNull();
   });
 
   it("shows the computed cut length", () => {
@@ -98,6 +112,7 @@ describe("SegmentQuickFields", () => {
 
   it("does not render the Title card fields until the toggle is on", () => {
     render(<SegmentQuickFields {...baseProps()} />);
+    switchToEffectsTab();
     expect(screen.queryByText("Preset")).toBeNull();
     expect(screen.queryByText(/Backdrop dim/)).toBeNull();
   });
@@ -110,6 +125,7 @@ describe("SegmentQuickFields", () => {
         })}
       />,
     );
+    switchToEffectsTab();
     expect(screen.getByText("Preset")).not.toBeNull();
     // The slider's value is folded into its own label (2026-07-09 diagnosed fix) - no backdrop
     // set yet, so it defaults to 0%.
@@ -119,6 +135,7 @@ describe("SegmentQuickFields", () => {
   it("calls onToggleTitle when the Title card checkbox is toggled", () => {
     const onToggleTitle = vi.fn();
     render(<SegmentQuickFields {...baseProps({ onToggleTitle })} />);
+    switchToEffectsTab();
     fireEvent.click(screen.getByLabelText("Title card for this cut"));
     // CheckboxInput's onChange forwards (checked, event) - only the first argument is this
     // component's concern.
@@ -135,6 +152,7 @@ describe("SegmentQuickFields", () => {
         })}
       />,
     );
+    switchToEffectsTab();
     // The slider's value is folded into its own label (2026-07-09 diagnosed fix), not a bare
     // group name.
     expect(screen.getByText("Dip amount (50%)")).not.toBeNull();
@@ -148,6 +166,7 @@ describe("SegmentQuickFields", () => {
         })}
       />,
     );
+    switchToEffectsTab();
     expect(screen.queryByText(/Dip amount/)).toBeNull();
   });
 
@@ -179,16 +198,6 @@ describe("SegmentQuickFields", () => {
     expect(screen.getByText(/longer than the cut/)).not.toBeNull();
   });
 
-  it("shows crop status and Clear only when a crop is applied", () => {
-    const { rerender } = render(<SegmentQuickFields {...baseProps()} />);
-    expect(screen.getByText("Not applied")).not.toBeNull();
-    expect(screen.queryByText("Clear")).toBeNull();
-
-    rerender(<SegmentQuickFields {...baseProps({ segment: segment({ crop: { x: 0, y: 0, w: 1, h: 1 } }) })} />);
-    expect(screen.getByText("Applied")).not.toBeNull();
-    expect(screen.getByText("Clear")).not.toBeNull();
-  });
-
   it("disables Merge with next cut when ineligible, with the reason as its tooltip", () => {
     render(
       <SegmentQuickFields
@@ -216,6 +225,7 @@ describe("SegmentQuickFields", () => {
   it("calls onChange when the subtitle textarea changes", () => {
     const onChange = vi.fn();
     render(<SegmentQuickFields {...baseProps({ onChange })} />);
+    switchToEffectsTab();
     fireEvent.change(screen.getByDisplayValue("hello"), { target: { value: "updated" } });
     expect(onChange).toHaveBeenCalledWith({ subtitle: "updated" });
   });

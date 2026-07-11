@@ -27,7 +27,7 @@ export interface SubtitleGroupProps {
 /**
  * G3. Subtitle (+ subsection: per-cut subtitle style) - textarea + optional warning, the Style
  * preset select (shown only once at least one preset exists - merges in ahead of styleOverride,
- * global < preset < override), and the collapsible "Subtitle style for this cut" override
+ * global < preset < override), and the collapsible "Custom style for this cut" override
  * (SegmentStyleOverride, its own component/tests).
  */
 export function SubtitleGroup({

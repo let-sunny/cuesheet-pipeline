@@ -12,17 +12,13 @@ import * as stylex from "@stylexjs/stylex";
  * migrated separately (batch 4) into its own `components/Swatch/` component, used here via
  * `<Swatch color={...} />` instead of the raw span.
  *
- * `border` shorthand written as its longhand equivalents (`borderLeftWidth`/`borderLeftStyle`/
- * `borderLeftColor`) — see HeaderBar.styles.ts's comment for why (StyleX silently drops the
- * shorthand form).
+ * `override`'s left border/padding (marking this as "belongs to Subtitle") was dropped
+ * (2026-07-11 QA fix, design-principles.md #4 "remove unnecessary decoration") - its nested DOM
+ * position inside the Subtitle group already conveys that without an extra rule.
  */
 export const styles = stylex.create({
   override: {
     marginTop: 10,
-    paddingLeft: 10,
-    borderLeftWidth: 2,
-    borderLeftStyle: "solid",
-    borderLeftColor: "var(--border-dashed)",
   },
   toggle: {
     display: "flex",

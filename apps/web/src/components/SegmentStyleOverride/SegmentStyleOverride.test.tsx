@@ -42,7 +42,7 @@ function baseProps() {
 describe("SegmentStyleOverride", () => {
   it("shows only the toggle (unchecked) when the segment has no override", () => {
     render(<SegmentStyleOverride {...baseProps()} />);
-    const checkbox = screen.getByLabelText("Subtitle style for this cut") as HTMLInputElement;
+    const checkbox = screen.getByLabelText("Custom style for this cut") as HTMLInputElement;
     expect(checkbox.checked).toBe(false);
     expect(screen.queryByText("Style details")).toBeNull();
   });
@@ -50,14 +50,14 @@ describe("SegmentStyleOverride", () => {
   it("calls onToggle when the checkbox is clicked", () => {
     const onToggle = vi.fn();
     render(<SegmentStyleOverride {...baseProps()} onToggle={onToggle} />);
-    fireEvent.click(screen.getByLabelText("Subtitle style for this cut"));
+    fireEvent.click(screen.getByLabelText("Custom style for this cut"));
     expect(onToggle.mock.calls[0]?.[0]).toBe(true);
   });
 
   it("expands the detail fields (falling back to the global style's values) once an override exists", () => {
     const segment = baseSegment({ styleOverride: {} });
     render(<SegmentStyleOverride {...baseProps()} segment={segment} />);
-    expect(screen.getByLabelText("Subtitle style for this cut")).toBeInstanceOf(HTMLInputElement);
+    expect(screen.getByLabelText("Custom style for this cut")).toBeInstanceOf(HTMLInputElement);
     const sizeInput = screen.getByDisplayValue("36") as HTMLInputElement;
     expect(sizeInput).not.toBeNull();
     expect(screen.getByText("Style details")).not.toBeNull();

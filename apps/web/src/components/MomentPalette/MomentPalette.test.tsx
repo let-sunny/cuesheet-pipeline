@@ -57,16 +57,19 @@ describe("MomentPalette card action toggle", () => {
     vi.mocked(fetchMoments).mockResolvedValue(oneCard);
     render(<MomentPalette {...baseProps()} />);
     await waitFor(() => expect(screen.getByTestId(/palette-card-toggle-/)).not.toBeNull());
-    expect(screen.getByText("Add")).not.toBeNull();
-    expect(screen.queryByText("Remove")).toBeNull();
+    // Icon-only button (2026-07-11) - `label` becomes the accessible name (aria-label), so it's
+    // selected by role/name rather than visible text (CLAUDE.md: select by testid/role, not class
+    // or text that's no longer rendered on screen).
+    expect(screen.getByRole("button", { name: "Add" })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Remove" })).toBeNull();
   });
 
   it("calls onAddSegment when Add is clicked", async () => {
     vi.mocked(fetchMoments).mockResolvedValue(oneCard);
     const onAddSegment = vi.fn();
     render(<MomentPalette {...baseProps({ onAddSegment })} />);
-    await waitFor(() => expect(screen.getByText("Add")).not.toBeNull());
-    fireEvent.click(screen.getByText("Add"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add" })).not.toBeNull());
+    fireEvent.click(screen.getByRole("button", { name: "Add" }));
     expect(onAddSegment).toHaveBeenCalledOnce();
   });
 
@@ -74,24 +77,24 @@ describe("MomentPalette card action toggle", () => {
     vi.mocked(fetchMoments).mockResolvedValue(oneCard);
     const segments: Segment[] = [{ clip: "cut_01.mp4", in: 1, out: 3, speed: 1, volume: 1, subtitle: "" }];
     render(<MomentPalette {...baseProps({ segments })} />);
-    await waitFor(() => expect(screen.getByText("Remove")).not.toBeNull());
-    expect(screen.queryByText("Add")).toBeNull();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Remove" })).not.toBeNull());
+    expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
 
     const onRemoveSegment = vi.fn();
     cleanup();
     render(<MomentPalette {...baseProps({ segments, onRemoveSegment })} />);
-    await waitFor(() => expect(screen.getByText("Remove")).not.toBeNull());
-    fireEvent.click(screen.getByText("Remove"));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Remove" })).not.toBeNull());
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
     expect(onRemoveSegment).toHaveBeenCalledWith("cut_01.mp4", 1, 3);
   });
 
-  it("shows the shortened Set intro/Set outro labels", async () => {
+  it("shows the shortened Set intro/Set outro accessible names", async () => {
     vi.mocked(fetchMoments).mockResolvedValue(oneCard);
     render(<MomentPalette {...baseProps()} />);
-    await waitFor(() => expect(screen.getByText("Set intro")).not.toBeNull());
-    expect(screen.getByText("Set outro")).not.toBeNull();
-    expect(screen.queryByText("Set as intro")).toBeNull();
-    expect(screen.queryByText("Set as outro")).toBeNull();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Set intro" })).not.toBeNull());
+    expect(screen.getByRole("button", { name: "Set outro" })).not.toBeNull();
+    expect(screen.queryByRole("button", { name: "Set as intro" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Set as outro" })).toBeNull();
   });
 });
 
@@ -120,14 +123,14 @@ describe("MomentPalette collapse toggle", () => {
   it("hides the card grid once collapsed, and restores it on Expand", async () => {
     vi.mocked(fetchMoments).mockResolvedValue(oneCard);
     render(<MomentPalette {...baseProps()} />);
-    await waitFor(() => expect(screen.getByText("Add")).not.toBeNull());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add" })).not.toBeNull());
 
     fireEvent.click(screen.getByText("Collapse"));
-    expect(screen.queryByText("Add")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
     expect(screen.getByText("Expand")).not.toBeNull();
 
     fireEvent.click(screen.getByText("Expand"));
-    expect(screen.getByText("Add")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Add" })).not.toBeNull();
   });
 });
 
@@ -144,7 +147,7 @@ describe("MomentPalette auto-exclusion banner", () => {
     vi.mocked(fetchMoments).mockResolvedValue(faceCard);
     render(<MomentPalette {...baseProps()} />);
     await waitFor(() => expect(screen.getByText("Auto-excluded: face exposure")).not.toBeNull());
-    expect(screen.getByText("Add")).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Add" })).not.toBeNull();
   });
 
   it("shows a low-quality banner for a card below the quality threshold", async () => {

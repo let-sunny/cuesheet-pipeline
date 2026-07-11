@@ -161,6 +161,21 @@ describe("CompactSegmentList", () => {
     expect(onAddBgmTrack).toHaveBeenCalledTimes(1);
   });
 
+  it("prevents default on a BGM bar/handle pointerdown (2026-07-11 QA fix - E2E regression)", () => {
+    // Real-browser regression (only reproduced with real geometry, see tests/e2e/journeys/
+    // bgm-track.spec.ts): dragging a BGM handle (button held) across a cut row's subtitle
+    // textarea could trigger the browser's native drag-over-a-text-field focus behavior,
+    // silently stealing focus onto that cut and dropping BgmSettingsPanel back to Cut settings
+    // mid-drag. preventDefault() on the handle's own pointerdown is what suppresses that native
+    // behavior - this asserts the fix stays in place without needing real pixel geometry.
+    const bgm: BgmCue[] = [{ file: "bgm.mp3", start: 0, end: 5, volume: 1 }];
+    render(<CompactSegmentList {...baseProps({ bgm })} />);
+    const handle = screen.getByTestId("bgm-bar-0-handle-start");
+    const event = fireEvent.pointerDown(handle, { bubbles: true, cancelable: true });
+    // jsdom's fireEvent returns false if preventDefault was called.
+    expect(event).toBe(false);
+  });
+
   it("positions a BGM bar's top/height relative to the gutter container's own box, not each row's raw offsetTop", () => {
     // Regression test (QA finding 2026-07-10): a bar's `top` CSS is interpreted relative to the
     // `bgm-gutter` container's own box (it's `position: relative`, the bar's containing block),

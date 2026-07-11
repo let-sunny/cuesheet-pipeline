@@ -202,27 +202,23 @@ export const styles = stylex.create({
   memoWrap: {
     padding: 0,
   },
-  // Add/remove (primary action, a single state-driven toggle button) and intro/outro (secondary
-  // action) are the same "action" group - tight within the group, separated from the meta row
-  // above by the body's own gap.
+  // Add/remove (primary action) and intro/outro (secondary action) are the same "action" group,
+  // now a single row (2026-07-11 icon-button conversion - see MomentPalette.tsx's comment)
+  // instead of two stacked full-width rows: icon buttons are small enough to sit side by side
+  // even in cardBody's ~216px content width, so the earlier stacking (a "wrap over truncate/
+  // overlap" caution for full-width text buttons) no longer applies.
   actionsGroup: {
     display: "flex",
-    flexDirection: "column",
+    alignItems: "center",
     gap: 6,
   },
-  cardActions: {
-    display: "flex",
-    gap: 6,
-  },
-  // Stacked (not side by side): left unchanged by the 2026-07-11 horizontal-card rework (that
-  // changed the card's overall width/orientation, not this group's own layout risk) - cardBody's
-  // own content width (~216px, after thumbCol and padding) still isn't comfortably measured for two
-  // side-by-side buttons without real-browser verification, same caution as the original 168px-wide
-  // card. Stacking (full content width per button) stays the safe layout, consistent with this
-  // component's "wrap over truncate/overlap" rule used elsewhere (overlayRow, info).
+  // Pushed to the row's far end (design-principles.md #2 "hierarchy equals actual importance") -
+  // real space, not just DOM order, is what keeps this secondary pair from reading as equally
+  // important as the primary Add/Remove toggle beside it.
   ioActions: {
     display: "flex",
-    flexDirection: "column",
+    alignItems: "center",
     gap: 6,
+    marginLeft: "auto",
   },
 });

@@ -20,15 +20,20 @@ interface Props {
 }
 
 /**
- * "Subtitle style for this cut" nested under the Subtitle (G3) group - turning it on creates
+ * "Custom style for this cut" nested under the Subtitle group - turning it on creates
  * segment.styleOverride (initially a copy of the global style), letting you edit
  * size/color/outlineColor/background/margin for this cut alone. The on/off toggle (a data
  * change) is kept separate from the disclosure that expands/collapses the detail fields (pure
  * UI) - because Astryx's Collapsible trigger is a single button, and nesting a checkbox inside
  * it (invalid HTML nesting + click-bubbling conflict) could accidentally turn the override on
- * just by expanding it. The left vertical line (.qf-style-override) marks it as "belonging to
- * subtitle" - keeping it from looking like an independent section is this component's core
- * reason for existing (screen-spec section 4, "key fix for the current problem").
+ * just by expanding it. The label dropped the leading "Subtitle" (2026-07-11 QA fix,
+ * design-principles.md #3 "remove unnecessary information" - the parent Subtitle group's own
+ * label already says that) and the checkbox renders at `size="sm"` rather than full form-label
+ * size (design-principles.md #2 - a plain checkbox label reading at default size next to the
+ * group's 11px uppercase label was competing with it, reading as a second heading it isn't). The
+ * left vertical rule that used to mark "belongs to Subtitle" is dropped too (design-principles.md
+ * #4 "remove unnecessary decoration") - nesting inside the Subtitle group's own DOM position
+ * already conveys that.
  */
 export function SegmentStyleOverride({
   segment,
@@ -49,7 +54,7 @@ export function SegmentStyleOverride({
   return (
     <div {...stylex.props(styles.override)}>
       <div {...stylex.props(styles.toggle)}>
-        <CheckboxInput label="Subtitle style for this cut" value={!!override} onChange={onToggle} />
+        <CheckboxInput label="Custom style for this cut" value={!!override} onChange={onToggle} size="sm" />
       </div>
 
       {override ? (

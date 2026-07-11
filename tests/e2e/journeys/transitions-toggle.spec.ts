@@ -4,6 +4,8 @@ test("transitions group toggle reveals type/duration fields", async ({ page }) =
   await page.goto("/");
   await page.getByTestId("step-tab-edit").click();
   await page.getByTestId("cut-row-0").click();
+  // Transitions lives on the Effects tab (2026-07-11 Cut/Effects split, cut-settings-panel).
+  await page.getByTestId("cut-settings-tab-effects").click();
 
   const group = page.getByTestId("cut-settings-group-transitions");
   await expect(group).toBeVisible();

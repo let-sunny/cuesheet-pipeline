@@ -158,4 +158,36 @@ describe("VideoPreview", () => {
     expect(freeButton.className).toContain("active");
     expect(loopButton.className).not.toContain("active");
   });
+
+  it("disables Split near the cut's edges (with a tooltip), and enables it once the playhead moves away (2026-07-11 QA fix)", async () => {
+    const { container } = render(<VideoPreview {...baseProps({ segment: seg({ in: 1, out: 3 }) })} />);
+    const video = container.querySelector("video")!;
+    const splitButton = screen.getByTestId("video-control-split");
+
+    // Before any timeupdate, currentTime is still 0 (well outside [1, 3]) - the exact scenario the
+    // fix targets: the head starts too close to (in this case, before) the cut's own edge.
+    expect(splitButton.getAttribute("aria-disabled")).toBe("true");
+
+    Object.defineProperty(video, "currentTime", { value: 2, writable: true });
+    video.dispatchEvent(new Event("timeupdate"));
+    await waitFor(() => expect(screen.getByTestId("video-control-split").getAttribute("aria-disabled")).toBeNull());
+
+    Object.defineProperty(video, "currentTime", { value: 1.1, writable: true });
+    video.dispatchEvent(new Event("timeupdate"));
+    await waitFor(() =>
+      expect(screen.getByTestId("video-control-split").getAttribute("aria-disabled")).toBe("true"),
+    );
+  });
+
+  it("shows a Reframe entry button in the video toolbar that enters crop edit mode, hiding itself while active (2026-07-11 QA fix - reframe moved off the cut-settings panel)", () => {
+    render(<VideoPreview {...baseProps()} />);
+    const reframeButton = screen.getByTestId("video-control-reframe");
+    expect(reframeButton.textContent).toBe("Reframe");
+
+    fireEvent.click(reframeButton);
+    // Entering crop edit mode swaps the toolbar entry button out for the in-progress edit toolbar
+    // (Full frame/Apply/Cancel), so there's only ever one reframe-related control visible.
+    expect(screen.queryByTestId("video-control-reframe")).toBeNull();
+    expect(screen.getByText("Apply")).not.toBeNull();
+  });
 });
