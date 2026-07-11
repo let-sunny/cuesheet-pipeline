@@ -235,6 +235,13 @@ export function TrimStrip({
             <FilmstripCell key={i} clip={clip} t={t} />
           ))}
         </div>
+        {/* Dim the TRIMMED-AWAY footage (before in, after out) so the kept range stands out by
+            contrast - the standard video-trim convention (Premiere/CapCut) and far more legible
+            than a tinted/bordered selection alone, which blended into busy thumbnail content (user
+            report 2026-07-11). The thumbnails stay visible under the dim so you can still see what
+            you're trimming away. */}
+        <div {...stylex.props(styles.trimDim)} style={{ left: 0, width: `${pctFor(inS)}%` }} />
+        <div {...stylex.props(styles.trimDim)} style={{ left: `${pctFor(outS)}%`, right: 0 }} />
         <div
           {...stylex.props(styles.range)}
           style={{ left: `${pctFor(inS)}%`, width: `${Math.max(0, pctFor(outS) - pctFor(inS))}%` }}

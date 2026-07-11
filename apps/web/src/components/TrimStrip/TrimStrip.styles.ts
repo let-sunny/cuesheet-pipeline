@@ -102,6 +102,15 @@ export const styles = stylex.create({
     boxSizing: "border-box",
     pointerEvents: "none",
   },
+  // A dark scrim over the trimmed-away footage (see TrimStrip.tsx) - sits ON the video thumbnails,
+  // so it's a fixed dark regardless of the app theme (dimming reads the same on any theme).
+  trimDim: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    backgroundColor: "#0000007a", // theme-exempt
+    pointerEvents: "none",
+  },
   handle: {
     position: "absolute",
     top: 14,
