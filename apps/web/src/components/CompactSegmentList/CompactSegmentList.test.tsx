@@ -2,7 +2,7 @@
 import type { ComponentProps } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import type { BgmCue, Segment } from "@cuesheet/schema";
+import type { Segment } from "@cuesheet/schema";
 import type { ClipMoments } from "../../api.js";
 import { CompactSegmentList } from "./CompactSegmentList.js";
 
@@ -36,11 +36,8 @@ function baseProps(overrides: Partial<ComponentProps<typeof CompactSegmentList>>
     onAdd: vi.fn(),
     onRemove: vi.fn(),
     onMove: vi.fn(),
-    bgm: [] as BgmCue[],
-    selectedBgmIndex: null,
-    onSelectBgm: vi.fn(),
-    onAddBgmTrack: vi.fn(),
-    onChangeBgmRange: vi.fn(),
+    bgmDragHighlight: null,
+    onRowRectsChange: vi.fn(),
     ...overrides,
   };
 }
@@ -143,101 +140,32 @@ describe("CompactSegmentList", () => {
     expect(onAdd).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the BGM count badge and toggles the gutter collapse", () => {
-    const bgm: BgmCue[] = [{ file: "bgm.mp3", start: 0, end: 5, volume: 1 }];
-    render(<CompactSegmentList {...baseProps({ bgm })} />);
-    const toggle = screen.getByRole("button", { name: "Collapse the background music gutter" });
-    expect(toggle.textContent).toContain("1");
-    // Icon-only button (2026-07-11 - see CompactSegmentList.tsx's comment): `label` becomes the
-    // accessible name, selected by role/name rather than the old visible "+ Add track" text.
-    expect(screen.getByRole("button", { name: "Add background music track" })).not.toBeNull();
-    fireEvent.click(toggle);
-    expect(screen.queryByRole("button", { name: "Add background music track" })).toBeNull();
+  it("highlights rows within the bgmDragHighlight range (owned by BgmSidePanel, forwarded via EditStep)", () => {
+    render(
+      <CompactSegmentList
+        {...baseProps({
+          segments: [segment(), segment(), segment()],
+          // selectedIndex 2 is outside the highlighted range so it doesn't also carry
+          // rowSelected, which would otherwise make its className differ from row 0/1's.
+          selectedIndex: 2,
+          bgmDragHighlight: { start: 0, end: 1 },
+        })}
+      />,
+    );
+    const highlightedRow0 = screen.getByTestId("cut-row-0");
+    const highlightedRow1 = screen.getByTestId("cut-row-1");
+    const plainRow2 = screen.getByTestId("cut-row-2");
+    expect(highlightedRow0.className).toEqual(highlightedRow1.className);
+    expect(highlightedRow0.className).not.toEqual(plainRow2.className);
   });
 
-  it("calls onAddBgmTrack when the add-track button is clicked", () => {
-    const onAddBgmTrack = vi.fn();
-    render(<CompactSegmentList {...baseProps({ onAddBgmTrack })} />);
-    fireEvent.click(screen.getByRole("button", { name: "Add background music track" }));
-    expect(onAddBgmTrack).toHaveBeenCalledTimes(1);
-  });
-
-  it("prevents default on a BGM bar/handle pointerdown (2026-07-11 QA fix - E2E regression)", () => {
-    // Real-browser regression (only reproduced with real geometry, see tests/e2e/journeys/
-    // bgm-track.spec.ts): dragging a BGM handle (button held) across a cut row's subtitle
-    // textarea could trigger the browser's native drag-over-a-text-field focus behavior,
-    // silently stealing focus onto that cut and dropping BgmSettingsPanel back to Cut settings
-    // mid-drag. preventDefault() on the handle's own pointerdown is what suppresses that native
-    // behavior - this asserts the fix stays in place without needing real pixel geometry.
-    const bgm: BgmCue[] = [{ file: "bgm.mp3", start: 0, end: 5, volume: 1 }];
-    render(<CompactSegmentList {...baseProps({ bgm })} />);
-    const handle = screen.getByTestId("bgm-bar-0-handle-start");
-    const event = fireEvent.pointerDown(handle, { bubbles: true, cancelable: true });
-    // jsdom's fireEvent returns false if preventDefault was called.
-    expect(event).toBe(false);
-  });
-
-  it("positions a BGM bar's top/height relative to the gutter container's own box, not each row's raw offsetTop", () => {
-    // Regression test (QA finding 2026-07-10): a bar's `top` CSS is interpreted relative to the
-    // `bgm-gutter` container's own box (it's `position: relative`, the bar's containing block),
-    // but row divs live in a separate DOM branch (`.list`, a flex sibling of the gutter) - using
-    // raw `el.offsetTop` (relative to whatever ancestor happens to be positioned, often far above
-    // both) silently double-counted the gutter's own page-level offset into every bar's position.
-    // Mocking getBoundingClientRect per element (keyed by data-testid) simulates real on-screen
-    // positions without relying on jsdom layout (which doesn't compute one) - the gutter and cut
-    // rows are given the same non-zero page-level top (500) they'd share in real layout (both are
-    // flex siblings starting flush at the same content edge), so a correct implementation must
-    // produce top:0 for a bar covering row 0, not top:500.
-    const rectByTestId: Record<string, { top: number; height: number }> = {
-      "bgm-gutter": { top: 500, height: 400 },
-      "cut-row-0": { top: 500, height: 120 },
-      "cut-row-1": { top: 620, height: 120 },
-      "cut-row-2": { top: 740, height: 120 },
-    };
-    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
-    HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
-      const rect = rectByTestId[this.getAttribute("data-testid") ?? ""];
-      const top = rect?.top ?? 0;
-      const height = rect?.height ?? 0;
-      return {
-        top,
-        bottom: top + height,
-        height,
-        left: 0,
-        right: 0,
-        width: 0,
-        x: 0,
-        y: top,
-        toJSON: () => ({}),
-      } as DOMRect;
-    };
-
-    try {
-      // 3 segments of 5s each (cumulative cut starts 0/5/10/15) - a bgm cue spanning seconds 0-10
-      // covers cuts 0-1 (rows 0-1).
-      const bgm: BgmCue[] = [{ file: "bgm.mp3", start: 0, end: 10, volume: 1 }];
-      render(
-        <CompactSegmentList
-          {...baseProps({
-            segments: [
-              segment({ in: 0, out: 5 }),
-              segment({ in: 5, out: 10 }),
-              segment({ in: 10, out: 15 }),
-            ],
-            bgm,
-          })}
-        />,
-      );
-
-      const bar = screen.getByTestId("bgm-bar-0");
-      // Correct: row0.top (500) - gutter.top (500) = 0. The pre-fix, offsetTop-based computation
-      // would have produced 500 here instead (double-counting the gutter's own page offset).
-      expect(bar.style.top).toBe("0px");
-      // bottom = row1.top(620) + row1.height(120) - gutter.top(500) = 240.
-      expect(bar.style.height).toBe("240px");
-    } finally {
-      HTMLElement.prototype.getBoundingClientRect = originalGetBoundingClientRect;
-    }
+  it("reports each row's measured rect via onRowRectsChange", () => {
+    const onRowRectsChange = vi.fn();
+    render(<CompactSegmentList {...baseProps({ onRowRectsChange })} />);
+    expect(onRowRectsChange).toHaveBeenCalled();
+    const lastCall = onRowRectsChange.mock.calls[onRowRectsChange.mock.calls.length - 1]![0];
+    expect(lastCall).toHaveLength(2);
+    expect(lastCall[0]).toEqual(expect.objectContaining({ top: expect.any(Number), height: expect.any(Number) }));
   });
 
   it("caps the row subtitle textarea at a 2-line height (rows=2) even with a 500-char subtitle", () => {

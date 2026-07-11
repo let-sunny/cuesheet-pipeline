@@ -1,18 +1,14 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Button } from "@astryxdesign/core/Button";
 import { Icon } from "@astryxdesign/core/Icon";
 import { IconButton } from "@astryxdesign/core/IconButton";
-import type { BgmCue, Segment } from "@cuesheet/schema";
+import type { Segment } from "@cuesheet/schema";
 import type { ClipMoments } from "../../api.js";
-import { baseName } from "../../clipPaths.js";
-import { bgmCutRange, cumulativeCutStarts } from "../../lib/bgmCutMapping.js";
-import { assignBgmLanes, laneCount } from "../../lib/bgmLanes.js";
-import { extendBgmDrag, resolveRowIndexFromBounds, startBgmDrag } from "../../lib/bgmTrackDrag.js";
-import type { BgmDragMode, BgmDragState } from "../../lib/bgmTrackDrag.js";
 import { shotTypeBadgeVariant, TIMELAPSE_BADGE_VARIANT } from "../../lib/momentCards.js";
+import type { RowRect } from "../../lib/rowRect.js";
 import { matchSceneInfo, shotTypeLabel } from "../../lib/sceneInfo.js";
 import { styles } from "./CompactSegmentList.styles.js";
 
@@ -27,13 +23,13 @@ interface Props {
   onAdd: () => void;
   onRemove: (i: number) => void;
   onMove: (i: number, direction: -1 | 1) => void;
-  bgm: BgmCue[];
-  selectedBgmIndex: number | null;
-  onSelectBgm: (i: number) => void;
-  /** Adds a new track defaulting to span just the currently selected cut. */
-  onAddBgmTrack: () => void;
-  /** A track's cut-index range changed (via drag move/resize or the settings panel's numeric fields) — converted to seconds by the caller. */
-  onChangeBgmRange: (bgmIndex: number, startCutIdx: number, endCutIdx: number) => void;
+  /** While a BGM bar is being dragged in the side panel, the cut-row range it currently spans —
+   * highlights those rows here so the drag reads against the list it's editing. Null otherwise. */
+  bgmDragHighlight: { start: number; end: number } | null;
+  /** Reports each row's measured viewport rect (top/height px) after every render — BgmSidePanel
+   * (a flex sibling in EditStep, not owned by this component) uses these to position its bars
+   * against the cut rows without needing any DOM access to them itself. */
+  onRowRectsChange: (rects: RowRect[]) => void;
 }
 
 /**
@@ -48,14 +44,12 @@ interface Props {
  * MomentPalette cards are where thumbnails still earn their keep, since that screen has no
  * right-side preview to fall back on).
  *
- * A collapsible BGM gutter sits to the left of the list (screen-spec section 3) — each bgm cue
- * renders as a vertical bar spanning the cut rows it covers, anchored to cut boundaries (not
- * arbitrary pixels), so the user places music changes while reading cut content instead of
- * against a blank timeline. Bar geometry is derived directly from the actual rendered row
- * elements' bounding rects (measured relative to the gutter container itself, not raw
- * `offsetTop`/`offsetHeight` — see measureRows' comment for why that distinction matters), not
- * from a separate proportional time axis, so it's pixel-exact with the cut strip by construction
- * rather than by coincidence.
+ * BGM editing lives in the side-by-side `BgmSidePanel` component now (2026-07-12 relocation —
+ * previously this component also owned a collapsible BGM gutter+header stacked above these rows,
+ * which put a once-per-episode concern in the primary vertical hierarchy). This component only
+ * reports each row's measured rect upward (`onRowRectsChange`) so that panel can still anchor its
+ * bars to cut boundaries without needing its own DOM access to the rows — see measureRows' comment
+ * for why raw `getBoundingClientRect` (not `offsetTop`) is what makes that safe across components.
  */
 export function CompactSegmentList({
   segments,
@@ -66,54 +60,44 @@ export function CompactSegmentList({
   onAdd,
   onRemove,
   onMove,
-  bgm,
-  selectedBgmIndex,
-  onSelectBgm,
-  onAddBgmTrack,
-  onChangeBgmRange,
+  bgmDragHighlight,
+  onRowRectsChange,
 }: Props) {
   const rowRefs = useRef<Array<HTMLTextAreaElement | null>>([]);
   const rowDivRefs = useRef<Array<HTMLDivElement | null>>([]);
-  const gutterRef = useRef<HTMLDivElement | null>(null);
-  const [rowRects, setRowRects] = useState<Array<{ top: number; height: number }>>([]);
-  const [bgmGutterCollapsed, setBgmGutterCollapsed] = useState(false);
-  const [dragHighlight, setDragHighlight] = useState<{ start: number; end: number } | null>(null);
-  const dragRef = useRef<BgmDragState | null>(null);
+  const prevRowRectsRef = useRef<RowRect[]>([]);
 
   useEffect(() => {
     rowRefs.current = rowRefs.current.slice(0, segments.length);
     rowDivRefs.current = rowDivRefs.current.slice(0, segments.length);
   }, [segments.length]);
 
-  // Row tops are measured relative to the gutter container's own box, NOT raw `el.offsetTop`
-  // (bug found 2026-07-10, QA report: BGM bars rendered a constant amount below their target row,
-  // worsening for nothing - it was a fixed offset for every bar). `offsetTop` is relative to an
-  // element's nearest positioned ancestor, and the bars' CSS `top` is interpreted relative to
-  // `gutter`'s own box (its actual containing block, since `gutter` has `position: relative`) -
-  // but the row divs live in a completely different sibling (`.list`), so their offsetTop is
-  // relative to whatever shared ancestor happens to be positioned (often just `<body>`, if
-  // nothing between here and the page root sets `position`), not to `gutter`. Using that raw value
-  // as a bar's `top` silently added gutter's own offset from that ancestor on top of every bar's
-  // position. Measuring both rects with getBoundingClientRect and subtracting sidesteps the
-  // offsetParent chain entirely - the delta between two simultaneous viewport-relative
-  // measurements is correct regardless of what (if anything) is positioned above them.
+  // Reports each row's own on-screen (viewport-relative) top/height after each render, via
+  // getBoundingClientRect rather than raw `el.offsetTop` — `offsetTop` is relative to an element's
+  // nearest positioned ancestor, which can differ between this component's rows and wherever
+  // BgmSidePanel's gutter ends up positioned, so a raw offsetTop value here could silently carry
+  // an unrelated ancestor offset into the bar geometry BgmSidePanel derives from it (this is the
+  // exact bug found 2026-07-10 when both lived in one component and shared the same containing
+  // block by coincidence). A `getBoundingClientRect` value is always viewport-absolute, so
+  // whichever component consumes it can freely subtract its own reference point.
   const measureRows = () => {
-    const gutterTop = gutterRef.current?.getBoundingClientRect().top ?? 0;
     const next = rowDivRefs.current.map((el) => {
       if (!el) {
         return { top: 0, height: 0 };
       }
       const rect = el.getBoundingClientRect();
-      return { top: rect.top - gutterTop, height: rect.height };
+      return { top: rect.top, height: rect.height };
     });
     // This effect has no dependency array (it needs to re-measure after every render, since a row
     // can grow/shrink from a subtitle edit without segments.length changing) - guarding on an
-    // actual value change is what keeps that from looping forever, since setting a new array
-    // reference unconditionally would re-render, which would re-run this same effect, forever.
-    setRowRects((prev) => (rectsEqual(prev, next) ? prev : next));
+    // actual value change before calling back up is what keeps that from looping forever.
+    if (!rectsEqual(prevRowRectsRef.current, next)) {
+      prevRowRectsRef.current = next;
+      onRowRectsChange(next);
+    }
   };
 
-  // Re-measures every row's on-screen top/height after each render — the BGM gutter's bars are
+  // Re-measures every row's on-screen top/height after each render — BgmSidePanel's bars are
   // positioned from this. Kept dependency-free (re-measures on every render, not just row-count
   // changes) defensively: row height is uniform today (the subtitle textarea is now a fixed
   // 2-line height and the scene-info line is single-line/ellipsized, both non-wrapping), but this
@@ -127,6 +111,7 @@ export function CompactSegmentList({
   useEffect(() => {
     window.addEventListener("resize", measureRows);
     return () => window.removeEventListener("resize", measureRows);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Scroll the selected row into view whenever the cut count changes (duplicate/delete). The
@@ -161,328 +146,152 @@ export function CompactSegmentList({
       focusRow(target);
     };
 
-  // --- BGM gutter geometry/drag ---
-  const cumStart = cumulativeCutStarts(segments);
-  const laneItems = assignBgmLanes(bgm, cumStart);
-  const lanes = Math.max(1, laneCount(laneItems));
-  // Collapsed OR no tracks yet both fall back to the thin collapsed width (2026-07-11 QA fix) -
-  // with 0 tracks, `lanes` still reserved a full lane's width (`Math.max(1, ...)`, needed so a
-  // single bar has somewhere to sit once one exists) for an empty strip with nothing to show.
-  const gutterWidth =
-    bgmGutterCollapsed || bgm.length === 0 ? BGM_GUTTER_COLLAPSED_WIDTH : lanes * BGM_LANE_TOTAL_WIDTH;
-
-  const rowIndexAtClientY = (clientY: number): number => {
-    const bottoms = rowDivRefs.current.map((el) => el?.getBoundingClientRect().bottom ?? null);
-    return resolveRowIndexFromBounds(bottoms, clientY);
-  };
-
-  // Drag reliability (2026-07-09 diagnosed fix): previously each bar/handle only listened to its
-  // own onPointerMove/onPointerUp (plus setPointerCapture on that same small element) - this made
-  // dragging fragile both for real users (a fast or slightly-off-target drag could leave the
-  // pointer over a sibling row instead of the ~22px-wide bar) and for automated pointer drags
-  // (synthetic move events dispatched over the page don't reliably keep landing on the captured
-  // element either). Listening on `window` for the duration of the drag instead means every
-  // pointermove/pointerup is heard regardless of what's directly under the pointer - the standard,
-  // robust pattern for drag interactions - so grabbing/dragging no longer depends on staying
-  // pixel-precise over a thin bar.
-  const trackDragMoveHandler = useRef<((e: PointerEvent) => void) | null>(null);
-  const trackDragUpHandler = useRef<(() => void) | null>(null);
-
-  const applyTrackDrag = (clientY: number) => {
-    const drag = dragRef.current;
-    if (!drag) {
-      return;
-    }
-    const rowIdx = rowIndexAtClientY(clientY);
-    const lastIdx = segments.length - 1;
-    const { start, end } = extendBgmDrag(drag, rowIdx, lastIdx);
-    setDragHighlight({ start, end });
-    onChangeBgmRange(drag.bgmIndex, start, end);
-  };
-
-  const endTrackDrag = () => {
-    dragRef.current = null;
-    setDragHighlight(null);
-    if (trackDragMoveHandler.current) {
-      window.removeEventListener("pointermove", trackDragMoveHandler.current);
-      trackDragMoveHandler.current = null;
-    }
-    if (trackDragUpHandler.current) {
-      window.removeEventListener("pointerup", trackDragUpHandler.current);
-      trackDragUpHandler.current = null;
-    }
-  };
-
-  // Belt-and-suspenders: if this component unmounts mid-drag (e.g. switching steps), drop any
-  // still-registered window listeners rather than leaking them.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => endTrackDrag, []);
-
-  const startTrackDrag =
-    (bgmIndex: number, mode: BgmDragMode) =>
-    (e: ReactPointerEvent<HTMLDivElement>) => {
-      e.stopPropagation();
-      // Also suppresses the browser's default drag behavior (2026-07-11 QA fix) - without this,
-      // dragging the pointer (button held) across a cut row's subtitle textarea mid-drag can
-      // trigger the browser's native text-field focus-on-drag-over behavior, silently stealing
-      // focus onto that textarea's cut (which calls onSelect -> setSelectedBgmIndex(null),
-      // dropping back to Cut settings mid-drag). Diagnosed via a real E2E drag-reliability
-      // regression exposed once CompactSegmentList's rows got shorter (thumbnail removed).
-      e.preventDefault();
-      endTrackDrag(); // clears any stale listeners left over from an interrupted previous drag
-
-      const range = bgmCutRange(bgm[bgmIndex]!, cumStart);
-      dragRef.current = startBgmDrag(bgmIndex, mode, range, rowIndexAtClientY(e.clientY));
-      onSelectBgm(bgmIndex);
-
-      const onMove = (ev: PointerEvent) => applyTrackDrag(ev.clientY);
-      const onUp = () => endTrackDrag();
-      trackDragMoveHandler.current = onMove;
-      trackDragUpHandler.current = onUp;
-      window.addEventListener("pointermove", onMove);
-      window.addEventListener("pointerup", onUp);
-    };
-
   return (
-    <div {...stylex.props(styles.panel)}>
-      <div {...stylex.props(styles.gutterHeader)}>
-        {/* Stock Astryx Button (2026-07-11 stock-component migration) replaces the old raw
-            `.plain-button` element - `variant="ghost"` keeps this section-header disclosure toggle
-            quiet, matching its previous look. `children` carries the custom icon+text+count-badge
-            composition; `label` supplies the accessible name Button always needs. */}
-        <Button
-          label={bgmGutterCollapsed ? "Expand the background music gutter" : "Collapse the background music gutter"}
-          variant="ghost"
-          size="sm"
-          onClick={() => setBgmGutterCollapsed((c) => !c)}
-          data-testid="bgm-gutter-toggle"
-        >
-          <span {...stylex.props(styles.gutterToggleContent)}>
-            {/* Quiet, small chevron (design-principles.md #4 "decoration scales to function") -
-                replaces the raw "▾"/"▸" text glyph. chevronRight/chevronDown read as the standard
-                collapsed/expanded disclosure-triangle convention (folder chevrons, tree views). */}
-            <Icon icon={bgmGutterCollapsed ? "chevronRight" : "chevronDown"} size="xsm" color="tertiary" />
-            Background music
-            {bgm.length > 0 ? <span {...stylex.props(styles.gutterCountBadge)}>{bgm.length}</span> : null}
-          </span>
-        </Button>
-        {!bgmGutterCollapsed ? (
-          // Small icon-only section action (design-principles.md #4), not a text button - the
-          // user kept misreading the old "+ Add track" text button as a cut-list action since it
-          // sat right above the cut rows. `gutterHeader`'s justify-content:space-between already
-          // pins it to the row's right edge, clearly separated from the header's left cluster.
-          <IconButton
-            icon={<span aria-hidden="true">+</span>}
-            label="Add background music track"
-            tooltip="Add background music track"
-            variant="ghost"
-            size="sm"
-            onClick={onAddBgmTrack}
-            data-testid="bgm-add-track"
-          />
-        ) : null}
-      </div>
-
-      <div {...stylex.props(styles.listBody)}>
-        <div
-          {...stylex.props(styles.gutter)}
-          style={{ width: gutterWidth }}
-          ref={gutterRef}
-          data-testid="bgm-gutter"
-        >
-          {!bgmGutterCollapsed
-            ? laneItems.map((item) => {
-                const top = rowRects[item.startCutIdx]?.top ?? 0;
-                const endRect = rowRects[item.endCutIdx];
-                const bottom = endRect ? endRect.top + endRect.height : top;
-                const cue = bgm[item.bgmIndex];
-                return (
-                  <div
-                    key={item.bgmIndex}
-                    {...stylex.props(styles.gutterBar, item.bgmIndex === selectedBgmIndex && styles.gutterBarSelected)}
-                    style={{
-                      top,
-                      height: Math.max(bottom - top, BGM_MIN_BAR_HEIGHT),
-                      left: item.lane * BGM_LANE_TOTAL_WIDTH,
-                      width: BGM_LANE_WIDTH,
-                    }}
-                    onPointerDown={startTrackDrag(item.bgmIndex, "move")}
-                    title={`${cue?.file ? baseName(cue.file) : "(no file)"} · cuts ${item.startCutIdx + 1}-${item.endCutIdx + 1}`}
-                    data-testid={`bgm-bar-${item.bgmIndex}`}
-                  >
-                    <div
-                      {...stylex.props(styles.gutterHandle)}
-                      onPointerDown={startTrackDrag(item.bgmIndex, "resize-start")}
-                      data-testid={`bgm-bar-${item.bgmIndex}-handle-start`}
-                    />
-                    <span {...stylex.props(styles.gutterBarLabel)}>{cue?.file ? baseName(cue.file) : "(no file)"}</span>
-                    <div
-                      {...stylex.props(styles.gutterHandle)}
-                      onPointerDown={startTrackDrag(item.bgmIndex, "resize-end")}
-                      data-testid={`bgm-bar-${item.bgmIndex}-handle-end`}
-                    />
-                  </div>
-                );
-              })
-            : null}
-        </div>
-
-        <div {...stylex.props(styles.list)}>
-          {segments.map((seg, i) => {
-            const tooltip = seg.subtitle.trim() !== "" ? `${seg.subtitle.trim()} (${seg.clip || "(no filename)"})` : seg.clip || "(no filename)";
-            const sceneInfo = matchSceneInfo(seg, moments);
-            const sceneText = sceneInfo.kind === "none" ? "No scene info" : sceneInfo.memo;
-            const sceneTooltip =
-              sceneInfo.kind === "moment"
-                ? `${shotTypeLabel(sceneInfo.shotType)} · ${sceneInfo.memo}`
-                : sceneText;
-            const bgmHighlighted = dragHighlight != null && i >= dragHighlight.start && i <= dragHighlight.end;
-            return (
-              <div
-                {...stylex.props(
-                  styles.row,
-                  i === selectedIndex && styles.rowSelected,
-                  bgmHighlighted && styles.rowBgmDragHighlight,
-                )}
-                key={i}
+    <div {...stylex.props(styles.list)}>
+      {segments.map((seg, i) => {
+        const tooltip = seg.subtitle.trim() !== "" ? `${seg.subtitle.trim()} (${seg.clip || "(no filename)"})` : seg.clip || "(no filename)";
+        const sceneInfo = matchSceneInfo(seg, moments);
+        const sceneText = sceneInfo.kind === "none" ? "No scene info" : sceneInfo.memo;
+        const sceneTooltip =
+          sceneInfo.kind === "moment"
+            ? `${shotTypeLabel(sceneInfo.shotType)} · ${sceneInfo.memo}`
+            : sceneText;
+        const bgmHighlighted =
+          bgmDragHighlight != null && i >= bgmDragHighlight.start && i <= bgmDragHighlight.end;
+        return (
+          <div
+            {...stylex.props(
+              styles.row,
+              i === selectedIndex && styles.rowSelected,
+              bgmHighlighted && styles.rowBgmDragHighlight,
+            )}
+            key={i}
+            ref={(el) => {
+              rowDivRefs.current[i] = el;
+            }}
+            onClick={() => onSelect(i)}
+            data-testid={`cut-row-${i}`}
+          >
+            <span {...stylex.props(styles.index)}>{i + 1}</span>
+            <div {...stylex.props(styles.text)}>
+              {/* Fixed 2-line height with internal scroll (QA finding 2026-07-10) - this row
+                  is a compact quick-edit surface, not the primary place to write long
+                  subtitles (that's the right panel's Subtitle group), so it deliberately does
+                  NOT grow to fit arbitrarily long pasted text anymore; see the height/
+                  line-height/overflow-y rule on `subtitleInput` in CompactSegmentList.styles.ts. */}
+              <textarea
                 ref={(el) => {
-                  rowDivRefs.current[i] = el;
+                  rowRefs.current[i] = el;
                 }}
-                onClick={() => onSelect(i)}
-                data-testid={`cut-row-${i}`}
+                {...stylex.props(styles.subtitleInput)}
+                value={seg.subtitle}
+                rows={2}
+                placeholder={seg.clip || "(no filename)"}
+                title={tooltip}
+                onFocus={() => onSelect(i)}
+                onChange={(e) => onChangeSubtitle(i, e.target.value)}
+                onKeyDown={handleSubtitleKeyDown(i)}
+                data-testid={`cut-row-subtitle-${i}`}
+              />
+              <span
+                {...stylex.props(styles.scene, sceneInfo.kind === "none" && styles.sceneEmpty)}
+                title={sceneTooltip}
               >
-                <span {...stylex.props(styles.index)}>{i + 1}</span>
-                <div {...stylex.props(styles.text)}>
-                  {/* Fixed 2-line height with internal scroll (QA finding 2026-07-10) - this row
-                      is a compact quick-edit surface, not the primary place to write long
-                      subtitles (that's the right panel's Subtitle group), so it deliberately does
-                      NOT grow to fit arbitrarily long pasted text anymore; see the height/
-                      line-height/overflow-y rule on `subtitleInput` in CompactSegmentList.styles.ts. */}
-                  <textarea
-                    ref={(el) => {
-                      rowRefs.current[i] = el;
-                    }}
-                    {...stylex.props(styles.subtitleInput)}
-                    value={seg.subtitle}
-                    rows={2}
-                    placeholder={seg.clip || "(no filename)"}
-                    title={tooltip}
-                    onFocus={() => onSelect(i)}
-                    onChange={(e) => onChangeSubtitle(i, e.target.value)}
-                    onKeyDown={handleSubtitleKeyDown(i)}
-                    data-testid={`cut-row-subtitle-${i}`}
+                {sceneInfo.kind === "moment" ? (
+                  <Badge
+                    variant={shotTypeBadgeVariant(sceneInfo.shotType)}
+                    label={shotTypeLabel(sceneInfo.shotType)}
+                    xstyle={styles.sceneBadge}
                   />
-                  <span
-                    {...stylex.props(styles.scene, sceneInfo.kind === "none" && styles.sceneEmpty)}
-                    title={sceneTooltip}
-                  >
-                    {sceneInfo.kind === "moment" ? (
-                      <Badge
-                        variant={shotTypeBadgeVariant(sceneInfo.shotType)}
-                        label={shotTypeLabel(sceneInfo.shotType)}
-                        xstyle={styles.sceneBadge}
-                      />
-                    ) : null}
-                    {sceneInfo.kind === "monotonous" ? (
-                      <Badge variant={TIMELAPSE_BADGE_VARIANT} label="Timelapse cut" xstyle={styles.sceneBadge} />
-                    ) : null}
-                    {sceneText}
+                ) : null}
+                {sceneInfo.kind === "monotonous" ? (
+                  <Badge variant={TIMELAPSE_BADGE_VARIANT} label="Timelapse cut" xstyle={styles.sceneBadge} />
+                ) : null}
+                {sceneText}
+              </span>
+              {/* Second line (13-inch density pass, 2026-07-10) - time/style badge/subtitle
+                  dot/reorder+delete used to sit beside `text` as row-level siblings, which only
+                  worked at the list column's old, wider 480px basis. Moved inside `text`'s own
+                  column onto their own line so the row stays usable at the narrower 300px
+                  column (see CompactSegmentList.styles.ts's `list`/`metaRow` comments). */}
+              <div {...stylex.props(styles.metaRow)}>
+                <span {...stylex.props(styles.time)}>
+                  {seg.in.toFixed(1)}~{seg.out.toFixed(1)}s
+                </span>
+                {seg.styleOverride ? (
+                  <span {...stylex.props(styles.styleBadge)} title="This cut has its own subtitle style">
+                    Style
                   </span>
-                  {/* Second line (13-inch density pass, 2026-07-10) - time/style badge/subtitle
-                      dot/reorder+delete used to sit beside `text` as row-level siblings, which only
-                      worked at the list column's old, wider 480px basis. Moved inside `text`'s own
-                      column onto their own line so the row stays usable at the narrower 300px
-                      column (see CompactSegmentList.styles.ts's `list`/`metaRow` comments). */}
-                  <div {...stylex.props(styles.metaRow)}>
-                    <span {...stylex.props(styles.time)}>
-                      {seg.in.toFixed(1)}~{seg.out.toFixed(1)}s
-                    </span>
-                    {seg.styleOverride ? (
-                      <span {...stylex.props(styles.styleBadge)} title="This cut has its own subtitle style">
-                        Style
-                      </span>
-                    ) : null}
-                    {/* Only flag the ACTIONABLE state - a cut with no subtitle yet (2026-07-11): the
-                        old always-present filled dot marked every subtitled cut too, so a
-                        fully-subtitled list was a wall of identical dots that read as noise (the
-                        user asked "what is this dot?"). Now a subtitled cut shows nothing; only a
-                        missing-subtitle cut shows a small amber "todo" dot. */}
-                    {!seg.subtitle ? (
-                      <span {...stylex.props(styles.subtitleDot)} title="No subtitle yet" />
-                    ) : null}
-                    {/* Row actions (2026-07-11 stock-component migration) - stock Astryx
-                        IconButtons replace the old raw `.plain-button` triplet. */}
-                    <div {...stylex.props(styles.actions)}>
-                      <IconButton
-                        icon={<Icon icon="arrowUp" size="sm" />}
-                        label="Move up"
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onMove(i, -1);
-                        }}
-                        isDisabled={i === 0}
-                        data-testid={`cut-row-move-up-${i}`}
-                      />
-                      <IconButton
-                        icon={<Icon icon="arrowDown" size="sm" />}
-                        label="Move down"
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onMove(i, 1);
-                        }}
-                        isDisabled={i === segments.length - 1}
-                        data-testid={`cut-row-move-down-${i}`}
-                      />
-                      <IconButton
-                        icon={<Icon icon="close" size="sm" />}
-                        label="Delete"
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRemove(i);
-                        }}
-                        isDisabled={segments.length <= 1}
-                        data-testid={`cut-row-delete-${i}`}
-                      />
-                    </div>
-                  </div>
+                ) : null}
+                {/* Only flag the ACTIONABLE state - a cut with no subtitle yet (2026-07-11): the
+                    old always-present filled dot marked every subtitled cut too, so a
+                    fully-subtitled list was a wall of identical dots that read as noise (the
+                    user asked "what is this dot?"). Now a subtitled cut shows nothing; only a
+                    missing-subtitle cut shows a small amber "todo" dot. */}
+                {!seg.subtitle ? (
+                  <span {...stylex.props(styles.subtitleDot)} title="No subtitle yet" />
+                ) : null}
+                {/* Row actions (2026-07-11 stock-component migration) - stock Astryx
+                    IconButtons replace the old raw `.plain-button` triplet. */}
+                <div {...stylex.props(styles.actions)}>
+                  <IconButton
+                    icon={<Icon icon="arrowUp" size="sm" />}
+                    label="Move up"
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMove(i, -1);
+                    }}
+                    isDisabled={i === 0}
+                    data-testid={`cut-row-move-up-${i}`}
+                  />
+                  <IconButton
+                    icon={<Icon icon="arrowDown" size="sm" />}
+                    label="Move down"
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onMove(i, 1);
+                    }}
+                    isDisabled={i === segments.length - 1}
+                    data-testid={`cut-row-move-down-${i}`}
+                  />
+                  <IconButton
+                    icon={<Icon icon="close" size="sm" />}
+                    label="Delete"
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemove(i);
+                    }}
+                    isDisabled={segments.length <= 1}
+                    data-testid={`cut-row-delete-${i}`}
+                  />
                 </div>
               </div>
-            );
-          })}
-          <Button
-            label="Duplicate selected cut"
-            variant="secondary"
-            size="sm"
-            onClick={onAdd}
-            tooltip="Duplicates the selected cut right after it (useful for splitting a long clip into separate cuts)"
-            xstyle={styles.addButton}
-            data-testid="cut-list-add"
-          />
-        </div>
-      </div>
+            </div>
+          </div>
+        );
+      })}
+      <Button
+        label="Duplicate selected cut"
+        variant="secondary"
+        size="sm"
+        onClick={onAdd}
+        tooltip="Duplicates the selected cut right after it (useful for splitting a long clip into separate cuts)"
+        xstyle={styles.addButton}
+        data-testid="cut-list-add"
+      />
     </div>
   );
 }
 
-function rectsEqual(a: Array<{ top: number; height: number }>, b: Array<{ top: number; height: number }>): boolean {
+function rectsEqual(a: RowRect[], b: RowRect[]): boolean {
   if (a.length !== b.length) {
     return false;
   }
   return a.every((r, i) => r.top === b[i]?.top && r.height === b[i]?.height);
 }
-
-/** BGM gutter lane geometry (px). Widened slightly (2026-07-09 diagnosed drag-reliability fix,
- * alongside the window-level pointer listeners above) - a 22px-wide bar with 6px-tall resize
- * handles left very little room to grab either the move area or the handles, which was reported
- * as "hard to grab" even before accounting for the pointer-tracking bug itself. */
-const BGM_LANE_WIDTH = 26;
-const BGM_LANE_GAP = 6;
-const BGM_LANE_TOTAL_WIDTH = BGM_LANE_WIDTH + BGM_LANE_GAP;
-const BGM_GUTTER_COLLAPSED_WIDTH = 10;
-const BGM_MIN_BAR_HEIGHT = 26;
