@@ -3,7 +3,7 @@
 > This document is the single entry point for "where things stand right now, and what exists
 > for what purpose." Rule: update this document at every milestone and commit it to git.
 > Detailed design rationale and decisions live in the linked documents; this one holds only
-> the map. (Last updated: 2026-07-10)
+> the map. (Last updated: 2026-07-11)
 
 ## North Star
 
@@ -19,7 +19,7 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 | `packages/schema` | Cuesheet types + validation (contract's center, zod), `.describe()` field docs, mechanical repair hints on failures | Stable. 82 tests |
 | `packages/bridge` | MCP server for Claude Code connection (natural-language editing) | Stable. 36 tests. 5 tools (`get_cuesheet`/`update_cuesheet`/`validate_cuesheet`/`get_schema`/`get_capabilities`), structured edit receipts, change-summary diff, `CUESHEET_BRIDGE_READONLY` mode |
 | `packages/render` | Cuesheet -> ffmpeg render (CLI + buildRenderPlan, incl. two-pass fallback for captured-frames titles + large HEVC concats) | Stable. 112 tests, verified with real renders (single-pass and two-pass) |
-| `apps/web` | Touch-up editor: cut editing, single zoomable-filmstrip trim (TrimStrip), full timeline + BGM drag, proxy playback, export button | Actively evolving. 511 tests. Edit step's 3 columns now fit a 13-inch laptop (1280x800/1440x900) |
+| `apps/web` | Touch-up editor: cut editing, single zoomable-filmstrip trim (TrimStrip), full timeline + BGM drag, proxy playback, export button | Actively evolving. 539 tests. Edit step's 3 columns fit a 13-inch laptop; recolors entirely from the active Astryx theme (stone/y2k/neutral switcher) |
 | `packages/draft` | **Core**: raw footage folder -> automatic rough-cut cuesheet generation (CLI `cuesheet-draft`: scan for inventory + frame extraction -> assemble for assembly; vision judgment handled by Claude) | Promoted to a proper package. 44 tests (incl. `--json` envelope contract tests), scan/assemble E2E verified against a real footage folder |
 | `media/proxies/` | 720p H.264 proxies for web preview (auto-generated, git-ignored) | Automatic |
 | `media/dotmix_src` | Symlink to the user's raw footage folder (git-ignored) | — |
@@ -35,6 +35,41 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 - **Proxy playback**: original 4K HEVC can't play in-browser -> 720p H.264 proxy for preview, render uses the original
 - **iCloud rule**: must check `stat blocks=0` before reading source footage (reading a placeholder hangs forever), manage space with `brctl download/evict`
 - **AI-legibility as its own backlog**: a dedicated survey (wiki "AI-Legible System Design", covering astryx internals + shadcn/Stripe/GitHub/Cloudflare/Vercel/Storybook/v0) found the missing layer is turning CLAUDE.md's prose conventions into scripts that fail when broken, not more documentation — motivated `check:repo`, CI, `.describe()`-driven `get_schema`, `get_capabilities`, and the AGENTS.md smoke test (issues #5-#16)
+
+## 2026-07-11: UI overhaul — consume Astryx as a design system, not a widget bin
+
+A day-long pass that turned Astryx from a widget library we hand-fought into an actual design
+system. Motivating realization (user): we had used Astryx for isolated widgets (Button/Slider)
+while re-inventing its composition layer (Field/FormLayout/Section/Grid/EmptyState) by hand,
+because Astryx's AI layer was never wired into the repo — so builders didn't know the catalog
+existed. Fixes, in order:
+
+- **Design charter** (`docs/design-principles.md`): six binding UI principles — intuitive (follow
+  conventions, never invent), hierarchy = actual importance, remove unnecessary information and
+  decoration, stock Astryx components, minimal whitespace (13-inch first), structure matches flow.
+  Referenced from CLAUDE.md. Ambiguous UI calls resolve against it in order.
+- **Astryx AI layer wired in**: the component/template catalog cheat sheet is injected into
+  CLAUDE.md (`astryx agent-docs`, between `ASTRYX:START/END` markers), so builders discover the
+  composition layer instead of re-rolling it. Run `astryx` CLI from `apps/web/`, not the root.
+- **Full color-token migration**: 63 custom color variables -> 0. The app now recolors entirely
+  from the active Astryx theme. **Theme switcher** added (stone / y2k / neutral) — verified that
+  switching recolors background, tags, buttons, chips across the app (stone grey vs. y2k lavender/
+  lime confirmed by screenshot).
+- **styles.css 879 -> 275 lines**: form inputs, sections, card grids, and empty states moved to
+  stock Astryx `Field`/`FormLayout`/`Selector`/`Section`/`EmptyState` + component-owned StyleX.
+  What remains is legitimate domain-custom layout (video/subtitle overlays, the Scenes card grid,
+  and the Cut-settings `.qf-*` field grid) — all fully token-driven, no hardcoded values.
+- **Count badges fixed**: Scenes tab shows candidate selection (in-use / total), Edit tab shows
+  subtitle fill (filled / total) — previously both showed final-cut totals.
+- **Structure/polish** (this session): a **Source folder (clipDir) relink field** in Export ->
+  Project settings (moving footage no longer silently breaks every cut with no way to fix it in
+  app); Collapsible trigger labels scaled to secondary hierarchy (`Text type="label"`);
+  `Set In/Out here` -> **`Mark In`/`Mark Out`** (Premiere/FCP convention, denser); the Scenes
+  category + status filters consolidated onto **one row**.
+- **Deferred (flagged for review)**: migrating the Cut-settings `.qf-*` grid to Astryx
+  Field/FormLayout would push styles.css lower, but its rows deliberately pack IN+OUT and
+  speed+volume two-up for 13-inch density; a naive vertical FormLayout regresses that. Left as a
+  scoped follow-up rather than a blind core-surface change. `apps/web`: 539 tests.
 
 ## 2026-07-10 late evening: QA sweep fixes + MIT license
 
