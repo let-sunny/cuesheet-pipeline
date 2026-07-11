@@ -142,7 +142,7 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
               value={selectedCategory}
               onChange={(v) => setSelectedCategory((v ?? "all") as Category | "all")}
               size="sm"
-              xstyle={styles.filters}
+              xstyle={styles.filtersCategory}
             >
               <FilterChip value="all" label={`All (${cards.length})`} />
               {CATEGORY_ORDER.filter((cat) => (counts.get(cat) ?? 0) > 0).map((cat) => (
@@ -150,13 +150,15 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
               ))}
             </ToggleButtonGroup>
 
+            <div {...stylex.props(styles.filterDivider)} aria-hidden="true" />
+
             <ToggleButtonGroup
               type="single"
               label="Filter by status"
               value={statusFilter}
               onChange={(v) => setStatusFilter((v ?? "all") as StatusFilter)}
               size="sm"
-              xstyle={styles.filters}
+              xstyle={styles.filtersStatus}
             >
               {(["all", "in-use", "excluded"] as const).map((f) => (
                 <FilterChip key={f} value={f} label={STATUS_FILTER_LABEL[f]} />

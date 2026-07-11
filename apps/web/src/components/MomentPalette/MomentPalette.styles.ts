@@ -70,20 +70,39 @@ export const styles = stylex.create({
     color: colorVars["--color-text-secondary"],
   },
   // The two filter axes (category, status) sit side by side on ONE row (2026-07-11): a horizontal
-  // toolbar wrapping both ToggleButtonGroups, with a larger inter-group gap than the within-group
-  // chip gap so the two axes still read as distinct. Wraps the status group below only when the
-  // 13-inch width genuinely can't hold both - the common case is a single row.
+  // toolbar. `nowrap` at the bar level plus a fixed (flexShrink 0) status group means the status
+  // chips are PINNED and never drop below - instead the variable-count category group (flexGrow/
+  // Shrink, own internal wrap) is what wraps to a second line when the 13-inch width can't hold
+  // everything. A 1px rule (`filterDivider`) between the groups makes the two axes read as distinct
+  // even on a single line - two grouped controls at the same visual weight otherwise run together
+  // (QA 2026-07-11: without it "Other (1)" sat flush against "All | In use only"). alignItems
+  // flex-start so the divider + status top-align with the category group's first row.
   filterBar: {
     display: "flex",
-    flexWrap: "wrap",
-    alignItems: "center",
-    gap: spacingVars["--spacing-4"],
+    flexWrap: "nowrap",
+    alignItems: "flex-start",
+    gap: spacingVars["--spacing-3"],
     marginBottom: spacingVars["--spacing-3"],
   },
-  filters: {
+  filtersCategory: {
     display: "flex",
     flexWrap: "wrap",
     gap: spacingVars["--spacing-1-5"],
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  filtersStatus: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: spacingVars["--spacing-1-5"],
+    flexShrink: 0,
+  },
+  filterDivider: {
+    alignSelf: "stretch",
+    width: 1,
+    flexShrink: 0,
+    backgroundColor: colorVars["--color-border"],
   },
   // flex-wrap -> CSS grid (2026-07-11 whitespace fix, design-principles.md #6 "minimal whitespace,
   // both axes"): at the 13-inch target (1280px), the old flex-wrap + 440px fixed card width only
