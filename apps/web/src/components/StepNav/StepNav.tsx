@@ -8,27 +8,28 @@ export type Step = "compose" | "edit" | "finish";
 interface Props {
   step: Step;
   onChange: (step: Step) => void;
-  /** Compose (stage 1) progress signal: number of cuts added. */
-  segmentCount: number;
-  /** Edit (stage 2) progress signal: number of subtitles filled in / total cuts. */
+  /** Compose (stage 1) progress: scene candidates in use / total candidates (selection, not final cuts). */
+  sceneInUse: number;
+  sceneTotal: number;
+  /** Edit (stage 2) progress: subtitles filled in / total cuts. */
   subtitleFilled: number;
   subtitleTotal: number;
 }
 
 /** Always-visible step navigation. Highlights the current step and shows progress badges for the compose/edit stages. */
-export function StepNav({ step, onChange, segmentCount, subtitleFilled, subtitleTotal }: Props) {
+export function StepNav({ step, onChange, sceneInUse, sceneTotal, subtitleFilled, subtitleTotal }: Props) {
   return (
     <TabList value={step} onChange={(v) => onChange(v as Step)} hasDivider size="lg">
       <NavTab
         value="compose"
         label="① Scenes"
-        endContent={<Badge variant="neutral" label={segmentCount} />}
+        endContent={<Badge variant="neutral" label={`${sceneInUse}/${sceneTotal}`} />}
         data-testid="step-tab-compose"
       />
       <NavTab
         value="edit"
         label="② Edit"
-        endContent={<Badge variant="neutral" label={`${subtitleFilled}/${subtitleTotal}`} />}
+        endContent={<Badge variant="neutral" label={`${subtitleFilled}/${subtitleTotal} subtitled`} />}
         data-testid="step-tab-edit"
       />
       <NavTab value="finish" label="③ Export" data-testid="step-tab-finish" />

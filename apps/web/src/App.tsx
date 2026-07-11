@@ -27,6 +27,7 @@ import { minutesAgoLabel } from "./lib/relativeTime.js";
 import { ComposeStep } from "./steps/ComposeStep/index.js";
 import { EditStep } from "./steps/EditStep/index.js";
 import { FinishStep } from "./steps/FinishStep/index.js";
+import { buildCards, computeInUseCutNumbers } from "./lib/momentCards.js";
 import { styles } from "./App.styles.js";
 
 interface AppProps {
@@ -211,6 +212,10 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
   }
 
   const subtitleFilled = draft.segments.filter((s) => s.subtitle.trim() !== "").length;
+  // Scenes badge = how many scene candidates are selected (in use) out of all candidates —
+  // not the final-cut count. Reuses the same helpers MomentPalette shows ("Scene candidates (N)").
+  const sceneCards = buildCards(moments);
+  const sceneInUse = computeInUseCutNumbers(sceneCards, draft.segments).size;
 
   return (
     <div {...stylex.props(styles.app)}>
@@ -288,7 +293,8 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         // even during sequence playback (redesign 1 — playback and editing coexist), sequenceMode is
         // not turned off here. Playback only ends via SequencePlayer's "Close" button.
         onChange={setStep}
-        segmentCount={draft.segments.length}
+        sceneInUse={sceneInUse}
+        sceneTotal={sceneCards.length}
         subtitleFilled={subtitleFilled}
         subtitleTotal={draft.segments.length}
       />
