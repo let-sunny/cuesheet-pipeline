@@ -585,14 +585,14 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
               data-testid="video-control-play"
             />
             <Button
-              label="Set In here"
+              label="Mark In"
               variant="secondary"
               size="sm"
               onClick={handleSetIn}
               data-testid="video-control-set-in"
             />
             <Button
-              label="Set Out here"
+              label="Mark Out"
               variant="secondary"
               size="sm"
               onClick={handleSetOut}

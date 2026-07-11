@@ -69,11 +69,21 @@ export const styles = stylex.create({
     fontSize: textSizeVars["--font-size-sm"],
     color: colorVars["--color-text-secondary"],
   },
+  // The two filter axes (category, status) sit side by side on ONE row (2026-07-11): a horizontal
+  // toolbar wrapping both ToggleButtonGroups, with a larger inter-group gap than the within-group
+  // chip gap so the two axes still read as distinct. Wraps the status group below only when the
+  // 13-inch width genuinely can't hold both - the common case is a single row.
+  filterBar: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: spacingVars["--spacing-4"],
+    marginBottom: spacingVars["--spacing-3"],
+  },
   filters: {
     display: "flex",
     flexWrap: "wrap",
     gap: spacingVars["--spacing-1-5"],
-    marginBottom: spacingVars["--spacing-3"],
   },
   // flex-wrap -> CSS grid (2026-07-11 whitespace fix, design-principles.md #6 "minimal whitespace,
   // both axes"): at the 13-inch target (1280px), the old flex-wrap + 440px fixed card width only

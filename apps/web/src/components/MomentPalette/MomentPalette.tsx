@@ -135,32 +135,34 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
               behavior) - mapped back to "all" here rather than fought, which doubles as a handy
               "click again to clear the filter" affordance. `xstyle` only adds flex-wrap (categories
               can exceed one row's width on a 13" viewport) - the chips' own look is entirely stock. */}
-          <ToggleButtonGroup
-            type="single"
-            label="Filter by category"
-            value={selectedCategory}
-            onChange={(v) => setSelectedCategory((v ?? "all") as Category | "all")}
-            size="sm"
-            xstyle={styles.filters}
-          >
-            <FilterChip value="all" label={`All (${cards.length})`} />
-            {CATEGORY_ORDER.filter((cat) => (counts.get(cat) ?? 0) > 0).map((cat) => (
-              <FilterChip key={cat} value={cat} label={`${CATEGORY_META[cat].label} (${counts.get(cat) ?? 0})`} />
-            ))}
-          </ToggleButtonGroup>
+          <div {...stylex.props(styles.filterBar)}>
+            <ToggleButtonGroup
+              type="single"
+              label="Filter by category"
+              value={selectedCategory}
+              onChange={(v) => setSelectedCategory((v ?? "all") as Category | "all")}
+              size="sm"
+              xstyle={styles.filters}
+            >
+              <FilterChip value="all" label={`All (${cards.length})`} />
+              {CATEGORY_ORDER.filter((cat) => (counts.get(cat) ?? 0) > 0).map((cat) => (
+                <FilterChip key={cat} value={cat} label={`${CATEGORY_META[cat].label} (${counts.get(cat) ?? 0})`} />
+              ))}
+            </ToggleButtonGroup>
 
-          <ToggleButtonGroup
-            type="single"
-            label="Filter by status"
-            value={statusFilter}
-            onChange={(v) => setStatusFilter((v ?? "all") as StatusFilter)}
-            size="sm"
-            xstyle={styles.filters}
-          >
-            {(["all", "in-use", "excluded"] as const).map((f) => (
-              <FilterChip key={f} value={f} label={STATUS_FILTER_LABEL[f]} />
-            ))}
-          </ToggleButtonGroup>
+            <ToggleButtonGroup
+              type="single"
+              label="Filter by status"
+              value={statusFilter}
+              onChange={(v) => setStatusFilter((v ?? "all") as StatusFilter)}
+              size="sm"
+              xstyle={styles.filters}
+            >
+              {(["all", "in-use", "excluded"] as const).map((f) => (
+                <FilterChip key={f} value={f} label={STATUS_FILTER_LABEL[f]} />
+              ))}
+            </ToggleButtonGroup>
+          </div>
 
           <div {...stylex.props(styles.grid)}>
             {filtered.map((card) => {
