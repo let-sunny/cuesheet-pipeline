@@ -83,6 +83,10 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
   const inUseCutNumber = useMemo(() => computeInUseCutNumbers(cards, segments), [cards, segments]);
 
   const filtered = filterCards(cards, selectedCategory, statusFilter, inUseCutNumber);
+  // Whether either filter axis narrows the grid - drives the header count (below), which
+  // otherwise reads as a static total that never changes and makes filtering look like it does
+  // nothing (user feedback 2026-07-11).
+  const isFiltered = selectedCategory !== "all" || statusFilter !== "all";
 
   const handleAdd = (card: MomentCard) => {
     if (hasFaceTag(card.memo)) {
@@ -112,7 +116,10 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
   return (
     <div {...stylex.props(styles.palette)}>
       <div {...stylex.props(styles.header)}>
-        <span>Scene candidates ({cards.length})</span>
+        {/* Reflects the active filter (2026-07-11 user feedback: a static total never changed
+            when a filter was applied, so filtering looked like it did nothing) - "N of TOTAL"
+            once either filter axis narrows the grid, plain "TOTAL" otherwise. */}
+        <span>Scene candidates ({isFiltered ? `${filtered.length} of ${cards.length}` : cards.length})</span>
         <Button
           label={collapsed ? "Expand" : "Collapse"}
           variant="ghost"
@@ -204,28 +211,6 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
                       ).className
                     }
                   >
-                    {/* The auto-exclusion reason is a full-width banner at the top of the card - much
-                        more noticeable than a small corner badge over the thumbnail, removing the
-                        "what's faded vs. what's solid" misreading (feedback 2026-07-08). The Add
-                        button stays active even in this state - auto-exclusion isn't a "ban," it's
-                        just "what auto-assembly filtered out," so it can always be brought back.
-                        Kept custom rather than expressed via Overlay (2026-07-09 evaluation, see
-                        docs/screen-spec.md section 2): Overlay renders its content ON TOP of the
-                        media it wraps (an overlapping layer), but this banner needs to sit ABOVE the
-                        thumbnail in normal flow, pushing it down without covering any of the frame -
-                        the opposite of what Overlay composes. It also spans the whole card, not just
-                        the thumbnail that Overlay wraps. So it stays a plain full-width div outside
-                        the Overlay composition below. */}
-                    {rejectedLabel ? (
-                      <div
-                        {...stylex.props(
-                          styles.statusBanner,
-                          faceRejected ? styles.statusBannerFace : styles.statusBannerQuality,
-                        )}
-                      >
-                        {rejectedLabel}
-                      </div>
-                    ) : null}
                     {/* Horizontal card layout (2026-07-11 QA fix - researched convention: Premiere's
                         bin thumbnail view / Final Cut's event browser / DaVinci's media pool all lay
                         out a clip card as thumbnail-left-at-a-usable-size + metadata-stacked-right,
@@ -233,11 +218,12 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
                         168px-wide cards read as "too small" - adopted as-is (CLAUDE.md "no invented
                         UI patterns"). `thumbCol` fixes the thumbnail to its own wider column instead
                         of letting it size to the whole (now much wider) card; `cardRow` is the plain
-                        horizontal flex wrapper, stretched to a fixed height (2026-07-11 uniform-card
-                        fix, see `card`'s comment) so `thumbCol` fills that height edge to edge. The
-                        status banner above stays OUTSIDE this row (full card width, on its own line,
-                        additive to the fixed height for that rare state) per the existing exclusion-
-                        banner rule - only the thumbnail+body pairing goes side by side. */}
+                        horizontal flex wrapper, stretched to a fixed height (see `cardRow`'s comment)
+                        so `thumbCol` fills that height edge to edge. Every card - excluded or not -
+                        renders exactly this one row now (2026-07-11 uniform-height fix, see `card`'s
+                        comment: the exclusion reason used to be a sibling banner ABOVE this row,
+                        which made excluded cards taller than their grid neighbors); it's gone from
+                        the flow entirely, replaced by the thumbnail-overlay scrim below. */}
                     <div {...stylex.props(styles.cardRow)}>
                       {/* Full-bleed thumbnail (2026-07-11 QA fix, design-principles.md #6 "no wasted
                           space"): AspectRatio(16:9) was dropped - it constrained the thumbnail to a
@@ -245,32 +231,22 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
                           box, which left letterbox gaps. A plain div stretched to 100%/100% (via
                           `cardRow`'s alignItems:stretch + this Overlay's own xstyle height:100%) plus
                           `objectFit:cover` on the img fills thumbCol edge to edge instead, cropping the
-                          frame as needed - the user confirmed cropping is fine here. Overlay's own
-                          "top" content region still holds the chip/badge row; the row stays flex-wrap
-                          (space-between) so a long clip folder name still wraps the badge to the next
-                          line instead of overlapping or truncating it (2026-07-08 feedback). The
-                          index/timestamp chip stays a plain styled span, not a Badge — it's a caption
-                          of "which clip/where", not a status with color semantics, so Badge would be a
-                          semantic mismatch; the "in use" indicator IS a status, so that one is a real
-                          Badge (variant="success"). */}
+                          frame as needed - the user confirmed cropping is fine here. `thumbCol` is
+                          `position:relative` so both the in-use badge (via Overlay's own absolute
+                          scrim) and the exclusion scrim below can anchor to just this thumbnail box,
+                          never the card at large. The clip-folder/timestamp chip that used to share
+                          this corner was removed (2026-07-11 user feedback: declutter the thumbnail,
+                          move all text metadata to the card's right side, see `metaCluster` below) -
+                          the only thing left on the frame itself is the in-use cut-number badge
+                          (a real status Badge, variant="success") and, when excluded, the reason
+                          scrim. */}
                       <div {...stylex.props(styles.thumbCol)}>
                         <Overlay
                           scrim={false}
                           showOn="always"
                           position="top"
                           xstyle={styles.thumbOverlay}
-                          content={
-                            <div {...stylex.props(styles.overlayRow)}>
-                              <span {...stylex.props(styles.number)}>
-                                {card.clipFolder} · {card.inS.toFixed(1)}s
-                              </span>
-                              {/* Just the cut number (2026-07-11 QA fix, design-principles.md #3
-                                  "remove unnecessary information") - the user only needs to know
-                                  which cut this maps to, not a restated "In use - cut N" sentence;
-                                  bare numbering matches CompactSegmentList's own cut-index convention. */}
-                              {inUse ? <Badge variant="success" label={String(cutNumber)} xstyle={styles.badgeInUse} /> : null}
-                            </div>
-                          }
+                          content={inUse ? <Badge variant="success" label={String(cutNumber)} /> : null}
                         >
                           {frame ? (
                             <img
@@ -282,45 +258,86 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
                             <div {...stylex.props(styles.thumbEmpty)} />
                           )}
                         </Overlay>
+                        {/* Auto-exclusion reason - now an absolute overlay on the thumbnail itself,
+                            not a top banner that used to sit above `cardRow` as an extra sibling row
+                            (user directive 2026-07-11, overriding the 2026-07-09 top-banner decision
+                            recorded here previously: cover the thumbnail with an absolute overlay so
+                            the reason only shows there). A banner
+                            added a whole extra row's worth of height only to excluded cards, so grid
+                            rows were never uniform (the user's main complaint); this scrim adds zero
+                            height - `thumbCol`/`cardRow` are exactly the same size in every state. The
+                            Add button stays active either way - auto-exclusion isn't a "ban," it's
+                            just "what auto-assembly filtered out," so it can always be brought back. */}
+                        {rejectedLabel ? (
+                          <div
+                            {...stylex.props(
+                              styles.exclusionScrim,
+                              faceRejected ? styles.exclusionScrimFace : styles.exclusionScrimQuality,
+                            )}
+                          >
+                            {rejectedLabel}
+                          </div>
+                        ) : null}
                       </div>
                       {/* Card hierarchy (screen-spec section 2): thumbnail -> scene description
-                          (scrolls internally, see memoWrap's comment) -> meta (shot type/duration/
-                          quality) -> actions. Card-internal spacing rules (screen-spec 0-1/0-2):
-                          consistent 12px padding plus a clear gap between groups (description/meta/
-                          actions) are handled entirely by cardBody. */}
+                          (scrolls internally, see memoWrap's comment) -> metadata cluster (clip
+                          filename/time range/category/quality, see `metaCluster`'s comment) ->
+                          action, pinned bottom-right (see `actionsGroup`'s comment). Card-internal
+                          spacing rules (screen-spec 0-1/0-2): consistent padding plus a clear gap
+                          between groups, all handled by cardBody, so every card in a grid row aligns
+                          the same way regardless of state or content length (2026-07-11 user
+                          feedback: the internal spacing needed a consistent pass so alignment
+                          would be consistent). */}
                       <div {...stylex.props(styles.cardBody)}>
                         <div {...stylex.props(styles.memoWrap)}>
                           <Text type="supporting" maxLines={0}>
                             {displayMemo}
                           </Text>
                         </div>
-                        <div {...stylex.props(styles.info)}>
-                          {/* Smaller/quieter (2026-07-11 QA fix, design-principles.md #4 "decoration
-                              scales to function") - category is secondary metadata alongside
-                              duration/quality, not a heading, so it shouldn't out-weigh them. Badge
-                              has no size prop, so `categoryBadge` trims font-size/padding via xstyle
-                              (the sanctioned per-instance override mechanism) rather than a full
-                              custom badge. */}
-                          <Badge variant={meta.badgeVariant} label={meta.label} xstyle={styles.categoryBadge} />
-                          <span className="moment-duration">{(card.outS - card.inS).toFixed(1)}s</span>
-                          {card.quality != null ? (
-                            <span {...stylex.props(styles.quality)}>Quality {card.quality}/5</span>
-                          ) : null}
+                        {/* Metadata cluster (2026-07-11 user feedback: filename/time/quality-style
+                            metadata is fine grouped on the card's right side) - the clip filename,
+                            time range, category, and quality all read as one quiet, secondary group
+                            below the description rather than being scattered (filename/time used to
+                            live on the thumbnail overlay; category/quality used to be their own
+                            unlabeled `info` row). `quality`'s `title` explains what the number means
+                            (user asked what "Quality" meant) - it's the vision reader's 1-5 usability
+                            score that auto-assembly's keep-threshold (3+) is judged against. */}
+                        <div {...stylex.props(styles.metaCluster)}>
+                          <span {...stylex.props(styles.metaFile)}>
+                            {card.clipFileName} · {card.inS.toFixed(1)}s~{card.outS.toFixed(1)}s
+                          </span>
+                          <div {...stylex.props(styles.metaRow)}>
+                            <Badge variant={meta.badgeVariant} label={meta.label} xstyle={styles.categoryBadge} />
+                            {card.quality != null ? (
+                              <span
+                                {...stylex.props(styles.quality)}
+                                title="Vision-judged usability of this moment (1-5). Auto-assembly keeps 3 and up."
+                              >
+                                Quality {card.quality}/5
+                              </span>
+                            ) : null}
+                          </div>
                         </div>
+                        {/* Add/Remove pinned to the card's bottom-right corner (2026-07-11 user
+                            feedback: add-to-cut/remove-cut should sit in the single most important
+                            spot, the card's bottom-right) - the card's single most important action,
+                            so it gets the single most prominent corner. `actionsGroup`'s
+                            `marginTop:auto` pushes it
+                            to the bottom of cardBody's fixed-height column; `justifyContent:flex-end`
+                            right-aligns it within that row. Single state-driven toggle (2026-07-09
+                            diagnosed fix) replaces the old Add/Remove pair (one button always
+                            visually disabled, the other hidden via a same-space "placeholder" class)
+                            - one action, one button, the label/icon flips with whether the card is
+                            already added. Excluded (auto-filtered) cards keep the same confirm-before-
+                            adding flow either way (handleAdd's face-policy check runs regardless).
+                            Icon-only (2026-07-11 QA fix, design-principles.md #4 "decoration scales
+                            to function"); `label` still carries the accessible name (announced via
+                            IconButton's aria-label) and `tooltip` supplies the visible hint the icon
+                            alone can't. Kept `variant="ghost"` even in this now-most-important corner
+                            - the bottom-right position itself is what signals primacy (matches the
+                            researched convention of a media browser's per-item action slot), not a
+                            heavier fill that would compete with the card's actual content. */}
                         <div {...stylex.props(styles.actionsGroup)}>
-                          {/* Single state-driven toggle (2026-07-09 diagnosed fix) replaces the old
-                              Add/Remove pair (one button always visually disabled, the other hidden
-                              via a same-space "placeholder" class) - one action, one button, the
-                              label/icon flips with whether the card is already added. Excluded
-                              (auto-filtered) cards keep the same confirm-before-adding flow either
-                              way (handleAdd's face-policy check runs regardless). Icon-only
-                              (2026-07-11 QA fix, design-principles.md #4 "decoration scales to
-                              function" - repeated card actions read as too large as text buttons);
-                              `label` still carries the accessible name (announced via IconButton's
-                              aria-label) and `tooltip` supplies the visible hint the icon alone
-                              can't. `variant="ghost"` (2026-07-11 QA fix) - this is a per-card row
-                              action, the least prominent thing on the card, not a page-level primary/
-                              destructive action, so it should read quietly until hovered. */}
                           <SceneCardButton
                             icon={<Icon icon={inUse ? "close" : "check"} size="sm" />}
                             label={inUse ? "Remove" : "Add"}
@@ -345,4 +362,3 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
     </div>
   );
 }
-
