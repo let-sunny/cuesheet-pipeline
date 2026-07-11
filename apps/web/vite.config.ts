@@ -14,6 +14,15 @@ export default defineConfig({
   // because the provider it renders under lives in the other copy, and every such interaction
   // becomes a silent no-op. Deduping collapses them to the app's single copy so context connects.
   resolve: {
-    dedupe: ["@astryxdesign/core", "@stylexjs/stylex", "react", "react-dom"],
+    // `remotion` + `@remotion/player`: the title preview runs the real TitleCard composition
+    // (imported from @cuesheet/render's dist) inside @remotion/player's <Player>. Both sides import
+    // `remotion`; if the browser loads two copies, the Player's composition context never reaches
+    // TitleCard's useCurrentFrame() and the preview throws/blanks (same dual-instance-context class
+    // as the astryx case below). Deduping to one `remotion` connects the Player to the composition.
+    dedupe: ["@astryxdesign/core", "@stylexjs/stylex", "react", "react-dom", "remotion", "@remotion/player"],
+  },
+  // Pre-bundle the Remotion browser packages together so they resolve to one instance in dev.
+  optimizeDeps: {
+    include: ["remotion", "@remotion/player"],
   },
 });
