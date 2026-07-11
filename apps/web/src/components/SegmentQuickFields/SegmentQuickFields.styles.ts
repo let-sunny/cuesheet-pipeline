@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 3). Only the
@@ -28,7 +29,7 @@ import * as stylex from "@stylexjs/stylex";
 export const styles = stylex.create({
   narrationWarning: {
     margin: "4px 0 0",
-    fontSize: 12,
+    fontSize: textSizeVars["--font-size-sm"],
     color: "var(--warning-text)",
   },
   narrationPreview: {

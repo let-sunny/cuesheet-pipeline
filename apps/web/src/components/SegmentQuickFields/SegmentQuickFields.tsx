@@ -1,7 +1,8 @@
 import { useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
-import { Tab, TabList } from "@astryxdesign/core/TabList";
+import { TabList } from "@astryxdesign/core/TabList";
+import { NavTab } from "../ui/NavTab/index.js";
 import type {
   Segment,
   SubtitleStyle,
@@ -237,8 +238,8 @@ export function SegmentQuickFields({
   return (
     <div className="quick-fields" data-testid="cut-settings-panel">
       <TabList value={activeTab} onChange={(v) => setActiveTab(v as QuickFieldsTab)} size="sm">
-        <Tab value="cut" label="Cut" data-testid="cut-settings-tab-cut" />
-        <Tab value="effects" label="Effects" data-testid="cut-settings-tab-effects" />
+        <NavTab value="cut" label="Cut" data-testid="cut-settings-tab-cut" />
+        <NavTab value="effects" label="Effects" data-testid="cut-settings-tab-effects" />
       </TabList>
 
       {activeTab === "cut" ? (

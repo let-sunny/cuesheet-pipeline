@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { radiusVars, spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
+import { radiusVars, spacingVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 5) — rules ported
@@ -70,9 +70,13 @@ export const styles = stylex.create({
     borderRadius: radiusVars["--radius-inner"],
     backgroundColor: "rgba(0, 0, 0, 0.55)",
     color: "#d8dbe6",
-    fontSize: 12,
+    fontSize: textSizeVars["--font-size-sm"],
     pointerEvents: "none",
   },
+  // NOT tokenized (2026-07-11 typography pass) - this is the actual subtitle-content preview
+  // (real render output styling, driven by `effectiveStyle.size` via inline `style` in
+  // SequencePlayer.tsx), not app chrome, so it's out of scope for the UI type-scale pass, same
+  // reasoning as TitleOverlay.styles.ts.
   subtitle: {
     position: "absolute",
     left: 0,
@@ -112,7 +116,7 @@ export const styles = stylex.create({
     alignItems: "center",
     justifyContent: "center",
     color: "#9aa0b4",
-    fontSize: 15,
+    fontSize: textSizeVars["--font-size-base"],
   },
   progress: {
     width: "100%",
@@ -144,7 +148,7 @@ export const styles = stylex.create({
     gap: spacingVars["--spacing-1-5"],
   },
   counter: {
-    fontSize: 13,
+    fontSize: textSizeVars["--font-size-sm"],
     color: "var(--text-tertiary)",
     marginLeft: "auto",
   },

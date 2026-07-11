@@ -153,30 +153,21 @@ html:not([data-theme]) {
   color-scheme: light dark;
 }
 
+/* font-size: 15px -> var(--font-size-base) (2026-07-11 typography pass, design-principles.md #6
+   "dense, 13-inch") - the app-wide text base now tracks Astryx's own type-scale anchor (14px)
+   instead of a literal px pulled out of thin air, so every component that doesn't set its own
+   font-size still lands on the same scale. */
 body {
   margin: 0;
   background: var(--surface-0);
   color: var(--text-primary);
-  font-size: 15px;
+  font-size: var(--font-size-base);
 }
 
-.project {
-  display: flex;
-  gap: 24px;
-  padding: 16px;
-  background: var(--surface-1);
-  border-radius: 8px;
-}
-
-.project .field .label {
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.project .field .value {
-  font-size: 16px;
-  font-weight: 600;
-}
+/* .project(+.field .label/.value) removed (2026-07-11 typography pass) - dead: repo-wide grep
+   found no call site rendering className="project" (the old starter viewer this predates has long
+   since been replaced by HeaderBar/CompactSegmentList/MomentPalette), same category as the
+   .timeline/.segment removal below. */
 
 /* .timeline/.segment(+.selected/.clip/.meta/.subtitle) removed (StyleX migration batch 4) - dead:
    CompactSegmentList replaced this cut-list rendering long ago and no component renders
@@ -188,7 +179,7 @@ body {
 
 .empty {
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-sm);
 }
 
 .status {
@@ -284,7 +275,7 @@ body {
 
 .settings-group h3 {
   margin: 0 0 12px;
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -298,7 +289,7 @@ body {
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
-  font-size: 13px;
+  font-size: var(--font-size-sm);
 }
 
 .settings-field > span:first-child {
@@ -349,7 +340,7 @@ body {
 
 .settings-note {
   margin: 12px 0 0;
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   color: var(--text-secondary);
 }
 
@@ -384,47 +375,10 @@ body {
   box-sizing: border-box;
 }
 
-.segment-field {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.segment-field input,
-.segment-field select {
-  font-size: 13px;
-  color: var(--text-primary);
-}
-
-.segment-field.narrow input {
-  width: 70px;
-}
-
-.segment-field.wide {
-  flex: 1 1 200px;
-}
-
-.segment-field.wide input {
-  width: 100%;
-}
-
-.segment-field.checkbox {
-  flex-direction: row;
-  align-items: center;
-  gap: 4px;
-}
-
-.segment-row-actions {
-  display: flex;
-  gap: 6px;
-  margin-left: auto;
-}
-
-.add-button {
-  margin-top: 10px;
-}
+/* .segment-field(+.narrow/.wide/.checkbox)/.segment-row-actions/.add-button removed (2026-07-11
+   typography pass) - dead: repo-wide grep found no call site rendering any of these classNames
+   (CompactSegmentList's row/index/text/scene/time/actions classes replaced this old per-row inline
+   field layout long ago), same category as the .project and .timeline/.segment removals above. */
 
 /* VideoPreview + CropEditOverlay migration (docs/styling-migration.md, StyleX migration batch 5) -
    `.video-preview`(+`.empty`)/`.video-context-*`/`.video-crop-frame`(+`video`)/`.crop-edit-toolbar`/
@@ -442,7 +396,11 @@ body {
    video-crop-frame (the video's natural aspect ratio). Shared by VideoPreview.tsx,
    SubtitleStyleSettings.tsx, and SubtitleStylePresetsSettings.tsx (all three deliberately render
    the exact same classes for their own preview stages so none of them can visually drift from this
-   one) - not owned solely by any single component, so this stays a plain-CSS shared token. */
+   one) - not owned solely by any single component, so this stays a plain-CSS shared token.
+   `font-size`/`font-weight` NOT tokenized (2026-07-11 typography pass) - all 3 consumers always
+   override `font-size` inline via `toCqw(...)` (a % of the frame's rendered width, since this is
+   the actual subtitle-content preview, not app chrome), so the literal values here are an unused
+   fallback rather than user-visible chrome - out of scope for the UI type-scale pass. */
 .video-subtitle-overlay {
   position: absolute;
   left: 0;
@@ -489,7 +447,7 @@ body {
   padding: 24px 16px;
   text-align: center;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-sm);
 }
 
 .empty-state code {
@@ -518,17 +476,15 @@ body {
 
 /* MiniTimelineStrip migration (docs/styling-migration.md, StyleX migration batch 5) -
    `.mini-strip`/`.mini-strip-viewport`/`.mini-strip-track`/`.mini-strip-zoom-controls`(own layout)/
-   `.mini-strip-total`/`.mini-strip-thumb` all moved to MiniTimelineStrip.styles.ts. Kept here as
-   documented exceptions (see MiniTimelineStrip.styles.ts's file comment for the full reasoning):
+   `.mini-strip-total`/`.mini-strip-thumb` all moved to MiniTimelineStrip.styles.ts. Kept here as a
+   documented exception (see MiniTimelineStrip.styles.ts's file comment for the full reasoning):
    - `.mini-strip-block` (+ `.selected`/`.clip-boundary`) below - each block is a raw `<button>`
      that also carries the `.plain-button` marker class, and overrides several of `.plain-button`'s
      own properties (background/border/border-radius/padding) at equal (single-class) specificity -
      StyleX's injected-before-this-file output would lose that cascade tie.
-   - `.mini-strip-zoom-controls button` below - a descendant selector (1 class + tag, so higher
-     specificity than `.plain-button` regardless of source order) that sets the zoom buttons' own
-     padding/font-size - StyleX can't express that specificity edge. The wrapper's own layout still
-     moved to StyleX - the div keeps both the plain `mini-strip-zoom-controls` className *and* the
-     StyleX class so this selector keeps matching. */
+   The zoom-controls buttons are now stock Astryx Button/IconButton (2026-07-11 typography/stock-
+   component pass) - the old `.mini-strip-zoom-controls button` plain-CSS exception is gone with
+   them. */
 
 /* Background is intentionally fixed dark regardless of theme — since this is a timeline canvas
    that holds a video frame thumbnail, it stays dark even in light theme (spec item 3). */
@@ -551,11 +507,6 @@ body {
 .mini-strip-block.selected {
   border-color: var(--accent);
   background: var(--surface-3);
-}
-
-.mini-strip-zoom-controls button {
-  padding: 2px 8px;
-  font-size: 13px;
 }
 
 /* Step ② Edit */
@@ -596,7 +547,7 @@ body {
   min-width: 0;
   box-sizing: border-box;
   padding: 3px 6px;
-  font-size: 14px;
+  font-size: var(--font-size-base);
   font-family: inherit;
   line-height: 18px;
   height: 44px;
@@ -617,8 +568,8 @@ body {
   flex: 0 0 auto;
   padding: 1px 5px;
   border-radius: 3px;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
   white-space: nowrap;
   background: var(--tag-blue-bg);
   color: var(--tag-blue-text);
@@ -695,8 +646,8 @@ body {
    in below so the rendered look is unchanged now that `.app h2` is gone. */
 .qf-panel-title {
   margin: 28px 0 12px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-secondary);
@@ -716,8 +667,8 @@ body {
 
 .qf-group-label {
   margin-bottom: 6px;
-  font-size: 11px;
-  font-weight: 600;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-secondary);
@@ -740,7 +691,7 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   color: var(--text-secondary);
 }
 
@@ -767,18 +718,18 @@ body {
 
 .qf-suffix {
   color: var(--text-muted-3);
-  font-size: 13px;
+  font-size: var(--font-size-sm);
 }
 
 .qf-readonly {
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   color: var(--text-tertiary);
 }
 
 /* Guidance text below a qf-row (e.g. the speed-cap note) - same treatment as .settings-note. */
 .qf-note {
   margin: 4px 0 0;
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   color: var(--warning-text);
 }
 
@@ -814,7 +765,7 @@ body {
 
 .narration-empty-note {
   margin: 4px 0 0;
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   color: var(--text-secondary);
 }
 
@@ -907,7 +858,7 @@ body {
 }
 
 .finish-layout h3 {
-  font-size: 14px;
+  font-size: var(--font-size-base);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-secondary);
@@ -934,7 +885,7 @@ body {
 }
 
 .render-note {
-  font-size: 13px;
+  font-size: var(--font-size-sm);
   color: var(--text-muted-2);
 }
 
@@ -953,7 +904,7 @@ body {
 
 .render-error-detail summary {
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-size-sm);
   color: var(--text-muted-2);
 }
 
@@ -967,7 +918,7 @@ body {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: 4px;
-  font-size: 11px;
+  font-size: var(--font-size-xs);
   color: var(--text-tertiary);
 }
 

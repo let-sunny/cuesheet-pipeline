@@ -1,5 +1,6 @@
-import { Tab, TabList } from "@astryxdesign/core/TabList";
+import { TabList } from "@astryxdesign/core/TabList";
 import { Badge } from "@astryxdesign/core/Badge";
+import { NavTab } from "../ui/NavTab/index.js";
 
 /** The 3 stages of the editing journey. Free navigation (no gating) — one click moves to any stage. */
 export type Step = "compose" | "edit" | "finish";
@@ -18,19 +19,19 @@ interface Props {
 export function StepNav({ step, onChange, segmentCount, subtitleFilled, subtitleTotal }: Props) {
   return (
     <TabList value={step} onChange={(v) => onChange(v as Step)} hasDivider size="lg">
-      <Tab
+      <NavTab
         value="compose"
         label="① Scenes"
         endContent={<Badge variant="neutral" label={segmentCount} />}
         data-testid="step-tab-compose"
       />
-      <Tab
+      <NavTab
         value="edit"
         label="② Edit"
         endContent={<Badge variant="neutral" label={`${subtitleFilled}/${subtitleTotal}`} />}
         data-testid="step-tab-edit"
       />
-      <Tab value="finish" label="③ Export" data-testid="step-tab-finish" />
+      <NavTab value="finish" label="③ Export" data-testid="step-tab-finish" />
     </TabList>
   );
 }

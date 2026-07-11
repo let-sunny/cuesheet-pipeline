@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /** Component anatomy migration (docs/styling-migration.md) — rules ported 1:1 from the old
  * `.keyboard-help*` classes in styles.css.
@@ -20,7 +21,7 @@ export const styles = stylex.create({
     gap: 6,
   },
   toggle: {
-    fontSize: 13,
+    fontSize: textSizeVars["--font-size-sm"],
   },
   note: {
     margin: 0,
@@ -30,7 +31,7 @@ export const styles = stylex.create({
     borderStyle: "solid",
     borderColor: "var(--border)",
     borderRadius: 6,
-    fontSize: 12,
+    fontSize: textSizeVars["--font-size-sm"],
     color: "var(--text-tertiary)",
     maxWidth: 280,
   },
@@ -43,7 +44,7 @@ export const styles = stylex.create({
     borderStyle: "solid",
     borderColor: "var(--border)",
     borderRadius: 6,
-    fontSize: 13,
+    fontSize: textSizeVars["--font-size-sm"],
     maxWidth: 280,
   },
   listItem: {

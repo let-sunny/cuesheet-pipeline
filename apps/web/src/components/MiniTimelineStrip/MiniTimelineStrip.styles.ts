@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 5) — rules ported
@@ -11,13 +12,11 @@ import * as stylex from "@stylexjs/stylex";
  *   app's StyleX output is injected *before* styles.css, so a same-specificity StyleX atomic class
  *   would lose that cascade tie to the later-in-source `.plain-button` rule for every overlapping
  *   property — same root cause as HeaderBar's theme toggle / BgmSettingsPanel's bgm-file-play/name.
- * - `.mini-strip-zoom-controls button` — a descendant selector (1 class + tag, so higher
- *   specificity than `.plain-button` regardless of source order) that sets the zoom buttons'
- *   padding/font-size; StyleX can't express that specificity edge. The wrapper's own layout
- *   (`.mini-strip-zoom-controls`'s flex/gap, below as `zoomControls`) still moves to StyleX — the
- *   div keeps both the plain `mini-strip-zoom-controls` className *and* the StyleX class so the
- *   descendant selector keeps matching (same hybrid pattern as CompactSegmentList's
- *   `compact-list-actions`).
+ *
+ * The zoom-controls buttons (2026-07-11 typography/stock-component pass) are now stock Astryx
+ * Button/IconButton instead of raw `.plain-button` elements - the old `.mini-strip-zoom-controls
+ * button` plain-CSS exception (a descendant selector StyleX couldn't express) is gone with them,
+ * and `zoomControls` below no longer needs to double as a plain-CSS marker class.
  *
  * `background`/`border` shorthands are written out as their longhand equivalents — see
  * HeaderBar.styles.ts's comment for why (StyleX silently drops the shorthand form).
@@ -63,7 +62,7 @@ export const styles = stylex.create({
     flexGrow: 0,
     flexShrink: 0,
     flexBasis: "auto",
-    fontSize: 13,
+    fontSize: textSizeVars["--font-size-sm"],
     color: "var(--text-tertiary)",
   },
   // Positions the SegmentThumb inside a block, filling it (no conflict with SegmentThumb's own

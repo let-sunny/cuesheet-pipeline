@@ -6,8 +6,9 @@ import { Badge } from "@astryxdesign/core/Badge";
 import { Icon } from "@astryxdesign/core/Icon";
 import { Overlay } from "@astryxdesign/core/Overlay";
 import { Text } from "@astryxdesign/core/Text";
-import { ToggleButton, ToggleButtonGroup } from "@astryxdesign/core/ToggleButton";
+import { ToggleButtonGroup } from "@astryxdesign/core/ToggleButton";
 import type { Segment } from "@cuesheet/schema";
+import { FilterChip } from "../ui/FilterChip/index.js";
 import { SceneCardButton } from "../ui/SceneCardButton/index.js";
 import { fetchDraftFrames, fetchMoments } from "../../api.js";
 import type { ClipMoments } from "../../api.js";
@@ -139,9 +140,9 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
             size="sm"
             xstyle={styles.filters}
           >
-            <ToggleButton value="all" label={`All (${cards.length})`} />
+            <FilterChip value="all" label={`All (${cards.length})`} />
             {CATEGORY_ORDER.filter((cat) => (counts.get(cat) ?? 0) > 0).map((cat) => (
-              <ToggleButton key={cat} value={cat} label={`${CATEGORY_META[cat].label} (${counts.get(cat) ?? 0})`} />
+              <FilterChip key={cat} value={cat} label={`${CATEGORY_META[cat].label} (${counts.get(cat) ?? 0})`} />
             ))}
           </ToggleButtonGroup>
 
@@ -154,7 +155,7 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
             xstyle={styles.filters}
           >
             {(["all", "in-use", "excluded"] as const).map((f) => (
-              <ToggleButton key={f} value={f} label={STATUS_FILTER_LABEL[f]} />
+              <FilterChip key={f} value={f} label={STATUS_FILTER_LABEL[f]} />
             ))}
           </ToggleButtonGroup>
 

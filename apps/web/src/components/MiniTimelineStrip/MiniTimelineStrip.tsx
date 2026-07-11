@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import * as stylex from "@stylexjs/stylex";
+import { Button } from "@astryxdesign/core/Button";
+import { IconButton } from "@astryxdesign/core/IconButton";
 import type { Segment } from "@cuesheet/schema";
 import { clamp } from "../../lib/clamp.js";
 import { formatClock, playbackSeconds } from "../../lib/segmentTiming.js";
@@ -132,19 +134,38 @@ export function MiniTimelineStrip({ segments, selectedIndex, onSelect, onGoToEdi
           })}
         </div>
       </div>
-      {/* `mini-strip-zoom-controls` stays alongside the StyleX class as a marker so the
-          `.mini-strip-zoom-controls button` descendant-selector exception (styles.css) keeps
-          matching - see MiniTimelineStrip.styles.ts's file comment. */}
-      <div className={`mini-strip-zoom-controls ${stylex.props(styles.zoomControls).className}`}>
-        <button type="button" className="plain-button" onClick={() => setZoom((z) => clampZoom(z / BUTTON_ZOOM_FACTOR))} title="Zoom out">
-          −
-        </button>
-        <button type="button" className="plain-button" onClick={() => setZoom(1)} title="Fit to width (Shift+Z)">
-          Fit to width
-        </button>
-        <button type="button" className="plain-button" onClick={() => setZoom((z) => clampZoom(z * BUTTON_ZOOM_FACTOR))} title="Zoom in">
-          +
-        </button>
+      {/* Stock Astryx Button/IconButton (2026-07-11 typography/stock-component pass) replace the
+          old raw `.plain-button` triplet - removes both the hardcoded font-size and the decorative
+          border the descendant-selector exception used to carry (design-principles.md #4 "remove
+          unnecessary decoration"); `variant="ghost"` has no border by default. `label` carries the
+          accessible name, `tooltip` supplies the same hint the old `title` attribute did. */}
+      <div {...stylex.props(styles.zoomControls)}>
+        <IconButton
+          icon={<span aria-hidden="true">−</span>}
+          label="Zoom out"
+          tooltip="Zoom out"
+          variant="ghost"
+          size="sm"
+          onClick={() => setZoom((z) => clampZoom(z / BUTTON_ZOOM_FACTOR))}
+          data-testid="mini-strip-zoom-out"
+        />
+        <Button
+          label="Fit to width"
+          tooltip="Fit to width (Shift+Z)"
+          variant="ghost"
+          size="sm"
+          onClick={() => setZoom(1)}
+          data-testid="mini-strip-zoom-fit"
+        />
+        <IconButton
+          icon={<span aria-hidden="true">+</span>}
+          label="Zoom in"
+          tooltip="Zoom in"
+          variant="ghost"
+          size="sm"
+          onClick={() => setZoom((z) => clampZoom(z * BUTTON_ZOOM_FACTOR))}
+          data-testid="mini-strip-zoom-in"
+        />
       </div>
       <span {...stylex.props(styles.total)}>{formatClock(total, true)}</span>
     </div>

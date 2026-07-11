@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { radiusVars, spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
+import { radiusVars, spacingVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /** Component anatomy migration (docs/styling-migration.md) — rules ported 1:1 from the old
  * `.header-row`/`.header-title-group`/`.dirty-badge`/`.save-row`/`.header-divider` classes in
@@ -28,8 +28,11 @@ export const styles = stylex.create({
     justifyContent: "space-between",
     marginBottom: spacingVars["--spacing-4"],
   },
+  // 20 -> lg (2026-07-11 typography pass, design-principles.md #6 "dense, 13-inch") - still the
+  // single biggest text on the page (the app's only h1), just a denser top of the scale than the
+  // old literal 20px.
   title: {
-    fontSize: 20,
+    fontSize: textSizeVars["--font-size-lg"],
     margin: 0,
   },
   // Hover/focus affordance so the title reads as editable without inventing a new pattern (the
@@ -69,7 +72,7 @@ export const styles = stylex.create({
     gap: spacingVars["--spacing-3"],
   },
   dirtyBadge: {
-    fontSize: 13,
+    fontSize: textSizeVars["--font-size-sm"],
     color: "var(--warning-text)",
     borderWidth: 1,
     borderStyle: "solid",

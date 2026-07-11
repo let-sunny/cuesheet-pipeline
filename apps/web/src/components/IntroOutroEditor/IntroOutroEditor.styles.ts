@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md) — rules ported 1:1 from the old
@@ -23,7 +24,7 @@ export const styles = stylex.create({
     alignItems: "center",
     gap: 10,
     marginBottom: 8,
-    fontSize: 13,
+    fontSize: textSizeVars["--font-size-sm"],
     color: "var(--text-quaternary)",
   },
   clipName: {
@@ -63,13 +64,13 @@ export const styles = stylex.create({
   },
   dropzoneHint: {
     margin: 0,
-    fontSize: 12,
+    fontSize: textSizeVars["--font-size-sm"],
     color: "var(--text-tertiary)",
   },
   uploadError: {
     flexBasis: "100%",
     margin: 0,
-    fontSize: 12,
+    fontSize: textSizeVars["--font-size-sm"],
     color: "var(--error-text)",
   },
 });

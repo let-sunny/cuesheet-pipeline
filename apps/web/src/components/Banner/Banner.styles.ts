@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 4) — ported 1:1
@@ -20,7 +21,7 @@ export const styles = stylex.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: 12,
-    fontSize: 13,
+    fontSize: textSizeVars["--font-size-sm"],
   },
   actions: {
     display: "flex",

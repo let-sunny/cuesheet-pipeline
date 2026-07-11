@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy (CLAUDE.md "component layering") - see docs/research/trim-ux-conventions.md
@@ -60,7 +61,7 @@ export const styles = stylex.create({
     backgroundColor: "var(--border)",
   },
   rulerLabel: {
-    fontSize: 9,
+    fontSize: textSizeVars["--font-size-2xs"],
     lineHeight: 1,
     color: "var(--text-tertiary)",
     whiteSpace: "nowrap",

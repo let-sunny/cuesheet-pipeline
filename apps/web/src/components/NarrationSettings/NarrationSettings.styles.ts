@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md) — split out of the old shared
@@ -9,7 +10,7 @@ import * as stylex from "@stylexjs/stylex";
 export const styles = stylex.create({
   narrationGuide: {
     margin: "0 0 12px",
-    fontSize: 12,
+    fontSize: textSizeVars["--font-size-sm"],
     lineHeight: 1.5,
     color: "var(--text-tertiary)",
   },

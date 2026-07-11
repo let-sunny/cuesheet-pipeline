@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { radiusVars, spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
+import { radiusVars, spacingVars, textSizeVars, fontWeightVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 5) — rules ported
@@ -38,7 +38,7 @@ export const styles = stylex.create({
   },
   videoPreviewEmpty: {
     color: "var(--text-secondary)",
-    fontSize: 13,
+    fontSize: textSizeVars["--font-size-sm"],
     alignItems: "center",
     justifyContent: "center",
     minHeight: 120,
@@ -68,23 +68,23 @@ export const styles = stylex.create({
     borderBottomColor: "var(--context-box-border)",
     borderLeftColor: "var(--accent)",
     borderRadius: radiusVars["--radius-element"],
-    fontSize: 14,
-    fontWeight: 500,
+    fontSize: textSizeVars["--font-size-base"],
+    fontWeight: fontWeightVars["--font-weight-medium"],
     lineHeight: 1.4,
     color: "var(--text-primary)",
   },
   contextSceneEmpty: {
     fontStyle: "italic",
     color: "var(--text-secondary)",
-    fontWeight: 400,
+    fontWeight: fontWeightVars["--font-weight-normal"],
   },
   contextIndex: {
-    fontWeight: 700,
+    fontWeight: fontWeightVars["--font-weight-bold"],
     color: "var(--text-primary)",
   },
   contextSceneLabel: {
-    fontSize: 11,
-    fontWeight: 700,
+    fontSize: textSizeVars["--font-size-xs"],
+    fontWeight: fontWeightVars["--font-weight-bold"],
     textTransform: "uppercase",
     letterSpacing: "0.04em",
     color: "var(--tag-blue-text)",
@@ -96,7 +96,7 @@ export const styles = stylex.create({
     wordBreak: "keep-all",
   },
   contextLine: {
-    fontSize: 12,
+    fontSize: textSizeVars["--font-size-sm"],
     lineHeight: 1.4,
     color: "var(--text-tertiary)",
     paddingLeft: spacingVars["--spacing-0-5"],
@@ -135,7 +135,7 @@ export const styles = stylex.create({
     padding: `${spacingVars["--spacing-1-5"]} ${spacingVars["--spacing-2"]}`,
     backgroundColor: "var(--surface-2)",
     borderRadius: radiusVars["--radius-inner"],
-    fontSize: 12,
+    fontSize: textSizeVars["--font-size-sm"],
     color: "var(--text-quaternary)",
   },
   cropEditActions: {
@@ -143,14 +143,14 @@ export const styles = stylex.create({
     gap: spacingVars["--spacing-1-5"],
   },
   notice: {
-    fontSize: 13,
+    fontSize: textSizeVars["--font-size-sm"],
     color: "var(--warning-text)",
   },
   noticeProxyPreparing: {
     margin: `${spacingVars["--spacing-2"]} 0`,
   },
   timeReadout: {
-    fontSize: 13,
+    fontSize: textSizeVars["--font-size-sm"],
     color: "var(--text-tertiary)",
   },
   videoControlsRow: {

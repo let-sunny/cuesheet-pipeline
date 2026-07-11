@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { radiusVars, spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
+import { radiusVars, spacingVars, textSizeVars, fontWeightVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 5) — rules ported
@@ -46,10 +46,12 @@ export const styles = stylex.create({
     padding: spacingVars["--spacing-10"],
     textAlign: "center",
     color: "var(--text-secondary)",
-    fontSize: 13,
+    fontSize: textSizeVars["--font-size-sm"],
   },
+  // Meta-row tier (2026-07-11 typography pass) - matches `info`/`categoryBadge` below, so the
+  // category/duration/quality trio reads as one uniformly small, quiet caption line.
   quality: {
-    fontSize: 12,
+    fontSize: textSizeVars["--font-size-xs"],
     color: "var(--text-tertiary)",
   },
   header: {
@@ -58,7 +60,7 @@ export const styles = stylex.create({
     justifyContent: "space-between",
     gap: spacingVars["--spacing-3"],
     marginBottom: spacingVars["--spacing-2"],
-    fontSize: 13,
+    fontSize: textSizeVars["--font-size-sm"],
     color: "var(--text-secondary)",
   },
   filters: {
@@ -153,8 +155,8 @@ export const styles = stylex.create({
   // consistent with this component's established "wrap over truncate/overlap" rule.
   statusBanner: {
     padding: `${spacingVars["--spacing-1"]} ${spacingVars["--spacing-2"]}`,
-    fontSize: 11,
-    fontWeight: 700,
+    fontSize: textSizeVars["--font-size-xs"],
+    fontWeight: fontWeightVars["--font-weight-bold"],
     textAlign: "center",
     whiteSpace: "normal",
     overflowWrap: "break-word",
@@ -194,7 +196,7 @@ export const styles = stylex.create({
   number: {
     minWidth: 0,
     overflowWrap: "break-word",
-    fontSize: 12,
+    fontSize: textSizeVars["--font-size-sm"],
     padding: `1px ${spacingVars["--spacing-1"]}`,
     backgroundColor: "#00000099",
     color: "#e6e8ee",
@@ -207,21 +209,28 @@ export const styles = stylex.create({
   },
   // Trims Badge's default size down (2026-07-11 QA fix, design-principles.md #4) - category is
   // secondary metadata next to duration/quality, not a heading, so it shouldn't out-weigh them.
-  // Badge has no `size` prop, so this is the sanctioned per-instance xstyle override.
+  // Badge has no `size` prop, so this is the sanctioned per-instance xstyle override. maxWidth +
+  // ellipsis (2026-07-11 typography pass) is the truncation fallback for the one long category
+  // label ("Materials/props") alongside `nowrap` below - category is the least important of the
+  // three meta items (duration/quality stay whole), so it's the one that gives way if tight.
   categoryBadge: {
-    fontSize: 11,
+    fontSize: textSizeVars["--font-size-xs"],
     padding: `1px ${spacingVars["--spacing-1-5"]}`,
+    maxWidth: 110,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
   },
-  // Meta row (category badge/duration/quality) - baseline-aligned per screen-spec 0-2. flex-wrap:
-  // if a long category badge label leaves insufficient width, later items drop to the next line
-  // instead of getting clipped.
+  // Meta row (category badge/duration/quality) - baseline-aligned per screen-spec 0-2, forced onto
+  // one tidy line (2026-07-11 QA fix - a 3-way vertical wrap here read as broken, not "responsive")
+  // now that all three items sit at the same small `xs` tier and category truncates instead of
+  // wrapping (see `categoryBadge`'s comment).
   info: {
     display: "flex",
     alignItems: "baseline",
-    flexWrap: "wrap",
+    flexWrap: "nowrap",
     justifyContent: "space-between",
     gap: `${spacingVars["--spacing-1"]} ${spacingVars["--spacing-2"]}`,
-    fontSize: 13,
+    fontSize: textSizeVars["--font-size-xs"],
     color: "var(--text-tertiary)",
   },
   // Container for the card's internal hierarchy (screen-spec section 2) - to the right of the

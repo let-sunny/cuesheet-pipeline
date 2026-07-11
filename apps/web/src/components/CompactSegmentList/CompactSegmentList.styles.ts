@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { radiusVars, spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
+import { radiusVars, spacingVars, textSizeVars, fontWeightVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 3) — rules
@@ -68,8 +68,8 @@ export const styles = stylex.create({
   gutterCountBadge: {
     padding: `0 ${spacingVars["--spacing-1"]}`,
     borderRadius: radiusVars["--radius-element"],
-    fontSize: 11,
-    fontWeight: 600,
+    fontSize: textSizeVars["--font-size-xs"],
+    fontWeight: fontWeightVars["--font-weight-semibold"],
     backgroundColor: "var(--bgm-cue-bg)",
     color: "var(--text-primary)",
   },
@@ -125,7 +125,7 @@ export const styles = stylex.create({
     textOrientation: "mixed",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
-    fontSize: 11,
+    fontSize: textSizeVars["--font-size-xs"],
     padding: `${spacingVars["--spacing-1"]} ${spacingVars["--spacing-0-5"]}`,
     pointerEvents: "none",
   },
@@ -171,7 +171,7 @@ export const styles = stylex.create({
     flexShrink: 0,
     flexBasis: "auto",
     width: 20,
-    fontSize: 13,
+    fontSize: textSizeVars["--font-size-sm"],
     color: "var(--text-secondary)",
   },
   text: {
@@ -191,7 +191,7 @@ export const styles = stylex.create({
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
-    fontSize: 13,
+    fontSize: textSizeVars["--font-size-sm"],
     color: "var(--text-tertiary)",
   },
   sceneEmpty: {
@@ -213,7 +213,7 @@ export const styles = stylex.create({
     flexGrow: 0,
     flexShrink: 0,
     flexBasis: "auto",
-    fontSize: 13,
+    fontSize: textSizeVars["--font-size-sm"],
     color: "var(--text-tertiary)",
     whiteSpace: "nowrap",
   },
@@ -223,8 +223,8 @@ export const styles = stylex.create({
     flexBasis: "auto",
     padding: `1px ${spacingVars["--spacing-1"]}`,
     borderRadius: radiusVars["--radius-inner"],
-    fontSize: 11,
-    fontWeight: 600,
+    fontSize: textSizeVars["--font-size-xs"],
+    fontWeight: fontWeightVars["--font-weight-semibold"],
     whiteSpace: "nowrap",
     backgroundColor: "var(--tag-pink-bg)",
     color: "var(--tag-pink-text)",

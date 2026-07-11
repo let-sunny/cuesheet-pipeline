@@ -84,9 +84,9 @@ describe("MiniTimelineStrip", () => {
   it("renders zoom controls that can be clicked without throwing", () => {
     render(<MiniTimelineStrip {...baseProps()} />);
     expect(() => {
-      fireEvent.click(screen.getByTitle("Zoom in"));
-      fireEvent.click(screen.getByTitle("Zoom out"));
-      fireEvent.click(screen.getByTitle("Fit to width (Shift+Z)"));
+      fireEvent.click(screen.getByTestId("mini-strip-zoom-in"));
+      fireEvent.click(screen.getByTestId("mini-strip-zoom-out"));
+      fireEvent.click(screen.getByTestId("mini-strip-zoom-fit"));
     }).not.toThrow();
   });
 });

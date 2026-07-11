@@ -1,10 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
+import { textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 import { Button } from "@astryxdesign/core/Button";
 import type { ButtonProps } from "@astryxdesign/core/Button";
 
 const styles = stylex.create({
   compact: {
-    fontSize: 12,
+    fontSize: textSizeVars["--font-size-sm"],
     paddingBlock: "3px",
     paddingInline: "10px",
   },
