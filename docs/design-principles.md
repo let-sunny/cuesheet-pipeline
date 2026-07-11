@@ -36,6 +36,14 @@ Use Astryx components as designed, at their default variants. Customize only thr
 wrappers when genuinely needed; never restyle via global CSS. The less custom styling, the
 better — stock is the default, deviation needs a reason.
 
+**The strict rule (2026-07-11):** custom CSS is allowed ONLY for layout structure — flex/grid,
+direction, and which elements sit where. Everything else must come from Astryx: colors from
+`--color-*` tokens, spacing/gaps/padding from `--spacing-*` tokens, corners from `--radius-*`,
+type from `--font-*`/`--text-*`, borders/shadows from their tokens. No hardcoded hex, no literal
+px for spacing or radius. The test: changing the theme must recolor and re-space EVERYTHING — if
+a value doesn't follow the theme, it's a violation. Buttons/inputs/chips/badges are Astryx
+components (Button, TextInput, Select, Chip, Badge, IconButton...), never hand-built `.plain-*`.
+
 ## 6. Minimal whitespace, 13-inch first
 
 The target viewport is a 13-inch laptop (1280x800). Layouts must be dense: no wasted vertical
