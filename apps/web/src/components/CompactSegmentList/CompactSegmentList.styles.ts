@@ -265,6 +265,9 @@ export const styles = stylex.create({
     backgroundColor: colorVars["--color-background-pink"],
     color: colorVars["--color-text-pink"],
   },
+  // A small amber "todo" dot marking a cut that has no subtitle yet (only rendered in that state -
+  // see CompactSegmentList.tsx). Amber, not red: a missing subtitle is a to-do, not an error (some
+  // cuts, e.g. timelapse connectors, may intentionally stay unsubtitled).
   subtitleDot: {
     flexGrow: 0,
     flexShrink: 0,
@@ -272,13 +275,7 @@ export const styles = stylex.create({
     width: 8,
     height: 8,
     borderRadius: "50%",
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderColor: colorVars["--color-accent"],
-    backgroundColor: "transparent",
-  },
-  subtitleDotFilled: {
-    backgroundColor: colorVars["--color-accent"],
+    backgroundColor: colorVars["--color-warning"],
   },
   actions: {
     flexGrow: 0,

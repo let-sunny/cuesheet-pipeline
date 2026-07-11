@@ -85,16 +85,21 @@ export const styles = stylex.create({
     visibility: "hidden",
   },
   // Shaded in/out range - a translucent accent tint over the filmstrip, full height so it reads
-  // against real thumbnail content (section 4.1: "shaded in..out range").
+  // against real thumbnail content (section 4.1: "shaded in..out range"). A solid 2px accent border
+  // frames the selected window (2026-07-11 visibility fix): the muted-tint fill alone was too faint
+  // to read against real (often busy/light) thumbnail frames - the user reported it looked like
+  // nothing was there. The border gives the draggable window a hard, always-visible outline
+  // regardless of the frame content behind it, matching how video-trim tools (Premiere/CapCut)
+  // bound the kept range.
   range: {
     position: "absolute",
     top: 0,
     bottom: 0,
-    // rgba(91, 124, 250, 0.22) (this app's old fixed accent-blue tint) -> Astryx's own
-    // accent-muted token (2026-07-11 color migration) - a translucent accent tint is exactly what
-    // this token is for, and it now follows the accent color of whichever theme is active instead
-    // of always rendering this app's old bespoke blue.
     backgroundColor: colorVars["--color-accent-muted"],
+    borderWidth: 2,
+    borderStyle: "solid",
+    borderColor: colorVars["--color-accent"],
+    boxSizing: "border-box",
     pointerEvents: "none",
   },
   handle: {

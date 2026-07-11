@@ -98,12 +98,11 @@ describe("CompactSegmentList", () => {
     expect(screen.getByText("Style")).not.toBeNull();
   });
 
-  it("shows the subtitle dot as filled only when the subtitle is non-empty", () => {
+  it("flags only cuts with no subtitle yet (a todo dot), leaving subtitled cuts unmarked", () => {
     render(<CompactSegmentList {...baseProps()} />);
-    const dots = document.querySelectorAll('[title="Has subtitle"], [title="No subtitle"]');
-    expect(dots).toHaveLength(2);
-    expect(dots[0]!.getAttribute("title")).toBe("Has subtitle");
-    expect(dots[1]!.getAttribute("title")).toBe("No subtitle");
+    // Of the two base segments, one has a subtitle and one doesn't - only the empty one gets a dot.
+    const dots = document.querySelectorAll('[title="No subtitle yet"]');
+    expect(dots).toHaveLength(1);
   });
 
   it("shows 'No scene info' when there's no matching moment data", () => {

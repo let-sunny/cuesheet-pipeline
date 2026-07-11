@@ -402,10 +402,14 @@ export function CompactSegmentList({
                         Style
                       </span>
                     ) : null}
-                    <span
-                      {...stylex.props(styles.subtitleDot, !!seg.subtitle && styles.subtitleDotFilled)}
-                      title={seg.subtitle ? "Has subtitle" : "No subtitle"}
-                    />
+                    {/* Only flag the ACTIONABLE state - a cut with no subtitle yet (2026-07-11): the
+                        old always-present filled dot marked every subtitled cut too, so a
+                        fully-subtitled list was a wall of identical dots that read as noise (the
+                        user asked "what is this dot?"). Now a subtitled cut shows nothing; only a
+                        missing-subtitle cut shows a small amber "todo" dot. */}
+                    {!seg.subtitle ? (
+                      <span {...stylex.props(styles.subtitleDot)} title="No subtitle yet" />
+                    ) : null}
                     {/* Row actions (2026-07-11 stock-component migration) - stock Astryx
                         IconButtons replace the old raw `.plain-button` triplet. */}
                     <div {...stylex.props(styles.actions)}>
