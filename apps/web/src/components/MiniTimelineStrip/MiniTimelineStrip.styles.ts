@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
+import { colorVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 5) — rules ported
@@ -30,7 +30,7 @@ export const styles = stylex.create({
     alignItems: "center",
     gap: 10,
     padding: "8px 12px",
-    backgroundColor: "var(--surface-1)",
+    backgroundColor: colorVars["--color-background-surface"],
     borderRadius: 8,
     minWidth: 0,
   },
@@ -63,7 +63,7 @@ export const styles = stylex.create({
     flexShrink: 0,
     flexBasis: "auto",
     fontSize: textSizeVars["--font-size-sm"],
-    color: "var(--text-tertiary)",
+    color: colorVars["--color-text-secondary"],
   },
   // Positions the SegmentThumb inside a block, filling it (no conflict with SegmentThumb's own
   // base style, which sets neither position nor inset, so this migrates cleanly despite being

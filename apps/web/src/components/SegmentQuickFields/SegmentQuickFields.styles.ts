@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
+import { colorVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 3). Only the
@@ -30,13 +30,13 @@ export const styles = stylex.create({
   narrationWarning: {
     margin: "4px 0 0",
     fontSize: textSizeVars["--font-size-sm"],
-    color: "var(--warning-text)",
+    color: colorVars["--color-text-yellow"],
   },
   narrationPreview: {
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopStyle: "dashed",
-    borderTopColor: "var(--border-dashed)",
+    borderTopColor: colorVars["--color-border-emphasized"],
   },
   narrationAudio: {
     width: "100%",

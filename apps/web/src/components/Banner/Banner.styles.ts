@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
+import { colorVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 4) — ported 1:1
@@ -11,10 +11,10 @@ import { textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 export const styles = stylex.create({
   banner: {
     padding: "12px 16px",
-    backgroundColor: "var(--surface-2)",
+    backgroundColor: colorVars["--color-background-muted"],
     borderWidth: 1,
     borderStyle: "solid",
-    borderColor: "var(--border-dashed)",
+    borderColor: colorVars["--color-border-emphasized"],
     borderRadius: 6,
     marginBottom: 16,
     display: "flex",

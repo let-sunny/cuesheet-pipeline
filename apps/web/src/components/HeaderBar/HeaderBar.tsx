@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
 import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
-import type { ThemeModeSetting } from "../../lib/theme.js";
+import { Selector } from "@astryxdesign/core/Selector";
+import type { ThemeModeSetting, ThemeName } from "../../lib/theme.js";
 import { useEditableTitle } from "../../hooks/useEditableTitle.js";
 import { styles } from "./HeaderBar.styles.js";
 
@@ -22,6 +23,8 @@ interface Props {
   onRender: () => void;
   themeMode: ThemeModeSetting;
   onThemeModeChange: (mode: ThemeModeSetting) => void;
+  themeName: ThemeName;
+  onThemeNameChange: (name: ThemeName) => void;
   onToggleShortcuts: () => void;
 }
 
@@ -52,6 +55,8 @@ export function HeaderBar({
   onRender,
   themeMode,
   onThemeModeChange,
+  themeName,
+  onThemeNameChange,
   onToggleShortcuts,
 }: Props) {
   const titleEdit = useEditableTitle({ value: projectName, onCommit: onProjectNameChange });
@@ -93,6 +98,7 @@ export function HeaderBar({
 
         <span {...stylex.props(styles.divider)} aria-hidden="true" />
 
+        <ThemeSwitcher themeName={themeName} onThemeNameChange={onThemeNameChange} />
         <ThemeModeToggle themeMode={themeMode} onThemeModeChange={onThemeModeChange} />
         <Button label="?" variant="ghost" size="sm" tooltip="Keyboard shortcuts" onClick={onToggleShortcuts} />
 
@@ -120,6 +126,38 @@ export function HeaderBar({
   );
 }
 
+/**
+ * THEME (stone/y2k/neutral) switcher — a quiet, dev/validation-only affordance (design-
+ * principles.md #5's stock-audit) for flipping which Astryx theme package is active so hardcoded
+ * (non-token) colors become visible (they're the elements that DON'T recolor when this changes).
+ * Astryx's own `ThemeSwitcher` template (`astryx template ThemeSwitcher`) uses exactly this
+ * Selector pattern for this exact purpose, so it's adopted as-is rather than a SegmentedControl -
+ * Selector's own guidance is "don't use SegmentedControl for more than 2 options", and this is 3.
+ * Reports the picked value straight up to the parent (Root in main.tsx), which remembers it in
+ * localStorage and then swaps the theme object passed to Astryx's <Theme theme>.
+ */
+function ThemeSwitcher({
+  themeName,
+  onThemeNameChange,
+}: {
+  themeName: ThemeName;
+  onThemeNameChange: (name: ThemeName) => void;
+}) {
+  return (
+    // Labeled "Astryx theme" (not "Theme") - the adjacent light/dark toggle already uses "Theme"
+    // as its own accessible name, and the two must stay distinguishable for screen reader users.
+    <Selector
+      label="Astryx theme"
+      isLabelHidden
+      size="sm"
+      value={themeName}
+      options={THEME_NAME_OPTIONS}
+      onChange={(v) => onThemeNameChange(v as ThemeName)}
+      data-testid="theme-switcher"
+    />
+  );
+}
+
 /** Light/Dark theme toggle — reports the clicked value straight up to the parent
     (Root in main.tsx), which remembers it in localStorage and then applies it to Astryx's <Theme mode>. */
 function ThemeModeToggle({
@@ -142,6 +180,12 @@ function ThemeModeToggle({
     </SegmentedControl>
   );
 }
+
+const THEME_NAME_OPTIONS: Array<{ value: ThemeName; label: string }> = [
+  { value: "stone", label: "Stone" },
+  { value: "y2k", label: "Y2K" },
+  { value: "neutral", label: "Neutral" },
+];
 
 const THEME_MODE_OPTIONS: Array<{ value: ThemeModeSetting; label: string; icon: ReactNode }> = [
   {

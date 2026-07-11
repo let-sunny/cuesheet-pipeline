@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { radiusVars, spacingVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
+import { colorVars, radiusVars, spacingVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /** Component anatomy migration (docs/styling-migration.md) — rules ported 1:1 from the old
  * `.header-row`/`.header-title-group`/`.dirty-badge`/`.save-row`/`.header-divider` classes in
@@ -17,9 +17,11 @@ import { radiusVars, spacingVars, textSizeVars } from "@astryxdesign/core/theme/
  * `padding`/`margin`/`borderRadius` below now reads from Astryx's `spacingVars`/`radiusVars`
  * (`@astryxdesign/core/theme`) instead of a literal px number, so re-spacing follows the theme the
  * same way recoloring does (negative margins go through `calc(-1 * token)` rather than a literal).
- * Colors here still reference this app's own bespoke `var(--...)` tokens (not Astryx's
- * `colorVars`) - see styles.css's top-of-file comment for why that swap is deliberately deferred
- * rather than rushed.
+ *
+ * Color migration (2026-07-11, stock-audit completion): every color below now reads from
+ * Astryx's `colorVars` instead of this app's old bespoke `--surface-*`/`--border`/`--warning-*`
+ * variables (see styles.css's top-of-file comment for the full before/after) - so switching the
+ * THEME (stone/y2k/neutral), not just light/dark mode, now actually recolors this header.
  */
 export const styles = stylex.create({
   row: {
@@ -50,18 +52,18 @@ export const styles = stylex.create({
     borderBottomStyle: "solid",
     borderBottomColor: {
       default: "transparent",
-      ":hover": "var(--border)",
+      ":hover": colorVars["--color-border"],
     },
   },
   titleInput: {
     fontFamily: "inherit",
     fontWeight: "inherit",
     color: "inherit",
-    backgroundColor: "var(--surface-2)",
+    backgroundColor: colorVars["--color-background-muted"],
     borderRadius: radiusVars["--radius-inner"],
     borderWidth: 1,
     borderStyle: "solid",
-    borderColor: "var(--border)",
+    borderColor: colorVars["--color-border"],
     padding: `${spacingVars["--spacing-0-5"]} ${spacingVars["--spacing-1-5"]}`,
     marginInline: `calc(-1 * ${spacingVars["--spacing-1-5"]})`,
     outline: "none",
@@ -73,10 +75,10 @@ export const styles = stylex.create({
   },
   dirtyBadge: {
     fontSize: textSizeVars["--font-size-sm"],
-    color: "var(--warning-text)",
+    color: colorVars["--color-text-yellow"],
     borderWidth: 1,
     borderStyle: "solid",
-    borderColor: "var(--warning-border)",
+    borderColor: colorVars["--color-border-yellow"],
     borderRadius: radiusVars["--radius-inner"],
     padding: `${spacingVars["--spacing-0-5"]} ${spacingVars["--spacing-2"]}`,
   },
@@ -88,6 +90,6 @@ export const styles = stylex.create({
   divider: {
     width: 1,
     height: spacingVars["--spacing-5"],
-    backgroundColor: "var(--border)",
+    backgroundColor: colorVars["--color-border"],
   },
 });

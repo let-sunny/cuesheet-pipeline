@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { colorVars, spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 4) — App root
@@ -26,7 +27,13 @@ export const styles = stylex.create({
   app: {
     maxWidth: "none",
     margin: "0 auto",
-    padding: "24px 32px",
+    // Horizontal padding 32px -> spacing-4 (16px) (2026-07-11 whitespace fix, design-principles.md
+    // #6 "minimal whitespace, both axes"): the old fixed 32px side gutters, combined with
+    // MomentPalette's flex-wrap grid, left a wide empty strip on the right at the 1280px target
+    // width instead of fitting a 3rd card column - see MomentPalette.styles.ts's `grid` comment for
+    // the other half of this fix. Both values now read from `spacingVars` (previously a literal
+    // "24px 32px" string, itself a stray hardcoded-spacing violation predating this pass).
+    padding: `${spacingVars["--spacing-6"]} ${spacingVars["--spacing-4"]}`,
   },
   // Row placing the mini timeline strip + "Play all" button side by side.
   miniStripRow: {
@@ -41,12 +48,12 @@ export const styles = stylex.create({
     position: "sticky",
     top: 0,
     zIndex: 20,
-    backgroundColor: "var(--surface-0)",
+    backgroundColor: colorVars["--color-background-body"],
     padding: "12px 0",
     marginTop: 12,
     borderBottomWidth: 1,
     borderBottomStyle: "solid",
-    borderBottomColor: "var(--surface-2)",
+    borderBottomColor: colorVars["--color-background-muted"],
   },
   stepBody: {
     marginTop: 16,

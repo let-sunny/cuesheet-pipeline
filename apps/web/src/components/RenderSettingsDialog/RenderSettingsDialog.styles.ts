@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { spacingVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
+import { colorVars, spacingVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md) — rules ported 1:1 from the old
@@ -29,7 +29,7 @@ export const styles = stylex.create({
   summaryLine: {
     margin: `0 0 ${spacingVars["--spacing-1"]}`,
     fontSize: textSizeVars["--font-size-sm"],
-    color: "var(--text-quaternary-soft)",
+    color: colorVars["--color-text-primary"],
   },
   actions: {
     display: "flex",

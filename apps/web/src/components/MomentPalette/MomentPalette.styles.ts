@@ -1,5 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
-import { radiusVars, spacingVars, textSizeVars, fontWeightVars } from "@astryxdesign/core/theme/tokens.stylex";
+import {
+  colorVars,
+  radiusVars,
+  spacingVars,
+  textSizeVars,
+  fontWeightVars,
+} from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 5) — rules ported
@@ -36,7 +42,7 @@ export const styles = stylex.create({
   palette: {
     marginBottom: spacingVars["--spacing-1"],
     padding: `${spacingVars["--spacing-3"]} ${spacingVars["--spacing-4"]}`,
-    backgroundColor: "var(--surface-1)",
+    backgroundColor: colorVars["--color-background-surface"],
     borderRadius: radiusVars["--radius-element"],
   },
   // Replaces the old `.moment-palette.status` compound rule - combines `.status`'s padding/
@@ -45,14 +51,14 @@ export const styles = stylex.create({
   paletteStatus: {
     padding: spacingVars["--spacing-10"],
     textAlign: "center",
-    color: "var(--text-secondary)",
+    color: colorVars["--color-text-secondary"],
     fontSize: textSizeVars["--font-size-sm"],
   },
   // Meta-row tier (2026-07-11 typography pass) - matches `info`/`categoryBadge` below, so the
   // category/duration/quality trio reads as one uniformly small, quiet caption line.
   quality: {
     fontSize: textSizeVars["--font-size-xs"],
-    color: "var(--text-tertiary)",
+    color: colorVars["--color-text-secondary"],
   },
   header: {
     display: "flex",
@@ -61,7 +67,7 @@ export const styles = stylex.create({
     gap: spacingVars["--spacing-3"],
     marginBottom: spacingVars["--spacing-2"],
     fontSize: textSizeVars["--font-size-sm"],
-    color: "var(--text-secondary)",
+    color: colorVars["--color-text-secondary"],
   },
   filters: {
     display: "flex",
@@ -69,9 +75,15 @@ export const styles = stylex.create({
     gap: spacingVars["--spacing-1-5"],
     marginBottom: spacingVars["--spacing-3"],
   },
+  // flex-wrap -> CSS grid (2026-07-11 whitespace fix, design-principles.md #6 "minimal whitespace,
+  // both axes"): at the 13-inch target (1280px), the old flex-wrap + 440px fixed card width only
+  // ever fit 2 cards per row, leaving a large empty gutter on the right. `auto-fill, minmax(380px,
+  // 1fr)` fits exactly 3 across at 1280 (grid content width ~1216px: 3 x 400px cards + 2 x 8px
+  // gaps) and lets each track stretch to fill the row - same convention grid-based media browsers
+  // use (Premiere bin / Lightroom grid), not an invented layout.
   grid: {
-    display: "flex",
-    flexWrap: "wrap",
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(380px, 1fr))",
     gap: spacingVars["--spacing-2"],
     // Cards are a uniform fixed height now (2026-07-11, see `cardRow`'s comment), so `stretch` vs.
     // `flex-start` no longer changes anything visually for the common case - kept flex-start since
@@ -79,12 +91,11 @@ export const styles = stylex.create({
     // comment) still means row members aren't perfectly uniform in that rare state.
     alignItems: "flex-start",
   },
-  // 168 -> 440 (2026-07-11 QA fix, horizontal card layout - see cardRow/thumbCol below): a
-  // stacked-thumbnail-on-top card could stay narrow, but a horizontal thumbnail+metadata pairing
-  // needs enough width for the thumbnail column to actually read as "larger", per the researched
-  // convention (Premiere bin / Final Cut event browser / DaVinci media pool).
+  // Fixed 440px width removed (2026-07-11 whitespace fix) - the card now just fills its grid track
+  // (see `grid`'s comment), so its actual rendered width tracks the grid's column sizing instead of
+  // a literal.
   cardWrap: {
-    width: 440,
+    width: "100%",
   },
   // Background/border/rounded corners are handled by Astryx Card (variant="default") - this only
   // adds size/layout within the grid and overflow-hidden (for clipping the thumbnail's corners).
@@ -116,14 +127,16 @@ export const styles = stylex.create({
     height: 160,
   },
   // Fixes the thumbnail to its own column (no longer via AspectRatio, see MomentPalette.tsx's
-  // comment) - a ~45% share of the card, matching the researched convention's proportions. Height
-  // comes from `cardRow`'s `alignItems: stretch` (a flex item's stretched cross-size is a definite
-  // size for descendants' percentage-height resolution), so `thumbOverlay`/the thumbnail img can
-  // fill it at 100% height with no separate height rule needed here.
+  // comment) - a ~45% share of the card, matching the researched convention's proportions (200 ->
+  // 180 2026-07-11, scaled down alongside the card's own 440 -> ~400px width from the grid-column
+  // fix above, to hold that same ~45% ratio rather than growing past it). Height comes from
+  // `cardRow`'s `alignItems: stretch` (a flex item's stretched cross-size is a definite size for
+  // descendants' percentage-height resolution), so `thumbOverlay`/the thumbnail img can fill it at
+  // 100% height with no separate height rule needed here.
   thumbCol: {
     flexGrow: 0,
     flexShrink: 0,
-    flexBasis: 200,
+    flexBasis: 180,
     minWidth: 0,
   },
   // Astryx Overlay's own container renders as a plain block div with no explicit height (see its
@@ -141,12 +154,12 @@ export const styles = stylex.create({
   cardStatusRejectedFace: {
     borderWidth: 1,
     borderStyle: "solid",
-    borderColor: "var(--error-border)",
+    borderColor: colorVars["--color-border-red"],
   },
   cardStatusRejectedQuality: {
     borderWidth: 1,
     borderStyle: "solid",
-    borderColor: "var(--warning-border)",
+    borderColor: colorVars["--color-border-yellow"],
   },
   // Auto-exclusion reason banner - top of the card, full width. Must be far more noticeable than
   // a small corner badge (the previous problem where its smallness got misread as "dimmed = inactive").
@@ -162,16 +175,19 @@ export const styles = stylex.create({
     overflowWrap: "break-word",
   },
   statusBannerFace: {
-    backgroundColor: "var(--error-border)",
-    color: "var(--error-text)",
+    backgroundColor: colorVars["--color-error"],
+    color: colorVars["--color-on-error"],
   },
   statusBannerQuality: {
-    backgroundColor: "var(--warning-border)",
-    color: "var(--warning-text)",
+    backgroundColor: colorVars["--color-warning"],
+    color: colorVars["--color-on-warning"],
   },
   // Background is intentionally fixed dark regardless of theme — since this sits inside the
   // full-bleed thumbnail box before a frame has loaded (or when there is none), it stays dark even
-  // in light theme.
+  // in light theme. Kept as the app's own `--stage-bg` literal (styles.css), not an Astryx
+  // `--color-*` token, on purpose - every Astryx background token is theme/mode-reactive by design,
+  // which is exactly what this element must NOT do (flagged 2026-07-11 color migration: a
+  // deliberate, semantically-required exception, same carve-out as a video letterbox).
   thumbEmpty: {
     width: "100%",
     height: "100%",
@@ -191,8 +207,11 @@ export const styles = stylex.create({
   // Since this overlays the (always-dark) thumbnail, the text color must also be a fixed light
   // color regardless of theme - otherwise in light theme, an inherited dark color would show as
   // dark text on a dark chip, invisible (both colors stay literal hex, same reasoning as
-  // `thumbEmpty` below). 1px vertical padding is below the token scale's smallest step (2px) -
-  // kept literal for this compact overlay chip rather than doubling its padding to fit the scale.
+  // `thumbEmpty` above - flagged 2026-07-11 color migration: kept as a deliberate, theme-invariant
+  // exception rather than an Astryx `--color-*` token, since every Astryx background/text token is
+  // theme-reactive by design and this chip specifically must not react). 1px vertical padding is
+  // below the token scale's smallest step (2px) - kept literal for this compact overlay chip
+  // rather than doubling its padding to fit the scale.
   number: {
     minWidth: 0,
     overflowWrap: "break-word",
@@ -231,7 +250,7 @@ export const styles = stylex.create({
     justifyContent: "space-between",
     gap: `${spacingVars["--spacing-1"]} ${spacingVars["--spacing-2"]}`,
     fontSize: textSizeVars["--font-size-xs"],
-    color: "var(--text-tertiary)",
+    color: colorVars["--color-text-secondary"],
   },
   // Container for the card's internal hierarchy (screen-spec section 2) - to the right of the
   // thumbnail column (2026-07-11 QA fix, horizontal layout), lays out the description/meta/action

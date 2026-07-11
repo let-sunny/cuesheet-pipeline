@@ -15,7 +15,7 @@ import { useRenderExecution } from "./hooks/useRenderExecution.js";
 import type { VideoPreviewHandle } from "./components/VideoPreview/index.js";
 import { KeyboardHelp } from "./components/KeyboardHelp/index.js";
 import { HeaderBar } from "./components/HeaderBar/index.js";
-import type { ThemeModeSetting } from "./lib/theme.js";
+import type { ThemeModeSetting, ThemeName } from "./lib/theme.js";
 import { StepNav } from "./components/StepNav/index.js";
 import type { Step } from "./components/StepNav/index.js";
 import { MiniTimelineStrip } from "./components/MiniTimelineStrip/index.js";
@@ -33,9 +33,11 @@ import { styles } from "./App.styles.js";
 interface AppProps {
   themeMode: ThemeModeSetting;
   onThemeModeChange: (mode: ThemeModeSetting) => void;
+  themeName: ThemeName;
+  onThemeNameChange: (name: ThemeName) => void;
 }
 
-export function App({ themeMode, onThemeModeChange }: AppProps) {
+export function App({ themeMode, onThemeModeChange, themeName, onThemeNameChange }: AppProps) {
   const toast = useToast();
   const {
     draft,
@@ -238,6 +240,8 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         onRender={() => setRenderDialogOpen(true)}
         themeMode={themeMode}
         onThemeModeChange={onThemeModeChange}
+        themeName={themeName}
+        onThemeNameChange={onThemeNameChange}
         onToggleShortcuts={() => setShowShortcuts((v) => !v)}
       />
 

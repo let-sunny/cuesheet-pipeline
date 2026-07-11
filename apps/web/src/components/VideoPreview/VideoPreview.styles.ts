@@ -1,5 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
-import { radiusVars, spacingVars, textSizeVars, fontWeightVars } from "@astryxdesign/core/theme/tokens.stylex";
+import {
+  colorVars,
+  radiusVars,
+  spacingVars,
+  textSizeVars,
+  fontWeightVars,
+} from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 5) — rules ported
@@ -33,11 +39,11 @@ export const styles = stylex.create({
     flexDirection: "column",
     gap: spacingVars["--spacing-2"],
     padding: spacingVars["--spacing-3"],
-    backgroundColor: "var(--surface-1)",
+    backgroundColor: colorVars["--color-background-surface"],
     borderRadius: radiusVars["--radius-element"],
   },
   videoPreviewEmpty: {
-    color: "var(--text-secondary)",
+    color: colorVars["--color-text-secondary"],
     fontSize: textSizeVars["--font-size-sm"],
     alignItems: "center",
     justifyContent: "center",
@@ -57,37 +63,37 @@ export const styles = stylex.create({
     flexWrap: "wrap",
     gap: spacingVars["--spacing-1-5"],
     padding: `${spacingVars["--spacing-2"]} ${spacingVars["--spacing-2"]}`,
-    backgroundColor: "var(--context-box-bg)",
+    backgroundColor: colorVars["--color-background-blue"],
     borderStyle: "solid",
     borderTopWidth: 1,
     borderRightWidth: 1,
     borderBottomWidth: 1,
     borderLeftWidth: 3,
-    borderTopColor: "var(--context-box-border)",
-    borderRightColor: "var(--context-box-border)",
-    borderBottomColor: "var(--context-box-border)",
-    borderLeftColor: "var(--accent)",
+    borderTopColor: colorVars["--color-border-blue"],
+    borderRightColor: colorVars["--color-border-blue"],
+    borderBottomColor: colorVars["--color-border-blue"],
+    borderLeftColor: colorVars["--color-accent"],
     borderRadius: radiusVars["--radius-element"],
     fontSize: textSizeVars["--font-size-base"],
     fontWeight: fontWeightVars["--font-weight-medium"],
     lineHeight: 1.4,
-    color: "var(--text-primary)",
+    color: colorVars["--color-text-primary"],
   },
   contextSceneEmpty: {
     fontStyle: "italic",
-    color: "var(--text-secondary)",
+    color: colorVars["--color-text-secondary"],
     fontWeight: fontWeightVars["--font-weight-normal"],
   },
   contextIndex: {
     fontWeight: fontWeightVars["--font-weight-bold"],
-    color: "var(--text-primary)",
+    color: colorVars["--color-text-primary"],
   },
   contextSceneLabel: {
     fontSize: textSizeVars["--font-size-xs"],
     fontWeight: fontWeightVars["--font-weight-bold"],
     textTransform: "uppercase",
     letterSpacing: "0.04em",
-    color: "var(--tag-blue-text)",
+    color: colorVars["--color-text-blue"],
   },
   // Shows the full scene description text needed for judgment as much as possible — wraps as-is,
   // from one line if short to multiple lines if long, and is never truncated (no ellipsis).
@@ -98,7 +104,7 @@ export const styles = stylex.create({
   contextLine: {
     fontSize: textSizeVars["--font-size-sm"],
     lineHeight: 1.4,
-    color: "var(--text-tertiary)",
+    color: colorVars["--color-text-secondary"],
     paddingLeft: spacingVars["--spacing-0-5"],
     // The subtitle is secondary info toned down relative to the scene — the full text needed for
     // judgment can be seen via the title tooltip.
@@ -111,6 +117,9 @@ export const styles = stylex.create({
   },
   // `.video-crop-frame video`'s `display: block` is folded in here directly - the <video> element
   // this component renders is always inside cropFrame, so there's no case needing them split.
+  // `backgroundColor: "black"` is a flagged literal (2026-07-11 color migration) kept as-is - a
+  // true video letterbox, semantically required to stay black regardless of theme/mode, same
+  // carve-out as MomentPalette's always-dark thumbnail canvas.
   video: {
     width: "100%",
     borderRadius: radiusVars["--radius-inner"],
@@ -133,10 +142,10 @@ export const styles = stylex.create({
     justifyContent: "space-between",
     gap: spacingVars["--spacing-2"],
     padding: `${spacingVars["--spacing-1-5"]} ${spacingVars["--spacing-2"]}`,
-    backgroundColor: "var(--surface-2)",
+    backgroundColor: colorVars["--color-background-muted"],
     borderRadius: radiusVars["--radius-inner"],
     fontSize: textSizeVars["--font-size-sm"],
-    color: "var(--text-quaternary)",
+    color: colorVars["--color-text-primary"],
   },
   cropEditActions: {
     display: "flex",
@@ -144,14 +153,14 @@ export const styles = stylex.create({
   },
   notice: {
     fontSize: textSizeVars["--font-size-sm"],
-    color: "var(--warning-text)",
+    color: colorVars["--color-text-yellow"],
   },
   noticeProxyPreparing: {
     margin: `${spacingVars["--spacing-2"]} 0`,
   },
   timeReadout: {
     fontSize: textSizeVars["--font-size-sm"],
-    color: "var(--text-tertiary)",
+    color: colorVars["--color-text-secondary"],
   },
   videoControlsRow: {
     display: "flex",

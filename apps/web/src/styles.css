@@ -2,111 +2,27 @@
   font-family: system-ui, -apple-system, "Pretendard", sans-serif;
 
   /*
-   * Custom (non-Astryx) color tokens. light-dark() bundles the light/dark value into one
-   * declaration — it switches automatically based on html's color-scheme (kept in sync with
-   * data-theme by Astryx Theme), so no separate selector branch is needed for the theme toggle.
-   * The dark values are kept exactly as their existing hardcoded values to avoid regressions;
-   * only the light values are newly added.
+   * Color-token migration (2026-07-11, design-principles.md #5 strict rule, completing the
+   * stock-audit): this app's old bespoke `--surface-*`/`--border*`/`--text-*`/`--accent*`/
+   * `--success-*`/`--error-*`/`--warning-*`/`--tag-*`/`--bgm-cue-*`/`--context-box-*` custom
+   * properties (previously defined here with their own hardcoded light-dark() hex pairs) are gone.
+   * Every rule that used them now reads Astryx's own `--color-*` tokens directly (via `colorVars`
+   * in StyleX files, or the raw CSS custom property here) - see each rule's own comment/nearby
+   * mapping for which Astryx token replaced which old variable. This is what makes the THEME
+   * switcher (stone/y2k/neutral) actually recolor every surface, not just light/dark mode: Astryx's
+   * theme.css defines `--color-*` per theme, and this file no longer shadows any of them with a
+   * fixed palette of its own.
    *
-   * Deliberately NOT swapped to Astryx's own `--color-*` tokens (2026-07-11 stock-audit,
-   * design-principles.md #5 strict rule) even in files otherwise migrated to Astryx components:
-   * this bespoke palette (surfaces/borders/text tiers/accent/status colors/category-tag colors) is
-   * a tuned, coherent visual identity already reactive to the Light/Dark toggle via light-dark()
-   * above - it just isn't literally Astryx's token *names*. Astryx's own palette (colorVars,
-   * `@astryxdesign/core/theme`) uses meaningfully different hues (e.g. accent #0064E0/#2694FE vs.
-   * this app's #5b7cfa, no tiered surface-0/1/2/3 or text-tertiary/quaternary equivalents), so a
-   * wholesale swap would visibly re-theme the app, not just swap markup - a real design decision
-   * needing the user's visual sign-off on a before/after, not something to rush silently under a
-   * time-boxed migration pass. Spacing/radius/typography on the components touched during this
-   * pass DO read from Astryx's `spacingVars`/`radiusVars` (see e.g. HeaderBar.styles.ts) - only the
-   * color-token swap is deferred, and is flagged as the next step in the stock-audit report.
+   * `--stage-bg` below is the one deliberate exception, kept as a literal - see its own comment.
    */
 
-  /* Surfaces (panel/card/row backgrounds) */
-  --surface-0: light-dark(#eef0f5, #12141a);
-  --surface-1: light-dark(#ffffff, #1b1e28);
-  --surface-2: light-dark(#e7e9f2, #232838);
-  --surface-3: light-dark(#dde3f7, #262e46);
-  --surface-3-soft: light-dark(#e6eaf8, #1e2436);
-  --surface-button: light-dark(#e7e9f2, #2a3042);
-  --surface-button-hover: light-dark(#dbe0ee, #333a50);
-
-  /* Borders */
-  --border: light-dark(#d5d9e6, #33394d);
-  --border-soft: light-dark(#dde1ee, #292f40);
-  --border-dashed: light-dark(#cdd2e2, #3a4056);
-
-  /* Text */
-  --text-primary: light-dark(#1f2430, #e6e8ee);
-  --text-secondary: light-dark(#6b7080, #8a90a2);
-  --text-tertiary: light-dark(#5b6172, #9aa0b4);
-  --text-quaternary: light-dark(#3c4150, #cfd3e0);
-  --text-quaternary-soft: light-dark(#3c4150, #cdd2e0);
-  --text-faint: light-dark(#8085a0, #5f6473);
-  --text-muted: light-dark(#7d829a, #6d7286);
-  --text-muted-2: light-dark(#7d829a, #9098ac);
-  --text-muted-3: light-dark(#7d829a, #8a8fa3);
-  --text-muted-4: light-dark(#7d829a, #6a7086);
-
-  /* Accent - brand blue is shared across both themes */
-  --accent: #5b7cfa;
-  --accent-strong: light-dark(#4f6de0, #5b7cfa88);
-
-  /* Status colors */
-  --success-text: light-dark(#1f7a45, #7fe3a3);
-  --success-border: light-dark(#3fae6a66, #3fae6a55);
-  --error-text: light-dark(#a13a3a, #f29a9a);
-  --error-border: light-dark(#d9575766, #d9575755);
-  --warning-text: light-dark(#8a5a17, #f0a34a);
-  --warning-border: light-dark(#f0a34a66, #f0a34a55);
-
-  /* Always-dark tone — used only for the video stage/timeline thumbnail background
-     (kept always dark regardless of theme, per video editing convention) */
+  /* Always-dark tone — used only for the video stage/timeline thumbnail background (kept always
+     dark regardless of theme, per video editing convention). Deliberately NOT an Astryx `--color-*`
+     token (2026-07-11 color migration): every Astryx background token is light-dark()-reactive by
+     design, which is exactly what this element must NOT do - a video/thumbnail canvas stays dark
+     regardless of theme or light/dark mode, the same way a real video letterbox would. Flagged as a
+     semantically-required literal, not a missed migration. */
   --stage-bg: #12141a;
-
-  /* Category badges (scene tags/shot type) - the color values adopt Astryx theme-stone's light
-     palette as-is, reusing values whose contrast is already verified */
-  --tag-blue-bg: light-dark(#d7e4f5, #242f57);
-  --tag-blue-text: light-dark(#3c4856, #a9b8fb);
-  --tag-blue-border: light-dark(#a9c2e6, #6a8dfa88);
-  --tag-teal-bg: light-dark(#d4e7dc, #1f4d4d);
-  --tag-teal-text: light-dark(#3b4a41, #8fd9d9);
-  --tag-purple-bg: light-dark(#e8dff3, #3a2a57);
-  --tag-purple-text: light-dark(#4b4454, #cba9f2);
-  --tag-reveal-bg: light-dark(#ffdcbb, #503a20);
-  --tag-reveal-text: light-dark(#5b4227, #f2c98a);
-  --tag-green-bg: light-dark(#d0e9ce, #1f4234);
-  --tag-green-text: light-dark(#374c36, #8fd9b7);
-  --tag-outing-bg: light-dark(#f5dcc4, #4a2e17);
-  --tag-outing-text: light-dark(#6b3d13, #f0a86a);
-  --tag-red-bg: light-dark(#f9dcd7, #4a2020);
-  --tag-red-text: light-dark(#58413e, #f29a9a);
-  --tag-pink-bg: light-dark(#f0dde8, #4a2038);
-  --tag-pink-text: light-dark(#52424c, #f2a9d8);
-  --tag-cyan-bg: light-dark(#cce8e5, #1f3d4a);
-  --tag-cyan-text: light-dark(#334b49, #8fd3f2);
-  --tag-gray-bg: light-dark(#e2e2e8, #2a2e3d);
-  --tag-gray-text: light-dark(#46464b, #9aa0b4);
-
-  /* Semi-transparent badges (excluded/in-use indicators) — since these overlay moment-thumb
-     (an always-dark thumbnail canvas, spec item 3), they must be fixed values regardless of theme
-     (a badge on an always-dark photo, not a badge on a light background). Making these
-     light-dark() would turn into a dark background + dark text in light mode and disappear, so
-     only fixed dark values are used. */
-  --badge-quality-bg: #4a4d5799;
-  --badge-quality-text: #c7cbd8;
-  --badge-face-bg: #b56a1acc;
-  --badge-face-text: #ffe3c2;
-  --badge-inuse-bg: #d95757cc;
-  --badge-inuse-text: #ffffff;
-
-  /* BGM track */
-  --bgm-cue-bg: light-dark(#cbe8da, #2f5a45);
-  --bgm-cue-border: light-dark(#63b58f, #4f9c76);
-
-  /* Scene context header box over the video */
-  --context-box-bg: light-dark(#e3e8fb, #1a2036);
-  --context-box-border: light-dark(#c5d0f5, #2c355a);
 }
 
 /*
@@ -121,8 +37,9 @@
  * Same upstream bug as above, but for --color-overlay itself - the token Dialog's ::backdrop
  * uses for the full-viewport scrim behind the dialog. Light mode is #25252a80 (proper alpha,
  * dims correctly), but dark mode is the opaque #28282a (no alpha at all) - since that's nearly
- * the same tone as this app's own dark surfaces (--surface-0 #12141a / --surface-1 #1b1e28), an
- * opaque flat fill reads as almost no dimming at all (measured 2026-07-09 QA pass: indistinguishable
+ * the same tone as this app's own dark surfaces (this app's old --surface-0/--surface-1, now
+ * Astryx's --color-background-body/-surface), an opaque flat fill reads as almost no dimming at
+ * all (measured 2026-07-09 QA pass: indistinguishable
  * from the plain background). Redefined with real alpha in both directions so the dialog scrim
  * actually dims what's behind it regardless of theme.
  */
@@ -159,8 +76,8 @@ html:not([data-theme]) {
    font-size still lands on the same scale. */
 body {
   margin: 0;
-  background: var(--surface-0);
-  color: var(--text-primary);
+  background: var(--color-background-body);
+  color: var(--color-text-primary);
   font-size: var(--font-size-base);
 }
 
@@ -178,14 +95,14 @@ body {
    see components/Swatch/. */
 
 .empty {
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
 }
 
 .status {
   padding: 40px;
   text-align: center;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 /*
@@ -203,15 +120,18 @@ body {
 .plain-button {
   font: inherit;
   color: inherit;
-  background: var(--surface-button);
-  border: 1px solid var(--border-dashed);
+  background: var(--color-background-muted);
+  border: 1px solid var(--color-border-emphasized);
   border-radius: 6px;
   padding: 6px 12px;
   cursor: pointer;
 }
 
+/* color-mix over Astryx's own --color-tint-hover (black in light mode, white in dark - "used with
+   color-mix for hover states" per its doc comment), rather than a second fixed hover color, so this
+   hover step still tracks whichever theme/mode is active (2026-07-11 color migration). */
 .plain-button:hover:not(:disabled) {
-  background: var(--surface-button-hover);
+  background: color-mix(in srgb, var(--color-background-muted), var(--color-tint-hover) 8%);
 }
 
 .plain-button:disabled {
@@ -230,8 +150,8 @@ body {
 .plain-field {
   font: inherit;
   color: inherit;
-  background: var(--surface-1);
-  border: 1px solid var(--border);
+  background: var(--color-background-surface);
+  border: 1px solid var(--color-border);
   border-radius: 4px;
   padding: 4px 8px;
 }
@@ -263,7 +183,7 @@ body {
 .settings-group {
   flex: 1 1 260px;
   padding: 16px;
-  background: var(--surface-1);
+  background: var(--color-background-surface);
   border-radius: 8px;
   box-sizing: border-box;
 }
@@ -276,7 +196,7 @@ body {
 .settings-group h3 {
   margin: 0 0 12px;
   font-size: var(--font-size-sm);
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -295,7 +215,7 @@ body {
 .settings-field > span:first-child {
   flex: 0 0 120px;
   white-space: nowrap;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 .settings-field input,
@@ -328,7 +248,7 @@ body {
   width: 32px;
   height: 26px;
   padding: 0;
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-border);
   border-radius: 4px;
   background: none;
   cursor: pointer;
@@ -341,7 +261,7 @@ body {
 .settings-note {
   margin: 12px 0 0;
   font-size: var(--font-size-sm);
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 /*
@@ -446,15 +366,15 @@ body {
 .empty-state {
   padding: 24px 16px;
   text-align: center;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
 }
 
 .empty-state code {
   padding: 1px 6px;
-  background: var(--surface-2);
+  background: var(--color-background-muted);
   border-radius: 4px;
-  color: var(--text-quaternary);
+  color: var(--color-text-primary);
 }
 
 /* MomentPalette migration (docs/styling-migration.md, StyleX migration batch 5) -
@@ -494,19 +414,19 @@ body {
   padding: 0;
   overflow: hidden;
   background: var(--stage-bg);
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-border);
   border-radius: 3px;
   cursor: pointer;
 }
 
 /* Adds a thin divider so clip boundaries stand out even in the zoomed-out (full view) state. */
 .mini-strip-block.clip-boundary {
-  border-left: 2px solid var(--accent-strong);
+  border-left: 2px solid var(--color-accent);
 }
 
 .mini-strip-block.selected {
-  border-color: var(--accent);
-  background: var(--surface-3);
+  border-color: var(--color-accent);
+  background: var(--color-accent-muted);
 }
 
 /* Step ② Edit */
@@ -552,8 +472,8 @@ body {
   line-height: 18px;
   height: 44px;
   color: inherit;
-  background: var(--surface-1);
-  border: 1px solid var(--border-soft);
+  background: var(--color-background-surface);
+  border: 1px solid var(--color-border);
   border-radius: 4px;
   resize: none;
   overflow-y: auto;
@@ -561,7 +481,7 @@ body {
 
 .compact-list-subtitle-input:focus {
   outline: none;
-  border-color: var(--accent);
+  border-color: var(--color-accent);
 }
 
 .scene-shot-badge {
@@ -571,48 +491,48 @@ body {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   white-space: nowrap;
-  background: var(--tag-blue-bg);
-  color: var(--tag-blue-text);
+  background: var(--color-background-blue);
+  color: var(--color-text-blue);
 }
 
 .scene-shot-badge.shot-hand-closeup {
-  background: var(--tag-blue-bg);
-  color: var(--tag-blue-text);
+  background: var(--color-background-blue);
+  color: var(--color-text-blue);
 }
 
 .scene-shot-badge.shot-object {
-  background: var(--tag-green-bg);
-  color: var(--tag-green-text);
+  background: var(--color-background-green);
+  color: var(--color-text-green);
 }
 
 .scene-shot-badge.shot-cat {
-  background: var(--tag-purple-bg);
-  color: var(--tag-purple-text);
+  background: var(--color-background-purple);
+  color: var(--color-text-purple);
 }
 
 .scene-shot-badge.shot-change {
-  background: var(--tag-cyan-bg);
-  color: var(--tag-cyan-text);
+  background: var(--color-background-cyan);
+  color: var(--color-text-cyan);
 }
 
 .scene-shot-badge.shot-reveal {
-  background: var(--tag-reveal-bg);
-  color: var(--tag-reveal-text);
+  background: var(--color-background-orange);
+  color: var(--color-text-orange);
 }
 
 .scene-shot-badge.shot-wearing {
-  background: var(--tag-pink-bg);
-  color: var(--tag-pink-text);
+  background: var(--color-background-pink);
+  color: var(--color-text-pink);
 }
 
 .scene-shot-badge.shot-other {
-  background: var(--tag-gray-bg);
-  color: var(--tag-gray-text);
+  background: var(--color-background-gray);
+  color: var(--color-text-gray);
 }
 
 .scene-shot-badge.shot-monotonous {
-  background: var(--tag-teal-bg);
-  color: var(--tag-teal-text);
+  background: var(--color-background-teal);
+  color: var(--color-text-teal);
 }
 
 /* CompactSegmentList migration (docs/styling-migration.md, StyleX migration batch 3) -
@@ -634,7 +554,7 @@ body {
   flex-direction: column;
   gap: 4px;
   padding: 12px 16px;
-  background: var(--surface-1);
+  background: var(--color-background-surface);
   border-radius: 8px;
 }
 
@@ -650,14 +570,14 @@ body {
   font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 /* Common shell for groups G1-G6 — each group makes its "belongs to a named section" explicit via
    a small label header + a divider (except the first group) (screen-spec 0-1). */
 .qf-group {
   padding-top: 10px;
-  border-top: 1px dashed var(--border-dashed);
+  border-top: 1px dashed var(--color-border-emphasized);
 }
 
 .qf-group:first-child {
@@ -671,7 +591,7 @@ body {
   font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 /* Common row placing a pair (IN/OUT, speed/volume, etc.) side by side on one row — screen-spec 0-4 "pairs go side by side". */
@@ -692,7 +612,7 @@ body {
   align-items: center;
   gap: 6px;
   font-size: var(--font-size-sm);
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 .qf-field > span:first-child {
@@ -717,20 +637,20 @@ body {
 }
 
 .qf-suffix {
-  color: var(--text-muted-3);
+  color: var(--color-text-secondary);
   font-size: var(--font-size-sm);
 }
 
 .qf-readonly {
   font-size: var(--font-size-sm);
-  color: var(--text-tertiary);
+  color: var(--color-text-secondary);
 }
 
 /* Guidance text below a qf-row (e.g. the speed-cap note) - same treatment as .settings-note. */
 .qf-note {
   margin: 4px 0 0;
   font-size: var(--font-size-sm);
-  color: var(--warning-text);
+  color: var(--color-text-yellow);
 }
 
 .style-override-fields {
@@ -758,7 +678,7 @@ body {
 .qf-danger-zone {
   margin-top: 14px;
   padding-top: 10px;
-  border-top: 1px dashed var(--error-border);
+  border-top: 1px dashed var(--color-border-red);
   display: flex;
   justify-content: flex-end;
 }
@@ -766,14 +686,14 @@ body {
 .narration-empty-note {
   margin: 4px 0 0;
   font-size: var(--font-size-sm);
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
 }
 
 /* Subtitle style presets (Export step) */
 
 .preset-row {
   padding: 10px 0;
-  border-bottom: 1px solid var(--border-soft);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .preset-row:last-of-type {
@@ -805,6 +725,10 @@ body {
   container-type: inline-size;
 }
 
+/* color: #ffffff is a flagged literal (2026-07-11 color migration), same carve-out as `--stage-bg`
+   right above - this text overlays that always-dark preview chip, so it must stay light regardless
+   of theme/mode, not an Astryx `--color-*` token (every one of those is light-dark()-reactive by
+   design). */
 .preset-preview-text {
   white-space: nowrap;
   color: #ffffff;
@@ -861,7 +785,7 @@ body {
   font-size: var(--font-size-base);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--text-secondary);
+  color: var(--color-text-secondary);
   margin: 0 0 12px;
 }
 
@@ -886,11 +810,11 @@ body {
 
 .render-note {
   font-size: var(--font-size-sm);
-  color: var(--text-muted-2);
+  color: var(--color-text-secondary);
 }
 
 .render-note-error {
-  color: var(--warning-text);
+  color: var(--color-text-yellow);
 }
 
 /* Wraps the short error summary + the full raw ffmpeg dump's collapsible - the summary always
@@ -905,7 +829,7 @@ body {
 .render-error-detail summary {
   cursor: pointer;
   font-size: var(--font-size-sm);
-  color: var(--text-muted-2);
+  color: var(--color-text-secondary);
 }
 
 .render-error-detail pre {
@@ -915,11 +839,11 @@ body {
   word-break: break-all;
   margin: 6px 0 0;
   padding: 8px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  background: var(--color-background-muted);
+  border: 1px solid var(--color-border);
   border-radius: 4px;
   font-size: var(--font-size-xs);
-  color: var(--text-tertiary);
+  color: var(--color-text-secondary);
 }
 
 

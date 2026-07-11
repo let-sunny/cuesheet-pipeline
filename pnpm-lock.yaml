@@ -10,7 +10,7 @@ importers:
     devDependencies:
       '@astryxdesign/cli':
         specifier: 0.1.4
-        version: 0.1.4(@astryxdesign/core@0.1.3(@stylexjs/stylex@0.19.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(gpt-tokenizer@2.9.0)
+        version: 0.1.4(@astryxdesign/core@0.1.3(@stylexjs/stylex@0.19.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(@astryxdesign/theme-neutral@0.1.4(@astryxdesign/core@0.1.3(@stylexjs/stylex@0.19.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7))(gpt-tokenizer@2.9.0)
       '@playwright/test':
         specifier: ^1.61.1
         version: 1.61.1
@@ -29,6 +29,9 @@ importers:
       '@astryxdesign/core':
         specifier: '*'
         version: 0.1.3(@stylexjs/stylex@0.18.3)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@astryxdesign/theme-neutral':
+        specifier: 0.1.4
+        version: 0.1.4(@astryxdesign/core@0.1.3(@stylexjs/stylex@0.18.3)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
       '@astryxdesign/theme-stone':
         specifier: '*'
         version: 0.1.3(@astryxdesign/core@0.1.3(@stylexjs/stylex@0.18.3)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
@@ -216,6 +219,12 @@ packages:
       '@stylexjs/stylex': ^0.18.3
       react: '>=19.0.0'
       react-dom: '>=19.0.0'
+
+  '@astryxdesign/theme-neutral@0.1.4':
+    resolution: {integrity: sha512-h3BS3MZ/EKxTSC1JuNFMmDlO7jwmf4zycg/B4T7Dis6a/al2lIJMoOsMtjw+sz34TPGYhIceOZNl2yUOBGnyiA==}
+    peerDependencies:
+      '@astryxdesign/core': 0.1.4
+      react: '>=19'
 
   '@astryxdesign/theme-stone@0.1.3':
     resolution: {integrity: sha512-IQdlCXGkqbv2JEYLKWorGIT+8jCtdlPbJfH7l5MM186CW4sant9Ops1L1bMaoB3N6YMD9RIA2vd7W0pKdrIkAA==}
@@ -2462,7 +2471,7 @@ snapshots:
       '@stylexjs/unplugin': 0.19.0(unplugin@2.3.11)
       vite: 6.4.3(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)
 
-  '@astryxdesign/cli@0.1.4(@astryxdesign/core@0.1.3(@stylexjs/stylex@0.19.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(gpt-tokenizer@2.9.0)':
+  '@astryxdesign/cli@0.1.4(@astryxdesign/core@0.1.3(@stylexjs/stylex@0.19.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(@astryxdesign/theme-neutral@0.1.4(@astryxdesign/core@0.1.3(@stylexjs/stylex@0.19.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7))(gpt-tokenizer@2.9.0)':
     dependencies:
       '@clack/prompts': 1.7.0
       commander: 12.1.0
@@ -2472,6 +2481,7 @@ snapshots:
       zod: 4.4.3
     optionalDependencies:
       '@astryxdesign/core': 0.1.3(@stylexjs/stylex@0.19.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@astryxdesign/theme-neutral': 0.1.4(@astryxdesign/core@0.1.3(@stylexjs/stylex@0.19.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)
     transitivePeerDependencies:
       - '@babel/preset-env'
       - supports-color
@@ -2487,6 +2497,19 @@ snapshots:
       '@stylexjs/stylex': 0.19.0
       react: 19.2.7
       react-dom: 19.2.7(react@19.2.7)
+    optional: true
+
+  '@astryxdesign/theme-neutral@0.1.4(@astryxdesign/core@0.1.3(@stylexjs/stylex@0.18.3)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)':
+    dependencies:
+      '@astryxdesign/core': 0.1.3(@stylexjs/stylex@0.18.3)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      lucide-react: 1.23.0(react@19.2.7)
+      react: 19.2.7
+
+  '@astryxdesign/theme-neutral@0.1.4(@astryxdesign/core@0.1.3(@stylexjs/stylex@0.19.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)':
+    dependencies:
+      '@astryxdesign/core': 0.1.3(@stylexjs/stylex@0.19.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      lucide-react: 1.23.0(react@19.2.7)
+      react: 19.2.7
     optional: true
 
   '@astryxdesign/theme-stone@0.1.3(@astryxdesign/core@0.1.3(@stylexjs/stylex@0.18.3)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react@19.2.7)':

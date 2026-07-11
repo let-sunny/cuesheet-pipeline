@@ -1,9 +1,21 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { HeaderBar } from "./HeaderBar.js";
 
 afterEach(cleanup);
+
+// Selector (Astryx) opens its option list via the Popover API, which jsdom doesn't implement -
+// mocked the same minimal way Astryx's own Selector.test.tsx does, so fireEvent.click on the
+// trigger actually reveals the options in these tests.
+beforeEach(() => {
+  HTMLElement.prototype.showPopover = vi.fn(function (this: HTMLElement) {
+    this.setAttribute("popover-open", "");
+  });
+  HTMLElement.prototype.hidePopover = vi.fn(function (this: HTMLElement) {
+    this.removeAttribute("popover-open");
+  });
+});
 
 function baseProps() {
   return {
@@ -22,6 +34,8 @@ function baseProps() {
     onRender: vi.fn(),
     themeMode: "light" as const,
     onThemeModeChange: vi.fn(),
+    themeName: "y2k" as const,
+    onThemeNameChange: vi.fn(),
     onToggleShortcuts: vi.fn(),
   };
 }
@@ -147,5 +161,21 @@ describe("HeaderBar", () => {
     render(<HeaderBar {...baseProps()} themeMode="light" />);
     expect(screen.getByRole("radio", { name: "Light" }).getAttribute("aria-checked")).toBe("true");
     expect(screen.getByRole("radio", { name: "Dark" }).getAttribute("aria-checked")).toBe("false");
+  });
+
+  it("renders the theme switcher with all 3 theme options (Stone/Y2K/Neutral)", () => {
+    render(<HeaderBar {...baseProps()} themeName="y2k" />);
+    fireEvent.click(screen.getByTestId("theme-switcher"));
+    expect(screen.getByRole("option", { name: "Stone", hidden: true })).not.toBeNull();
+    expect(screen.getByRole("option", { name: "Y2K", hidden: true })).not.toBeNull();
+    expect(screen.getByRole("option", { name: "Neutral", hidden: true })).not.toBeNull();
+  });
+
+  it("theme switcher calls onThemeNameChange when a different theme is picked", () => {
+    const onThemeNameChange = vi.fn();
+    render(<HeaderBar {...baseProps()} themeName="y2k" onThemeNameChange={onThemeNameChange} />);
+    fireEvent.click(screen.getByTestId("theme-switcher"));
+    fireEvent.click(screen.getByRole("option", { name: "Stone", hidden: true }));
+    expect(onThemeNameChange).toHaveBeenCalledWith("stone");
   });
 });

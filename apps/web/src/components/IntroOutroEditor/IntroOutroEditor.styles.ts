@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
+import { colorVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md) — rules ported 1:1 from the old
@@ -22,7 +22,7 @@ export const styles = stylex.create({
     gap: 10,
     marginBottom: 8,
     fontSize: textSizeVars["--font-size-sm"],
-    color: "var(--text-quaternary)",
+    color: colorVars["--color-text-primary"],
   },
   clipName: {
     overflow: "hidden",
@@ -49,12 +49,12 @@ export const styles = stylex.create({
     padding: 10,
     borderWidth: 1,
     borderStyle: "dashed",
-    borderColor: "var(--border-dashed)",
+    borderColor: colorVars["--color-border-emphasized"],
     borderRadius: 4,
   },
   dropzoneActive: {
-    borderColor: "var(--accent)",
-    backgroundColor: "var(--surface-3-soft)",
+    borderColor: colorVars["--color-accent"],
+    backgroundColor: colorVars["--color-accent-muted"],
   },
   fileInput: {
     display: "none",
@@ -62,12 +62,12 @@ export const styles = stylex.create({
   dropzoneHint: {
     margin: 0,
     fontSize: textSizeVars["--font-size-sm"],
-    color: "var(--text-tertiary)",
+    color: colorVars["--color-text-secondary"],
   },
   uploadError: {
     flexBasis: "100%",
     margin: 0,
     fontSize: textSizeVars["--font-size-sm"],
-    color: "var(--error-text)",
+    color: colorVars["--color-text-red"],
   },
 });

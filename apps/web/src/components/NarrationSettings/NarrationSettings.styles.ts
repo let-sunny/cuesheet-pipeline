@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
+import { colorVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md) — split out of the old shared
@@ -12,6 +12,6 @@ export const styles = stylex.create({
     margin: "0 0 12px",
     fontSize: textSizeVars["--font-size-sm"],
     lineHeight: 1.5,
-    color: "var(--text-tertiary)",
+    color: colorVars["--color-text-secondary"],
   },
 });

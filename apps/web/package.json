@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@astryxdesign/core": "*",
+    "@astryxdesign/theme-neutral": "0.1.4",
     "@astryxdesign/theme-stone": "*",
     "@astryxdesign/theme-y2k": "0.1.4",
     "@cuesheet/render": "workspace:*",

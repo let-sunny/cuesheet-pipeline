@@ -1,5 +1,11 @@
 import * as stylex from "@stylexjs/stylex";
-import { radiusVars, spacingVars, textSizeVars, fontWeightVars } from "@astryxdesign/core/theme/tokens.stylex";
+import {
+  colorVars,
+  radiusVars,
+  spacingVars,
+  textSizeVars,
+  fontWeightVars,
+} from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 3) — rules
@@ -55,7 +61,7 @@ export const styles = stylex.create({
     paddingBottom: spacingVars["--spacing-1-5"],
     borderBottomWidth: 1,
     borderBottomStyle: "solid",
-    borderBottomColor: "var(--border-soft)",
+    borderBottomColor: colorVars["--color-border"],
   },
   // Icon+text+count-badge composition passed as the gutter-toggle Button's `children` (2026-07-11
   // stock-component migration) - Button itself only lays out a single icon/label pair internally,
@@ -70,8 +76,8 @@ export const styles = stylex.create({
     borderRadius: radiusVars["--radius-element"],
     fontSize: textSizeVars["--font-size-xs"],
     fontWeight: fontWeightVars["--font-weight-semibold"],
-    backgroundColor: "var(--bgm-cue-bg)",
-    color: "var(--text-primary)",
+    backgroundColor: colorVars["--color-background-green"],
+    color: colorVars["--color-text-green"],
   },
   listBody: {
     display: "flex",
@@ -93,16 +99,16 @@ export const styles = stylex.create({
     flexDirection: "column",
     alignItems: "stretch",
     overflow: "hidden",
-    backgroundColor: "var(--bgm-cue-bg)",
+    backgroundColor: colorVars["--color-background-green"],
     borderWidth: 1,
     borderStyle: "solid",
-    borderColor: "var(--bgm-cue-border)",
+    borderColor: colorVars["--color-border-green"],
     borderRadius: radiusVars["--radius-inner"],
     cursor: "grab",
   },
   gutterBarSelected: {
-    borderColor: "var(--accent)",
-    boxShadow: "0 0 0 1px var(--accent)",
+    borderColor: colorVars["--color-accent"],
+    boxShadow: `0 0 0 1px ${colorVars["--color-accent"]}`,
   },
   // 6px -> 9px (2026-07-09 diagnosed drag-reliability fix) - a wider grab target for the
   // resize-start/resize-end handles, alongside the window-level pointer listeners in
@@ -113,7 +119,7 @@ export const styles = stylex.create({
     flexBasis: "auto",
     height: 9,
     cursor: "ns-resize",
-    backgroundColor: "var(--bgm-cue-border)",
+    backgroundColor: colorVars["--color-border-green"],
   },
   gutterBarLabel: {
     flexGrow: 1,
@@ -150,21 +156,21 @@ export const styles = stylex.create({
     alignItems: "center",
     gap: spacingVars["--spacing-3"],
     padding: `${spacingVars["--spacing-2"]} ${spacingVars["--spacing-3"]}`,
-    backgroundColor: "var(--surface-1)",
+    backgroundColor: colorVars["--color-background-surface"],
     borderWidth: 1,
     borderStyle: "solid",
-    borderColor: "var(--border-soft)",
+    borderColor: colorVars["--color-border"],
     borderRadius: radiusVars["--radius-element"],
     cursor: "pointer",
     minWidth: 0,
   },
   rowSelected: {
-    borderColor: "var(--accent)",
-    backgroundColor: "var(--surface-3-soft)",
+    borderColor: colorVars["--color-accent"],
+    backgroundColor: colorVars["--color-accent-muted"],
   },
   rowBgmDragHighlight: {
-    borderColor: "var(--bgm-cue-border)",
-    backgroundColor: "var(--bgm-cue-bg)",
+    borderColor: colorVars["--color-border-green"],
+    backgroundColor: colorVars["--color-background-green"],
   },
   index: {
     flexGrow: 0,
@@ -172,7 +178,7 @@ export const styles = stylex.create({
     flexBasis: "auto",
     width: 20,
     fontSize: textSizeVars["--font-size-sm"],
-    color: "var(--text-secondary)",
+    color: colorVars["--color-text-secondary"],
   },
   text: {
     flexGrow: 1,
@@ -192,11 +198,11 @@ export const styles = stylex.create({
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
     fontSize: textSizeVars["--font-size-sm"],
-    color: "var(--text-tertiary)",
+    color: colorVars["--color-text-secondary"],
   },
   sceneEmpty: {
     fontStyle: "italic",
-    color: "var(--text-faint)",
+    color: colorVars["--color-text-disabled"],
   },
   // Second line under the scene text (13-inch density pass, 2026-07-10) - time/style badge/
   // subtitle dot/reorder+delete actions used to sit beside `text` as direct row siblings, which
@@ -214,7 +220,7 @@ export const styles = stylex.create({
     flexShrink: 0,
     flexBasis: "auto",
     fontSize: textSizeVars["--font-size-sm"],
-    color: "var(--text-tertiary)",
+    color: colorVars["--color-text-secondary"],
     whiteSpace: "nowrap",
   },
   styleBadge: {
@@ -226,8 +232,8 @@ export const styles = stylex.create({
     fontSize: textSizeVars["--font-size-xs"],
     fontWeight: fontWeightVars["--font-weight-semibold"],
     whiteSpace: "nowrap",
-    backgroundColor: "var(--tag-pink-bg)",
-    color: "var(--tag-pink-text)",
+    backgroundColor: colorVars["--color-background-pink"],
+    color: colorVars["--color-text-pink"],
   },
   subtitleDot: {
     flexGrow: 0,
@@ -238,11 +244,11 @@ export const styles = stylex.create({
     borderRadius: "50%",
     borderWidth: 1,
     borderStyle: "solid",
-    borderColor: "var(--accent)",
+    borderColor: colorVars["--color-accent"],
     backgroundColor: "transparent",
   },
   subtitleDotFilled: {
-    backgroundColor: "var(--accent)",
+    backgroundColor: colorVars["--color-accent"],
   },
   actions: {
     flexGrow: 0,

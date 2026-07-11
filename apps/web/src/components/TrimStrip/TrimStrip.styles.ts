@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
+import { colorVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy (CLAUDE.md "component layering") - see docs/research/trim-ux-conventions.md
@@ -23,7 +23,7 @@ export const styles = stylex.create({
     overflow: "hidden",
     cursor: "pointer",
     touchAction: "none",
-    backgroundColor: "var(--surface-button)",
+    backgroundColor: colorVars["--color-background-muted"],
   },
   filmstripRow: {
     position: "absolute",
@@ -40,7 +40,7 @@ export const styles = stylex.create({
     overflow: "hidden",
     borderRightWidth: 1,
     borderRightStyle: "solid",
-    borderRightColor: "var(--border-soft)",
+    borderRightColor: colorVars["--color-border"],
   },
   // Ruler-tick fallback (section 4.1) - shown per-cell until its thumbnail resolves, or
   // permanently if the thumbnail is unavailable.
@@ -58,12 +58,12 @@ export const styles = stylex.create({
     width: 1,
     height: 8,
     marginBottom: 2,
-    backgroundColor: "var(--border)",
+    backgroundColor: colorVars["--color-border"],
   },
   rulerLabel: {
     fontSize: textSizeVars["--font-size-2xs"],
     lineHeight: 1,
-    color: "var(--text-tertiary)",
+    color: colorVars["--color-text-secondary"],
     whiteSpace: "nowrap",
   },
   cellThumb: {
@@ -79,7 +79,11 @@ export const styles = stylex.create({
     position: "absolute",
     top: 0,
     bottom: 0,
-    backgroundColor: "rgba(91, 124, 250, 0.22)",
+    // rgba(91, 124, 250, 0.22) (this app's old fixed accent-blue tint) -> Astryx's own
+    // accent-muted token (2026-07-11 color migration) - a translucent accent tint is exactly what
+    // this token is for, and it now follows the accent color of whichever theme is active instead
+    // of always rendering this app's old bespoke blue.
+    backgroundColor: colorVars["--color-accent-muted"],
     pointerEvents: "none",
   },
   handle: {
@@ -91,8 +95,8 @@ export const styles = stylex.create({
     borderRadius: 3,
     borderWidth: 1,
     borderStyle: "solid",
-    borderColor: "var(--accent)",
-    backgroundColor: "var(--text-primary)",
+    borderColor: colorVars["--color-accent"],
+    backgroundColor: colorVars["--color-text-primary"],
     cursor: "ew-resize",
     touchAction: "none",
   },
@@ -102,7 +106,7 @@ export const styles = stylex.create({
     width: 2,
     height: 48,
     marginLeft: -1,
-    backgroundColor: "var(--warning-text)",
+    backgroundColor: colorVars["--color-warning"],
     pointerEvents: "none",
   },
   // Zoom control row - a small row at the strip's right end (section 4.2).
@@ -118,7 +122,7 @@ export const styles = stylex.create({
     borderRadius: 5,
     cursor: "pointer",
     touchAction: "none",
-    backgroundColor: "var(--surface-button)",
+    backgroundColor: colorVars["--color-background-muted"],
   },
   panCutTick: {
     position: "absolute",
@@ -126,7 +130,7 @@ export const styles = stylex.create({
     bottom: 2,
     minWidth: 2,
     borderRadius: 1,
-    backgroundColor: "var(--accent)",
+    backgroundColor: colorVars["--color-accent"],
     pointerEvents: "none",
   },
   panThumb: {
@@ -136,12 +140,16 @@ export const styles = stylex.create({
     borderRadius: 5,
     borderWidth: 1,
     borderStyle: "solid",
-    borderColor: "var(--accent)",
-    backgroundColor: "var(--surface-3)",
+    borderColor: colorVars["--color-accent"],
+    backgroundColor: colorVars["--color-accent-muted"],
     cursor: "grab",
     touchAction: "none",
+    // A hover-darkened/lightened step on top of accent-muted, via Astryx's own `--color-tint-hover`
+    // token (black in light mode, white in dark - "used with color-mix for hover states" per its
+    // own doc comment) rather than a second fixed color, so the hover step still tracks whichever
+    // theme/mode is active.
     ":hover": {
-      backgroundColor: "var(--surface-3-soft)",
+      backgroundColor: `color-mix(in srgb, ${colorVars["--color-accent-muted"]}, ${colorVars["--color-tint-hover"]} 12%)`,
     },
   },
   panEdge: {

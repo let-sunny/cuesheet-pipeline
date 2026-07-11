@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { radiusVars, spacingVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
+import { colorVars, radiusVars, spacingVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 5) — rules ported
@@ -122,17 +122,17 @@ export const styles = stylex.create({
     width: "100%",
     maxWidth: 960,
     height: 8,
-    backgroundColor: "var(--surface-2)",
+    backgroundColor: colorVars["--color-background-muted"],
     borderWidth: 1,
     borderStyle: "solid",
-    borderColor: "var(--border)",
+    borderColor: colorVars["--color-border"],
     borderRadius: radiusVars["--radius-inner"],
     cursor: "pointer",
     overflow: "hidden",
   },
   progressFill: {
     height: "100%",
-    backgroundColor: "var(--accent)",
+    backgroundColor: colorVars["--color-accent"],
   },
   controls: {
     display: "flex",
@@ -149,7 +149,7 @@ export const styles = stylex.create({
   },
   counter: {
     fontSize: textSizeVars["--font-size-sm"],
-    color: "var(--text-tertiary)",
+    color: colorVars["--color-text-secondary"],
     marginLeft: "auto",
   },
 });

@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
+import { colorVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /** Component anatomy migration (docs/styling-migration.md) — rules ported 1:1 from the old
  * `.keyboard-help*` classes in styles.css.
@@ -26,23 +26,23 @@ export const styles = stylex.create({
   note: {
     margin: 0,
     padding: "8px 12px",
-    backgroundColor: "var(--surface-1)",
+    backgroundColor: colorVars["--color-background-surface"],
     borderWidth: 1,
     borderStyle: "solid",
-    borderColor: "var(--border)",
+    borderColor: colorVars["--color-border"],
     borderRadius: 6,
     fontSize: textSizeVars["--font-size-sm"],
-    color: "var(--text-tertiary)",
+    color: colorVars["--color-text-secondary"],
     maxWidth: 280,
   },
   list: {
     listStyle: "none",
     margin: 0,
     padding: "10px 12px",
-    backgroundColor: "var(--surface-1)",
+    backgroundColor: colorVars["--color-background-surface"],
     borderWidth: 1,
     borderStyle: "solid",
-    borderColor: "var(--border)",
+    borderColor: colorVars["--color-border"],
     borderRadius: 6,
     fontSize: textSizeVars["--font-size-sm"],
     maxWidth: 280,
@@ -55,11 +55,11 @@ export const styles = stylex.create({
   },
   kbd: {
     fontFamily: "inherit",
-    color: "var(--text-quaternary)",
-    backgroundColor: "var(--surface-2)",
+    color: colorVars["--color-text-primary"],
+    backgroundColor: colorVars["--color-background-muted"],
     borderWidth: 1,
     borderStyle: "solid",
-    borderColor: "var(--border)",
+    borderColor: colorVars["--color-border"],
     borderRadius: 3,
     padding: "1px 5px",
     whiteSpace: "nowrap",
