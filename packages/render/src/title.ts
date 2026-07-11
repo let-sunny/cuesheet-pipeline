@@ -1,18 +1,16 @@
+import { strict as nodeAssert } from "node:assert";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { bundle } from "@remotion/bundler";
+import { ensureBrowser, renderFrames, selectComposition } from "@remotion/renderer";
 import type { CueSheet, Title } from "@cuesheet/schema";
-import { gooeyAnimationHtml, meltAnimationHtml, particleAnimationHtml } from "./titleAnimations.js";
+import type { TitleCardProps } from "./remotion/TitleCard.js";
 
-/** Where prepareTitleAssets defaults to writing the ASS/PNG-sequence cache (gitignored). */
+/** Where prepareTitleAssets writes the captured PNG-sequence cache (gitignored). */
 export const DEFAULT_TITLE_CACHE_DIR = "media/title-cache";
-
-export interface TitleAssAsset {
-  kind: "ass";
-  /** Path to a written .ass file (subtitles= filter reads this from disk). */
-  path: string;
-}
 
 export interface TitleFramesAsset {
   kind: "frames";
@@ -22,14 +20,19 @@ export interface TitleFramesAsset {
   fps: number;
 }
 
-export type TitleAsset = TitleAssAsset | TitleFramesAsset;
+/**
+ * Every title preset (fade/wordStagger/typing/highlight) now renders through this one asset kind -
+ * a Remotion-captured, transparent PNG frame sequence (see docs/research/title-render-spike.md for
+ * the ASS/hand-rolled-HTML approaches this replaced). Kept as its own named type (rather than
+ * inlining TitleFramesAsset everywhere) so a future second asset kind, if one is ever needed again,
+ * is a small, localized change.
+ */
+export type TitleAsset = TitleFramesAsset;
 
 /**
- * Content-addressed cache key for a title card's headless-captured frames - same (text, preset,
- * durationS, project dimensions/fps) always produces the same key, so a re-render (or a second
- * cut reusing the same title) can skip capture entirely on a cache hit. Only meaningful for the
- * capture-based presets (gooey/melt/particle); typing doesn't need caching (ASS generation is
- * effectively instant - see docs/research/title-render-spike.md).
+ * Content-addressed cache key for a title card's captured frames - same (text, preset, durationS,
+ * project dimensions/fps) always produces the same key, so a re-render (or a second cut reusing
+ * the same title) can skip capture entirely on a cache hit.
  */
 export function titleCacheKey(
   title: Pick<Title, "text" | "preset" | "durationS">,
@@ -46,121 +49,22 @@ export function titleCacheKey(
   return createHash("sha256").update(payload).digest("hex").slice(0, 16);
 }
 
-/** ASS color in &HAABBGGRR form (ASS alpha is inverted: 00 = opaque, FF = fully transparent). */
-function assColor(alphaHex: string, bbggrr: string): string {
-  return `&H${alphaHex}${bbggrr}`;
-}
-
-/**
- * Escapes text for the ASS Dialogue Text field (literal braces would be read as override tags).
- *
- * Backslash: ASS has no official escape for a literal backslash. Verified directly against our
- * libass build (2026-07-09, ffmpeg-full 8.1.2): a raw "\" character immediately followed by "{"
- * (exactly the shape our per-character karaoke wrapping produces - each character sits between
- * its own {\k..} block and the next one) is read by libass as the "\{" literal-left-brace escape
- * rather than plain text + a new override block. That swallows the FOLLOWING character's {\k..}
- * tag as literal text instead of interpreting it, corrupting the rest of the karaoke reveal (e.g.
- * "a\b" became the literal on-screen text "a{\k100}b" - confirmed via a real render/frame capture,
- * see packages/render/test/title.test.ts). Substituting the fullwidth reverse solidus U+FF3C
- * ("＼", visually near-identical to "\") sidesteps this entirely - it's a different codepoint with
- * no special meaning to the ASS parser, so it survives the same per-character {\k..} wrapping as
- * any other character (confirmed via the same render/frame-capture method: "a＼bc" rendered and
- * revealed correctly, all four characters intact).
- */
-function escapeAssText(text: string): string {
-  return text.replace(/\\/g, "＼").replace(/\{/g, "(").replace(/\}/g, ")").replace(/\n/g, "\\N");
-}
-
-/** Formats seconds as ASS's H:MM:SS.CC (centisecond) timestamp. */
-export function formatAssTime(seconds: number): string {
-  const cs = Math.max(0, Math.round(seconds * 100));
-  const h = Math.floor(cs / 360000);
-  const m = Math.floor((cs % 360000) / 6000);
-  const s = Math.floor((cs % 6000) / 100);
-  const c = cs % 100;
-  return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${String(c).padStart(2, "0")}`;
-}
-
-/**
- * Builds the ASS file content for the "typing" preset: a per-character \k karaoke reveal (each
- * character invisible - via a fully-transparent SecondaryColour - until its turn) plus a whole-line
- * \fad for a quick fade in/out, spanning [0, title.durationS] in the segment's own local timeline
- * (title always starts at the cut's start - see schema, there is no separate `start` field).
- */
-export function buildTitleAssContent(
-  title: Title,
-  project: Pick<CueSheet["project"], "width" | "height">,
-): string {
-  const chars = Array.from(title.text);
-  const totalCs = Math.max(1, Math.round(title.durationS * 100));
-  const perCharCs = Math.max(1, Math.floor(totalCs / Math.max(1, chars.length)));
-  const karaoke = chars.map((ch) => `{\\k${perCharCs}}${escapeAssText(ch)}`).join("");
-  const fontSize = Math.round(project.height * 0.08);
-  const fadeMs = Math.min(300, Math.round((title.durationS * 1000) / 4));
-
-  return `[Script Info]
-ScriptType: v4.00+
-PlayResX: ${project.width}
-PlayResY: ${project.height}
-ScaledBorderAndShadow: yes
-
-[V4+ Styles]
-Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Title,Pretendard,${fontSize},${assColor("00", "FFFFFF")},${assColor("FF", "FFFFFF")},${assColor("00", "000000")},${assColor("00", "000000")},0,0,0,0,100,100,0,0,1,3,0,5,10,10,10,1
-
-[Events]
-Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-Dialogue: 0,${formatAssTime(0)},${formatAssTime(title.durationS)},Title,,0,0,0,,{\\fad(${fadeMs},${fadeMs})}${karaoke}
-`;
-}
-
-/** Escapes a filesystem path for use as a filtergraph filter argument (subtitles=<path>). */
-export function escapeFilterPath(path: string): string {
-  return path.replace(/\\/g, "\\\\").replace(/:/g, "\\:").replace(/'/g, "\\'");
-}
-
-function animationHtmlFor(preset: "gooey" | "melt" | "particle", params: { text: string; width: number; height: number; frameCount: number }): string {
-  switch (preset) {
-    case "gooey":
-      return gooeyAnimationHtml(params);
-    case "melt":
-      return meltAnimationHtml(params);
-    case "particle":
-      return particleAnimationHtml(params);
-  }
-}
-
-/**
- * Dynamically imports Playwright - a devDependency of this package, only actually required at
- * runtime for the gooey/melt/particle capture path (typing needs no browser at all). Kept as a
- * dynamic import (rather than a static one) so a render environment without Playwright installed
- * can still render typing-only titles; capturing a gooey/melt/particle title without it throws a
- * clear, named error instead of an opaque module-not-found stack trace.
- */
-async function loadPlaywright(): Promise<typeof import("playwright")> {
-  try {
-    return await import("playwright");
-  } catch (e) {
-    throw new Error(
-      `preset requires the "playwright" package to render (missing dependency) - install it with ` +
-        `\`pnpm add -D playwright --filter @cuesheet/render\` and \`npx playwright install chromium\` ` +
-        `(${(e as Error).message})`,
-    );
-  }
-}
-
 interface PrepareTitleAssetsOptions {
-  /** Directory for the ASS/PNG-sequence cache. Defaults to DEFAULT_TITLE_CACHE_DIR. */
+  /** Directory for the captured-PNG-sequence cache. Defaults to DEFAULT_TITLE_CACHE_DIR. */
   cacheDir?: string;
 }
 
 /**
- * Populates the on-disk title cache (ASS files + captured PNG sequences) for every segment with a
- * `title`, and returns a map from segment index to the resulting TitleAsset for buildRenderPlan to
- * wire into the filter graph. Kept separate from buildRenderPlan (which stays a pure, synchronous,
- * I/O-free function) - this is the one place in the title pipeline that touches disk or spawns a
- * headless browser, matching the existing CLI/plan.ts split (probing/capture in the caller,
+ * Populates the on-disk title cache (captured PNG sequences) for every segment with a `title`, and
+ * returns a map from segment index to the resulting TitleAsset for buildRenderPlan to wire into the
+ * filter graph. Kept separate from buildRenderPlan (which stays a pure, synchronous, I/O-free
+ * function) - this is the one place in the title pipeline that touches disk or spawns a headless
+ * browser (via Remotion), matching the existing CLI/plan.ts split (probing/capture in the caller,
  * pure planning in buildRenderPlan).
+ *
+ * The Remotion bundle (an expensive webpack build) is memoized once per call and reused for every
+ * title in this batch - see ensureRemotionServeUrl. It's only built lazily, on the first actual
+ * cache miss, so a cuesheet whose titles are all still cache-hits never pays for it.
  */
 export async function prepareTitleAssets(
   cue: CueSheet,
@@ -168,20 +72,11 @@ export async function prepareTitleAssets(
 ): Promise<Record<number, TitleAsset>> {
   const cacheDir = opts.cacheDir ?? DEFAULT_TITLE_CACHE_DIR;
   const result: Record<number, TitleAsset> = {};
+  let serveUrlPromise: Promise<string> | null = null;
 
   for (let i = 0; i < cue.segments.length; i++) {
     const title = cue.segments[i]?.title;
     if (!title) continue;
-
-    if (title.preset === "typing") {
-      const key = titleCacheKey(title, cue.project);
-      const dir = join(cacheDir, "ass");
-      await mkdir(dir, { recursive: true });
-      const path = join(dir, `${key}.ass`);
-      await writeFile(path, buildTitleAssContent(title, cue.project), "utf-8");
-      result[i] = { kind: "ass", path };
-      continue;
-    }
 
     const key = titleCacheKey(title, cue.project);
     const dir = join(cacheDir, key);
@@ -196,47 +91,128 @@ export async function prepareTitleAssets(
       }
     }
 
-    await mkdir(dir, { recursive: true });
-    const playwright = await loadPlaywright().catch((e: Error) => {
-      throw new Error(`segments[${i}].title: ${e.message}`);
-    });
-    const browser = await playwright.chromium.launch();
-    try {
-      const page = await browser.newPage({
-        viewport: { width: cue.project.width, height: cue.project.height },
-      });
-      const html = animationHtmlFor(title.preset as "gooey" | "melt" | "particle", {
-        text: title.text,
-        width: cue.project.width,
-        height: cue.project.height,
-        frameCount,
-      });
-      await page.setContent(html);
-      await page.waitForFunction("typeof globalThis.seekAnimation === 'function'");
-      for (let frame = 0; frame < frameCount; frame++) {
-        await page.evaluate(
-          (f: number) => (globalThis as unknown as { seekAnimation: (f: number) => void }).seekAnimation(f),
-          frame,
-        );
-        // A canvas-based preset (particle) draws via a 2D context call, which doesn't itself
-        // force the browser to composite/paint before the next screenshot - verified empirically
-        // (2026-07-09): without this, the first ~30 captured frames were byte-identical blanks
-        // (the compositor hadn't caught up yet), only "waking up" partway through the sequence.
-        // SVG-based presets (gooey/melt) don't need this (DOM mutations are always in sync with
-        // the next paint), but waiting here is harmless for them too - two rAF ticks reliably
-        // span one full paint cycle in Chromium.
-        await page.evaluate(
-          "new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))",
-        );
-        const framePath = join(dir, `frame_${String(frame).padStart(4, "0")}.png`);
-        await page.screenshot({ path: framePath, omitBackground: true });
-      }
-    } finally {
-      await browser.close();
+    if (!serveUrlPromise) {
+      serveUrlPromise = ensureRemotionServeUrl();
     }
+    const serveUrl = await serveUrlPromise;
+
+    await mkdir(dir, { recursive: true });
+    await renderTitleFrames({ dir, serveUrl, title, project: cue.project, frameCount });
     await writeFile(metaPath, JSON.stringify({ frameCount, fps: cue.project.fps }), "utf-8");
     result[i] = { kind: "frames", dir, frameCount, fps: cue.project.fps };
   }
 
   return result;
 }
+
+/**
+ * Downloads Chrome Headless Shell if missing (replaces the old Playwright chromium dependency),
+ * then bundles the Remotion composition entry point once. The returned serveUrl (a local bundle
+ * path Remotion's renderer knows how to serve) is reused for every title card in the batch -
+ * bundling is a full webpack build and is far too expensive to repeat per title.
+ */
+async function ensureRemotionServeUrl(): Promise<string> {
+  await ensureBrowser();
+  return bundle({ entryPoint: resolveRemotionEntryPoint() });
+}
+
+/**
+ * Locates packages/render/src/remotion/index.tsx relative to this module's own file, regardless of
+ * whether it's running as compiled dist/title.js (sibling dist/remotion/index.js, JSX already
+ * compiled to plain JS by this package's own tsc build) or as source under vitest/ts-node
+ * (sibling src/remotion/index.tsx). Either is a valid webpack entry point for @remotion/bundler.
+ */
+function resolveRemotionEntryPoint(): string {
+  const here = fileURLToPath(new URL(".", import.meta.url));
+  const candidates = ["remotion/index.tsx", "remotion/index.ts", "remotion/index.js"].map((p) => join(here, p));
+  const found = candidates.find((p) => existsSync(p));
+  if (!found) {
+    throw new Error(
+      `Could not locate the Remotion entry point for title-card rendering - looked in: ${candidates.join(", ")}`,
+    );
+  }
+  return found;
+}
+
+/**
+ * Renders one title's frames via Remotion into a fresh, isolated `dir/_raw` subdirectory (so
+ * nothing here can be confused by leftover files from an interrupted previous attempt at this same
+ * cache key), then hands off to normalizeFrameFilenames to produce the frame_%04d.png contract
+ * twoPass.ts's buildTitleOverlayPass and plan.ts's addClip both rely on.
+ */
+async function renderTitleFrames(args: {
+  dir: string;
+  serveUrl: string;
+  title: Title;
+  project: Pick<CueSheet["project"], "width" | "height" | "fps">;
+  frameCount: number;
+}): Promise<void> {
+  const { dir, serveUrl, title, project, frameCount } = args;
+  const rawDir = join(dir, "_raw");
+  await rm(rawDir, { recursive: true, force: true });
+  await mkdir(rawDir, { recursive: true });
+
+  const inputProps: TitleCardProps = {
+    text: title.text,
+    preset: title.preset,
+    durationInSeconds: title.durationS,
+    fps: project.fps,
+    color: TITLE_TEXT_COLOR,
+    width: project.width,
+    height: project.height,
+  };
+
+  const composition = await selectComposition({ serveUrl, id: "TitleCard", inputProps });
+  await renderFrames({
+    composition,
+    serveUrl,
+    outputDir: rawDir,
+    imageFormat: "png",
+    inputProps,
+    onStart: () => {},
+    onFrameUpdate: () => {},
+  });
+
+  await normalizeFrameFilenames(rawDir, dir, frameCount, title.text);
+  await rm(rawDir, { recursive: true, force: true });
+}
+
+/**
+ * Reads every ".png" file Remotion produced in `rawDir`, sorts them, and renames them into `dir`
+ * as frame_0000.png, frame_0001.png, ... (4-digit zero-padded) by POSITION - safe because every
+ * filename Remotion produces in one render shares the same zero-padding width (it pads to
+ * `String(totalFrames-1).length` digits, not a fixed 4 - see @remotion/renderer's
+ * getFilePadLength), so lexicographic order and frame order agree. Asserts the produced count
+ * matches `frameCount` and that every renamed file matches the exact contract twoPass.ts's
+ * buildTitleOverlayPass and plan.ts's addClip rely on (`frame_%04d.png` as an ffmpeg image2
+ * input) - kept as its own function so this normalization can be exercised directly in tests
+ * without needing a real (slow, browser-dependent) Remotion render.
+ */
+export async function normalizeFrameFilenames(
+  rawDir: string,
+  dir: string,
+  frameCount: number,
+  titleTextForErrors = "",
+): Promise<void> {
+  const produced = (await readdir(rawDir)).filter((f) => f.endsWith(".png")).sort();
+  nodeAssert.equal(
+    produced.length,
+    frameCount,
+    `Remotion produced ${produced.length} frame(s) for "${titleTextForErrors}" but expected ${frameCount}`,
+  );
+  for (let i = 0; i < produced.length; i++) {
+    const from = join(rawDir, produced[i]!);
+    const finalName = `frame_${String(i).padStart(4, "0")}.png`;
+    nodeAssert.match(finalName, /^frame_\d{4}\.png$/);
+    await rename(from, join(dir, finalName));
+  }
+}
+
+/**
+ * Fixed title-card text color (no schema field for this yet - every preset renders in this one
+ * cozy, warm tone). SYNC: duplicated by hand in remotion/index.tsx's DEFAULT_PROPS.color, which is
+ * only a Studio-preview default and isn't read by real renders (those always pass this constant via
+ * renderTitleFrames's inputProps above) - see that file's comment for why there's no shared runtime
+ * module between the two.
+ */
+const TITLE_TEXT_COLOR = "#3a3128";

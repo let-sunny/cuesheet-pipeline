@@ -272,7 +272,7 @@ describe("validateCueSheet - pass cases", () => {
   it("defaults title.durationS to 3 when unspecified", () => {
     const input = {
       ...(sample as Record<string, unknown>),
-      segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", title: { text: "Hi", preset: "gooey" } }],
+      segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", title: { text: "Hi", preset: "fade" } }],
     };
     const result = validateCueSheet(input);
     expect(result.ok).toBe(true);
@@ -329,7 +329,7 @@ describe("validateCueSheet - pass cases", () => {
           in: 0,
           out: 1,
           subtitle: "",
-          title: { text: "Hi", preset: "particle", backdrop: { dim: 1.2 } },
+          title: { text: "Hi", preset: "highlight", backdrop: { dim: 1.2 } },
         },
       ],
     });

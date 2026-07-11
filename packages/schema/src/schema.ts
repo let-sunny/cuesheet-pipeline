@@ -214,18 +214,22 @@ export const titleBackdropSchema = z.object({
     ),
 });
 
-/** Closed set of title-card animation presets (cozy knitting-vlog mood, user-finalized trio + Melt exit variant). */
+/** Closed set of title-card animation presets (cozy knitting-vlog mood). All four render through
+ * Remotion (headless frame-capture -> transparent PNG sequence -> alpha-overlay composite at
+ * render time - see packages/render/src/remotion/) rather than ASS/libass or hand-rolled HTML/SVG
+ * capture. */
 export const titlePresetSchema = z
-  .enum(["gooey", "melt", "particle", "typing"])
+  .enum(["fade", "wordStagger", "typing", "highlight"])
   .describe(
-    "Which title-card animation to use. typing renders via ASS/libass karaoke reveal at render time; gooey/melt/particle render via a headless frame-capture -> alpha-overlay composite.",
+    "Which title-card animation to use: fade (calm scale+opacity entrance), wordStagger (each word eases in with a stagger), typing (typewriter reveal with a blinking cursor), highlight (a pastel marker sweeps in behind the last word). All four render via Remotion's headless frame-capture -> transparent PNG sequence -> alpha-overlay composite at render time.",
   );
 
 /**
- * A title card shown at the start of a cut (optional field - PRD backlog #2). `typing` renders via
- * ASS/libass karaoke reveal at render time; `gooey`/`melt`/`particle` render via a headless
- * frame-capture -> alpha-overlay composite (see docs/research/title-render-spike.md). Both paths
- * share this one schema shape; the render-time branch is keyed off `preset`.
+ * A title card shown at the start of a cut (optional field - PRD backlog #2). All presets render
+ * via Remotion (headless frame-capture -> transparent PNG sequence -> alpha-overlay composite at
+ * render time - see packages/render/src/remotion/ and docs/research/title-render-spike.md for the
+ * history of the ASS/hand-rolled-HTML approaches this replaced). This one schema shape covers
+ * every preset; the render-time branch is keyed off `preset`.
  */
 export const titleSchema = z.object({
   text: z

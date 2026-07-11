@@ -18,7 +18,7 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 |---|---|---|
 | `packages/schema` | Cuesheet types + validation (contract's center, zod), `.describe()` field docs, mechanical repair hints on failures | Stable. 82 tests |
 | `packages/bridge` | MCP server for Claude Code connection (natural-language editing) | Stable. 36 tests. 5 tools (`get_cuesheet`/`update_cuesheet`/`validate_cuesheet`/`get_schema`/`get_capabilities`), structured edit receipts, change-summary diff, `CUESHEET_BRIDGE_READONLY` mode |
-| `packages/render` | Cuesheet -> ffmpeg render (CLI + buildRenderPlan, incl. two-pass fallback for captured-frames titles + large HEVC concats) | Stable. 112 tests, verified with real renders (single-pass and two-pass) |
+| `packages/render` | Cuesheet -> ffmpeg render (CLI + buildRenderPlan, incl. two-pass fallback for captured-frames titles + large HEVC concats); title cards render via Remotion (`packages/render/src/remotion/`) | Stable. 110 tests, verified with real renders (single-pass, two-pass, and a real Remotion title capture) |
 | `apps/web` | Touch-up editor: cut editing, single zoomable-filmstrip trim (TrimStrip), full timeline + BGM drag, proxy playback, export button | Actively evolving. 539 tests. Edit step's 3 columns fit a 13-inch laptop; recolors entirely from the active Astryx theme (stone/y2k/neutral switcher) |
 | `packages/draft` | **Core**: raw footage folder -> automatic rough-cut cuesheet generation (CLI `cuesheet-draft`: scan for inventory + frame extraction -> assemble for assembly; vision judgment handled by Claude) | Promoted to a proper package. 44 tests (incl. `--json` envelope contract tests), scan/assemble E2E verified against a real footage folder |
 | `media/proxies/` | 720p H.264 proxies for web preview (auto-generated, git-ignored) | Automatic |
@@ -35,6 +35,40 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 - **Proxy playback**: original 4K HEVC can't play in-browser -> 720p H.264 proxy for preview, render uses the original
 - **iCloud rule**: must check `stat blocks=0` before reading source footage (reading a placeholder hangs forever), manage space with `brctl download/evict`
 - **AI-legibility as its own backlog**: a dedicated survey (wiki "AI-Legible System Design", covering astryx internals + shadcn/Stripe/GitHub/Cloudflare/Vercel/Storybook/v0) found the missing layer is turning CLAUDE.md's prose conventions into scripts that fail when broken, not more documentation — motivated `check:repo`, CI, `.describe()`-driven `get_schema`, `get_capabilities`, and the AGENTS.md smoke test (issues #5-#16)
+
+## 2026-07-11: title cards now render via Remotion, replacing ASS + hand-rolled HTML capture
+
+All title-card animation is now produced by **Remotion** (`packages/render/src/remotion/`) —
+the only title-rendering mechanism left. Deleted the old split (ASS/libass karaoke reveal for
+`typing`, hand-rolled HTML/SVG/canvas capture via Playwright for `gooey`/`melt`/`particle`) along
+with `titleAnimations.ts` and the `subtitles=` filter path in `plan.ts`; the `playwright`
+dependency is gone from `packages/render`.
+
+- **New closed preset set** (`@cuesheet/schema`'s `titlePresetSchema`): `fade` / `wordStagger` /
+  `typing` / `highlight` — replaces `gooey`/`melt`/`particle`/`typing`. Breaking change; no
+  committed fixture referenced the old names except `packages/bridge/src/capabilities.ts`'s
+  example (`gooey` -> `fade`), migrated in the same change.
+- **Flow**: `ensureBrowser()` downloads Chrome Headless Shell once (replaces the Playwright
+  chromium dep) -> `bundle()` builds the Remotion composition entry point once per
+  `prepareTitleAssets` call (memoized across every title in the batch) -> `selectComposition` +
+  `renderFrames` capture each title's transparent PNG sequence, keyed by the same
+  content-addressed cache (`titleCacheKey`) as before. Every preset is now a "captured-frames"
+  title (`TitleAsset` dropped its `ass` variant entirely) — `twoPass.ts`'s
+  `frameTitleSegmentIndices` no longer excludes `typing`, so a `typing` title can trigger the
+  two-pass path too.
+- **Frame-filename normalization** (`normalizeFrameFilenames`): Remotion's own zero-padding width
+  depends on the total frame count of that particular render (not a fixed 4 digits), so frames
+  are always captured into an isolated scratch subdirectory first, then sorted and renamed into
+  the `frame_%04d.png` contract the rest of the pipeline (`twoPass.ts`, `plan.ts`) depends on.
+- **Verified end-to-end** (real render, this environment): Chrome Headless Shell downloaded
+  successfully, a real `fade`-preset title rendered against a real clip
+  (`media/clips/cut_01.mp4`) produced `frame_0000.png`..`frame_0059.png` (60 = 2s * 30fps, all
+  matching `/^frame_\d{4}\.png$/`, confirmed RGBA/alpha-channel PNGs via `ffprobe`), and the final
+  mp4 visibly shows the "Cast on" title composited over the footage.
+- Licensing note: Remotion is free for individuals/companies up to 3 people; above that a paid
+  company license applies (their cloud-rendering automation tier is priced roughly $0.01/render)
+  — worth revisiting if this project is ever productized/hosted for others. See
+  `packages/render/README.md`'s new "Title cards (Remotion)" section for the fuller writeup.
 
 ## 2026-07-11: UI overhaul — consume Astryx as a design system, not a widget bin
 

@@ -13,7 +13,6 @@ test("set title preset, and the preview overlay appears", async ({ page }) => {
   await page.getByRole("checkbox", { name: "Title card for this cut" }).click();
   await expect(page.getByTestId("title-overlay")).toBeVisible();
 
-  await page.getByTestId("cut-field-title-preset").selectOption("gooey");
+  await page.getByTestId("cut-field-title-preset").selectOption("highlight");
   await expect(page.getByTestId("title-overlay")).toBeVisible();
-  await expect(page.getByTestId("title-overlay").locator("svg")).toBeVisible();
 });

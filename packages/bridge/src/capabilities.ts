@@ -97,7 +97,7 @@ const SCHEMA_FEATURES: CapabilitySchemaFeature[] = [
       segments: [
         {
           ...BASE_EXAMPLE.segments[0]!,
-          title: { text: "Chapter 1", preset: "gooey", durationS: 3 },
+          title: { text: "Chapter 1", preset: "fade", durationS: 3 },
         },
       ],
     },
