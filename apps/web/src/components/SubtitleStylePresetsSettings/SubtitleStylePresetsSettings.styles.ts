@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { radiusVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Ported 1:1 from the old `.preset-preview-chip`/`.preset-preview-text` rules in styles.css
@@ -11,6 +12,11 @@ import * as stylex from "@stylexjs/stylex";
  * (`numberInput`) is gone (2026-07-11 stock-input migration) - the Size field is now a stock Astryx
  * `TextInput`; `sizeField` is just its width (a stock TextInput needs no border/background/padding
  * chrome of its own).
+ *
+ * Radius migration (2026-07-11, design-principles.md #5 strict rule): `previewChip`'s
+ * `borderRadius` reads from Astryx's `radiusVars` - it's a small compact chip (same shape as
+ * VideoPreview.styles.ts's real preview panel), so it gets `--radius-element`, not `--container`.
+ * Structural sizing (`height: 40`) stays literal.
  */
 export const styles = stylex.create({
   previewChip: {
@@ -22,7 +28,7 @@ export const styles = stylex.create({
     alignItems: "center",
     justifyContent: "center",
     height: 40,
-    borderRadius: 6,
+    borderRadius: radiusVars["--radius-element"],
     backgroundColor: "var(--stage-bg)",
     overflow: "hidden",
     containerType: "inline-size",

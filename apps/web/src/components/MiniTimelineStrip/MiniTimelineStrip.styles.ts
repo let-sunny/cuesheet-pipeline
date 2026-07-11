@@ -1,5 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
-import { colorVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
+import {
+  colorVars,
+  radiusVars,
+  spacingVars,
+  textSizeVars,
+} from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 5) — rules ported
@@ -21,6 +26,13 @@ import { colorVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex"
  *
  * `background`/`border` shorthands are written out as their longhand equivalents — see
  * HeaderBar.styles.ts's comment for why (StyleX silently drops the shorthand form).
+ *
+ * Radius/spacing migration (2026-07-11, design-principles.md #5 strict rule): `gap`/`padding`/
+ * `margin`/`borderRadius` read from Astryx's `spacingVars`/`radiusVars`, snapped to the nearest
+ * step where a value fell between two (10 -> 8, ties round down per the existing repo convention -
+ * see MomentPalette.styles.ts's own comment). `root` (the timeline box) gets `--radius-container`
+ * per the task's explicit large-surface mapping; the per-block filmstrip cells get the smaller
+ * `--radius-element`. Structural sizing (`height`, `minWidth: 0`) stays literal.
  */
 export const styles = stylex.create({
   root: {
@@ -29,10 +41,10 @@ export const styles = stylex.create({
     flexBasis: "auto",
     display: "flex",
     alignItems: "center",
-    gap: 10,
-    padding: "8px 12px",
+    gap: spacingVars["--spacing-2"],
+    padding: `${spacingVars["--spacing-2"]} ${spacingVars["--spacing-3"]}`,
     backgroundColor: colorVars["--color-background-surface"],
-    borderRadius: 8,
+    borderRadius: radiusVars["--radius-container"],
     minWidth: 0,
   },
   // When zoomed in, the track becomes wider than the viewport, causing horizontal scroll.
@@ -49,7 +61,7 @@ export const styles = stylex.create({
     flexShrink: 1,
     flexBasis: "auto",
     display: "flex",
-    gap: 2,
+    gap: spacingVars["--spacing-0-5"],
     minWidth: 0,
   },
   zoomControls: {
@@ -57,7 +69,7 @@ export const styles = stylex.create({
     flexShrink: 0,
     flexBasis: "auto",
     display: "flex",
-    gap: 4,
+    gap: spacingVars["--spacing-1"],
   },
   total: {
     flexGrow: 0,
@@ -89,7 +101,7 @@ export const styles = stylex.create({
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: colorVars["--color-border"],
-    borderRadius: 3,
+    borderRadius: radiusVars["--radius-element"],
     cursor: "pointer",
   },
   // Adds a thin divider so clip boundaries stand out even in the zoomed-out (full view) state.
