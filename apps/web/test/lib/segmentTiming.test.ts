@@ -37,11 +37,11 @@ describe("formatClock", () => {
     expect(formatClock(30.4, true)).toBe("0:30");
   });
 
-  // BUG (found while writing this test, not fixed here per task scope): rounding the seconds
-  // part can round up to 60 without carrying into the minutes digit, since m and s are computed
-  // independently from the same `safe` value. Documents current (buggy) behavior.
-  it("does not carry a rounded-up 60s into the minutes digit (documents a real bug)", () => {
-    expect(formatClock(59.9, true)).toBe("0:60");
+  // Regression: a rounded-up 60s must carry into the minutes digit rather than showing "0:60"
+  // (formatClock reduces to whole seconds first, then splits into m:s).
+  it("carries a rounded-up 60s into the minutes digit", () => {
+    expect(formatClock(59.9, true)).toBe("1:00");
+    expect(formatClock(119.6, true)).toBe("2:00");
   });
 
   it("treats NaN as 0", () => {

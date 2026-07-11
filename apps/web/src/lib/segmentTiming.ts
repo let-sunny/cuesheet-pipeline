@@ -13,7 +13,11 @@ export function playbackSeconds(seg: Segment): number {
  */
 export function formatClock(totalSeconds: number, roundSeconds = false): string {
   const safe = Number.isFinite(totalSeconds) && totalSeconds > 0 ? totalSeconds : 0;
-  const m = Math.floor(safe / 60);
-  const s = roundSeconds ? Math.round(safe % 60) : Math.floor(safe % 60);
+  // Reduce to a whole-second count FIRST, then split into m:s - rounding the minutes and seconds
+  // components independently would let a rounded-up 60s land as "0:60" instead of carrying into the
+  // minutes digit ("1:00").
+  const whole = roundSeconds ? Math.round(safe) : Math.floor(safe);
+  const m = Math.floor(whole / 60);
+  const s = whole % 60;
   return `${m}:${String(s).padStart(2, "0")}`;
 }
