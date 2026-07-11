@@ -331,13 +331,8 @@ export function App({ themeMode, onThemeModeChange }: AppProps) {
         {step === "compose" ? (
           <ComposeStep
             segments={draft.segments}
-            clipDir={draft.clipDir}
-            introPath={draft.intro}
-            outroPath={draft.outro}
             onAddSegment={composeActions.addMomentSegment}
             onRemoveSegment={composeActions.removeMatchingSegments}
-            onSetIntro={(clip) => setIntroOutroFromClip("intro", clip)}
-            onSetOutro={(clip) => setIntroOutroFromClip("outro", clip)}
           />
         ) : null}
 

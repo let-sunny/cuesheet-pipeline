@@ -149,15 +149,17 @@ describe("CompactSegmentList", () => {
     render(<CompactSegmentList {...baseProps({ bgm })} />);
     const toggle = screen.getByTitle("Collapse the background music gutter");
     expect(toggle.textContent).toContain("1");
-    expect(screen.getByText("+ Add track")).not.toBeNull();
+    // Icon-only button (2026-07-11 - see CompactSegmentList.tsx's comment): `label` becomes the
+    // accessible name, selected by role/name rather than the old visible "+ Add track" text.
+    expect(screen.getByRole("button", { name: "Add background music track" })).not.toBeNull();
     fireEvent.click(toggle);
-    expect(screen.queryByText("+ Add track")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add background music track" })).toBeNull();
   });
 
-  it("calls onAddBgmTrack when + Add track is clicked", () => {
+  it("calls onAddBgmTrack when the add-track button is clicked", () => {
     const onAddBgmTrack = vi.fn();
     render(<CompactSegmentList {...baseProps({ onAddBgmTrack })} />);
-    fireEvent.click(screen.getByText("+ Add track"));
+    fireEvent.click(screen.getByRole("button", { name: "Add background music track" }));
     expect(onAddBgmTrack).toHaveBeenCalledTimes(1);
   });
 

@@ -61,9 +61,10 @@ export const styles = stylex.create({
     display: "flex",
     flexWrap: "wrap",
     gap: 10,
-    // Since card heights now vary by scene description length (clamp removed), leaving the
-    // default stretch would make a short-memo card stretch to the height of a longer card on the
-    // same row. Each row independently (not masonry) takes only its own content's height.
+    // Cards are a uniform fixed height now (2026-07-11, see `cardRow`'s comment), so `stretch` vs.
+    // `flex-start` no longer changes anything visually for the common case - kept flex-start since
+    // an excluded card's extra status-banner height (added on top of the fixed row, see `card`'s
+    // comment) still means row members aren't perfectly uniform in that rare state.
     alignItems: "flex-start",
   },
   // 168 -> 440 (2026-07-11 QA fix, horizontal card layout - see cardRow/thumbCol below): a
@@ -75,31 +76,50 @@ export const styles = stylex.create({
   },
   // Background/border/rounded corners are handled by Astryx Card (variant="default") - this only
   // adds size/layout within the grid and overflow-hidden (for clipping the thumbnail's corners).
+  // No fixed height here (2026-07-11): the rare exclusion banner is a sibling of `cardRow` inside
+  // this same flex column, so it stacks additively on top of `cardRow`'s own fixed height rather
+  // than needing to be budgeted into a single total - see `cardRow`'s comment.
   card: {
     width: "100%",
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
   },
-  // Horizontal split (2026-07-11 QA fix): thumbnail column + metadata body side by side, below the
-  // full-width exclusion banner (which stays a sibling of this row, not inside it, so it keeps
-  // spanning the whole card). `alignItems: flex-start` (not `stretch`) deliberately leaves the
-  // thumbnail's own 16:9 aspect-ratio height alone rather than forcing it to match the body's
-  // (variable, description-length-dependent) height.
+  // Uniform card height (2026-07-11 QA fix, design-principles.md #6 "dense, no ragged rows") -
+  // previously this row was `alignItems: flex-start` with the thumbnail at its own 16:9-derived
+  // height and the body free to grow with the scene description, so a long description made that
+  // one card's row visibly taller than its grid neighbors. Fixing `height` here and switching to
+  // `alignItems: stretch` makes every card's content row the same height regardless of thumbnail
+  // ratio or description length; `thumbCol`/`cardBody` both stretch to fill it (thumbCol's frame
+  // via `objectFit: cover`, cardBody via its own fixed-size children + `memoWrap`'s scroll cap -
+  // see their comments). 160px sized bottom-up from cardBody's actual content budget: 24px
+  // (12px top+bottom padding) + 20px (2 x 10px gaps between memo/info/actions) + 60px (memoWrap's
+  // capped description height, ~3 lines) + ~22px (info row) + ~28px (sm action button) + a few px
+  // slack ≈ 160px total.
   cardRow: {
     display: "flex",
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "stretch",
     width: "100%",
+    height: 160,
   },
-  // Fixes the thumbnail to its own column instead of letting AspectRatio's own `width: 100%` size
-  // it to the whole (now much wider) card - a ~45% share of the card, matching the researched
-  // convention's proportions.
+  // Fixes the thumbnail to its own column (no longer via AspectRatio, see MomentPalette.tsx's
+  // comment) - a ~45% share of the card, matching the researched convention's proportions. Height
+  // comes from `cardRow`'s `alignItems: stretch` (a flex item's stretched cross-size is a definite
+  // size for descendants' percentage-height resolution), so `thumbOverlay`/the thumbnail img can
+  // fill it at 100% height with no separate height rule needed here.
   thumbCol: {
     flexGrow: 0,
     flexShrink: 0,
     flexBasis: 200,
     minWidth: 0,
+  },
+  // Astryx Overlay's own container renders as a plain block div with no explicit height (see its
+  // source) - this xstyle stretches it to fill `thumbCol`'s full stretched height so the thumbnail
+  // (img, objectFit:cover) reaches edge to edge with zero letterbox gap (2026-07-11 QA fix).
+  thumbOverlay: {
+    width: "100%",
+    height: "100%",
   },
   // Rules for representing excluded (auto-filtered) card and in-use card state (screen-spec
   // section 2) - both a full-opacity dimming and a thumbnail-only desaturation were abandoned
@@ -120,8 +140,7 @@ export const styles = stylex.create({
   // a small corner badge (the previous problem where its smallness got misread as "dimmed = inactive").
   // Wraps instead of truncating (QA finding 2026-07-10: nowrap+ellipsis cut "face exposure" down to
   // "face exp…" mid-word at the card's 168px width, leaving the full reason visible only on hover) -
-  // consistent with this component's established "wrap over truncate/overlap" rule (see ioActions'
-  // comment above for the same call made on the intro/outro buttons).
+  // consistent with this component's established "wrap over truncate/overlap" rule.
   statusBanner: {
     padding: "4px 8px",
     fontSize: 11,
@@ -139,8 +158,8 @@ export const styles = stylex.create({
     color: "var(--warning-text)",
   },
   // Background is intentionally fixed dark regardless of theme — since this sits inside the
-  // AspectRatio(16:9) box before a frame has loaded (or when there is none), it stays dark even in
-  // light theme.
+  // full-bleed thumbnail box before a frame has loaded (or when there is none), it stays dark even
+  // in light theme.
   thumbEmpty: {
     width: "100%",
     height: "100%",
@@ -190,35 +209,37 @@ export const styles = stylex.create({
   // thumbnail column (2026-07-11 QA fix, horizontal layout), lays out the description/meta/action
   // three groups with consistent padding + a clear gap between groups. flexGrow fills the row's
   // remaining width; the left padding is what creates the visual gap from the thumbnail (no
-  // separate gap needed on cardRow).
+  // separate gap needed on cardRow). Stretched by `cardRow`'s `alignItems: stretch` to the same
+  // fixed height as `thumbCol` (2026-07-11) - `minHeight: 0` is required on a stretched flex-column
+  // container for its own scrolling child (`memoWrap`) to be able to shrink below its content size
+  // instead of forcing this box to overflow its stretched height.
   cardBody: {
     flexGrow: 1,
     minWidth: 0,
+    minHeight: 0,
     display: "flex",
     flexDirection: "column",
     gap: 10,
     padding: 12,
   },
+  // Fixed max-height + internal scroll (2026-07-11 QA fix, design-principles.md #6) - this is what
+  // keeps the card's overall height uniform (see `cardRow`'s comment): previously the description
+  // rendered with no clamp at all, so a long scene memo grew the whole card. 60px fits roughly 3
+  // lines of the `Text type="supporting"` size; anything longer scrolls within the card instead of
+  // stretching it.
   memoWrap: {
     padding: 0,
+    maxHeight: 60,
+    overflowY: "auto",
   },
-  // Add/remove (primary action) and intro/outro (secondary action) are the same "action" group,
-  // now a single row (2026-07-11 icon-button conversion - see MomentPalette.tsx's comment)
-  // instead of two stacked full-width rows: icon buttons are small enough to sit side by side
-  // even in cardBody's ~216px content width, so the earlier stacking (a "wrap over truncate/
-  // overlap" caution for full-width text buttons) no longer applies.
+  // Add/remove is the card's only action now (2026-07-11 - intro/outro assignment removed from
+  // scene cards per user direction; Edit step's cut-settings panel (ActionsGroup's "Set as intro"/
+  // "Set as outro") is still where intro/outro gets set). Kept as its own group (rather than
+  // inlining SceneCardButton directly in cardBody) so a future card-level action has a home
+  // without another layout change.
   actionsGroup: {
     display: "flex",
     alignItems: "center",
     gap: 6,
-  },
-  // Pushed to the row's far end (design-principles.md #2 "hierarchy equals actual importance") -
-  // real space, not just DOM order, is what keeps this secondary pair from reading as equally
-  // important as the primary Add/Remove toggle beside it.
-  ioActions: {
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-    marginLeft: "auto",
   },
 });

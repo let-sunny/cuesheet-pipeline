@@ -43,11 +43,19 @@ export const styles = stylex.create({
     flexBasis: "auto",
     minWidth: 0,
   },
+  // Section-header separation (2026-07-11 QA fix, design-principles.md #4) - a thin bottom
+  // border + a little breathing room below is what keeps this compact header reading as its own
+  // section instead of blending into the first cut row right underneath it (the user's actual
+  // complaint was misreading the header's "+ Add track" as a cut-list action, not just its icon).
   gutterHeader: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 8,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomStyle: "solid",
+    borderBottomColor: "var(--border-soft)",
   },
   gutterCountBadge: {
     padding: "0 5px",

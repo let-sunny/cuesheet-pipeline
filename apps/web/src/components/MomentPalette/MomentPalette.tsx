@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
-import { AspectRatio } from "@astryxdesign/core/AspectRatio";
 import { Card } from "@astryxdesign/core/Card";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Icon } from "@astryxdesign/core/Icon";
@@ -8,10 +7,8 @@ import { Overlay } from "@astryxdesign/core/Overlay";
 import { Text } from "@astryxdesign/core/Text";
 import type { Segment } from "@cuesheet/schema";
 import { SceneCardButton } from "../ui/SceneCardButton/index.js";
-import { IntroOutroButton } from "../ui/IntroOutroButton/index.js";
 import { fetchDraftFrames, fetchMoments } from "../../api.js";
 import type { ClipMoments } from "../../api.js";
-import { INTRO_OUTRO_MAX_DURATION_S, buildClipPath, computeClipDurations } from "../../clipPaths.js";
 import type { Category, MomentCard, StatusFilter } from "../../lib/momentCards.js";
 import {
   buildCards,
@@ -29,15 +26,9 @@ import { styles } from "./MomentPalette.styles.js";
 
 interface Props {
   segments: Segment[];
-  clipDir: string;
-  introPath: string | null;
-  outroPath: string | null;
   onAddSegment: (seg: Segment) => void;
   /** "Remove" for an already-added ("in use") card — removes the overlapping segment from the draft. */
   onRemoveSegment: (clip: string, inS: number, outS: number) => void;
-  /** Sets this whole clip file as the intro/outro (ignoring the range, the entire clip as one piece). */
-  onSetIntro: (clipFileName: string) => void;
-  onSetOutro: (clipFileName: string) => void;
 }
 
 /**
@@ -45,16 +36,7 @@ interface Props {
  * with a single click. Added segments are auto-inserted in chronological order by (clip, in)
  * regardless of where they're added (the caller, App.tsx, guarantees that ordering).
  */
-export function MomentPalette({
-  segments,
-  clipDir,
-  introPath,
-  outroPath,
-  onAddSegment,
-  onRemoveSegment,
-  onSetIntro,
-  onSetOutro,
-}: Props) {
+export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props) {
   const [moments, setMoments] = useState<ClipMoments[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [frameMap, setFrameMap] = useState<Record<string, string[]>>({});
@@ -74,9 +56,6 @@ export function MomentPalette({
   }, []);
 
   const cards = useMemo(() => (moments ? buildCards(moments) : []), [moments]);
-
-  // Approximate duration per clip (seconds) — used to decide the 15s cap for the intro/outro assignment buttons.
-  const clipDurations = useMemo(() => (moments ? computeClipDurations(moments) : {}), [moments]);
 
   useEffect(() => {
     if (!moments) {
@@ -193,17 +172,6 @@ export function MomentPalette({
               // information needed for judgment (original filename, range, category, memo) is conveyed via the title tooltip.
               const fullInfo = `${card.clipFileName} · ${card.inS.toFixed(1)}s~${card.outS.toFixed(1)}s · ${meta.label} · ${displayMemo}`;
 
-              // Intro/outro insert the whole clip as one piece with no in/out range, so
-              // assignment is blocked if this card's clip file's total length (approximate) exceeds the cap.
-              const clipDurationS = clipDurations[card.clipFileName];
-              const tooLongForIntroOutro =
-                clipDurationS === undefined || clipDurationS > INTRO_OUTRO_MAX_DURATION_S;
-              const cardClipPath = buildClipPath(clipDir, card.clipFileName);
-              const isIntro = introPath === cardClipPath;
-              const isOutro = outroPath === cardClipPath;
-              const introOutroDisabledTitle = tooLongForIntroOutro
-                ? `Clips over 15s (est. ${clipDurationS?.toFixed(1) ?? "?"}s) can't be used as intro/outro — since the whole clip is inserted without a range, this only works for short clips.`
-                : null;
               const rejectedLabel = faceRejected
                 ? "Auto-excluded: face exposure"
                 : qualityRejected
@@ -238,8 +206,8 @@ export function MomentPalette({
                         media it wraps (an overlapping layer), but this banner needs to sit ABOVE the
                         thumbnail in normal flow, pushing it down without covering any of the frame -
                         the opposite of what Overlay composes. It also spans the whole card, not just
-                        the thumbnail that Overlay/AspectRatio wrap. So it stays a plain full-width div
-                        outside the Overlay composition below. */}
+                        the thumbnail that Overlay wraps. So it stays a plain full-width div outside
+                        the Overlay composition below. */}
                     {rejectedLabel ? (
                       <div
                         {...stylex.props(
@@ -256,29 +224,33 @@ export function MomentPalette({
                         rather than a small thumbnail crammed above a narrow column, so previously-
                         168px-wide cards read as "too small" - adopted as-is (CLAUDE.md "no invented
                         UI patterns"). `thumbCol` fixes the thumbnail to its own wider column instead
-                        of letting AspectRatio's own `width: 100%` size it to the whole (now much
-                        wider) card; `cardRow` is the plain horizontal flex wrapper. The status banner
-                        above stays OUTSIDE this row (full card width, on its own line) per the
-                        existing exclusion-banner rule - only the thumbnail+body pairing goes
-                        side by side. */}
+                        of letting it size to the whole (now much wider) card; `cardRow` is the plain
+                        horizontal flex wrapper, stretched to a fixed height (2026-07-11 uniform-card
+                        fix, see `card`'s comment) so `thumbCol` fills that height edge to edge. The
+                        status banner above stays OUTSIDE this row (full card width, on its own line,
+                        additive to the fixed height for that rare state) per the existing exclusion-
+                        banner rule - only the thumbnail+body pairing goes side by side. */}
                     <div {...stylex.props(styles.cardRow)}>
-                      {/* Astryx composition (2026-07-09, replaces the earlier hand-rolled .moment-thumb):
-                          Thumbnail (Astryx) is fixed-square with no overlay slot at all, so it never fit this
-                          card (16:9 frame + number chip + status badge). AspectRatio(16/9) + Overlay
-                          (position="top", scrim off so it doesn't dim the frame) is the documented
-                          composition instead — Overlay's own "top" content region replaces the old
-                          absolutely-positioned .moment-thumb-overlay div, so the chip/badge row itself no
-                          longer needs position/top/left, just flex layout. The row stays flex-wrap
-                          (space-between) so a long clip folder name still wraps the badge to the next line
-                          instead of overlapping or truncating it (2026-07-08 feedback). The index/timestamp
-                          chip stays a plain styled span, not a Badge — it's a caption of "which clip/where",
-                          not a status with color semantics, so Badge would be a semantic mismatch; the "in
-                          use" indicator IS a status, so that one is a real Badge (variant="success"). */}
+                      {/* Full-bleed thumbnail (2026-07-11 QA fix, design-principles.md #6 "no wasted
+                          space"): AspectRatio(16:9) was dropped - it constrained the thumbnail to a
+                          ratio-derived height regardless of the column's actual (now fixed-row-height)
+                          box, which left letterbox gaps. A plain div stretched to 100%/100% (via
+                          `cardRow`'s alignItems:stretch + this Overlay's own xstyle height:100%) plus
+                          `objectFit:cover` on the img fills thumbCol edge to edge instead, cropping the
+                          frame as needed - the user confirmed cropping is fine here. Overlay's own
+                          "top" content region still holds the chip/badge row; the row stays flex-wrap
+                          (space-between) so a long clip folder name still wraps the badge to the next
+                          line instead of overlapping or truncating it (2026-07-08 feedback). The
+                          index/timestamp chip stays a plain styled span, not a Badge — it's a caption
+                          of "which clip/where", not a status with color semantics, so Badge would be a
+                          semantic mismatch; the "in use" indicator IS a status, so that one is a real
+                          Badge (variant="success"). */}
                       <div {...stylex.props(styles.thumbCol)}>
                         <Overlay
                           scrim={false}
                           showOn="always"
                           position="top"
+                          xstyle={styles.thumbOverlay}
                           content={
                             <div {...stylex.props(styles.overlayRow)}>
                               <span {...stylex.props(styles.number)}>
@@ -294,24 +266,20 @@ export function MomentPalette({
                             </div>
                           }
                         >
-                          <AspectRatio ratio={16 / 9}>
-                            {frame ? (
-                              <img
-                                src={`/draft-frames/${encodeURIComponent(card.clipFolder)}/${encodeURIComponent(frame)}`}
-                                alt=""
-                                style={{ objectFit: "cover", width: "100%", height: "100%" }}
-                              />
-                            ) : (
-                              <div {...stylex.props(styles.thumbEmpty)} />
-                            )}
-                          </AspectRatio>
+                          {frame ? (
+                            <img
+                              src={`/draft-frames/${encodeURIComponent(card.clipFolder)}/${encodeURIComponent(frame)}`}
+                              alt=""
+                              style={{ objectFit: "cover", width: "100%", height: "100%", display: "block" }}
+                            />
+                          ) : (
+                            <div {...stylex.props(styles.thumbEmpty)} />
+                          )}
                         </Overlay>
                       </div>
-                      {/* Card hierarchy (screen-spec section 2): thumbnail -> status badge (top,
-                          thumbnail overlay) -> scene description (full text, wrapping allowed) ->
-                          meta (shot type/duration/quality) -> actions. Since this screen is for
-                          "reading and picking" scenes, the description clamp was removed
-                          (maxLines={0} = no clamp). Card-internal spacing rules (screen-spec 0-1/0-2):
+                      {/* Card hierarchy (screen-spec section 2): thumbnail -> scene description
+                          (scrolls internally, see memoWrap's comment) -> meta (shot type/duration/
+                          quality) -> actions. Card-internal spacing rules (screen-spec 0-1/0-2):
                           consistent 12px padding plus a clear gap between groups (description/meta/
                           actions) are handled entirely by cardBody. */}
                       <div {...stylex.props(styles.cardBody)}>
@@ -350,42 +318,6 @@ export function MomentPalette({
                             }
                             data-testid={`palette-card-toggle-${card.key}`}
                           />
-                          {/* Set intro/outro - a secondary pair pushed to the row's far end
-                              (styles.ioActions' marginLeft:auto), separated from the primary Add/
-                              Remove toggle by real space rather than just order (design-
-                              principles.md #2 "hierarchy equals actual importance"). chevronLeft/
-                              chevronRight read as "send to the start/end of the timeline" (the
-                              same left/right convention as media-transport skip-to-start/skip-to-
-                              end controls) - the closest stock-icon match for "use this whole clip
-                              as the intro/outro"; the full meaning stays in the tooltip. */}
-                          <div {...stylex.props(styles.ioActions)}>
-                            <IntroOutroButton
-                              icon={<Icon icon="chevronLeft" size="sm" />}
-                              label={isIntro ? "Intro set" : "Set intro"}
-                              size="sm"
-                              active={isIntro}
-                              isDisabled={tooLongForIntroOutro}
-                              tooltip={
-                                introOutroDisabledTitle ??
-                                "Sets this whole clip as the intro (no range - the entire clip is inserted)"
-                              }
-                              onClick={() => onSetIntro(card.clipFileName)}
-                              data-testid={`palette-card-set-intro-${card.key}`}
-                            />
-                            <IntroOutroButton
-                              icon={<Icon icon="chevronRight" size="sm" />}
-                              label={isOutro ? "Outro set" : "Set outro"}
-                              size="sm"
-                              active={isOutro}
-                              isDisabled={tooLongForIntroOutro}
-                              tooltip={
-                                introOutroDisabledTitle ??
-                                "Sets this whole clip as the outro (no range - the entire clip is inserted)"
-                              }
-                              onClick={() => onSetOutro(card.clipFileName)}
-                              data-testid={`palette-card-set-outro-${card.key}`}
-                            />
-                          </div>
                         </div>
                       </div>
                     </div>

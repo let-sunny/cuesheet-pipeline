@@ -1,6 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
 import * as stylex from "@stylexjs/stylex";
+import { Icon } from "@astryxdesign/core/Icon";
+import { IconButton } from "@astryxdesign/core/IconButton";
 import type { BgmCue, Segment } from "@cuesheet/schema";
 import type { ClipMoments } from "../../api.js";
 import { baseName } from "../../clipPaths.js";
@@ -251,13 +253,27 @@ export function CompactSegmentList({
           title={bgmGutterCollapsed ? "Expand the background music gutter" : "Collapse the background music gutter"}
           data-testid="bgm-gutter-toggle"
         >
-          {bgmGutterCollapsed ? "▸" : "▾"} Background music
+          {/* Quiet, small chevron (design-principles.md #4 "decoration scales to function") -
+              replaces the raw "▾"/"▸" text glyph. chevronRight/chevronDown read as the standard
+              collapsed/expanded disclosure-triangle convention (folder chevrons, tree views). */}
+          <Icon icon={bgmGutterCollapsed ? "chevronRight" : "chevronDown"} size="xsm" color="tertiary" />
+          Background music
           {bgm.length > 0 ? <span {...stylex.props(styles.gutterCountBadge)}>{bgm.length}</span> : null}
         </button>
         {!bgmGutterCollapsed ? (
-          <button type="button" className="plain-button" onClick={onAddBgmTrack} data-testid="bgm-add-track">
-            + Add track
-          </button>
+          // Small icon-only section action (design-principles.md #4), not a text button - the
+          // user kept misreading the old "+ Add track" text button as a cut-list action since it
+          // sat right above the cut rows. `gutterHeader`'s justify-content:space-between already
+          // pins it to the row's right edge, clearly separated from the header's left cluster.
+          <IconButton
+            icon={<span aria-hidden="true">+</span>}
+            label="Add background music track"
+            tooltip="Add background music track"
+            variant="ghost"
+            size="sm"
+            onClick={onAddBgmTrack}
+            data-testid="bgm-add-track"
+          />
         ) : null}
       </div>
 

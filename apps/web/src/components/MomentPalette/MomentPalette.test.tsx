@@ -41,13 +41,8 @@ const oneCard: ClipMoments[] = [
 function baseProps(overrides: Partial<Parameters<typeof MomentPalette>[0]> = {}) {
   return {
     segments: [] as Segment[],
-    clipDir: "/clips",
-    introPath: null,
-    outroPath: null,
     onAddSegment: vi.fn(),
     onRemoveSegment: vi.fn(),
-    onSetIntro: vi.fn(),
-    onSetOutro: vi.fn(),
     ...overrides,
   };
 }
@@ -88,13 +83,12 @@ describe("MomentPalette card action toggle", () => {
     expect(onRemoveSegment).toHaveBeenCalledWith("cut_01.mp4", 1, 3);
   });
 
-  it("shows the shortened Set intro/Set outro accessible names", async () => {
+  it("does not render Set intro/Set outro on scene cards (2026-07-11 - moved to Edit step's cut settings only)", async () => {
     vi.mocked(fetchMoments).mockResolvedValue(oneCard);
     render(<MomentPalette {...baseProps()} />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Set intro" })).not.toBeNull());
-    expect(screen.getByRole("button", { name: "Set outro" })).not.toBeNull();
-    expect(screen.queryByRole("button", { name: "Set as intro" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Set as outro" })).toBeNull();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Add" })).not.toBeNull());
+    expect(screen.queryByRole("button", { name: "Set intro" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Set outro" })).toBeNull();
   });
 });
 
