@@ -21,8 +21,14 @@ export default defineConfig({
     // as the astryx case below). Deduping to one `remotion` connects the Player to the composition.
     dedupe: ["@astryxdesign/core", "@stylexjs/stylex", "react", "react-dom", "remotion", "@remotion/player"],
   },
-  // Pre-bundle the Remotion browser packages together so they resolve to one instance in dev.
+  // Do NOT pre-bundle the Remotion browser packages. optimizeDeps pre-bundling inlines
+  // @remotion/player's own copy of Remotion's Internals (the timeline/frame CONTEXT that drives
+  // useCurrentFrame) separately from the standalone `remotion` that the compiled TitleCard
+  // (@cuesheet/render/dist) reads - so the Player advanced its frame while TitleCard stayed pinned
+  // at frame 0 (confirmed: composition renders but never animates). Leaving them un-pre-bundled +
+  // deduped makes every `import "remotion"` resolve to the one node_modules/remotion ESM module, so
+  // the Player and the composition share the exact same runtime frame context.
   optimizeDeps: {
-    include: ["remotion", "@remotion/player"],
+    exclude: ["remotion", "@remotion/player", "@cuesheet/render"],
   },
 });
