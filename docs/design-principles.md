@@ -57,3 +57,14 @@ whole edit (narration enable) belongs before/during editing, not at the end (Fin
 that needs an input first (Add BGM track needs a file) should ask for the input first, not
 create an empty shell. Where a control lives, and in what order steps appear, encodes something
 true about the workflow — get that right before styling anything.
+
+## Adopting templates: purpose, then hierarchy, then the template
+
+Astryx ships templates/blocks/compositions, not just primitives. Prefer adopting them over
+hand-assembling — but choose by REASONING, not by looks. For any screen, decide in this order:
+(1) purpose — what is this screen for; (2) goal — what is the user trying to accomplish here;
+(3) data hierarchy — which information matters most, next, least. THEN pick the Astryx template
+whose structure matches that hierarchy, and bring it in (fully tokenized/stock). Never import a
+template because it's pretty; import it because its information structure fits the screen's
+purpose. If nothing fits, compose primitives to the same standard — but check the template
+catalog first, every time. We were reinventing things Astryx already does better.
