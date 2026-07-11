@@ -139,14 +139,13 @@ describe("HeaderBar", () => {
   it("theme toggle calls onThemeModeChange with the clicked mode", () => {
     const onThemeModeChange = vi.fn();
     render(<HeaderBar {...baseProps()} themeMode="light" onThemeModeChange={onThemeModeChange} />);
-    fireEvent.click(screen.getByTitle("Dark"));
+    fireEvent.click(screen.getByRole("radio", { name: "Dark" }));
     expect(onThemeModeChange).toHaveBeenCalledWith("dark");
   });
 
-  it("marks the current theme mode's button as active (class) and others not", () => {
+  it("marks the current theme mode's segment as selected (aria-checked) and others not", () => {
     render(<HeaderBar {...baseProps()} themeMode="light" />);
-    expect(screen.getByTitle("Light").className).toContain("active");
-
-    expect(screen.getByTitle("Dark").className).not.toContain("active");
+    expect(screen.getByRole("radio", { name: "Light" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("radio", { name: "Dark" }).getAttribute("aria-checked")).toBe("false");
   });
 });

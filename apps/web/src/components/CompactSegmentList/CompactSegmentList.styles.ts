@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { radiusVars, spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 3) — rules
@@ -14,30 +15,29 @@ import * as stylex from "@stylexjs/stylex";
  *   specificity StyleX atomic class would lose that cascade tie to the later-in-source
  *   `.plain-field`/`.plain-field-textarea` rules for every overlapping property — styles.css's own
  *   comment on `.plain-field-textarea` documents this exact selector as the reason it's kept a
- *   bare single-class rule instead of `textarea.plain-field` in the first place. Same root cause as
- *   HeaderBar's theme toggle / BgmSettingsPanel's bgm-file-play/name.
- * - `.bgm-gutter-toggle` — this button also carries the `.plain-button` marker class and overrides
- *   several of its properties (background/border/padding, plus font-size/font-weight which
- *   `.plain-button`'s `font: inherit` shorthand implicitly sets too) — same injection-order tie
- *   loss as above, so it stays a same-specificity override that only wins via source order today.
- * - `.compact-list-actions button` — a descendant selector (1 class + tag, so higher specificity
- *   than `.plain-button` regardless of source order) that sets the row action buttons' padding;
- *   StyleX can't express that specificity edge, so it stays. The wrapper's own layout
- *   (`.compact-list-actions`'s flex/gap, below as `actions`) still moves to StyleX — the div keeps
- *   both the plain `compact-list-actions` className *and* the StyleX class so the descendant
- *   selector keeps matching (same hybrid pattern as BgmSettingsPanel's `bgm-file-row`).
+ *   bare single-class rule instead of `textarea.plain-field` in the first place.
+ *
+ * The BGM gutter toggle and the row action buttons (move up/down, delete) are now stock Astryx
+ * Button/IconButton (2026-07-11 stock-component migration) - the old `.bgm-gutter-toggle`/
+ * `.compact-list-actions button` plain-CSS exceptions are gone with them.
  *
  * `background`/`border` shorthands are written out as their longhand equivalents
  * (`backgroundColor`, `borderWidth`+`borderStyle`+`borderColor`) — see HeaderBar.styles.ts's
  * comment for why (StyleX silently drops the shorthand form). `flex` (the 3-value shorthand) is
  * likewise avoided in favor of `flexGrow`/`flexShrink`/`flexBasis` on principle, matching that same
  * caution, even though it hasn't specifically been measured dropped.
+ *
+ * Spacing/radius migration (2026-07-11, design-principles.md #5 strict rule, same reasoning as
+ * MomentPalette.styles.ts's comment): `gap`/`padding`/`margin`/`borderRadius` read from Astryx's
+ * `spacingVars`/`radiusVars`. Structural row/column sizing (`list`'s 300px column, `index`'s 20px
+ * number gutter, `gutterHandle`'s 9px drag-handle thickness, `subtitleDot`'s 8px dot) and color/
+ * font-size stay literal/deferred, same reasoning as before.
  */
 export const styles = stylex.create({
   panel: {
     display: "flex",
     flexDirection: "column",
-    gap: 6,
+    gap: spacingVars["--spacing-1-5"],
     flexGrow: 0,
     flexShrink: 0,
     flexBasis: "auto",
@@ -51,15 +51,23 @@ export const styles = stylex.create({
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 8,
-    paddingBottom: 6,
+    gap: spacingVars["--spacing-2"],
+    paddingBottom: spacingVars["--spacing-1-5"],
     borderBottomWidth: 1,
     borderBottomStyle: "solid",
     borderBottomColor: "var(--border-soft)",
   },
+  // Icon+text+count-badge composition passed as the gutter-toggle Button's `children` (2026-07-11
+  // stock-component migration) - Button itself only lays out a single icon/label pair internally,
+  // so this custom composition needs its own flex row to match the previous look.
+  gutterToggleContent: {
+    display: "flex",
+    alignItems: "center",
+    gap: spacingVars["--spacing-1"],
+  },
   gutterCountBadge: {
-    padding: "0 5px",
-    borderRadius: 8,
+    padding: `0 ${spacingVars["--spacing-1"]}`,
+    borderRadius: radiusVars["--radius-element"],
     fontSize: 11,
     fontWeight: 600,
     backgroundColor: "var(--bgm-cue-bg)",
@@ -68,7 +76,7 @@ export const styles = stylex.create({
   listBody: {
     display: "flex",
     alignItems: "flex-start",
-    gap: 8,
+    gap: spacingVars["--spacing-2"],
     minWidth: 0,
   },
   gutter: {
@@ -89,7 +97,7 @@ export const styles = stylex.create({
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: "var(--bgm-cue-border)",
-    borderRadius: 4,
+    borderRadius: radiusVars["--radius-inner"],
     cursor: "grab",
   },
   gutterBarSelected: {
@@ -118,7 +126,7 @@ export const styles = stylex.create({
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
     fontSize: 11,
-    padding: "4px 2px",
+    padding: `${spacingVars["--spacing-1"]} ${spacingVars["--spacing-0-5"]}`,
     pointerEvents: "none",
   },
   // 480 -> 300 (13-inch density pass, 2026-07-10): freed width is what lets the video + cut
@@ -135,18 +143,18 @@ export const styles = stylex.create({
     overflow: "hidden",
     display: "flex",
     flexDirection: "column",
-    gap: 6,
+    gap: spacingVars["--spacing-1-5"],
   },
   row: {
     display: "flex",
     alignItems: "center",
-    gap: 10,
-    padding: "9px 10px",
+    gap: spacingVars["--spacing-3"],
+    padding: `${spacingVars["--spacing-2"]} ${spacingVars["--spacing-3"]}`,
     backgroundColor: "var(--surface-1)",
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: "var(--border-soft)",
-    borderRadius: 6,
+    borderRadius: radiusVars["--radius-element"],
     cursor: "pointer",
     minWidth: 0,
   },
@@ -173,12 +181,12 @@ export const styles = stylex.create({
     minWidth: 0,
     display: "flex",
     flexDirection: "column",
-    gap: 3,
+    gap: spacingVars["--spacing-1"],
   },
   scene: {
     display: "flex",
     alignItems: "center",
-    gap: 5,
+    gap: spacingVars["--spacing-1-5"],
     minWidth: 0,
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -198,8 +206,8 @@ export const styles = stylex.create({
   metaRow: {
     display: "flex",
     alignItems: "center",
-    gap: 6,
-    marginTop: 2,
+    gap: spacingVars["--spacing-1-5"],
+    marginTop: spacingVars["--spacing-0-5"],
   },
   time: {
     flexGrow: 0,
@@ -213,8 +221,8 @@ export const styles = stylex.create({
     flexGrow: 0,
     flexShrink: 0,
     flexBasis: "auto",
-    padding: "1px 5px",
-    borderRadius: 3,
+    padding: `1px ${spacingVars["--spacing-1"]}`,
+    borderRadius: radiusVars["--radius-inner"],
     fontSize: 11,
     fontWeight: 600,
     whiteSpace: "nowrap",
@@ -241,12 +249,12 @@ export const styles = stylex.create({
     flexShrink: 0,
     flexBasis: "auto",
     display: "flex",
-    gap: 4,
+    gap: spacingVars["--spacing-1"],
     // Pushes the reorder/delete icons to the far end of `metaRow` (2026-07-10), matching the
     // row's old right-aligned position now that they've moved off the main row.
     marginLeft: "auto",
   },
   addButton: {
-    marginTop: 10,
+    marginTop: spacingVars["--spacing-2"],
   },
 });

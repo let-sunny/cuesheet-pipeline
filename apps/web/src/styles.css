@@ -7,6 +7,19 @@
    * data-theme by Astryx Theme), so no separate selector branch is needed for the theme toggle.
    * The dark values are kept exactly as their existing hardcoded values to avoid regressions;
    * only the light values are newly added.
+   *
+   * Deliberately NOT swapped to Astryx's own `--color-*` tokens (2026-07-11 stock-audit,
+   * design-principles.md #5 strict rule) even in files otherwise migrated to Astryx components:
+   * this bespoke palette (surfaces/borders/text tiers/accent/status colors/category-tag colors) is
+   * a tuned, coherent visual identity already reactive to the Light/Dark toggle via light-dark()
+   * above - it just isn't literally Astryx's token *names*. Astryx's own palette (colorVars,
+   * `@astryxdesign/core/theme`) uses meaningfully different hues (e.g. accent #0064E0/#2694FE vs.
+   * this app's #5b7cfa, no tiered surface-0/1/2/3 or text-tertiary/quaternary equivalents), so a
+   * wholesale swap would visibly re-theme the app, not just swap markup - a real design decision
+   * needing the user's visual sign-off on a before/after, not something to rush silently under a
+   * time-boxed migration pass. Spacing/radius/typography on the components touched during this
+   * pass DO read from Astryx's `spacingVars`/`radiusVars` (see e.g. HeaderBar.styles.ts) - only the
+   * color-token swap is deferred, and is flagged as the next step in the stock-audit report.
    */
 
   /* Surfaces (panel/card/row backgrounds) */
@@ -241,41 +254,8 @@ body {
   padding: 6px 8px;
 }
 
-/* The header's system/light/dark three-way theme toggle button look (HeaderBar) — kept as plain
-   CSS deliberately (not migrated to HeaderBar.styles.ts): these buttons carry the `.plain-button`
-   marker class (screen-spec rule 8), and this app's StyleX output is injected into the document
-   *before* styles.css, so a same-specificity StyleX atomic class always loses the cascade tie to
-   a later-in-source-order `.plain-button` rule for any property they both set (measured via
-   screenshot diff - background/border/color/padding all silently reverted to .plain-button's
-   values). The compound selector below (2 classes + tag = higher specificity than
-   `.plain-button`'s 1 class) is what let the original code reliably win instead, and StyleX can't
-   express that same specificity edge - so it stays here. Same pattern as
-   .render-resolution-options button.active further down. */
-.theme-mode-toggle button {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 8px;
-  font-size: 12px;
-  color: var(--text-tertiary);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 6px;
-}
-
-.theme-mode-toggle button:hover:not(.active) {
-  background: var(--surface-button-hover);
-}
-
-.theme-mode-toggle button.active {
-  color: var(--text-primary);
-  background: var(--surface-1);
-  border-color: var(--border);
-}
-
-.theme-mode-toggle button svg {
-  flex: 0 0 auto;
-}
+/* The header's theme toggle (HeaderBar) is now a stock Astryx SegmentedControl (2026-07-11 stock-
+   component migration) - no plain-CSS look left to keep here. */
 
 /* .banner/.banner-actions migrated to components/Banner/ (StyleX migration batch 4).
    .banner.success/.banner.error(+ul/pre) were NOT migrated - dead: repo-wide grep found no call
@@ -450,36 +430,12 @@ body {
    `.video-preview`(+`.empty`)/`.video-context-*`/`.video-crop-frame`(+`video`)/`.crop-edit-toolbar`/
    `.crop-edit-actions`/`.time-readout`/`.video-controls-row`/`.notice`(+`.proxy-preparing`) moved to
    VideoPreview.styles.ts; `.crop-edit-overlay`/`.crop-edit-box`/`.crop-edit-handle`(+8 `.handle-*`
-   variants) moved to components/CropEditOverlay/CropEditOverlay.styles.ts. Kept here as documented
-   exceptions (see VideoPreview.styles.ts's file comment for the full reasoning):
-   - `.playmode-toggle button` (+ `.active`) below - this button also carries the `.plain-button`
-     marker class, and overrides several of its properties (padding/font-size/color, plus
-     background/border-color on `.active`) at higher specificity (a descendant class+tag selector,
-     class+class+tag for `.active`) - StyleX can't express that specificity edge. The wrapper's own
-     layout (`.playmode-toggle`'s flex/gap) still moved to StyleX - the div keeps both the plain
-     `playmode-toggle` className *and* the StyleX class so these selectors keep matching.
+   variants) moved to components/CropEditOverlay/CropEditOverlay.styles.ts. The playback-range
+   toggle is now a stock Astryx SegmentedControl (2026-07-11 stock-component migration) - the old
+   `.playmode-toggle button`(+`.active`) plain-CSS exception is gone with it. Kept here as a
+   documented exception (see VideoPreview.styles.ts's file comment for the full reasoning):
    - `.video-subtitle-overlay` (+ variants, further down) - shared with SubtitleStyleSettings.tsx/
      SubtitleStylePresetsSettings.tsx, not owned solely by VideoPreview. */
-
-/* Deliberately smaller/quieter than the primary Play button above it (2026-07-11 hierarchy fix,
-   QA finding: this secondary playback-mode setting was rendering visually larger than Play, which
-   inverts the row's hierarchy). `.plain-button`'s own padding/font-size come from the ambient body
-   font-size (15px) with no cap, which is bigger than Astryx Button's own sm size (14px/28px) - so
-   this pair needs its own smaller sizing rather than just inheriting `.plain-button` as-is. The
-   border stays present (for the `.active` state below to color) but transparent by default, so an
-   unselected segment reads quieter without shifting box size when it becomes selected. */
-.playmode-toggle button {
-  padding: 3px 9px;
-  font-size: 12px;
-  border-color: transparent;
-  color: var(--text-tertiary);
-}
-
-.playmode-toggle button.active {
-  border-color: var(--accent);
-  background: var(--surface-3);
-  color: var(--text-primary);
-}
 
 /* Live overlay on the video to the right during inline subtitle editing (a rough CSS approximation
    — the render is the ground truth). Same pattern as .sequence-subtitle but relative to
@@ -550,22 +506,9 @@ body {
    `.moment-badge-in-use`/`.moment-info`/`.moment-card-body`/`.moment-memo-wrap`/
    `.moment-actions-group`/`.moment-card-actions`/`.moment-io-actions` all moved to
    MomentPalette.styles.ts. `.moment-palette.status` folded into that file's `paletteStatus` (see
-   its comment). Kept here as a documented exception (see MomentPalette.styles.ts's file comment):
-   - `.moment-filters button` (+ `.active`) below - a descendant selector (1 class + tag, so higher
-     specificity than `.plain-button` regardless of source order) that sets the filter buttons' own
-     font-size/padding/background/border-color - StyleX can't express that specificity edge. The
-     wrapper's own layout (`.moment-filters`'s flex/wrap/gap) still moved to StyleX - the div keeps
-     both the plain `moment-filters` className *and* the StyleX class so this selector keeps
-     matching. */
-.moment-filters button {
-  font-size: 13px;
-  padding: 4px 10px;
-}
-
-.moment-filters button.active {
-  border-color: var(--accent);
-  background: var(--surface-3);
-}
+   its comment). The category/status filter chips are now a stock Astryx ToggleButtonGroup/
+   ToggleButton pair (2026-07-11 stock-component migration) - the old `.moment-filters button` (+
+   `.active`) plain-CSS exception is gone with them. */
 
 /* ---- 4-step editing journey shell ---- */
 
@@ -625,18 +568,16 @@ body {
    `.compact-list`/`.compact-list-row`(+`.selected`)/`.compact-list-index`/`.compact-list-thumb`/
    `.compact-list-text`/`.compact-list-scene`(+`.empty`)/`.compact-list-time`/
    `.compact-list-subtitle-dot`(+`.filled`)/`.compact-list-actions`(own layout) all moved to
-   CompactSegmentList.styles.ts (no property conflicts with any marker class). Kept here as
-   documented exceptions (see CompactSegmentList.styles.ts's file comment for the full reasoning):
+   CompactSegmentList.styles.ts (no property conflicts with any marker class). The row actions
+   (move up/down, delete) are now stock Astryx IconButtons (2026-07-11 stock-component migration) -
+   the old `.compact-list-actions button` plain-CSS exception is gone with them. Kept here as a
+   documented exception (see CompactSegmentList.styles.ts's file comment for the full reasoning):
    - `.compact-list-subtitle-input` (+ `:focus`) below - overrides `.plain-field`/
      `.plain-field-textarea` at equal (single-class) specificity, winning today only via being
      later in this file's source order; StyleX's injected-before-this-file output would lose that
      tie.
    - `.scene-shot-badge` (+ `.shot-*`) further down - shared with VideoPreview.tsx, not owned
-     solely by this component.
-   - `.compact-list-actions button` further down - a descendant selector (1 class + tag) with
-     higher specificity than `.plain-button` that StyleX can't replicate; the div's own layout
-     still migrated (see `actions` in CompactSegmentList.styles.ts), keeping the `compact-list-actions`
-     className alongside the StyleX class so this selector keeps matching. */
+     solely by this component. */
 
 /* Inline input for fixing subtitles right in place on a cut list row — the core of merging
    trim/batch-writing. Fixed at a 2-line height (rows=2) with internal scroll once text exceeds
@@ -723,67 +664,19 @@ body {
   color: var(--tag-teal-text);
 }
 
-.compact-list-actions button {
-  padding: 2px 8px;
-}
-
 /* CompactSegmentList migration (docs/styling-migration.md, StyleX migration batch 3) -
    `.compact-list-panel`/`.bgm-gutter-header`/`.bgm-gutter-count-badge`/`.compact-list-body`/
    `.bgm-gutter`/`.bgm-gutter-bar`(+`.selected`)/`.bgm-gutter-handle`/`.bgm-gutter-bar-label`/
    `.compact-list-row.bgm-drag-highlight` all moved to CompactSegmentList.styles.ts (no property
-   conflicts with any marker class). Kept here as documented exceptions (see
-   CompactSegmentList.styles.ts's file comment for the full reasoning):
-   - `.bgm-gutter-toggle` below - this button also carries `.plain-button`, and overrides several
-     of its properties (background/border/padding, plus font-size/font-weight via `.plain-button`'s
-     `font: inherit` shorthand) at equal specificity; moving it into StyleX (injected before this
-     file) would lose that cascade tie.
-   - `.compact-list-actions button` (further down, with `.compact-list-style-badge`) - a descendant
-     selector with higher specificity than `.plain-button` that StyleX can't replicate. */
-.bgm-gutter-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-secondary);
-  background: none;
-  border: none;
-  padding: 2px 0;
-}
+   conflicts with any marker class). The BGM gutter toggle is now a stock Astryx Button (2026-07-11
+   stock-component migration) - the old `.bgm-gutter-toggle` plain-CSS exception is gone with it. */
 
 /* BgmSettingsPanel migration (docs/styling-migration.md, StyleX migration batch 2) -
    .bgm-file-list/.bgm-file-row (no `.plain-button`, no property conflict) moved to
-   BgmSettingsPanel.styles.ts. `.bgm-file-play`/`.bgm-file-name` stay here NOT migrated: both
-   buttons also carry the shared `.plain-button` marker class, and both override one of
-   `.plain-button`'s own properties (`.bgm-file-play` overrides padding, `.bgm-file-name`
-   overrides font-size via plain-button's `font: inherit` shorthand) - moving either to StyleX
-   measurably grew the button in a screenshot diff (AE != 0), because this app's StyleX output is
-   injected before styles.css, so a same-specificity StyleX atomic class loses the cascade tie to
-   a later-in-source `.plain-button` rule (same root cause as HeaderBar's theme toggle buttons and
-   RenderSettingsDialog's resolution preset buttons, just via padding/font-size here instead of
-   background/border). The `.selected` compound rule below survives for the same reason in
-   reverse - its higher specificity (3 classes) is what lets it win the tie. */
-.bgm-file-play {
-  flex: 0 0 auto;
-  padding: 2px 6px;
-}
-
-.bgm-file-name {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: left;
-  font-size: 13px;
-}
-
-.bgm-file-row.selected .bgm-file-name {
-  border-color: var(--accent);
-  background: var(--surface-3-soft);
-}
+   BgmSettingsPanel.styles.ts. The file preview/select buttons are now stock Astryx IconButton/
+   Button (2026-07-11 stock-component migration) - the old `.bgm-file-play`/`.bgm-file-name`/
+   `.bgm-file-row.selected .bgm-file-name` plain-CSS exceptions are gone with them (the selected
+   look is now Button's own `variant="secondary"`). */
 
 .quick-fields {
   display: flex;
@@ -1096,43 +989,15 @@ body {
   flex: 0 1 auto;
 }
 
-/* The resolution preset buttons' `.active` look stays plain CSS (not migrated) - see
-   HeaderBar.styles.ts's comment (theme toggle buttons) for why: these buttons carry the
-   `.plain-button` marker class, and a same-specificity StyleX atomic class can't reliably beat
-   it in this app's cascade (StyleX's CSS is injected before styles.css). `.render-resolution-
-   options` itself stays a plain marker class on the wrapper (alongside its migrated stylex
-   properties) purely so this compound selector still has an ancestor to key off. */
-.render-resolution-options button.active {
-  border-color: var(--accent);
-  background: var(--surface-3);
-}
+/* The resolution preset toggle is now a stock Astryx SegmentedControl (2026-07-11 stock-component
+   migration) - the old `.render-resolution-options button.active` plain-CSS exception is gone. */
 
 /* SequencePlayer migration (docs/styling-migration.md, StyleX migration batch 5) - `.sequence-
    player`/`.sequence-player-stage`/`.sequence-video`(+`.hidden`)/`.sequence-subtitle`(+`-bottom`/
    `-top`/`-center`/`-text`)/`.sequence-scene-hint`/`.sequence-player-ended`/`.sequence-player-
    progress`(+`-fill`)/`.sequence-player-controls`/`.sequence-player-transport`/`.sequence-player-
-   speed-toggle`(own layout)/`.sequence-player-counter` all moved to SequencePlayer.styles.ts.
-   `.proxy-preparing` (VideoPreview's own proxy-generating notice) moved to VideoPreview.styles.ts.
-   `.sequence-player-sticky` (App's own wrapper around SequencePlayer) moved to App.styles.ts.
-   Kept here as a documented exception (see SequencePlayer.styles.ts's file comment):
-   - `.sequence-player-speed-toggle button` (+ `.active`) below - a descendant selector (1 class +
-     tag, so higher specificity than `.plain-button` regardless of source order) that sets the
-     speed buttons' own background/border/color/padding - StyleX can't express that specificity
-     edge. The wrapper's own layout still moved to StyleX - the div keeps both the plain
-     `sequence-player-speed-toggle` className *and* the StyleX class so this selector keeps
-     matching. */
-.sequence-player-speed-toggle button {
-  padding: 4px 10px;
-  font-size: 13px;
-  background: var(--surface-1);
-  color: var(--text-tertiary);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.sequence-player-speed-toggle button.active {
-  border-color: var(--accent);
-  background: var(--surface-3);
-  color: var(--text-primary);
-}
+   counter` all moved to SequencePlayer.styles.ts. `.proxy-preparing` (VideoPreview's own proxy-
+   generating notice) moved to VideoPreview.styles.ts. `.sequence-player-sticky` (App's own wrapper
+   around SequencePlayer) moved to App.styles.ts. The playback-speed toggle is now a stock Astryx
+   SegmentedControl (2026-07-11 stock-component migration) - the old `.sequence-player-speed-
+   toggle button`(+`.active`) plain-CSS exception is gone with it. */

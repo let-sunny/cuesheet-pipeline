@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
+import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Icon } from "@astryxdesign/core/Icon";
 import { Overlay } from "@astryxdesign/core/Overlay";
 import { Text } from "@astryxdesign/core/Text";
+import { ToggleButton, ToggleButtonGroup } from "@astryxdesign/core/ToggleButton";
 import type { Segment } from "@cuesheet/schema";
 import { SceneCardButton } from "../ui/SceneCardButton/index.js";
 import { fetchDraftFrames, fetchMoments } from "../../api.js";
@@ -109,9 +111,12 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
     <div {...stylex.props(styles.palette)}>
       <div {...stylex.props(styles.header)}>
         <span>Scene candidates ({cards.length})</span>
-        <button type="button" className="plain-button" onClick={() => setCollapsed((v) => !v)}>
-          {collapsed ? "Expand" : "Collapse"}
-        </button>
+        <Button
+          label={collapsed ? "Expand" : "Collapse"}
+          variant="ghost"
+          size="sm"
+          onClick={() => setCollapsed((v) => !v)}
+        />
       </div>
 
       {collapsed ? null : cards.length === 0 ? (
@@ -120,43 +125,38 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
         </div>
       ) : (
         <>
-          {/* `moment-filters` stays alongside the StyleX class as a marker so the
-              `.moment-filters button` descendant-selector exception (styles.css) keeps matching -
-              see MomentPalette.styles.ts's file comment. */}
-          <div className={`moment-filters ${stylex.props(styles.filters).className}`}>
-            <button
-              type="button"
-              className={`plain-button${selectedCategory === "all" ? " active" : ""}`}
-              onClick={() => setSelectedCategory("all")}
-            >
-              All ({cards.length})
-            </button>
+          {/* Category/status filter chips (2026-07-11 stock-component migration) - a stock Astryx
+              ToggleButtonGroup (type="single") replaces the old raw `.plain-button` row. Clicking the
+              already-active chip deselects to null (ToggleButtonGroup's built-in single-select
+              behavior) - mapped back to "all" here rather than fought, which doubles as a handy
+              "click again to clear the filter" affordance. `xstyle` only adds flex-wrap (categories
+              can exceed one row's width on a 13" viewport) - the chips' own look is entirely stock. */}
+          <ToggleButtonGroup
+            type="single"
+            label="Filter by category"
+            value={selectedCategory}
+            onChange={(v) => setSelectedCategory((v ?? "all") as Category | "all")}
+            size="sm"
+            xstyle={styles.filters}
+          >
+            <ToggleButton value="all" label={`All (${cards.length})`} />
             {CATEGORY_ORDER.filter((cat) => (counts.get(cat) ?? 0) > 0).map((cat) => (
-              <button
-                type="button"
-                key={cat}
-                className={`plain-button${selectedCategory === cat ? " active" : ""}`}
-                onClick={() => setSelectedCategory(cat)}
-              >
-                {CATEGORY_META[cat].label} ({counts.get(cat) ?? 0})
-              </button>
+              <ToggleButton key={cat} value={cat} label={`${CATEGORY_META[cat].label} (${counts.get(cat) ?? 0})`} />
             ))}
-          </div>
+          </ToggleButtonGroup>
 
-          <div
-            className={`moment-filters moment-status-filters ${stylex.props(styles.filters).className}`}
+          <ToggleButtonGroup
+            type="single"
+            label="Filter by status"
+            value={statusFilter}
+            onChange={(v) => setStatusFilter((v ?? "all") as StatusFilter)}
+            size="sm"
+            xstyle={styles.filters}
           >
             {(["all", "in-use", "excluded"] as const).map((f) => (
-              <button
-                type="button"
-                key={f}
-                className={`plain-button${statusFilter === f ? " active" : ""}`}
-                onClick={() => setStatusFilter(f)}
-              >
-                {STATUS_FILTER_LABEL[f]}
-              </button>
+              <ToggleButton key={f} value={f} label={STATUS_FILTER_LABEL[f]} />
             ))}
-          </div>
+          </ToggleButtonGroup>
 
           <div {...stylex.props(styles.grid)}>
             {filtered.map((card) => {
@@ -256,13 +256,11 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
                               <span {...stylex.props(styles.number)}>
                                 {card.clipFolder} · {card.inS.toFixed(1)}s
                               </span>
-                              {inUse ? (
-                                <Badge
-                                  variant="success"
-                                  label={`In use - cut ${cutNumber}`}
-                                  className={stylex.props(styles.badgeInUse).className}
-                                />
-                              ) : null}
+                              {/* Just the cut number (2026-07-11 QA fix, design-principles.md #3
+                                  "remove unnecessary information") - the user only needs to know
+                                  which cut this maps to, not a restated "In use - cut N" sentence;
+                                  bare numbering matches CompactSegmentList's own cut-index convention. */}
+                              {inUse ? <Badge variant="success" label={String(cutNumber)} xstyle={styles.badgeInUse} /> : null}
                             </div>
                           }
                         >
@@ -289,7 +287,13 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
                           </Text>
                         </div>
                         <div {...stylex.props(styles.info)}>
-                          <Badge variant={meta.badgeVariant} label={meta.label} />
+                          {/* Smaller/quieter (2026-07-11 QA fix, design-principles.md #4 "decoration
+                              scales to function") - category is secondary metadata alongside
+                              duration/quality, not a heading, so it shouldn't out-weigh them. Badge
+                              has no size prop, so `categoryBadge` trims font-size/padding via xstyle
+                              (the sanctioned per-instance override mechanism) rather than a full
+                              custom badge. */}
+                          <Badge variant={meta.badgeVariant} label={meta.label} xstyle={styles.categoryBadge} />
                           <span className="moment-duration">{(card.outS - card.inS).toFixed(1)}s</span>
                           {card.quality != null ? (
                             <span {...stylex.props(styles.quality)}>Quality {card.quality}/5</span>
@@ -299,18 +303,20 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
                           {/* Single state-driven toggle (2026-07-09 diagnosed fix) replaces the old
                               Add/Remove pair (one button always visually disabled, the other hidden
                               via a same-space "placeholder" class) - one action, one button, the
-                              label/variant/icon flips with whether the card is already added.
-                              Excluded (auto-filtered) cards keep the same confirm-before-adding flow
-                              either way (handleAdd's face-policy check runs regardless). Icon-only
+                              label/icon flips with whether the card is already added. Excluded
+                              (auto-filtered) cards keep the same confirm-before-adding flow either
+                              way (handleAdd's face-policy check runs regardless). Icon-only
                               (2026-07-11 QA fix, design-principles.md #4 "decoration scales to
                               function" - repeated card actions read as too large as text buttons);
                               `label` still carries the accessible name (announced via IconButton's
                               aria-label) and `tooltip` supplies the visible hint the icon alone
-                              can't. */}
+                              can't. `variant="ghost"` (2026-07-11 QA fix) - this is a per-card row
+                              action, the least prominent thing on the card, not a page-level primary/
+                              destructive action, so it should read quietly until hovered. */}
                           <SceneCardButton
                             icon={<Icon icon={inUse ? "close" : "check"} size="sm" />}
                             label={inUse ? "Remove" : "Add"}
-                            variant={inUse ? "destructive" : "primary"}
+                            variant="ghost"
                             size="sm"
                             tooltip={inUse ? "Remove from cuts" : "Add to cuts"}
                             onClick={() =>

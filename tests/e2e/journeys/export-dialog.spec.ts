@@ -12,7 +12,7 @@ test("open export dialog and switch resolution presets", async ({ page }) => {
   // "Resolution: ..." line - so match the specific custom-resolution note, not just the substring.)
   await expect(dialog.getByText("Current setting: 640x360 (custom)")).toBeVisible();
 
-  await page.getByTestId("render-dialog-resolution-1920x1080").click();
+  await dialog.getByRole("radio", { name: "1920x1080" }).click();
   await expect(dialog.getByText("Resolution: 1920x1080")).toBeVisible();
 
   await page.getByTestId("render-dialog-cancel").click();

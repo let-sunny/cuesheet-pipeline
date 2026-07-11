@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { radiusVars, spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /** Component anatomy migration (docs/styling-migration.md) — rules ported 1:1 from the old
  * `.header-row`/`.header-title-group`/`.dirty-badge`/`.save-row`/`.header-divider` classes in
@@ -7,24 +8,25 @@ import * as stylex from "@stylexjs/stylex";
  * `font-size`/`margin` fold into `title` below alongside the narrower
  * `.header-row h1 { margin: 0; }` override that used to win the tie against it on source order).
  *
- * NOT migrated here (stays plain CSS, see styles.css): the theme toggle buttons' own look
- * (`.theme-mode-toggle button`/`:hover:not(.active)`/`.active`/`svg`). Those buttons carry the
- * `.plain-button` marker class (screen-spec rule 8), and this app's StyleX setup injects its
- * generated CSS *before* styles.css in the cascade — so at equal specificity (both are
- * single/double-class selectors, no `@layer`), styles.css's later-in-source-order `.plain-button`
- * silently wins over a same-specificity StyleX atomic class for every overlapping property
- * (background/border/color/padding all measured reverting to `.plain-button`'s values in a
- * screenshot-diff check). The original code avoided this by giving `.theme-mode-toggle button`
- * compound-selector specificity (2 classes + tag) higher than `.plain-button` (1 class) — StyleX
- * can't express that same specificity edge, so the button-level rules stay put; only the
- * `.theme-mode-toggle` wrapper's own layout (which doesn't compete with `.plain-button`) moves in.
+ * The theme toggle (2026-07-11 stock-component migration) is now a stock Astryx
+ * `SegmentedControl`/`SegmentedControlItem` pair instead of raw `.plain-button` elements - it owns
+ * its own look entirely via Astryx's theme tokens, so there's no wrapper style left to own here
+ * (the old `themeToggle` xstyle/`.theme-mode-toggle` plain-CSS block was deleted along with it).
+ *
+ * Spacing/radius migration (2026-07-11, design-principles.md #5 strict rule): every `gap`/
+ * `padding`/`margin`/`borderRadius` below now reads from Astryx's `spacingVars`/`radiusVars`
+ * (`@astryxdesign/core/theme`) instead of a literal px number, so re-spacing follows the theme the
+ * same way recoloring does (negative margins go through `calc(-1 * token)` rather than a literal).
+ * Colors here still reference this app's own bespoke `var(--...)` tokens (not Astryx's
+ * `colorVars`) - see styles.css's top-of-file comment for why that swap is deliberately deferred
+ * rather than rushed.
  */
 export const styles = stylex.create({
   row: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 16,
+    marginBottom: spacingVars["--spacing-4"],
   },
   title: {
     fontSize: 20,
@@ -35,9 +37,12 @@ export const styles = stylex.create({
   // hover, no visible border in the resting state.
   titleEditable: {
     cursor: "text",
-    borderRadius: 4,
-    padding: "2px 6px",
-    marginInline: -6,
+    borderRadius: radiusVars["--radius-inner"],
+    padding: `${spacingVars["--spacing-0-5"]} ${spacingVars["--spacing-1-5"]}`,
+    // Negative offset compensating for this element's own horizontal padding, so the text still
+    // lines up flush with the title-less resting state - expressed as calc(-1 * token) rather
+    // than a literal, so it still tracks the same spacing scale.
+    marginInline: `calc(-1 * ${spacingVars["--spacing-1-5"]})`,
     borderBottomWidth: 1,
     borderBottomStyle: "solid",
     borderBottomColor: {
@@ -50,18 +55,18 @@ export const styles = stylex.create({
     fontWeight: "inherit",
     color: "inherit",
     backgroundColor: "var(--surface-2)",
-    borderRadius: 4,
+    borderRadius: radiusVars["--radius-inner"],
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: "var(--border)",
-    padding: "2px 6px",
-    marginInline: -6,
+    padding: `${spacingVars["--spacing-0-5"]} ${spacingVars["--spacing-1-5"]}`,
+    marginInline: `calc(-1 * ${spacingVars["--spacing-1-5"]})`,
     outline: "none",
   },
   titleGroup: {
     display: "flex",
     alignItems: "center",
-    gap: 12,
+    gap: spacingVars["--spacing-3"],
   },
   dirtyBadge: {
     fontSize: 13,
@@ -69,24 +74,17 @@ export const styles = stylex.create({
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: "var(--warning-border)",
-    borderRadius: 4,
-    padding: "2px 8px",
+    borderRadius: radiusVars["--radius-inner"],
+    padding: `${spacingVars["--spacing-0-5"]} ${spacingVars["--spacing-2"]}`,
   },
   saveRow: {
     display: "flex",
     alignItems: "center",
-    gap: 12,
+    gap: spacingVars["--spacing-3"],
   },
   divider: {
     width: 1,
-    height: 20,
+    height: spacingVars["--spacing-5"],
     backgroundColor: "var(--border)",
-  },
-  themeToggle: {
-    display: "flex",
-    gap: 2,
-    padding: 2,
-    backgroundColor: "var(--surface-2)",
-    borderRadius: 8,
   },
 });

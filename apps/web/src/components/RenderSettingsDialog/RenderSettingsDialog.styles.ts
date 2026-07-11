@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md) — rules ported 1:1 from the old
@@ -12,31 +13,27 @@ import * as stylex from "@stylexjs/stylex";
  * itself stays a plain global token), and `.render-note`/`.render-note-error` (shared with
  * App.tsx's own render-note banner).
  *
- * `.render-resolution-options button.active` also stays plain CSS (not migrated) for the same
- * reason as HeaderBar's theme toggle buttons (see HeaderBar.styles.ts's comment for the full
- * explanation): these buttons carry the `.plain-button` marker class, this app's StyleX output
- * is injected before styles.css, so a same-specificity StyleX atomic class loses the cascade tie
- * to `.plain-button` for any shared property — the original compound selector (2 classes + tag)
- * has higher specificity than `.plain-button` (1 class), which StyleX can't replicate.
+ * The resolution preset toggle is now a stock Astryx SegmentedControl (2026-07-11 stock-component
+ * migration) - the old `.render-resolution-options button.active` plain-CSS exception and this
+ * file's own `resolutionOptions` wrapper xstyle are both gone with it.
+ *
+ * Spacing migration (2026-07-11, design-principles.md #5 strict rule, same reasoning as
+ * MomentPalette.styles.ts's comment): `gap`/`margin` read from Astryx's `spacingVars`.
  */
 export const styles = stylex.create({
   dialog: {
     display: "flex",
     flexDirection: "column",
-    gap: 16,
-  },
-  resolutionOptions: {
-    display: "flex",
-    gap: 8,
+    gap: spacingVars["--spacing-4"],
   },
   summaryLine: {
-    margin: "0 0 4px",
+    margin: `0 0 ${spacingVars["--spacing-1"]}`,
     fontSize: 13,
     color: "var(--text-quaternary-soft)",
   },
   actions: {
     display: "flex",
     justifyContent: "flex-end",
-    gap: 8,
+    gap: spacingVars["--spacing-2"],
   },
 });

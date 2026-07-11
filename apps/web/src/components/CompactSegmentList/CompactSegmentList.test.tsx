@@ -127,8 +127,8 @@ describe("CompactSegmentList", () => {
 
   it("disables Move up on the first row and Move down on the last row", () => {
     render(<CompactSegmentList {...baseProps()} />);
-    expect(screen.getAllByTitle("Move up")[0]).toHaveProperty("disabled", true);
-    expect(screen.getAllByTitle("Move down")[1]).toHaveProperty("disabled", true);
+    expect(screen.getAllByRole("button", { name: "Move up" })[0]).toHaveProperty("disabled", true);
+    expect(screen.getAllByRole("button", { name: "Move down" })[1]).toHaveProperty("disabled", true);
   });
 
   it("calls onMove/onRemove/onAdd from their respective buttons", () => {
@@ -136,18 +136,18 @@ describe("CompactSegmentList", () => {
     const onRemove = vi.fn();
     const onAdd = vi.fn();
     render(<CompactSegmentList {...baseProps({ onMove, onRemove, onAdd })} />);
-    fireEvent.click(screen.getAllByTitle("Move down")[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Move down" })[0]!);
     expect(onMove).toHaveBeenCalledWith(0, 1);
-    fireEvent.click(screen.getAllByTitle("Delete")[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[0]!);
     expect(onRemove).toHaveBeenCalledWith(0);
-    fireEvent.click(screen.getByText("Duplicate selected cut"));
+    fireEvent.click(screen.getByRole("button", { name: "Duplicate selected cut" }));
     expect(onAdd).toHaveBeenCalledTimes(1);
   });
 
   it("shows the BGM count badge and toggles the gutter collapse", () => {
     const bgm: BgmCue[] = [{ file: "bgm.mp3", start: 0, end: 5, volume: 1 }];
     render(<CompactSegmentList {...baseProps({ bgm })} />);
-    const toggle = screen.getByTitle("Collapse the background music gutter");
+    const toggle = screen.getByRole("button", { name: "Collapse the background music gutter" });
     expect(toggle.textContent).toContain("1");
     // Icon-only button (2026-07-11 - see CompactSegmentList.tsx's comment): `label` becomes the
     // accessible name, selected by role/name rather than the old visible "+ Add track" text.

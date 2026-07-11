@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
+import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import type { Segment, SubtitleStyle, SubtitleStylePresets } from "@cuesheet/schema";
 import { ToolbarButton } from "../ui/ToolbarButton/index.js";
 import { TitleOverlay } from "../TitleOverlay/index.js";
@@ -627,36 +628,18 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
             ) : null}
           </div>
 
-          {/* `playmode-toggle` stays alongside the StyleX class as a marker so the
-              `.playmode-toggle button` / `.playmode-toggle button.active` descendant-selector
-              exceptions (styles.css) keep matching - see VideoPreview.styles.ts's file comment.
-              Sized deliberately smaller/quieter than the primary Play button above (2026-07-11
-              hierarchy fix) - this is a secondary playback setting, not the primary action of this
-              control area, so it must never read as visually bigger than Play. Astryx's
-              SegmentedControl/SegmentedControlItem would be the researched primitive for this
-              exact "grouped toggle" shape, but SegmentedControlItem's implementation destructures a
-              fixed prop list with no `...rest` capture (confirmed by reading its source), so a
-              data-testid passed to it is silently dropped - same footgun CLAUDE.md documents for
-              CheckboxInput - which would break the video-playmode-loop/free testids this toggle
-              needs to keep. Kept as the existing plain-button pair, restyled down instead. */}
-          <div className={`playmode-toggle ${stylex.props(styles.playModeToggle).className}`}>
-            <button
-              type="button"
-              className={`plain-button${playMode === "loop" ? " active" : ""}`}
-              onClick={() => setPlayMode("loop")}
-              data-testid="video-playmode-loop"
-            >
-              Loop range
-            </button>
-            <button
-              type="button"
-              className={`plain-button${playMode === "free" ? " active" : ""}`}
-              onClick={() => setPlayMode("free")}
-              data-testid="video-playmode-free"
-            >
-              Full clip
-            </button>
-          </div>
+          {/* Playback-range toggle (2026-07-11 stock-component migration) - a stock Astryx
+              SegmentedControl replaces the old raw `.plain-button` pair. `size="sm"` keeps it
+              deliberately smaller/quieter than the primary Play button above (2026-07-11 hierarchy
+              fix) - this is a secondary playback setting, not this control area's primary action.
+              SegmentedControlItem doesn't forward `data-testid` (destructures a fixed prop list with
+              no `...rest` capture, same footgun CLAUDE.md documents for CheckboxInput), so the old
+              video-playmode-loop/free testids are gone - tests select by role/name instead (see
+              VideoPreview.test.tsx). */}
+          <SegmentedControl value={playMode} onChange={(v) => setPlayMode(v as PlayMode)} label="Playback range" size="sm">
+            <SegmentedControlItem value="loop" label="Loop range" />
+            <SegmentedControlItem value="free" label="Full clip" />
+          </SegmentedControl>
 
           {notice ? <div {...stylex.props(styles.notice)}>{notice}</div> : null}
         </>

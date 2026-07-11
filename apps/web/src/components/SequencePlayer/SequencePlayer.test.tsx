@@ -104,14 +104,14 @@ describe("SequencePlayer", () => {
 
   it("switches the active speed-toggle button when a rate is clicked", () => {
     render(<SequencePlayer {...baseProps()} />);
-    const oneX = screen.getByText("1x");
-    const oneAndHalfX = screen.getByText("1.5x");
-    expect(oneX.className).toContain("active");
-    expect(oneAndHalfX.className).not.toContain("active");
+    const oneX = screen.getByRole("radio", { name: "1x" });
+    const oneAndHalfX = screen.getByRole("radio", { name: "1.5x" });
+    expect(oneX.getAttribute("aria-checked")).toBe("true");
+    expect(oneAndHalfX.getAttribute("aria-checked")).toBe("false");
 
     fireEvent.click(oneAndHalfX);
-    expect(oneAndHalfX.className).toContain("active");
-    expect(oneX.className).not.toContain("active");
+    expect(oneAndHalfX.getAttribute("aria-checked")).toBe("true");
+    expect(oneX.getAttribute("aria-checked")).toBe("false");
   });
 
   it("calls onExit when Close is clicked", () => {

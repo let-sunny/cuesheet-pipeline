@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { radiusVars, spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 5) — rules ported
@@ -12,19 +13,16 @@ import * as stylex from "@stylexjs/stylex";
  *   deliberately render the exact same classes for their own live-preview stages so the preview
  *   never drifts from this component's real overlay (see SubtitleStyleSettings.tsx's file
  *   comment). Not owned solely by this component.
- * - `.playmode-toggle button` (+ `.active`) — this button also carries the `.plain-button` marker
- *   class, and overrides several of its properties (padding/font-size/color, plus background/
- *   border-color on `.active`) at higher specificity (a descendant class+tag selector, class+
- *   class+tag for `.active`), same root cause as HeaderBar's theme toggle / CompactSegmentList's
- *   compact-list-actions button - StyleX can't express that specificity edge. The wrapper's own
- *   layout (`.playmode-toggle`'s flex/gap, below as `playModeToggle`) still moves to StyleX - the
- *   div keeps both the plain `playmode-toggle` className *and* the StyleX class so the descendant
- *   selectors keep matching (same hybrid pattern as CompactSegmentList's `compact-list-actions`).
  * - `.empty` (the "can't find the source" message) — shared with IntroOutroEditor.tsx (both render
  *   the same generic missing-source message). Not owned solely by this component.
  *
  * `background`/`border` shorthands are written out as their longhand equivalents - see
  * HeaderBar.styles.ts's comment for why (StyleX silently drops the shorthand form).
+ *
+ * Spacing/radius migration (2026-07-11, design-principles.md #5 strict rule, same reasoning as
+ * MomentPalette.styles.ts's comment): `gap`/`padding`/`margin`/`borderRadius` read from Astryx's
+ * `spacingVars`/`radiusVars`, snapped to the nearest step. Structural sizing (`minHeight: 120`,
+ * `maxHeight: 32`'s 2-line clamp cap) and font-size stay literal/deferred, same reasoning as before.
  */
 export const styles = stylex.create({
   // Width follows the column width of the consumer (EditStep.styles.ts's trimVideoCol) as-is.
@@ -33,10 +31,10 @@ export const styles = stylex.create({
     boxSizing: "border-box",
     display: "flex",
     flexDirection: "column",
-    gap: 8,
-    padding: 12,
+    gap: spacingVars["--spacing-2"],
+    padding: spacingVars["--spacing-3"],
     backgroundColor: "var(--surface-1)",
-    borderRadius: 8,
+    borderRadius: radiusVars["--radius-element"],
   },
   videoPreviewEmpty: {
     color: "var(--text-secondary)",
@@ -51,14 +49,14 @@ export const styles = stylex.create({
   contextHeader: {
     display: "flex",
     flexDirection: "column",
-    gap: 4,
+    gap: spacingVars["--spacing-1"],
   },
   contextScene: {
     display: "flex",
     alignItems: "baseline",
     flexWrap: "wrap",
-    gap: 6,
-    padding: "8px 10px",
+    gap: spacingVars["--spacing-1-5"],
+    padding: `${spacingVars["--spacing-2"]} ${spacingVars["--spacing-2"]}`,
     backgroundColor: "var(--context-box-bg)",
     borderStyle: "solid",
     borderTopWidth: 1,
@@ -69,7 +67,7 @@ export const styles = stylex.create({
     borderRightColor: "var(--context-box-border)",
     borderBottomColor: "var(--context-box-border)",
     borderLeftColor: "var(--accent)",
-    borderRadius: 6,
+    borderRadius: radiusVars["--radius-element"],
     fontSize: 14,
     fontWeight: 500,
     lineHeight: 1.4,
@@ -101,7 +99,7 @@ export const styles = stylex.create({
     fontSize: 12,
     lineHeight: 1.4,
     color: "var(--text-tertiary)",
-    paddingLeft: 2,
+    paddingLeft: spacingVars["--spacing-0-5"],
     // The subtitle is secondary info toned down relative to the scene — the full text needed for
     // judgment can be seen via the title tooltip.
     overflow: "hidden",
@@ -115,7 +113,7 @@ export const styles = stylex.create({
   // this component renders is always inside cropFrame, so there's no case needing them split.
   video: {
     width: "100%",
-    borderRadius: 4,
+    borderRadius: radiusVars["--radius-inner"],
     backgroundColor: "black",
     display: "block",
   },
@@ -126,30 +124,30 @@ export const styles = stylex.create({
   cropFrame: {
     position: "relative",
     overflow: "hidden",
-    borderRadius: 4,
+    borderRadius: radiusVars["--radius-inner"],
     containerType: "inline-size",
   },
   cropEditToolbar: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 8,
-    padding: "6px 8px",
+    gap: spacingVars["--spacing-2"],
+    padding: `${spacingVars["--spacing-1-5"]} ${spacingVars["--spacing-2"]}`,
     backgroundColor: "var(--surface-2)",
-    borderRadius: 4,
+    borderRadius: radiusVars["--radius-inner"],
     fontSize: 12,
     color: "var(--text-quaternary)",
   },
   cropEditActions: {
     display: "flex",
-    gap: 6,
+    gap: spacingVars["--spacing-1-5"],
   },
   notice: {
     fontSize: 13,
     color: "var(--warning-text)",
   },
   noticeProxyPreparing: {
-    margin: "8px 0",
+    margin: `${spacingVars["--spacing-2"]} 0`,
   },
   timeReadout: {
     fontSize: 13,
@@ -158,10 +156,6 @@ export const styles = stylex.create({
   videoControlsRow: {
     display: "flex",
     flexWrap: "wrap",
-    gap: 6,
-  },
-  playModeToggle: {
-    display: "flex",
-    gap: 6,
+    gap: spacingVars["--spacing-1-5"],
   },
 });

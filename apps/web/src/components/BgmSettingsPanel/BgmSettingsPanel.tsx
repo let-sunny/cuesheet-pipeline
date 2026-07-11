@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
+import { Icon } from "@astryxdesign/core/Icon";
+import { IconButton } from "@astryxdesign/core/IconButton";
 import type { BgmCue } from "@cuesheet/schema";
 import { bgmFileStreamUrl, type BgmFile } from "../../api.js";
 import { useNumericField } from "../../hooks/useNumericField.js";
@@ -92,28 +94,38 @@ export function BgmSettingsPanel({
           {files.length === 0 ? (
             <p className="narration-empty-note">{filesNote ?? "No audio files found under media/ or clipDir"}</p>
           ) : (
-            files.map((f) => (
-              <div
-                className={`bgm-file-row${f.path === cue.file ? " selected" : ""} ${stylex.props(styles.fileRow).className ?? ""}`}
-                key={f.path}
-              >
-                <button
-                  type="button"
-                  className="plain-button bgm-file-play"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    togglePreview(f.path);
-                  }}
-                  title={playingPath === f.path ? "Stop preview" : "Preview"}
+            files.map((f) => {
+              const isSelected = f.path === cue.file;
+              const isPlaying = playingPath === f.path;
+              return (
+                <div
+                  className={`bgm-file-row${isSelected ? " selected" : ""} ${stylex.props(styles.fileRow).className ?? ""}`}
+                  key={f.path}
                 >
-                  {playingPath === f.path ? "■" : "▶"}
-                </button>
-                <button type="button" className="plain-button bgm-file-name" onClick={() => onChangeFile(f.path)}>
-                  {f.path}
-                  {f.durationS != null ? ` (${f.durationS.toFixed(1)}s)` : ""}
-                </button>
-              </div>
-            ))
+                  {/* Stock Astryx IconButton/Button (2026-07-11 stock-component migration) replace
+                      the old raw `.plain-button` pair. No stock "play" icon exists in Astryx's
+                      icon registry, so the glyph stays a plain aria-hidden span (the accessible
+                      name comes from `label`); "stop" is a registered icon name. */}
+                  <IconButton
+                    icon={isPlaying ? <Icon icon="stop" size="sm" /> : <span aria-hidden="true">▶</span>}
+                    label={isPlaying ? "Stop preview" : "Preview"}
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      togglePreview(f.path);
+                    }}
+                  />
+                  <Button
+                    label={`${f.path}${f.durationS != null ? ` (${f.durationS.toFixed(1)}s)` : ""}`}
+                    variant={isSelected ? "secondary" : "ghost"}
+                    size="sm"
+                    onClick={() => onChangeFile(f.path)}
+                    xstyle={styles.fileNameButton}
+                  />
+                </div>
+              );
+            })
           )}
         </div>
         {cue.file !== "" && !currentFileKnown ? <p className="qf-readonly">Currently assigned: {cue.file}</p> : null}

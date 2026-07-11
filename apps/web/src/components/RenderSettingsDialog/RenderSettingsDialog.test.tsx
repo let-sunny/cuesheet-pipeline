@@ -58,14 +58,14 @@ describe("RenderSettingsDialog", () => {
 
   it("marks the matching resolution preset as active", () => {
     render(<RenderSettingsDialog {...baseProps()} />);
-    expect(screen.getByRole("button", { name: "1920x1080" }).className).toContain("active");
-    expect(screen.getByRole("button", { name: "1280x720" }).className).not.toContain("active");
+    expect(screen.getByRole("radio", { name: "1920x1080" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("radio", { name: "1280x720" }).getAttribute("aria-checked")).toBe("false");
   });
 
   it("calls onChangeResolution when a different preset is clicked", () => {
     const onChangeResolution = vi.fn();
     render(<RenderSettingsDialog {...baseProps()} onChangeResolution={onChangeResolution} />);
-    fireEvent.click(screen.getByRole("button", { name: "1280x720" }));
+    fireEvent.click(screen.getByRole("radio", { name: "1280x720" }));
     expect(onChangeResolution).toHaveBeenCalledWith(1280, 720);
   });
 

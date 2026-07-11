@@ -3,6 +3,7 @@ import type { MouseEvent } from "react";
 import * as stylex from "@stylexjs/stylex";
 import type { CueSheet, Segment, SubtitleStyle, SubtitleStylePresets } from "@cuesheet/schema";
 import { Button } from "@astryxdesign/core/Button";
+import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import { cropPreviewStyle } from "../../lib/cropPreview.js";
 import { TitleOverlay } from "../TitleOverlay/index.js";
 import type { ClipMoments, NarrationFile } from "../../api.js";
@@ -509,21 +510,13 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
           />
         </div>
 
-        {/* `sequence-player-speed-toggle` stays alongside the StyleX class as a marker so the
-            `.sequence-player-speed-toggle button` descendant-selector exception (styles.css) keeps
-            matching - see SequencePlayer.styles.ts's file comment. */}
-        <div className={`sequence-player-speed-toggle ${stylex.props(styles.speedToggle).className}`}>
+        {/* Playback-speed toggle (2026-07-11 stock-component migration) - a stock Astryx
+            SegmentedControl replaces the old raw `.plain-button` row. */}
+        <SegmentedControl value={String(userRate)} onChange={(v) => setUserRate(Number(v))} label="Playback speed" size="sm">
           {RATE_OPTIONS.map((rate) => (
-            <button
-              key={rate}
-              type="button"
-              className={`plain-button${userRate === rate ? " active" : ""}`}
-              onClick={() => setUserRate(rate)}
-            >
-              {rate}x
-            </button>
+            <SegmentedControlItem key={rate} value={String(rate)} label={`${rate}x`} />
           ))}
-        </div>
+        </SegmentedControl>
 
         <span {...stylex.props(styles.counter)}>
           Cut {segments.length > 0 ? `${currentIndex + 1}/${segments.length}` : "0/0"} ·{" "}

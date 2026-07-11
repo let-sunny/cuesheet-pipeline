@@ -1,29 +1,31 @@
 import * as stylex from "@stylexjs/stylex";
+import { radiusVars, spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 5) — rules ported
- * 1:1 from the old `.sequence-*` classes in styles.css (all owned solely by this component; no
- * `.plain-button` marker collisions, except the speed-toggle buttons noted below).
+ * 1:1 from the old `.sequence-*` classes in styles.css (all owned solely by this component).
  *
- * NOT migrated here (stay plain CSS, see styles.css):
- * - `.sequence-player-speed-toggle button` (+ `.active`) — a descendant selector (1 class + tag,
- *   so higher specificity than `.plain-button` regardless of source order) that sets the speed
- *   buttons' own background/border/color/padding, overriding several of `.plain-button`'s
- *   properties - StyleX can't express that specificity edge, same root cause as HeaderBar's theme
- *   toggle / MiniTimelineStrip's zoom-controls button. The wrapper's own layout
- *   (`.sequence-player-speed-toggle`'s flex/gap, below as `speedToggle`) still moves to StyleX -
- *   the div keeps both the plain `sequence-player-speed-toggle` className *and* the StyleX class
- *   so the descendant selector keeps matching (same hybrid pattern as CompactSegmentList's
- *   `compact-list-actions`).
+ * The playback-speed toggle is now a stock Astryx SegmentedControl (2026-07-11 stock-component
+ * migration) - the old `.sequence-player-speed-toggle button`(+`.active`) plain-CSS exception and
+ * its wrapper `speedToggle` xstyle are both gone with it.
  *
  * `background`/`border` shorthands are written out as their longhand equivalents - see
  * HeaderBar.styles.ts's comment for why (StyleX silently drops the shorthand form).
+ *
+ * Spacing/radius migration (2026-07-11, design-principles.md #5 strict rule, same reasoning as
+ * MomentPalette.styles.ts's comment): `gap`/`padding`/`borderRadius` read from Astryx's
+ * `spacingVars`/`radiusVars`. `top`/`left`/`right`/`bottom` position-offsets (`sceneHint`,
+ * `subtitleBottom`/`subtitleTop`) stay literal - they're absolute-position placement ("which
+ * elements sit where"), the strict rule's layout-structure carve-out, not spacing between
+ * elements. Structural stage sizing (`maxWidth: 960`, `height: 8` progress-bar thickness) and
+ * font-size/fixed overlay colors (always-dark stage) stay literal/deferred, same reasoning as
+ * VideoPreview.styles.ts.
  */
 export const styles = stylex.create({
   player: {
     display: "flex",
     flexDirection: "column",
-    gap: 10,
+    gap: spacingVars["--spacing-2"],
     alignItems: "center",
   },
   // containerType opens a container query context, so the subtitle overlay can use cqw units for
@@ -35,7 +37,7 @@ export const styles = stylex.create({
     maxHeight: "40vh",
     aspectRatio: "16 / 9",
     backgroundColor: "black",
-    borderRadius: 8,
+    borderRadius: radiusVars["--radius-element"],
     overflow: "hidden",
     containerType: "inline-size",
   },
@@ -64,8 +66,8 @@ export const styles = stylex.create({
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
-    padding: "3px 8px",
-    borderRadius: 4,
+    padding: `3px ${spacingVars["--spacing-2"]}`,
+    borderRadius: radiusVars["--radius-inner"],
     backgroundColor: "rgba(0, 0, 0, 0.55)",
     color: "#d8dbe6",
     fontSize: 12,
@@ -75,7 +77,7 @@ export const styles = stylex.create({
     position: "absolute",
     left: 0,
     right: 0,
-    padding: "0 24px",
+    padding: `0 ${spacingVars["--spacing-6"]}`,
     textAlign: "center",
     fontSize: 22,
     fontWeight: 700,
@@ -96,7 +98,7 @@ export const styles = stylex.create({
   },
   subtitleText: {
     display: "inline-block",
-    borderRadius: 2,
+    borderRadius: radiusVars["--radius-inner"],
     boxDecorationBreak: "clone",
     // Keeps a no-space run (e.g. a long URL/hashtag) contained in this preview - the actual
     // drawtext render never wraps, so this preview can't match it exactly, but this at least keeps
@@ -120,7 +122,7 @@ export const styles = stylex.create({
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: "var(--border)",
-    borderRadius: 4,
+    borderRadius: radiusVars["--radius-inner"],
     cursor: "pointer",
     overflow: "hidden",
   },
@@ -132,18 +134,14 @@ export const styles = stylex.create({
     display: "flex",
     alignItems: "center",
     flexWrap: "wrap",
-    gap: 12,
+    gap: spacingVars["--spacing-3"],
     width: "100%",
     maxWidth: 960,
   },
   transport: {
     display: "flex",
     alignItems: "center",
-    gap: 6,
-  },
-  speedToggle: {
-    display: "flex",
-    gap: 4,
+    gap: spacingVars["--spacing-1-5"],
   },
   counter: {
     fontSize: 13,

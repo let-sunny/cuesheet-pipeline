@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
+import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import type { ThemeModeSetting } from "../../lib/theme.js";
 import { useEditableTitle } from "../../hooks/useEditableTitle.js";
 import { styles } from "./HeaderBar.styles.js";
@@ -128,30 +129,17 @@ function ThemeModeToggle({
   themeMode: ThemeModeSetting;
   onThemeModeChange: (mode: ThemeModeSetting) => void;
 }) {
-  const wrapperStyle = stylex.props(styles.themeToggle);
   return (
-    <div
-      className={`theme-mode-toggle ${wrapperStyle.className ?? ""}`}
-      style={wrapperStyle.style}
-      role="group"
-      aria-label="Theme"
+    <SegmentedControl
+      value={themeMode}
+      onChange={(v) => onThemeModeChange(v as ThemeModeSetting)}
+      label="Theme"
+      size="sm"
     >
-      {THEME_MODE_OPTIONS.map((option) => {
-        const isActive = option.value === themeMode;
-        return (
-          <button
-            type="button"
-            key={option.value}
-            className={`plain-button${isActive ? " active" : ""}`}
-            onClick={() => onThemeModeChange(option.value)}
-            title={option.label}
-          >
-            {option.icon}
-            <span>{option.label}</span>
-          </button>
-        );
-      })}
-    </div>
+      {THEME_MODE_OPTIONS.map((option) => (
+        <SegmentedControlItem key={option.value} value={option.value} label={option.label} icon={option.icon} />
+      ))}
+    </SegmentedControl>
   );
 }
 

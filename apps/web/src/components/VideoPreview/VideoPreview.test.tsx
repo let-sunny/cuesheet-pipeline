@@ -149,14 +149,14 @@ describe("VideoPreview", () => {
 
   it("toggles the active playmode button between Loop range and Full clip", () => {
     render(<VideoPreview {...baseProps()} />);
-    const loopButton = screen.getByTestId("video-playmode-loop");
-    const freeButton = screen.getByTestId("video-playmode-free");
-    expect(loopButton.className).toContain("active");
-    expect(freeButton.className).not.toContain("active");
+    const loopButton = screen.getByRole("radio", { name: "Loop range" });
+    const freeButton = screen.getByRole("radio", { name: "Full clip" });
+    expect(loopButton.getAttribute("aria-checked")).toBe("true");
+    expect(freeButton.getAttribute("aria-checked")).toBe("false");
 
     fireEvent.click(freeButton);
-    expect(freeButton.className).toContain("active");
-    expect(loopButton.className).not.toContain("active");
+    expect(freeButton.getAttribute("aria-checked")).toBe("true");
+    expect(loopButton.getAttribute("aria-checked")).toBe("false");
   });
 
   it("disables Split near the cut's edges (with a tooltip), and enables it once the playhead moves away (2026-07-11 QA fix)", async () => {

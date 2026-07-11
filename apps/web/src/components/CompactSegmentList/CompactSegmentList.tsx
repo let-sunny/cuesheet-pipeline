@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
 import * as stylex from "@stylexjs/stylex";
+import { Button } from "@astryxdesign/core/Button";
 import { Icon } from "@astryxdesign/core/Icon";
 import { IconButton } from "@astryxdesign/core/IconButton";
 import type { BgmCue, Segment } from "@cuesheet/schema";
@@ -240,26 +241,29 @@ export function CompactSegmentList({
       window.addEventListener("pointerup", onUp);
     };
 
-  const actionsWrapperProps = stylex.props(styles.actions);
-  const addButtonProps = stylex.props(styles.addButton);
-
   return (
     <div {...stylex.props(styles.panel)}>
       <div {...stylex.props(styles.gutterHeader)}>
-        <button
-          type="button"
-          className="plain-button bgm-gutter-toggle"
+        {/* Stock Astryx Button (2026-07-11 stock-component migration) replaces the old raw
+            `.plain-button` element - `variant="ghost"` keeps this section-header disclosure toggle
+            quiet, matching its previous look. `children` carries the custom icon+text+count-badge
+            composition; `label` supplies the accessible name Button always needs. */}
+        <Button
+          label={bgmGutterCollapsed ? "Expand the background music gutter" : "Collapse the background music gutter"}
+          variant="ghost"
+          size="sm"
           onClick={() => setBgmGutterCollapsed((c) => !c)}
-          title={bgmGutterCollapsed ? "Expand the background music gutter" : "Collapse the background music gutter"}
           data-testid="bgm-gutter-toggle"
         >
-          {/* Quiet, small chevron (design-principles.md #4 "decoration scales to function") -
-              replaces the raw "▾"/"▸" text glyph. chevronRight/chevronDown read as the standard
-              collapsed/expanded disclosure-triangle convention (folder chevrons, tree views). */}
-          <Icon icon={bgmGutterCollapsed ? "chevronRight" : "chevronDown"} size="xsm" color="tertiary" />
-          Background music
-          {bgm.length > 0 ? <span {...stylex.props(styles.gutterCountBadge)}>{bgm.length}</span> : null}
-        </button>
+          <span {...stylex.props(styles.gutterToggleContent)}>
+            {/* Quiet, small chevron (design-principles.md #4 "decoration scales to function") -
+                replaces the raw "▾"/"▸" text glyph. chevronRight/chevronDown read as the standard
+                collapsed/expanded disclosure-triangle convention (folder chevrons, tree views). */}
+            <Icon icon={bgmGutterCollapsed ? "chevronRight" : "chevronDown"} size="xsm" color="tertiary" />
+            Background music
+            {bgm.length > 0 ? <span {...stylex.props(styles.gutterCountBadge)}>{bgm.length}</span> : null}
+          </span>
+        </Button>
         {!bgmGutterCollapsed ? (
           // Small icon-only section action (design-principles.md #4), not a text button - the
           // user kept misreading the old "+ Add track" text button as a cut-list action since it
@@ -398,65 +402,60 @@ export function CompactSegmentList({
                       {...stylex.props(styles.subtitleDot, !!seg.subtitle && styles.subtitleDotFilled)}
                       title={seg.subtitle ? "Has subtitle" : "No subtitle"}
                     />
-                    <div
-                      className={`compact-list-actions ${actionsWrapperProps.className ?? ""}`}
-                      style={actionsWrapperProps.style}
-                    >
-                      <button
-                        type="button"
-                        className="plain-button"
+                    {/* Row actions (2026-07-11 stock-component migration) - stock Astryx
+                        IconButtons replace the old raw `.plain-button` triplet. */}
+                    <div {...stylex.props(styles.actions)}>
+                      <IconButton
+                        icon={<Icon icon="arrowUp" size="sm" />}
+                        label="Move up"
+                        variant="ghost"
+                        size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
                           onMove(i, -1);
                         }}
-                        disabled={i === 0}
-                        title="Move up"
+                        isDisabled={i === 0}
                         data-testid={`cut-row-move-up-${i}`}
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        className="plain-button"
+                      />
+                      <IconButton
+                        icon={<Icon icon="arrowDown" size="sm" />}
+                        label="Move down"
+                        variant="ghost"
+                        size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
                           onMove(i, 1);
                         }}
-                        disabled={i === segments.length - 1}
-                        title="Move down"
+                        isDisabled={i === segments.length - 1}
                         data-testid={`cut-row-move-down-${i}`}
-                      >
-                        ↓
-                      </button>
-                      <button
-                        type="button"
-                        className="plain-button"
+                      />
+                      <IconButton
+                        icon={<Icon icon="close" size="sm" />}
+                        label="Delete"
+                        variant="ghost"
+                        size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
                           onRemove(i);
                         }}
-                        disabled={segments.length <= 1}
-                        title="Delete"
+                        isDisabled={segments.length <= 1}
                         data-testid={`cut-row-delete-${i}`}
-                      >
-                        ✕
-                      </button>
+                      />
                     </div>
                   </div>
                 </div>
               </div>
             );
           })}
-          <button
-            type="button"
-            className={`plain-button ${addButtonProps.className ?? ""}`}
-            style={addButtonProps.style}
+          <Button
+            label="Duplicate selected cut"
+            variant="secondary"
+            size="sm"
             onClick={onAdd}
-            title="Duplicates the selected cut right after it (useful for splitting a long clip into separate cuts)"
+            tooltip="Duplicates the selected cut right after it (useful for splitting a long clip into separate cuts)"
+            xstyle={styles.addButton}
             data-testid="cut-list-add"
-          >
-            Duplicate selected cut
-          </button>
+          />
         </div>
       </div>
     </div>

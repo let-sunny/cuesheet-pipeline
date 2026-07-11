@@ -1,8 +1,19 @@
 import * as stylex from "@stylexjs/stylex";
+import { radiusVars, spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 5) — rules ported
  * 1:1 from the old `.moment-*` classes in styles.css (all owned solely by this component).
+ *
+ * Spacing/radius migration (2026-07-11, design-principles.md #5 strict rule): `gap`/`padding`/
+ * `margin`/`borderRadius` read from Astryx's `spacingVars`/`radiusVars` throughout, snapped to the
+ * nearest step on the 2/4/6/8/12/16/20/24px scale where the old value fell between two steps (e.g.
+ * 10px -> 8px). Structural element sizing (`cardWrap`'s 440px card width, `cardRow`'s 160px fixed
+ * row height, `thumbCol`'s 200px column) stays literal - those are "which elements sit where and
+ * how big" (the strict rule's layout-structure carve-out), not spacing between elements. `number`'s
+ * 1px padding and its always-dark overlay colors stay literal too (see their own comments) - font-
+ * size and this app's bespoke color-token swap are both deferred, same reasoning as
+ * HeaderBar.styles.ts's comment.
  *
  * NOT migrated here (stay plain CSS, see styles.css):
  * - `.empty-state` (+ `.empty-state code`) — shared with App.tsx (both render the same generic
@@ -11,29 +22,28 @@ import * as stylex from "@stylexjs/stylex";
  *   old `.moment-palette.status` compound rule (padding/text-align from `.status` plus a color/
  *   font-size override) is folded wholesale into `paletteStatus` below instead, since this
  *   component no longer renders the literal `status` class - see `paletteStatus`'s own comment.
- * - `.moment-filters button` (+ `.active`) — a descendant selector (1 class + tag, so higher
- *   specificity than `.plain-button` regardless of source order) that sets the filter buttons' own
- *   font-size/padding/background/border-color, same root cause as HeaderBar's theme toggle /
- *   MiniTimelineStrip's zoom-controls button. The wrapper's own layout (`.moment-filters`'s flex/
- *   wrap/gap, below as `filters`) still moves to StyleX - the div keeps both the plain
- *   `moment-filters` className *and* the StyleX class so the descendant selector keeps matching
- *   (same hybrid pattern as CompactSegmentList's `compact-list-actions`).
+ *
+ * The category/status filter chips (2026-07-11 stock-component migration) are now a stock Astryx
+ * `ToggleButtonGroup`/`ToggleButton` pair instead of raw `.plain-button` elements - the chips' own
+ * look is entirely stock now, so the old `.moment-filters button`/`.active` plain-CSS exception is
+ * gone. `filters` below is passed as the group's `xstyle` purely for wrap layout (categories can
+ * exceed one row's width on a 13" viewport) - not a restyle of the chips themselves.
  *
  * `background`/`border` shorthands are written out as their longhand equivalents - see
  * HeaderBar.styles.ts's comment for why (StyleX silently drops the shorthand form).
  */
 export const styles = stylex.create({
   palette: {
-    marginBottom: 4,
-    padding: "12px 16px",
+    marginBottom: spacingVars["--spacing-1"],
+    padding: `${spacingVars["--spacing-3"]} ${spacingVars["--spacing-4"]}`,
     backgroundColor: "var(--surface-1)",
-    borderRadius: 8,
+    borderRadius: radiusVars["--radius-element"],
   },
   // Replaces the old `.moment-palette.status` compound rule - combines `.status`'s padding/
   // text-align (this component no longer renders that shared class) with the color/font-size
   // override that rule layered on top, so the loading/error message renders identically.
   paletteStatus: {
-    padding: 40,
+    padding: spacingVars["--spacing-10"],
     textAlign: "center",
     color: "var(--text-secondary)",
     fontSize: 13,
@@ -46,21 +56,21 @@ export const styles = stylex.create({
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 12,
-    marginBottom: 10,
+    gap: spacingVars["--spacing-3"],
+    marginBottom: spacingVars["--spacing-2"],
     fontSize: 13,
     color: "var(--text-secondary)",
   },
   filters: {
     display: "flex",
     flexWrap: "wrap",
-    gap: 6,
-    marginBottom: 12,
+    gap: spacingVars["--spacing-1-5"],
+    marginBottom: spacingVars["--spacing-3"],
   },
   grid: {
     display: "flex",
     flexWrap: "wrap",
-    gap: 10,
+    gap: spacingVars["--spacing-2"],
     // Cards are a uniform fixed height now (2026-07-11, see `cardRow`'s comment), so `stretch` vs.
     // `flex-start` no longer changes anything visually for the common case - kept flex-start since
     // an excluded card's extra status-banner height (added on top of the fixed row, see `card`'s
@@ -142,7 +152,7 @@ export const styles = stylex.create({
   // "face exp…" mid-word at the card's 168px width, leaving the full reason visible only on hover) -
   // consistent with this component's established "wrap over truncate/overlap" rule.
   statusBanner: {
-    padding: "4px 8px",
+    padding: `${spacingVars["--spacing-1"]} ${spacingVars["--spacing-2"]}`,
     fontSize: 11,
     fontWeight: 700,
     textAlign: "center",
@@ -174,24 +184,33 @@ export const styles = stylex.create({
     flexWrap: "wrap",
     alignItems: "flex-start",
     justifyContent: "space-between",
-    gap: 4,
+    gap: spacingVars["--spacing-1"],
   },
   // Since this overlays the (always-dark) thumbnail, the text color must also be a fixed light
   // color regardless of theme - otherwise in light theme, an inherited dark color would show as
-  // dark text on a dark chip, invisible.
+  // dark text on a dark chip, invisible (both colors stay literal hex, same reasoning as
+  // `thumbEmpty` below). 1px vertical padding is below the token scale's smallest step (2px) -
+  // kept literal for this compact overlay chip rather than doubling its padding to fit the scale.
   number: {
     minWidth: 0,
     overflowWrap: "break-word",
     fontSize: 12,
-    padding: "1px 5px",
+    padding: `1px ${spacingVars["--spacing-1"]}`,
     backgroundColor: "#00000099",
     color: "#e6e8ee",
-    borderRadius: 3,
+    borderRadius: radiusVars["--radius-inner"],
   },
   // Color (the "in use" emphasis) is handled by Badge's variant="success" - this only adds
   // not-shrinking behavior within the overlay row (always dropping to the next line with full text intact).
   badgeInUse: {
     flexShrink: 0,
+  },
+  // Trims Badge's default size down (2026-07-11 QA fix, design-principles.md #4) - category is
+  // secondary metadata next to duration/quality, not a heading, so it shouldn't out-weigh them.
+  // Badge has no `size` prop, so this is the sanctioned per-instance xstyle override.
+  categoryBadge: {
+    fontSize: 11,
+    padding: `1px ${spacingVars["--spacing-1-5"]}`,
   },
   // Meta row (category badge/duration/quality) - baseline-aligned per screen-spec 0-2. flex-wrap:
   // if a long category badge label leaves insufficient width, later items drop to the next line
@@ -201,7 +220,7 @@ export const styles = stylex.create({
     alignItems: "baseline",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    gap: "4px 10px",
+    gap: `${spacingVars["--spacing-1"]} ${spacingVars["--spacing-2"]}`,
     fontSize: 13,
     color: "var(--text-tertiary)",
   },
@@ -219,16 +238,23 @@ export const styles = stylex.create({
     minHeight: 0,
     display: "flex",
     flexDirection: "column",
-    gap: 10,
-    padding: 12,
+    gap: spacingVars["--spacing-2"],
+    padding: spacingVars["--spacing-3"],
   },
   // Fixed max-height + internal scroll (2026-07-11 QA fix, design-principles.md #6) - this is what
   // keeps the card's overall height uniform (see `cardRow`'s comment): previously the description
   // rendered with no clamp at all, so a long scene memo grew the whole card. 60px fits roughly 3
-  // lines of the `Text type="supporting"` size; anything longer scrolls within the card instead of
-  // stretching it.
+  // lines of the `Text type="supporting"` size (~18.5px line-height); anything longer scrolls
+  // within the card instead of stretching it. `flexShrink: 0` + `minHeight: 40` (2026-07-11 QA fix)
+  // - without them, cardBody's default flex-shrink let this row get squeezed down to under 1.5
+  // visible lines whenever its siblings' natural size left less than 60px of the fixed-height
+  // column, which is exactly what the category-badge/action-button downsizing above was for -
+  // this pins the description to at least 2 full lines regardless, and the (now smaller) info/
+  // actions rows shrink instead if the column is ever tight.
   memoWrap: {
     padding: 0,
+    flexShrink: 0,
+    minHeight: 40,
     maxHeight: 60,
     overflowY: "auto",
   },
@@ -240,6 +266,6 @@ export const styles = stylex.create({
   actionsGroup: {
     display: "flex",
     alignItems: "center",
-    gap: 6,
+    gap: spacingVars["--spacing-1-5"],
   },
 });

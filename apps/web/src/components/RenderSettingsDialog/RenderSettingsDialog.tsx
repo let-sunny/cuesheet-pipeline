@@ -3,6 +3,7 @@ import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
 import { Layout, LayoutContent } from "@astryxdesign/core/Layout";
 import { Button } from "@astryxdesign/core/Button";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
+import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import type { Project } from "@cuesheet/schema";
 import { formatClock } from "../../lib/segmentTiming.js";
 import { styles } from "./RenderSettingsDialog.styles.js";
@@ -74,24 +75,26 @@ export function RenderSettingsDialog({
             >
               <div className="settings-group">
                 <h3>Resolution</h3>
-                <div
-                  className={`render-resolution-options ${stylex.props(styles.resolutionOptions).className ?? ""}`}
+                {/* Resolution preset toggle (2026-07-11 stock-component migration) - a stock Astryx
+                    SegmentedControl replaces the old raw `.plain-button` row. SegmentedControlItem
+                    doesn't forward `data-testid` (see CLAUDE.md's CheckboxInput footgun note), so
+                    the old render-dialog-resolution-* testids are gone - tests select by role/name
+                    instead. */}
+                <SegmentedControl
+                  value={`${project.width}x${project.height}`}
+                  onChange={(v) => {
+                    const preset = RESOLUTION_PRESETS.find((p) => `${p.width}x${p.height}` === v);
+                    if (preset) {
+                      handlePickResolution(preset.width, preset.height);
+                    }
+                  }}
+                  label="Resolution"
+                  size="sm"
                 >
-                  {RESOLUTION_PRESETS.map((preset) => {
-                    const isActive = project.width === preset.width && project.height === preset.height;
-                    return (
-                      <button
-                        type="button"
-                        key={preset.label}
-                        className={`plain-button${isActive ? " active" : ""}`}
-                        onClick={() => handlePickResolution(preset.width, preset.height)}
-                        data-testid={`render-dialog-resolution-${preset.width}x${preset.height}`}
-                      >
-                        {preset.label}
-                      </button>
-                    );
-                  })}
-                </div>
+                  {RESOLUTION_PRESETS.map((preset) => (
+                    <SegmentedControlItem key={preset.label} value={`${preset.width}x${preset.height}`} label={preset.label} />
+                  ))}
+                </SegmentedControl>
                 {!RESOLUTION_PRESETS.some((p) => p.width === project.width && p.height === project.height) ? (
                   <p className="render-note">
                     Current setting: {project.width}x{project.height} (custom)
