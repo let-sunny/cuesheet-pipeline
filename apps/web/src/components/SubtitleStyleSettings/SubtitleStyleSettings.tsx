@@ -20,8 +20,14 @@ import { SelectField } from "../ui/SelectField/index.js";
 import { styles } from "./SubtitleStyleSettings.styles.js";
 
 export interface SubtitleStyleSettingsProps {
-  subtitleStyle: SubtitleStyle;
-  onSubtitleStyleChange: (patch: Partial<SubtitleStyle>) => void;
+  /** The effective values to display - the global style as-is when editing the global target, or
+   * the global-style-merged-with-override result when editing a preset (see
+   * SubtitleStylePresetsSettings, which computes that merge and owns the edit-target choice - this
+   * component only ever renders one flat set of values, it doesn't know about presets). */
+  value: SubtitleStyle;
+  /** Patches whichever target is currently being edited - a full style patch for the global
+   * target, or an override patch (same field shape) for a preset target. */
+  onChange: (patch: Partial<SubtitleStyle>) => void;
   /** Used (with projectHeight) to render the live preview stage at the true on-screen proportions. */
   projectWidth: number;
   projectHeight: number;
@@ -31,41 +37,45 @@ export interface SubtitleStyleSettingsProps {
 }
 
 /**
- * "Subtitle style (global)" section's fields column - the Export step's `FinishSettingsSection`
- * wrapper owns the heading/description, this renders just the content: a compact live preview
- * stage, then a `FormLayout` of size/color/outline fields, the background box group
- * (toggle+color+opacity+padding), position, and edge margin, then a preview note. Shares its
- * control pattern with the per-cut override (SegmentStyleOverride).
+ * "Subtitle style" section's fields column - the Export step's `FinishSettingsSection` wrapper
+ * owns the heading/description, this renders just the content: a compact live preview stage, then
+ * a `FormLayout` of size/color/outline fields, the background box group
+ * (toggle+color+opacity+padding), position, and edge margin, then a preview note. Parameterized by
+ * `value`/`onChange` (2026-07-11 fold-in) so the same field set binds to either the global
+ * subtitle style or a named preset override - see SubtitleStylePresetsSettings, which owns the
+ * "editing: global vs. which preset" target select and passes this component the resolved
+ * value/onChange pair for whichever target is currently selected. Shares its control pattern with
+ * the per-cut override (SegmentStyleOverride).
  */
 export function SubtitleStyleSettings({
-  subtitleStyle,
-  onSubtitleStyleChange,
+  value,
+  onChange,
   projectWidth,
   projectHeight,
   previewClip,
   previewClipTimeS,
 }: SubtitleStyleSettingsProps) {
-  const background = subtitleStyle.background ?? null;
-  const margin = subtitleStyle.margin ?? DEFAULT_MARGIN;
+  const background = value.background ?? null;
+  const margin = value.margin ?? DEFAULT_MARGIN;
 
   function handleBackgroundToggle(enabled: boolean) {
-    onSubtitleStyleChange({ background: enabled ? background ?? DEFAULT_BACKGROUND : null });
+    onChange({ background: enabled ? background ?? DEFAULT_BACKGROUND : null });
   }
 
   function patchBackground(patch: Partial<SubtitleBackground>) {
     const base = background ?? DEFAULT_BACKGROUND;
-    onSubtitleStyleChange({ background: { ...base, ...patch } });
+    onChange({ background: { ...base, ...patch } });
   }
 
   const sizeField = useNumericField({
-    value: subtitleStyle.size,
+    value: value.size,
     coerce: (n) => Math.max(1, n),
-    onCommit: (next) => onSubtitleStyleChange({ size: next }),
+    onCommit: (next) => onChange({ size: next }),
   });
   const outlineWidthField = useNumericField({
-    value: subtitleStyle.outlineWidth,
+    value: value.outlineWidth,
     coerce: (n) => Math.max(0, n),
-    onCommit: (next) => onSubtitleStyleChange({ outlineWidth: next }),
+    onCommit: (next) => onChange({ outlineWidth: next }),
   });
   const paddingField = useNumericField({
     value: (background ?? DEFAULT_BACKGROUND).padding,
@@ -80,7 +90,7 @@ export function SubtitleStyleSettings({
           bulkier preview was removed; reuses the exact overlay classes/merge helpers the Edit step's
           video uses, not a re-implementation). */}
       <SubtitleStylePreviewStage
-        subtitleStyle={subtitleStyle}
+        subtitleStyle={value}
         projectWidth={projectWidth}
         projectHeight={projectHeight}
         previewClip={previewClip}
@@ -96,19 +106,19 @@ export function SubtitleStyleSettings({
           `Selector` via the shared `ui/SelectField` adapter - a fixed 3-option enum, unlike
           IntroOutroEditor's dynamic file pickers, so Selector's option model is a clean fit. */}
       <FormLayout direction="horizontal-labels">
-        <TextInput label="Font" value={subtitleStyle.font} onChange={(value) => onSubtitleStyleChange({ font: value })} />
+        <TextInput label="Font" value={value.font} onChange={(next) => onChange({ font: next })} />
         <NumericInput field={sizeField} label="Size" width={140} />
         <ColorField
           label="Color"
           inputID="subtitle-color"
-          value={subtitleStyle.color}
-          onChange={(value) => onSubtitleStyleChange({ color: value })}
+          value={value.color}
+          onChange={(next) => onChange({ color: next })}
         />
         <ColorField
           label="Outline color"
           inputID="subtitle-outline-color"
-          value={subtitleStyle.outlineColor}
-          onChange={(value) => onSubtitleStyleChange({ outlineColor: value })}
+          value={value.outlineColor}
+          onChange={(next) => onChange({ outlineColor: next })}
         />
         <NumericInput field={outlineWidthField} label="Outline width" width={140} />
 
@@ -160,8 +170,8 @@ export function SubtitleStyleSettings({
             onto one line). */}
         <SelectField
           label="Position"
-          value={subtitleStyle.position}
-          onChange={(value) => onSubtitleStyleChange({ position: value as SubtitleStyle["position"] })}
+          value={value.position}
+          onChange={(next) => onChange({ position: next as SubtitleStyle["position"] })}
           options={POSITION_OPTIONS}
         />
         <Field label="Edge margin" inputID="subtitle-edge-margin" isLabelHidden>
@@ -172,8 +182,8 @@ export function SubtitleStyleSettings({
             max={600}
             step={1}
             valueDisplay="none"
-            isDisabled={subtitleStyle.position === "center"}
-            onChange={(v: number) => onSubtitleStyleChange({ margin: v })}
+            isDisabled={value.position === "center"}
+            onChange={(v: number) => onChange({ margin: v })}
           />
         </Field>
       </FormLayout>

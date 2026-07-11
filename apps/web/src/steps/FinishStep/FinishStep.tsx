@@ -4,7 +4,6 @@ import { VStack } from "@astryxdesign/core/VStack";
 import type { CueSheet } from "@cuesheet/schema";
 import type { UseFinishStepActionsResult } from "../../hooks/useFinishStepActions.js";
 import { ProjectMetaFields } from "../../components/ProjectMetaFields/index.js";
-import { SubtitleStyleSettings } from "../../components/SubtitleStyleSettings/index.js";
 import { SubtitleStylePresetsSettings } from "../../components/SubtitleStylePresetsSettings/index.js";
 import { IntroOutroEditor } from "../../components/IntroOutroEditor/index.js";
 import { BgmSummarySection } from "../../components/BgmSummarySection/index.js";
@@ -27,13 +26,16 @@ export interface FinishStepProps {
 }
 
 /**
- * The (3) Export step's arrangement — section order: Project -> Subtitle style (global) ->
- * Subtitle style presets -> Intro/outro -> Background music (a one-line pointer only, real editing
- * lives in the (2) Edit step's BGM gutter) -> Output. Narration moved to the (2) Edit step (a
- * separate task) - not rendered here anymore. Astryx-catalog rebuild (docs/design-principles.md):
- * each settings-heavy section composes the shared `FinishSettingsSection` (Section + heading/fields
- * Grid, not Card), so this component stays a pure arrangement - no layout logic of its own, only
- * wiring each section's data/callbacks in.
+ * The (3) Export step's arrangement — section order: Project -> Subtitle style -> Intro/outro ->
+ * Background music (a one-line pointer only, real editing lives in the (2) Edit step's BGM
+ * gutter) -> Output. Narration moved to the (2) Edit step (a separate task) - not rendered here
+ * anymore. The "Subtitle style" section folds the global style and every named preset into one
+ * editor (2026-07-11 fold-in) - `SubtitleStylePresetsSettings` owns the "editing: global vs. which
+ * preset" target select, so what used to be a separate "Subtitle style presets" section (one
+ * Collapsible field-set stacked per preset - unwieldy past a couple of presets) is gone. Astryx-
+ * catalog rebuild (docs/design-principles.md): each settings-heavy section composes the shared
+ * `FinishSettingsSection` (Section + heading/fields Grid, not Card), so this component stays a
+ * pure arrangement - no layout logic of its own, only wiring each section's data/callbacks in.
  */
 export function FinishStep({
   draft,
@@ -62,31 +64,21 @@ export function FinishStep({
 
       <FinishSettingsSection
         heading="Subtitle style"
-        description="The global look, applied unless a cut or preset overrides it."
+        description="The global look (applied unless a cut overrides it), or a named preset a cut can opt into instead."
         data-testid="export-section-subtitle-style"
       >
-        <SubtitleStyleSettings
+        <SubtitleStylePresetsSettings
           subtitleStyle={draft.subtitleStyle}
           onSubtitleStyleChange={actions.updateSubtitleStyle}
-          projectWidth={draft.project.width}
-          projectHeight={draft.project.height}
-          previewClip={draft.segments[0]?.clip}
-          previewClipTimeS={draft.segments[0] ? draft.segments[0].in + 0.3 : 0}
-        />
-      </FinishSettingsSection>
-
-      <FinishSettingsSection
-        heading="Subtitle style presets"
-        description="Reusable named overrides a cut can opt into instead of its own override."
-        data-testid="export-section-subtitle-presets"
-      >
-        <SubtitleStylePresetsSettings
           presets={draft.subtitleStylePresets}
-          globalStyle={draft.subtitleStyle}
           onCreate={actions.createSubtitleStylePreset}
           onRename={actions.renameSubtitleStylePreset}
           onDelete={actions.deleteSubtitleStylePreset}
           onChangePreset={actions.updateSubtitleStylePreset}
+          projectWidth={draft.project.width}
+          projectHeight={draft.project.height}
+          previewClip={draft.segments[0]?.clip}
+          previewClipTimeS={draft.segments[0] ? draft.segments[0].in + 0.3 : 0}
         />
       </FinishSettingsSection>
 
