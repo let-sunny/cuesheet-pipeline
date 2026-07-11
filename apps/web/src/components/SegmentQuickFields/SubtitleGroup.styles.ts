@@ -22,21 +22,6 @@ export const styles = stylex.create({
     textTransform: "uppercase",
     letterSpacing: "0.05em",
   },
-  // The old shared textarea-variant marker class's 6px 8px padding (vs the plain input's 4px 8px)
-  // + full-width sizing.
-  subtitleTextarea: {
-    font: "inherit",
-    color: "inherit",
-    backgroundColor: colorVars["--color-background-surface"],
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderColor: colorVars["--color-border"],
-    borderRadius: radiusVars["--radius-element"],
-    padding: `${spacingVars["--spacing-1-5"]} ${spacingVars["--spacing-2"]}`,
-    width: "100%",
-    boxSizing: "border-box",
-    resize: "vertical",
-  },
   note: {
     margin: `${spacingVars["--spacing-1"]} 0 0`,
     fontSize: textSizeVars["--font-size-sm"],

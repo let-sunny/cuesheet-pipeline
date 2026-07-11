@@ -1,6 +1,5 @@
-import * as stylex from "@stylexjs/stylex";
-import { Field } from "@astryxdesign/core/Field";
 import { Text } from "@astryxdesign/core/Text";
+import { TextArea } from "@astryxdesign/core/TextArea";
 import { VStack } from "@astryxdesign/core/VStack";
 import type {
   Segment,
@@ -52,19 +51,18 @@ export function SubtitleGroup({
       <Text type="label" color="secondary" weight="semibold" xstyle={styles.groupLabel}>
         Subtitle
       </Text>
-      {/* Label hidden - the group heading above already reads "Subtitle" visually; a real label
-          stays in the DOM for accessibility (Field renders it, position:absolute'd out of flow). */}
-      <Field label="Subtitle" inputID="cut-field-subtitle" isLabelHidden>
-        <textarea
-          id="cut-field-subtitle"
-          {...stylex.props(styles.subtitleTextarea)}
-          value={segment.subtitle}
-          rows={2}
-          placeholder="Enter subtitle"
-          onChange={(e) => onChangeSubtitle(e.target.value)}
-          data-testid="cut-field-subtitle"
-        />
-      </Field>
+      {/* Stock Astryx TextArea (2026-07-11) - replaces the native <textarea>, whose hand-styled
+          border clashed with the themed inputs (esp. y2k). Label hidden - the group heading above
+          already reads "Subtitle"; TextArea keeps a real accessible label in the DOM. */}
+      <TextArea
+        label="Subtitle"
+        isLabelHidden
+        value={segment.subtitle}
+        rows={2}
+        placeholder="Enter subtitle"
+        onChange={(value) => onChangeSubtitle(value)}
+        data-testid="cut-field-subtitle"
+      />
       {subtitleWarning ? (
         <Text type="supporting" xstyle={styles.note}>
           {subtitleWarning}
