@@ -41,7 +41,7 @@ direction, and which elements sit where. Everything else must come from Astryx: 
 `--color-*` tokens, spacing/gaps/padding from `--spacing-*` tokens, corners from `--radius-*`,
 type from `--font-*`/`--text-*`, borders/shadows from their tokens. No hardcoded hex, no literal
 px for spacing or radius. The test: changing the theme must recolor and re-space EVERYTHING — if
-a value doesn't follow the theme, it's a violation. Buttons/inputs/chips/badges are Astryx
+a value doesn't follow the theme, it's a violation. This is enforced by a theme-switch regression test: render key surfaces under two visually-distinct themes and assert their computed colors actually differ; a surface that stays the same color across themes fails the test (it's a hardcoded-value candidate). Wire it into check:repo/CI so new hardcoding can't creep back. Buttons/inputs/chips/badges are Astryx
 components (Button, TextInput, Select, Chip, Badge, IconButton...), never hand-built `.plain-*`.
 
 ## 6. Minimal whitespace, 13-inch first
