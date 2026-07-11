@@ -6,6 +6,7 @@ import { Badge } from "@astryxdesign/core/Badge";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { Icon } from "@astryxdesign/core/Icon";
 import { Overlay } from "@astryxdesign/core/Overlay";
+import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import { Text } from "@astryxdesign/core/Text";
 import type { Segment } from "@cuesheet/schema";
 import { FilterChip } from "../ui/FilterChip/index.js";
@@ -17,7 +18,6 @@ import {
   buildCards,
   CATEGORY_META,
   CATEGORY_ORDER,
-  STATUS_FILTER_LABEL,
   computeCategoryCounts,
   computeInUseCutNumbers,
   filterByStatus,
@@ -149,49 +149,71 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
         />
       ) : (
         <>
-          {/* Category/status filter chips. Deliberately STANDALONE controlled `ToggleButton`s
-              (`isPressed`/`onPressedChange`), NOT wrapped in `ToggleButtonGroup` - the group
-              coordinates selection through a React context, and Astryx's Vite/StyleX dev setup
-              loads `@astryxdesign/core`'s `ToggleButtonGroup` source module twice (once pre-bundled
-              `?v=hash`, once raw via the `source` export condition), so the provider and the
-              `useToggleButtonGroup()` consumer end up on two different context objects - the hook
-              reads null and every chip click is a silent no-op (confirmed in a real browser; jsdom
-              can't reproduce Vite's dual-instance resolution, so unit tests passed while the running
-              app was dead). Driving each chip's pressed state directly from our own
-              selectedCategory/statusFilter state sidesteps the context entirely. Clicking the active
-              chip clears back to "all" (the single-select affordance we had before). */}
-          <div {...stylex.props(styles.filterBar)}>
-            <div role="group" aria-label="Filter by category" {...stylex.props(styles.filtersCategory)}>
-              <FilterChip
-                size="sm"
-                label={`All (${statusFilteredCards.length})`}
-                isPressed={selectedCategory === "all"}
-                onPressedChange={() => setSelectedCategory("all")}
-              />
-              {CATEGORY_ORDER.filter((cat) => (fullCounts.get(cat) ?? 0) > 0).map((cat) => (
+          {/* Two orthogonal filter facets (2026-07-11 faceted-filtering restructure, per NN/g
+              Filters-vs-Facets and Hearst's faceted navigation research): status and category are
+              independent axes, so each gets its own control TYPE rather than being flattened into
+              one row of lookalike chips.
+
+              Row 1 (status): a stock Astryx SegmentedControl - the spec-correct control for a
+              small (2-5), mutually-exclusive value set (`astryx component SegmentedControl`).
+              Controlled straight off statusFilter/setStatusFilter, same as VideoPreview's
+              playMode control. No `data-testid` here or on the items - verified against the
+              installed `SegmentedControl`/`SegmentedControlItem` source (dist), and like
+              `CheckboxInput` (CLAUDE.md), both destructure a fixed prop list with no `...rest`
+              capture at all, so a `data-testid` would be silently dropped. Select in tests by
+              `role="radiogroup"`/`role="radio"` + accessible name instead (same convention
+              VideoPreview.test.tsx already uses for playMode). */}
+          <div {...stylex.props(styles.statusRow)}>
+            <SegmentedControl
+              value={statusFilter}
+              onChange={(v) => setStatusFilter(v as StatusFilter)}
+              label="Filter by status"
+              size="sm"
+            >
+              <SegmentedControlItem value="all" label="All" />
+              <SegmentedControlItem value="in-use" label="In use" />
+              <SegmentedControlItem value="excluded" label="Excluded" />
+            </SegmentedControl>
+          </div>
+
+          {/* Row 2 (category): a single-row, horizontally-scrolling pill strip. Deliberately
+              STANDALONE controlled `ToggleButton`s (`isPressed`/`onPressedChange`), NOT wrapped in
+              `ToggleButtonGroup` - the group coordinates selection through a React context, and
+              Astryx's Vite/StyleX dev setup loads `@astryxdesign/core`'s `ToggleButtonGroup` source
+              module twice (once pre-bundled `?v=hash`, once raw via the `source` export
+              condition), so the provider and the `useToggleButtonGroup()` consumer end up on two
+              different context objects - the hook reads null and every chip click is a silent
+              no-op (confirmed in a real browser; jsdom can't reproduce Vite's dual-instance
+              resolution, so unit tests passed while the running app was dead). Driving each chip's
+              pressed state directly from our own selectedCategory state sidesteps the context
+              entirely. Clicking the active chip clears back to "all" (the single-select affordance
+              we had before).
+
+              A category whose faceted count (`counts`, computed over the status-filtered set) is
+              0 renders dimmed + disabled rather than vanishing (Hearst/Algolia "avoid empty
+              results" - a ghost option, not a live one) - `isDisabled` forwards straight through
+              to Button (ToggleButton has no ...rest capture gap; it spreads the disabled state
+              onto Button, which applies its own dimmed `disabled` style). */}
+          <div role="group" aria-label="Filter by category" {...stylex.props(styles.categoryStrip)}>
+            <FilterChip
+              size="sm"
+              label={`All (${statusFilteredCards.length})`}
+              isPressed={selectedCategory === "all"}
+              onPressedChange={() => setSelectedCategory("all")}
+            />
+            {CATEGORY_ORDER.filter((cat) => (fullCounts.get(cat) ?? 0) > 0).map((cat) => {
+              const count = counts.get(cat) ?? 0;
+              return (
                 <FilterChip
                   key={cat}
                   size="sm"
-                  label={`${CATEGORY_META[cat].label} (${counts.get(cat) ?? 0})`}
+                  label={`${CATEGORY_META[cat].label} (${count})`}
                   isPressed={selectedCategory === cat}
+                  isDisabled={count === 0}
                   onPressedChange={() => setSelectedCategory(selectedCategory === cat ? "all" : cat)}
                 />
-              ))}
-            </div>
-
-            <div {...stylex.props(styles.filterDivider)} aria-hidden="true" />
-
-            <div role="group" aria-label="Filter by status" {...stylex.props(styles.filtersStatus)}>
-              {(["all", "in-use", "excluded"] as const).map((f) => (
-                <FilterChip
-                  key={f}
-                  size="sm"
-                  label={STATUS_FILTER_LABEL[f]}
-                  isPressed={statusFilter === f}
-                  onPressedChange={() => setStatusFilter(statusFilter === f ? "all" : f)}
-                />
-              ))}
-            </div>
+              );
+            })}
           </div>
 
           <div {...stylex.props(styles.grid)}>

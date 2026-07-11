@@ -138,6 +138,67 @@ describe("MomentPalette category filter", () => {
   });
 });
 
+describe("MomentPalette status filter (SegmentedControl)", () => {
+  const oneInUseOneNot: ClipMoments[] = [
+    {
+      clip: "cut_10.mp4",
+      clipSummary: "",
+      moments: [{ inS: 1, outS: 3, shotType: "hand-closeup", memo: "knitting a sock cuff", quality: 4 }],
+      monotonousRanges: [],
+    },
+    {
+      clip: "cut_11.mp4",
+      clipSummary: "",
+      moments: [{ inS: 0, outS: 2, shotType: "cat", memo: "the cat walks in", quality: 4 }],
+      monotonousRanges: [],
+    },
+  ];
+  // Only the knitting card (cut_10.mp4, 1-3) overlaps an added segment - it's "in use"; the cat
+  // card is not.
+  const inUseSegments: Segment[] = [{ clip: "cut_10.mp4", in: 1, out: 3, speed: 1, volume: 1, subtitle: "" }];
+
+  it("renders status as a radiogroup with All/In use/Excluded radios (2026-07-11 restructure)", async () => {
+    vi.mocked(fetchMoments).mockResolvedValue(oneInUseOneNot);
+    render(<MomentPalette {...baseProps({ segments: inUseSegments })} />);
+    await waitFor(() => expect(screen.getByText("knitting a sock cuff")).not.toBeNull());
+
+    expect(screen.getByRole("radiogroup", { name: "Filter by status" })).not.toBeNull();
+    expect(screen.getByRole("radio", { name: "All" })).not.toBeNull();
+    expect(screen.getByRole("radio", { name: "In use" })).not.toBeNull();
+    expect(screen.getByRole("radio", { name: "Excluded" })).not.toBeNull();
+  });
+
+  it("narrows the grid to in-use cards when the 'In use' radio is selected", async () => {
+    vi.mocked(fetchMoments).mockResolvedValue(oneInUseOneNot);
+    render(<MomentPalette {...baseProps({ segments: inUseSegments })} />);
+    await waitFor(() => expect(screen.getByText("knitting a sock cuff")).not.toBeNull());
+    expect(screen.getByText("the cat walks in")).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("radio", { name: "In use" }));
+    await waitFor(() => expect(screen.queryByText("the cat walks in")).toBeNull());
+    expect(screen.getByText("knitting a sock cuff")).not.toBeNull();
+  });
+
+  it("ghosts (dims + disables) a category pill whose faceted count drops to 0 under the active status filter", async () => {
+    vi.mocked(fetchMoments).mockResolvedValue(oneInUseOneNot);
+    render(<MomentPalette {...baseProps({ segments: inUseSegments })} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Cat (1)" })).not.toBeNull());
+    // Neither pill is disabled under "All" - both categories have cards.
+    expect((screen.getByRole("button", { name: "Cat (1)" }) as HTMLButtonElement).disabled).toBe(false);
+
+    // Under "In use", only the knitting card qualifies - Cat's faceted count drops to 0, but the
+    // pill stays visible (Knitting/Cat both remain "cards that exist at all") and its count
+    // updates in place rather than the pill vanishing.
+    fireEvent.click(screen.getByRole("radio", { name: "In use" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Cat (0)" })).not.toBeNull());
+    const catPill = screen.getByRole("button", { name: "Cat (0)" }) as HTMLButtonElement;
+    expect(catPill.getAttribute("aria-disabled") ?? catPill.disabled).toBeTruthy();
+    // The Knitting pill (still faceted-count 1) stays enabled.
+    const knittingPill = screen.getByRole("button", { name: "Knitting (1)" }) as HTMLButtonElement;
+    expect(knittingPill.getAttribute("aria-disabled") ?? knittingPill.disabled).toBeFalsy();
+  });
+});
+
 describe("MomentPalette load states", () => {
   it("shows a loading message before moments resolve", () => {
     vi.mocked(fetchMoments).mockReturnValue(new Promise(() => {}));
