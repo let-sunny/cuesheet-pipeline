@@ -18,8 +18,8 @@ const baseStyle: SubtitleStyle = {
 
 function subtitleProps() {
   return {
-    subtitleStyle: baseStyle,
-    onSubtitleStyleChange: vi.fn(),
+    value: baseStyle,
+    onChange: vi.fn(),
     projectWidth: 1920,
     projectHeight: 1080,
     previewClip: undefined as string | undefined,
@@ -43,8 +43,8 @@ describe("SubtitleStyleSettings", () => {
     render(
       <SubtitleStyleSettings
         {...subtitleProps()}
-        onSubtitleStyleChange={onChange}
-        subtitleStyle={{ ...baseStyle, background: { color: "#000000", opacity: 0.75, padding: 8 } }}
+        onChange={onChange}
+        value={{ ...baseStyle, background: { color: "#000000", opacity: 0.75, padding: 8 } }}
       />,
     );
     // The slider's value is folded into its own label (2026-07-09 diagnosed fix - avoids the
@@ -55,13 +55,13 @@ describe("SubtitleStyleSettings", () => {
 
   it("toggling the background box on passes the default background patch", () => {
     const onChange = vi.fn();
-    render(<SubtitleStyleSettings {...subtitleProps()} onSubtitleStyleChange={onChange} />);
+    render(<SubtitleStyleSettings {...subtitleProps()} onChange={onChange} />);
     fireEvent.click(screen.getByLabelText("Background box"));
     expect(onChange.mock.calls[0]?.[0]).toEqual({ background: { color: "#000000", opacity: 0.75, padding: 8 } });
   });
 
   it("disables the edge margin slider when position is center", () => {
-    render(<SubtitleStyleSettings {...subtitleProps()} subtitleStyle={{ ...baseStyle, position: "center" }} />);
+    render(<SubtitleStyleSettings {...subtitleProps()} value={{ ...baseStyle, position: "center" }} />);
     const slider = screen.getByRole("slider", { name: /Edge margin/ });
     expect(slider.getAttribute("aria-disabled")).toBe("true");
   });

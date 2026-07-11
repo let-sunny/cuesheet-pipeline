@@ -1,188 +1,147 @@
-import { useState } from "react";
-import * as stylex from "@stylexjs/stylex";
+import { useEffect, useState } from "react";
 import { Button } from "@astryxdesign/core/Button";
-import { Collapsible } from "@astryxdesign/core/Collapsible";
-import { Field } from "@astryxdesign/core/Field";
-import { FormLayout } from "@astryxdesign/core/FormLayout";
 import { HStack } from "@astryxdesign/core/HStack";
-import { Section } from "@astryxdesign/core/Section";
-import { Slider } from "@astryxdesign/core/Slider";
-import { Text } from "@astryxdesign/core/Text";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { VStack } from "@astryxdesign/core/VStack";
 import type { SubtitleStyle, SubtitleStyleOverride, SubtitleStylePresets } from "@cuesheet/schema";
-import { mergeSubtitleStyle, subtitleBackgroundRgba, subtitleOutlineStyle, toCqw } from "../../lib/subtitleOverlay.js";
-import { ColorField } from "../ui/ColorField/index.js";
-import { styles } from "./SubtitleStylePresetsSettings.styles.js";
+import { mergeSubtitleStyle } from "../../lib/subtitleOverlay.js";
+import { SelectField } from "../ui/SelectField/index.js";
+import { SubtitleStyleSettings } from "../SubtitleStyleSettings/index.js";
 
 export interface SubtitleStylePresetsSettingsProps {
+  /** The global subtitle style - both an edit target of its own (when "Global" is selected) and
+   * the fallback base every preset's unset fields resolve to. */
+  subtitleStyle: SubtitleStyle;
+  onSubtitleStyleChange: (patch: Partial<SubtitleStyle>) => void;
   presets: SubtitleStylePresets | undefined;
-  /** Used as the base style for both "fields not yet set on this preset" and the compact preview. */
-  globalStyle: SubtitleStyle;
   onCreate: (name: string) => void;
   onRename: (oldName: string, newName: string) => void;
   onDelete: (name: string) => void;
   onChangePreset: (name: string, patch: Partial<SubtitleStyleOverride>) => void;
+  /** Used (with projectHeight) to render the live preview stage at the true on-screen proportions. */
+  projectWidth: number;
+  projectHeight: number;
+  /** First cut's clip/timestamp, for the preview stage's background frame - undefined if there are no cuts yet. */
+  previewClip: string | undefined;
+  previewClipTimeS: number;
 }
 
 /**
- * "Subtitle style presets" section's fields column (PRD backlog #1) - the Export step's
- * `FinishSettingsSection` wrapper owns the heading, this renders just the content: reusable named
- * overrides (e.g. "inner-voice"/"shout") a cut can opt into via the Cut settings SUBTITLE group's
- * preset select, without needing its own per-cut override. Editing a preset uses the same field set
- * as the per-cut override (size/color/outline/background/margin) - every field is optional here
- * too, an unset field simply falls back to the global style (same merge rule as
- * segment.styleOverride, just one merge step earlier - see ARCHITECTURE.md).
+ * "Subtitle style" section's fields column, in full (2026-07-11 fold-in) - one editor for both the
+ * global style and every named preset (e.g. "inner-voice"/"shout" a cut can opt into from its Style
+ * preset select), switched by the "Editing" target select rather than stacking one full field-set
+ * per preset (the old per-preset Collapsible layout got unwieldy past a couple of presets). The
+ * target select's options are "Global (default)" plus one option per existing preset name; a
+ * preset target additionally shows Preset name (rename-on-blur) and Delete controls above the
+ * shared field set (SubtitleStyleSettings, unchanged apart from being parameterized by
+ * value/onChange - see that component's file comment). Adding a preset goes through the "New
+ * preset" button (prompts for a name, same collision/empty guard `createSubtitleStylePreset`
+ * already applies) rather than a dedicated inline form, then switches the target to the new preset
+ * so it's edited immediately.
  */
-export function SubtitleStylePresetsSettings({ presets, globalStyle, onCreate, onRename, onDelete, onChangePreset }: SubtitleStylePresetsSettingsProps) {
-  const [newName, setNewName] = useState("");
+export function SubtitleStylePresetsSettings({
+  subtitleStyle,
+  onSubtitleStyleChange,
+  presets,
+  onCreate,
+  onRename,
+  onDelete,
+  onChangePreset,
+  projectWidth,
+  projectHeight,
+  previewClip,
+  previewClipTimeS,
+}: SubtitleStylePresetsSettingsProps) {
+  // "" = editing the global style; anything else names the preset being edited.
+  const [target, setTarget] = useState("");
+  const [nameDraft, setNameDraft] = useState("");
   const names = Object.keys(presets ?? {});
+  const isPreset = target !== "" && names.includes(target);
+
+  // If the currently-edited preset stops existing (deleted, or a rename elsewhere), fall back to
+  // the global target rather than pointing the select at a value with no matching option.
+  useEffect(() => {
+    if (target !== "" && !names.includes(target)) {
+      setTarget("");
+    }
+  }, [target, presets]);
+
+  useEffect(() => {
+    setNameDraft(target);
+  }, [target]);
+
+  function handleNew() {
+    const typed = window.prompt("New preset name");
+    if (typed == null) {
+      return;
+    }
+    const trimmed = typed.trim();
+    if (!trimmed) {
+      return;
+    }
+    if (presets?.[trimmed]) {
+      window.alert(`A preset named "${trimmed}" already exists.`);
+      return;
+    }
+    onCreate(trimmed);
+    setTarget(trimmed);
+  }
+
+  function handleRenameCommit() {
+    const trimmed = nameDraft.trim();
+    if (!trimmed || trimmed === target) {
+      setNameDraft(target);
+      return;
+    }
+    if (presets?.[trimmed]) {
+      window.alert(`A preset named "${trimmed}" already exists.`);
+      setNameDraft(target);
+      return;
+    }
+    onRename(target, trimmed);
+    setTarget(trimmed);
+  }
+
+  function handleDelete() {
+    onDelete(target);
+  }
+
+  const override = isPreset ? presets?.[target] : undefined;
+  const effectiveValue = isPreset
+    ? mergeSubtitleStyle(subtitleStyle, undefined, undefined, override ?? {})
+    : subtitleStyle;
+  const handleFieldChange = isPreset
+    ? (patch: Partial<SubtitleStyle>) => onChangePreset(target, patch)
+    : onSubtitleStyleChange;
 
   return (
     <VStack gap={3}>
-      <Text type="supporting" color="secondary">
-        Reusable named styles (e.g. "inner-voice", "shout") a cut can opt into from its Style preset
-        select - each field left unset falls back to the global subtitle style above.
-      </Text>
-
-      {names.length === 0 ? (
-        <Text type="supporting" color="secondary">
-          No presets yet - create one below.
-        </Text>
-      ) : (
-        names.map((name) => (
-          <PresetRow
-            key={name}
-            name={name}
-            override={presets?.[name] ?? {}}
-            globalStyle={globalStyle}
-            onRename={(next) => onRename(name, next)}
-            onDelete={() => onDelete(name)}
-            onChange={(patch) => onChangePreset(name, patch)}
-          />
-        ))
-      )}
-
       <HStack gap={3} vAlign="end">
-        <TextInput
-          label="New preset name"
-          value={newName}
-          placeholder="e.g. inner-voice"
-          onChange={(value) => setNewName(value)}
+        <SelectField
+          label="Editing"
+          value={target}
+          onChange={setTarget}
+          options={[{ value: "", label: "Global (default)" }, ...names.map((name) => ({ value: name, label: name }))]}
+          width={220}
         />
-        <Button
-          label="Create preset"
-          variant="secondary"
-          size="sm"
-          isDisabled={newName.trim() === "" || (presets?.[newName.trim()] != null)}
-          onClick={() => {
-            onCreate(newName);
-            setNewName("");
-          }}
-        />
+        <Button label="New preset" variant="secondary" size="sm" onClick={handleNew} />
       </HStack>
+
+      {isPreset ? (
+        <HStack gap={3} vAlign="end">
+          <TextInput label="Preset name" value={nameDraft} onChange={setNameDraft} onBlur={handleRenameCommit} />
+          <Button label="Delete preset" variant="destructive" size="sm" onClick={handleDelete} />
+        </HStack>
+      ) : null}
+
+      <SubtitleStyleSettings
+        value={effectiveValue}
+        onChange={handleFieldChange}
+        projectWidth={projectWidth}
+        projectHeight={projectHeight}
+        previewClip={previewClip}
+        previewClipTimeS={previewClipTimeS}
+      />
     </VStack>
-  );
-}
-
-interface PresetRowProps {
-  name: string;
-  override: SubtitleStyleOverride;
-  globalStyle: SubtitleStyle;
-  onRename: (next: string) => void;
-  onDelete: () => void;
-  onChange: (patch: Partial<SubtitleStyleOverride>) => void;
-}
-
-function PresetRow({ name, override, globalStyle, onRename, onDelete, onChange }: PresetRowProps) {
-  const [nameDraft, setNameDraft] = useState(name);
-  const effective = mergeSubtitleStyle(globalStyle, undefined, undefined, override);
-
-  return (
-    <Section variant="transparent" padding={0} paddingBlock={2} dividers={["bottom"]}>
-      <HStack gap={3} wrap="wrap" vAlign="center">
-        <TextInput
-          label="Name"
-          value={nameDraft}
-          onChange={(value) => setNameDraft(value)}
-          onBlur={() => {
-            if (nameDraft.trim() !== "" && nameDraft.trim() !== name) {
-              onRename(nameDraft.trim());
-            } else {
-              setNameDraft(name);
-            }
-          }}
-        />
-        {/* Compact preview - same overlay CSS/merge helper the Edit step's video and the global
-            style's own preview stage use, so this can never visually drift from the real thing. */}
-        <div {...stylex.props(styles.previewChip)}>
-          <span
-            className={`video-subtitle-overlay-text ${stylex.props(styles.previewText).className}`}
-            style={{
-              color: effective.color,
-              fontFamily: effective.font,
-              fontSize: toCqw(effective.size, 640),
-              ...subtitleOutlineStyle(effective.outlineWidth, toCqw(effective.outlineWidth, 640), effective.outlineColor),
-              background: effective.background
-                ? subtitleBackgroundRgba(effective.background.color, effective.background.opacity)
-                : undefined,
-            }}
-          >
-            Aa 123
-          </span>
-        </div>
-        <Button label="Delete" variant="destructive" size="sm" onClick={onDelete} />
-      </HStack>
-
-      <Collapsible trigger={`Edit "${name}"`}>
-        <FormLayout direction="horizontal-labels">
-          {/* Stock Astryx TextInput (2026-07-11 stock-input migration) - unlike the other Size
-              fields in this file's sibling components, this one isn't bound to useNumericField (no
-              transient-text/commit decoupling here, just a directly-controlled value), so it goes
-              straight on TextInput rather than through the ui/NumericInput adapter. TextInput's own
-              `width` prop is a no-op in horizontal-labels mode (confirmed via Field's dist source),
-              so `xstyle` is what actually keeps this short numeric field from stretching to the
-              fields column's full width. */}
-          <TextInput
-            label="Size"
-            type="text"
-            value={String(override.size ?? globalStyle.size)}
-            onChange={(value) => onChange({ size: Number(value) })}
-            xstyle={styles.sizeField}
-          />
-
-          <ColorField
-            label="Color"
-            inputID={`preset-${name}-color`}
-            value={override.color ?? globalStyle.color}
-            onChange={(value) => onChange({ color: value })}
-          />
-
-          <ColorField
-            label="Outline color"
-            inputID={`preset-${name}-outline-color`}
-            value={override.outlineColor ?? globalStyle.outlineColor}
-            onChange={(value) => onChange({ outlineColor: value })}
-          />
-
-          {/* Value folded into the label, valueDisplay="none" (2026-07-09 diagnosed fix - see
-              SegmentQuickFields/TitleGroup.tsx's Backdrop dim slider for the full rationale). */}
-          {/* Field-wrapped (isLabelHidden) so Slider - not FormLayoutContext-aware - still emits a
-              proper 2-cell horizontal-labels grid row instead of desyncing/self-misplacing (see
-              SubtitleStyleSettings.tsx's file comment for the full diagnosis). */}
-          <Field label="Edge margin" inputID={`preset-${name}-margin`} isLabelHidden>
-            <Slider
-              label={`Edge margin (${override.margin ?? globalStyle.margin ?? 40}px)`}
-              value={override.margin ?? globalStyle.margin ?? 40}
-              min={8}
-              max={600}
-              step={1}
-              valueDisplay="none"
-              onChange={(v: number) => onChange({ margin: v })}
-            />
-          </Field>
-        </FormLayout>
-      </Collapsible>
-    </Section>
   );
 }
