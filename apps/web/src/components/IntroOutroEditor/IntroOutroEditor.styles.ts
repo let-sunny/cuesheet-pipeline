@@ -7,15 +7,16 @@ import { colorVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex"
  * layout (formerly a hand-rolled `editor` flex row here) is now Astryx's `Grid` (Finish/Export
  * step Astryx-catalog rebuild).
  *
- * 2026-07-11 stock-audit completion pass: `.plain-field` is gone from this component (`select`
- * below ports its look 1:1 for the two "Choose file" `<select>`s, kept native - see the file's own
- * comment on why Astryx `Selector` doesn't fit here). `.empty` (the "can't find the source"
- * message, shared with VideoPreview.tsx) is gone too - `missing` below folds its 2 properties in
- * directly (duplicated identically in VideoPreview.styles.ts's own `missing`, rather than kept as a
- * shared global class for a 2-property rule). `grid` adds the `minmax(0, 1fr)` track-template
- * override that fixes this section's horizontal overflow (see the Grid call site's comment).
- * `.narration-empty-note` (shared with BgmSettingsPanel/SegmentQuickFields) stays in styles.css -
- * out of scope for this pass (deferred cut-settings/BGM territory).
+ * 2026-07-11 stock-audit completion pass: the old shared plain-input marker class is gone from
+ * this component (`select` below ports its look 1:1 for the two "Choose file" `<select>`s, kept
+ * native - see the file's own comment on why Astryx `Selector` doesn't fit here). `.empty` (the
+ * "can't find the source" message, shared with VideoPreview.tsx) is gone too - `missing` below
+ * folds its 2 properties in directly (duplicated identically in VideoPreview.styles.ts's own
+ * `missing`, rather than kept as a shared global class for a 2-property rule). `grid` adds the
+ * `minmax(0, 1fr)` track-template override that fixes this section's horizontal overflow (see the
+ * Grid call site's comment). The empty-state note previously shared with BgmSettingsPanel/
+ * SegmentQuickFields moved to each of those components' own styling in the 2026-07-11 Cut-settings-
+ * grid migration - out of scope here (this component never referenced it).
  *
  * `background`/`border` shorthands are written out as their longhand equivalents
  * (`backgroundColor`, `borderWidth`+`borderStyle`+`borderColor`) — see HeaderBar.styles.ts's

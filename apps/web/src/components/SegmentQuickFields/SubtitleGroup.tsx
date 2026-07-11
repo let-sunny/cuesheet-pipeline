@@ -1,4 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
+import { Field } from "@astryxdesign/core/Field";
+import { Text } from "@astryxdesign/core/Text";
+import { VStack } from "@astryxdesign/core/VStack";
 import type {
   Segment,
   SubtitleStyle,
@@ -6,6 +9,7 @@ import type {
   SubtitleStylePresets,
 } from "@cuesheet/schema";
 import { SegmentStyleOverride } from "../SegmentStyleOverride/index.js";
+import { InlineField } from "../ui/InlineField/index.js";
 import { styles } from "./SubtitleGroup.styles.js";
 
 export interface SubtitleGroupProps {
@@ -28,7 +32,8 @@ export interface SubtitleGroupProps {
  * G3. Subtitle (+ subsection: per-cut subtitle style) - textarea + optional warning, the Style
  * preset select (shown only once at least one preset exists - merges in ahead of styleOverride,
  * global < preset < override), and the collapsible "Custom style for this cut" override
- * (SegmentStyleOverride, its own component/tests).
+ * (SegmentStyleOverride, its own component/tests). Always the first group in the Effects tab, so
+ * (unlike the other groups) it never needs the dashed top separator.
  */
 export function SubtitleGroup({
   segment,
@@ -43,25 +48,34 @@ export function SubtitleGroup({
   onClearStyleOverride,
 }: SubtitleGroupProps) {
   return (
-    <div className="qf-group" data-testid="cut-settings-group-subtitle">
-      <div className="qf-group-label">Subtitle</div>
-      <label className="qf-field field-full">
+    <VStack gap={1.5} data-testid="cut-settings-group-subtitle">
+      <Text type="label" color="secondary" weight="semibold" xstyle={styles.groupLabel}>
+        Subtitle
+      </Text>
+      {/* Label hidden - the group heading above already reads "Subtitle" visually; a real label
+          stays in the DOM for accessibility (Field renders it, position:absolute'd out of flow). */}
+      <Field label="Subtitle" inputID="cut-field-subtitle" isLabelHidden>
         <textarea
-          className={`plain-field plain-field-textarea ${stylex.props(styles.subtitleTextarea).className ?? ""}`}
+          id="cut-field-subtitle"
+          {...stylex.props(styles.subtitleTextarea)}
           value={segment.subtitle}
           rows={2}
           placeholder="Enter subtitle"
           onChange={(e) => onChangeSubtitle(e.target.value)}
           data-testid="cut-field-subtitle"
         />
-      </label>
-      {subtitleWarning ? <p className="qf-note">{subtitleWarning}</p> : null}
+      </Field>
+      {subtitleWarning ? (
+        <Text type="supporting" xstyle={styles.note}>
+          {subtitleWarning}
+        </Text>
+      ) : null}
 
       {subtitleStylePresets && Object.keys(subtitleStylePresets).length > 0 ? (
-        <label className="qf-field field-medium">
-          <span>Style preset</span>
+        <InlineField label="Style preset" inputID="cut-field-style-preset">
           <select
-            className="plain-field"
+            id="cut-field-style-preset"
+            {...stylex.props(styles.plainField, styles.selectMedium)}
             value={segment.stylePreset ?? ""}
             onChange={(e) => onChangeStylePreset(e.target.value === "" ? null : e.target.value)}
           >
@@ -72,7 +86,7 @@ export function SubtitleGroup({
               </option>
             ))}
           </select>
-        </label>
+        </InlineField>
       ) : null}
 
       <SegmentStyleOverride
@@ -83,6 +97,6 @@ export function SubtitleGroup({
         onPromote={onPromoteStyleOverride}
         onClear={onClearStyleOverride}
       />
-    </div>
+    </VStack>
   );
 }

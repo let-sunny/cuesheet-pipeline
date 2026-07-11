@@ -1,8 +1,12 @@
 import { useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
+import { HStack } from "@astryxdesign/core/HStack";
 import { TabList } from "@astryxdesign/core/TabList";
+import { Text } from "@astryxdesign/core/Text";
+import { VStack } from "@astryxdesign/core/VStack";
 import { NavTab } from "../ui/NavTab/index.js";
+import { InlineField } from "../ui/InlineField/index.js";
 import type {
   Segment,
   SubtitleStyle,
@@ -236,7 +240,7 @@ export function SegmentQuickFields({
         : null;
 
   return (
-    <div className="quick-fields" data-testid="cut-settings-panel">
+    <VStack gap={1} paddingBlock={3} paddingInline={4} xstyle={styles.panel} data-testid="cut-settings-panel">
       <TabList value={activeTab} onChange={(v) => setActiveTab(v as QuickFieldsTab)} size="sm">
         <NavTab value="cut" label="Cut" data-testid="cut-settings-tab-cut" />
         <NavTab value="effects" label="Effects" data-testid="cut-settings-tab-effects" />
@@ -250,6 +254,7 @@ export function SegmentQuickFields({
             inField={inField}
             outField={outField}
             rangeError={segmentRangeError(segment)}
+            isFirst
           />
 
           <PlaybackGroup speedField={speedField} volumeField={volumeField} speedAtCap={segment.speed >= 16} />
@@ -257,12 +262,14 @@ export function SegmentQuickFields({
           {/* Narration (shown only when in use) - small and always conditional, kept inline
               rather than promoted to its own group component. */}
           {narrationEnabled ? (
-            <div className="qf-group" data-testid="cut-settings-group-narration">
-              <div className="qf-group-label">Narration</div>
-              <label className="qf-field field-medium">
-                <span>File</span>
+            <VStack gap={1.5} xstyle={styles.groupBorder} data-testid="cut-settings-group-narration">
+              <Text type="label" color="secondary" weight="semibold" xstyle={styles.groupLabel}>
+                Narration
+              </Text>
+              <InlineField label="File" inputID="cut-field-narration-file">
                 <select
-                  className="plain-field"
+                  id="cut-field-narration-file"
+                  {...stylex.props(styles.plainField, styles.selectMedium)}
                   value={segment.narration ?? ""}
                   onChange={(e) =>
                     onChange({ narration: e.target.value === "" ? null : e.target.value })
@@ -276,23 +283,27 @@ export function SegmentQuickFields({
                     </option>
                   ))}
                 </select>
-              </label>
+              </InlineField>
               {narrationFiles.length === 0 && narrationNote ? (
-                <p className="narration-empty-note">{narrationNote}</p>
+                <Text type="supporting" xstyle={styles.narrationEmptyNote}>
+                  {narrationNote}
+                </Text>
               ) : null}
               {selectedNarrationFile ? (
-                <div {...stylex.props(styles.narrationPreview)}>
+                <VStack gap={1} xstyle={styles.narrationPreview}>
                   <audio
                     {...stylex.props(styles.narrationAudio)}
                     controls
                     src={narrationFileUrl(selectedNarrationFile.name, narrationDir)}
                   />
                   {narrationDurationWarning ? (
-                    <p {...stylex.props(styles.narrationWarning)}>{narrationDurationWarning}</p>
+                    <Text type="supporting" xstyle={styles.narrationWarning}>
+                      {narrationDurationWarning}
+                    </Text>
                   ) : null}
-                </div>
+                </VStack>
               ) : null}
-            </div>
+            </VStack>
           ) : null}
 
           <ActionsGroup
@@ -310,7 +321,7 @@ export function SegmentQuickFields({
               divider + spacing clearly separates it from the cut actions group above, to prevent
               accidental deletion from being pressed alongside other buttons. Grouped with the Cut
               tab (not Effects) since deleting a cut is itself a cut action, not a cosmetic one. */}
-          <div className="qf-danger-zone" data-testid="cut-settings-group-danger">
+          <HStack justify="end" xstyle={styles.dangerZone} data-testid="cut-settings-group-danger">
             <Button
               label="Delete"
               variant="destructive"
@@ -320,7 +331,7 @@ export function SegmentQuickFields({
               onClick={onDelete}
               data-testid="cut-action-delete"
             />
-          </div>
+          </HStack>
         </>
       ) : (
         <>
@@ -355,7 +366,7 @@ export function SegmentQuickFields({
           />
         </>
       )}
-    </div>
+    </VStack>
   );
 }
 

@@ -1,8 +1,12 @@
 import * as stylex from "@stylexjs/stylex";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
+import { HStack } from "@astryxdesign/core/HStack";
 import { Slider } from "@astryxdesign/core/Slider";
+import { Text } from "@astryxdesign/core/Text";
+import { VStack } from "@astryxdesign/core/VStack";
 import type { Transition } from "@cuesheet/schema";
 import type { NumericFieldBindings } from "../../hooks/useNumericField.js";
+import { InlineField } from "../ui/InlineField/index.js";
 import { styles } from "./TransitionsGroup.styles.js";
 
 export interface TransitionsGroupProps {
@@ -35,39 +39,41 @@ export function TransitionsGroup({
   crossValidationNote,
 }: TransitionsGroupProps) {
   return (
-    <div className="qf-group" data-testid="cut-settings-group-transitions">
-      <div className="qf-group-label">Transitions</div>
-      <div {...stylex.props(styles.transition)}>
+    <VStack gap={1.5} xstyle={styles.groupBorder} data-testid="cut-settings-group-transitions">
+      <Text type="label" color="secondary" weight="semibold" xstyle={styles.groupLabel}>
+        Transitions
+      </Text>
+      <VStack gap={1.5} xstyle={styles.transition}>
         {/* Select by role/name in tests, not testid - see the Title toggle's comment. */}
         <CheckboxInput label="Transition in" value={!!transitionIn} onChange={(enabled) => onToggle("in", enabled)} />
         {transitionIn ? (
           <>
-            <div className="qf-row">
-              <label className="qf-field field-medium">
-                <span>Type</span>
+            <HStack gap={4} vAlign="center" wrap="wrap">
+              <InlineField label="Type" inputID="cut-field-transition-in-type">
                 <select
-                  className="plain-field"
+                  id="cut-field-transition-in-type"
+                  {...stylex.props(styles.plainField, styles.selectMedium)}
                   value={transitionIn.type}
                   onChange={(e) => onChangeTransition("in", { type: e.target.value as Transition["type"] })}
                 >
                   <option value="fade">Fade</option>
                   <option value="dip">Dip</option>
                 </select>
-              </label>
-              <label className="qf-field field-narrow">
-                <span>Dur.</span>
+              </InlineField>
+              <InlineField label="Dur." inputID="cut-field-transition-in-duration">
                 <input
+                  id="cut-field-transition-in-duration"
                   type="number"
-                  className="plain-field"
                   min={0.2}
                   max={2}
                   step={0.1}
+                  {...stylex.props(styles.plainField, styles.inputNarrow)}
                   {...transitionInDurationField}
                   data-testid="cut-field-transition-in-duration"
                 />
-                <span className="qf-suffix">s</span>
-              </label>
-            </div>
+              </InlineField>
+              <Text type="supporting">s</Text>
+            </HStack>
             {transitionIn.type === "dip" ? (
               // Value folded into the label, valueDisplay="none" (2026-07-09 diagnosed fix - see
               // TitleGroup.tsx's Backdrop dim slider for the full rationale: at max value, the
@@ -84,37 +90,37 @@ export function TransitionsGroup({
             ) : null}
           </>
         ) : null}
-      </div>
-      <div {...stylex.props(styles.transition)}>
+      </VStack>
+      <VStack gap={1.5} xstyle={styles.transition}>
         <CheckboxInput label="Transition out" value={!!transitionOut} onChange={(enabled) => onToggle("out", enabled)} />
         {transitionOut ? (
           <>
-            <div className="qf-row">
-              <label className="qf-field field-medium">
-                <span>Type</span>
+            <HStack gap={4} vAlign="center" wrap="wrap">
+              <InlineField label="Type" inputID="cut-field-transition-out-type">
                 <select
-                  className="plain-field"
+                  id="cut-field-transition-out-type"
+                  {...stylex.props(styles.plainField, styles.selectMedium)}
                   value={transitionOut.type}
                   onChange={(e) => onChangeTransition("out", { type: e.target.value as Transition["type"] })}
                 >
                   <option value="fade">Fade</option>
                   <option value="dip">Dip</option>
                 </select>
-              </label>
-              <label className="qf-field field-narrow">
-                <span>Dur.</span>
+              </InlineField>
+              <InlineField label="Dur." inputID="cut-field-transition-out-duration">
                 <input
+                  id="cut-field-transition-out-duration"
                   type="number"
-                  className="plain-field"
                   min={0.2}
                   max={2}
                   step={0.1}
+                  {...stylex.props(styles.plainField, styles.inputNarrow)}
                   {...transitionOutDurationField}
                   data-testid="cut-field-transition-out-duration"
                 />
-                <span className="qf-suffix">s</span>
-              </label>
-            </div>
+              </InlineField>
+              <Text type="supporting">s</Text>
+            </HStack>
             {transitionOut.type === "dip" ? (
               <Slider
                 label={`Dip amount (${Math.round((transitionOut.dim ?? 1) * 100)}%)`}
@@ -128,9 +134,15 @@ export function TransitionsGroup({
             ) : null}
           </>
         ) : null}
-      </div>
-      {crossValidationNote ? <p {...stylex.props(styles.noteWarning)}>{crossValidationNote}</p> : null}
-      <p {...stylex.props(styles.noteNeutral)}>Preview approximates fades and dips (opacity ramp) - the exported video renders the real fade/dip.</p>
-    </div>
+      </VStack>
+      {crossValidationNote ? (
+        <Text type="supporting" xstyle={styles.noteWarning}>
+          {crossValidationNote}
+        </Text>
+      ) : null}
+      <Text type="supporting" xstyle={styles.noteNeutral}>
+        Preview approximates fades and dips (opacity ramp) - the exported video renders the real fade/dip.
+      </Text>
+    </VStack>
   );
 }

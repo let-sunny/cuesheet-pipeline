@@ -63,7 +63,7 @@ describe("SubtitleGroup", () => {
         {...baseProps({ subtitleStylePresets: { loud: {}, quiet: {} }, onChangeStylePreset })}
       />,
     );
-    const select = screen.getByText("Style preset").closest("label")!.querySelector("select")!;
+    const select = screen.getByRole("combobox", { name: "Style preset" });
     fireEvent.change(select, { target: { value: "loud" } });
     expect(onChangeStylePreset).toHaveBeenCalledWith("loud");
   });

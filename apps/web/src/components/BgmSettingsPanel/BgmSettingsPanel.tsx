@@ -1,11 +1,15 @@
 import { useRef, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
+import { HStack } from "@astryxdesign/core/HStack";
 import { Icon } from "@astryxdesign/core/Icon";
 import { IconButton } from "@astryxdesign/core/IconButton";
+import { Text } from "@astryxdesign/core/Text";
+import { VStack } from "@astryxdesign/core/VStack";
 import type { BgmCue } from "@cuesheet/schema";
 import { bgmFileStreamUrl, type BgmFile } from "../../api.js";
 import { useNumericField } from "../../hooks/useNumericField.js";
+import { InlineField } from "../ui/InlineField/index.js";
 import { styles } from "./BgmSettingsPanel.styles.js";
 
 interface Props {
@@ -26,8 +30,8 @@ interface Props {
 
 /**
  * Right-column panel shown in the Edit step when a BGM track (not a cut) is selected in the
- * gutter — same qf-group/qf-row/qf-field grid tokens as Cut settings (SegmentQuickFields), so the
- * two panels read as siblings rather than a bolted-on extra. Range is edited/shown in cut numbers
+ * gutter — same group/row/field visual rhythm as Cut settings (SegmentQuickFields), so the two
+ * panels read as siblings rather than a bolted-on extra. Range is edited/shown in cut numbers
  * (the gutter's anchor unit) alongside the seconds they resolve to; storage stays seconds
  * (converted by the caller via lib/bgmCutMapping.ts) - no schema change.
  */
@@ -83,16 +87,23 @@ export function BgmSettingsPanel({
   });
 
   return (
-    <div className="quick-fields" data-testid="bgm-settings-panel">
-      <h2 className="qf-panel-title">Background music track {bgmIndex + 1}</h2>
+    <VStack gap={1} paddingBlock={3} paddingInline={4} xstyle={styles.panel} data-testid="bgm-settings-panel">
+      <Text type="label" weight="semibold" as="h2" xstyle={styles.panelTitle}>
+        Background music track {bgmIndex + 1}
+      </Text>
 
       {/* File - pre-listen before assigning: a play/stop button next to each candidate, separate
-          from picking it, so auditioning doesn't require committing first. */}
-      <div className="qf-group" data-testid="bgm-settings-group-file">
-        <div className="qf-group-label">File</div>
+          from picking it, so auditioning doesn't require committing first. First group in this
+          panel, so (unlike Range/Playback below) it never needs the dashed top separator. */}
+      <VStack gap={1.5} data-testid="bgm-settings-group-file">
+        <Text type="label" color="secondary" weight="semibold" xstyle={styles.groupLabel}>
+          File
+        </Text>
         <div {...stylex.props(styles.fileList)}>
           {files.length === 0 ? (
-            <p className="narration-empty-note">{filesNote ?? "No audio files found under media/ or clipDir"}</p>
+            <Text type="supporting" xstyle={styles.emptyNote}>
+              {filesNote ?? "No audio files found under media/ or clipDir"}
+            </Text>
           ) : (
             files.map((f) => {
               const isSelected = f.path === cue.file;
@@ -128,66 +139,74 @@ export function BgmSettingsPanel({
             })
           )}
         </div>
-        {cue.file !== "" && !currentFileKnown ? <p className="qf-readonly">Currently assigned: {cue.file}</p> : null}
+        {cue.file !== "" && !currentFileKnown ? (
+          <Text type="supporting" xstyle={styles.readonlyText}>
+            Currently assigned: {cue.file}
+          </Text>
+        ) : null}
         {/* Hidden shared player driving each candidate's play/stop button above. */}
         <audio ref={audioRef} onEnded={() => setPlayingPath(null)} style={{ display: "none" }} />
-      </div>
+      </VStack>
 
       {/* Range - anchored to cut numbers (the gutter's unit); seconds shown alongside since that's
           what's actually stored/rendered. */}
-      <div className="qf-group" data-testid="bgm-settings-group-range">
-        <div className="qf-group-label">Range</div>
-        <div className="qf-row">
-          <label className="qf-field field-narrow">
-            <span>Start</span>
+      <VStack gap={1.5} xstyle={styles.groupBorder} data-testid="bgm-settings-group-range">
+        <Text type="label" color="secondary" weight="semibold" xstyle={styles.groupLabel}>
+          Range
+        </Text>
+        <HStack gap={4} vAlign="center" wrap="wrap">
+          <InlineField label="Start" inputID="bgm-field-start">
             <input
+              id="bgm-field-start"
               type="number"
-              className="plain-field"
               min={1}
               max={endCutIdx + 1}
+              {...stylex.props(styles.plainField, styles.inputNarrow)}
               {...startField}
               data-testid="bgm-field-start"
             />
-            <span className="qf-suffix">cut</span>
-          </label>
-          <label className="qf-field field-narrow">
-            <span>End</span>
+          </InlineField>
+          <Text type="supporting">cut</Text>
+          <InlineField label="End" inputID="bgm-field-end">
             <input
+              id="bgm-field-end"
               type="number"
-              className="plain-field"
               min={startCutIdx + 1}
               max={cutCount}
+              {...stylex.props(styles.plainField, styles.inputNarrow)}
               {...endField}
               data-testid="bgm-field-end"
             />
-            <span className="qf-suffix">cut</span>
-          </label>
-        </div>
-        <span className="qf-readonly">
+          </InlineField>
+          <Text type="supporting">cut</Text>
+        </HStack>
+        <Text type="supporting" xstyle={styles.readonlyText}>
           Cuts {startCutIdx + 1}-{endCutIdx + 1} · {startSeconds.toFixed(1)}s-{endSeconds.toFixed(1)}s
-        </span>
-      </div>
+        </Text>
+      </VStack>
 
-      <div className="qf-group" data-testid="bgm-settings-group-playback">
-        <div className="qf-group-label">Playback</div>
-        <div className="qf-row">
-          <label className="qf-field field-narrow">
-            <span>Volume</span>
+      <VStack gap={1.5} xstyle={styles.groupBorder} data-testid="bgm-settings-group-playback">
+        <Text type="label" color="secondary" weight="semibold" xstyle={styles.groupLabel}>
+          Playback
+        </Text>
+        <HStack gap={4} vAlign="center" wrap="wrap">
+          <InlineField label="Volume" inputID="bgm-field-volume">
             <input
+              id="bgm-field-volume"
               type="number"
-              className="plain-field"
               min={0}
               max={100}
               step={1}
+              {...stylex.props(styles.plainField, styles.inputNarrow)}
               {...volumeField}
               data-testid="bgm-field-volume"
             />
-            <span className="qf-suffix">%</span>
-          </label>
-        </div>
-      </div>
+          </InlineField>
+          <Text type="supporting">%</Text>
+        </HStack>
+      </VStack>
 
-      <div className="qf-danger-zone">
+      <HStack justify="end" xstyle={styles.dangerZone}>
         <Button
           label="Remove track"
           variant="destructive"
@@ -195,7 +214,7 @@ export function BgmSettingsPanel({
           onClick={onRemove}
           data-testid="bgm-action-remove"
         />
-      </div>
-    </div>
+      </HStack>
+    </VStack>
   );
 }

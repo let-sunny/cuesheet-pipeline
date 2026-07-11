@@ -1,5 +1,9 @@
 import { Button } from "@astryxdesign/core/Button";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Text } from "@astryxdesign/core/Text";
+import { VStack } from "@astryxdesign/core/VStack";
 import type { MergeEligibility } from "../../lib/segmentMerge.js";
+import { styles } from "./ActionsGroup.styles.js";
 
 export interface ActionsGroupProps {
   mergeEligibility: MergeEligibility;
@@ -28,9 +32,11 @@ export function ActionsGroup({
   introOutroDisabledTitle,
 }: ActionsGroupProps) {
   return (
-    <div className="qf-group" data-testid="cut-settings-group-actions">
-      <div className="qf-group-label">Cut actions</div>
-      <div className="qf-row qf-actions-row">
+    <VStack gap={1.5} xstyle={styles.groupBorder} data-testid="cut-settings-group-actions">
+      <Text type="label" color="secondary" weight="semibold" xstyle={styles.groupLabel}>
+        Cut actions
+      </Text>
+      <HStack gap={2} wrap="wrap">
         <Button
           label="Split"
           variant="secondary"
@@ -73,7 +79,7 @@ export function ActionsGroup({
           onClick={onSetOutro}
           data-testid="cut-action-set-outro"
         />
-      </div>
-    </div>
+      </HStack>
+    </VStack>
   );
 }

@@ -172,10 +172,10 @@ export function SubtitleStyleSettings({
           </>
         ) : null}
 
-        {/* Position and edge margin - each its own row (2026-07-09 revision: combining them into
-            one qf-row squeezed the panel enough to clip the "Position" label and cramp the slider -
-            they have plenty of vertical room here, so there's no reason to force them onto one
-            line). */}
+        {/* Position and edge margin - each its own row (2026-07-09 revision: combining them onto
+            one shared row squeezed the panel enough to clip the "Position" label and cramp the
+            slider - they have plenty of vertical room here, so there's no reason to force them
+            onto one line). */}
         <Selector
           label="Position"
           value={subtitleStyle.position}

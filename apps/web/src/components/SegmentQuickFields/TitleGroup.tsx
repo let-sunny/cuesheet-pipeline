@@ -1,7 +1,13 @@
+import * as stylex from "@stylexjs/stylex";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
+import { HStack } from "@astryxdesign/core/HStack";
 import { Slider } from "@astryxdesign/core/Slider";
+import { Text } from "@astryxdesign/core/Text";
+import { VStack } from "@astryxdesign/core/VStack";
 import type { Title } from "@cuesheet/schema";
 import type { NumericFieldBindings } from "../../hooks/useNumericField.js";
+import { InlineField } from "../ui/InlineField/index.js";
+import { styles } from "./TitleGroup.styles.js";
 
 export interface TitleGroupProps {
   title: Title | null | undefined;
@@ -17,30 +23,32 @@ export interface TitleGroupProps {
  */
 export function TitleGroup({ title, onToggle, onChangeTitle, titleDurationField }: TitleGroupProps) {
   return (
-    <div className="qf-group" data-testid="cut-settings-group-title">
-      <div className="qf-group-label">Title</div>
+    <VStack gap={1.5} xstyle={styles.groupBorder} data-testid="cut-settings-group-title">
+      <Text type="label" color="secondary" weight="semibold" xstyle={styles.groupLabel}>
+        Title
+      </Text>
       {/* CheckboxInput (unlike Button/Tab/Slider) doesn't forward arbitrary data-* props to the
           DOM (no `...rest` spread in its implementation) - select this in tests by ARIA role +
           accessible name instead: getByRole("checkbox", { name: "Title card for this cut" }). */}
       <CheckboxInput label="Title card for this cut" value={!!title} onChange={onToggle} />
       {title ? (
         <>
-          <label className="qf-field field-full">
-            <span>Text</span>
+          <InlineField label="Text" inputID="cut-field-title-text" width="100%">
             <input
+              id="cut-field-title-text"
               type="text"
-              className="plain-field"
               maxLength={80}
+              {...stylex.props(styles.plainField, styles.inputFull)}
               value={title.text}
               onChange={(e) => onChangeTitle({ text: e.target.value })}
               data-testid="cut-field-title-text"
             />
-          </label>
-          <div className="qf-row">
-            <label className="qf-field field-medium">
-              <span>Preset</span>
+          </InlineField>
+          <HStack gap={4} vAlign="center" wrap="wrap">
+            <InlineField label="Preset" inputID="cut-field-title-preset">
               <select
-                className="plain-field"
+                id="cut-field-title-preset"
+                {...stylex.props(styles.plainField, styles.selectMedium)}
                 value={title.preset}
                 onChange={(e) => onChangeTitle({ preset: e.target.value as Title["preset"] })}
                 data-testid="cut-field-title-preset"
@@ -50,16 +58,23 @@ export function TitleGroup({ title, onToggle, onChangeTitle, titleDurationField 
                 <option value="melt">Melt</option>
                 <option value="particle">Particle</option>
               </select>
-            </label>
-            <label className="qf-field field-narrow">
-              {/* "Dur." (not "Duration") - the row's fixed 40px label column (screen-spec section 4's
-                  measured G1/G2 width tokens, reused here) was tuned for short labels like
-                  Speed/Volume; "Duration" overflowed it and visually collided with the input. */}
-              <span>Dur.</span>
-              <input type="number" className="plain-field" min={0.5} max={10} step={0.5} {...titleDurationField} />
-              <span className="qf-suffix">s</span>
-            </label>
-          </div>
+            </InlineField>
+            {/* "Dur." (not "Duration") - the row's compact width budget (screen-spec section 4's
+                measured G1/G2 width tokens) was tuned for short labels like Speed/Volume;
+                "Duration" overflowed it and visually collided with the input. */}
+            <InlineField label="Dur." inputID="cut-field-title-duration">
+              <input
+                id="cut-field-title-duration"
+                type="number"
+                min={0.5}
+                max={10}
+                step={0.5}
+                {...stylex.props(styles.plainField, styles.inputNarrow)}
+                {...titleDurationField}
+              />
+            </InlineField>
+            <Text type="supporting">s</Text>
+          </HStack>
           <Slider
             // Value folded into the label (valueDisplay="none") rather than Astryx's own adjacent
             // text display (2026-07-09 diagnosed fix) - at the slider's max, the thumb's own width
@@ -76,6 +91,6 @@ export function TitleGroup({ title, onToggle, onChangeTitle, titleDurationField 
           />
         </>
       ) : null}
-    </div>
+    </VStack>
   );
 }

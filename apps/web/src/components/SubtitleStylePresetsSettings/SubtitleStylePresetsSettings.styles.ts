@@ -2,7 +2,7 @@ import * as stylex from "@stylexjs/stylex";
 import { colorVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
- * Ported 1:1 from the old `.preset-preview-chip`/`.preset-preview-text`/`.plain-field` rules in
+ * Ported 1:1 from the old `.preset-preview-chip`/`.preset-preview-text`/plain-input-marker rules in
  * styles.css (2026-07-11 stock-audit completion pass) - `.preset-row`/`.preset-row-header` became
  * a stock Astryx `Section`(dividers)/`HStack` instead (see SubtitleStylePresetsSettings.tsx), and
  * the color composites moved to the shared `ui/ColorField` wrapper, but the compact subtitle-style

@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
+import { colorVars, radiusVars, spacingVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md) — rules ported 1:1 from the old
@@ -13,8 +13,63 @@ import { spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
  * Spacing migration (2026-07-11, design-principles.md #5 strict rule, same reasoning as
  * MomentPalette.styles.ts's comment): `gap` reads from Astryx's `spacingVars`. `maxHeight: 220`
  * (the scrollable file list's own height budget) stays literal - structural sizing, not spacing.
+ *
+ * `panel`/`panelTitle`/`groupBorder`/`groupLabel`/`plainField`/`inputNarrow`/`readonlyText`/
+ * `dangerZone` (2026-07-11 Cut-settings grid migration) replace the old shared panel-shell/panel-
+ * title/group/group-label/plain-input/narrow-input-width/readonly-text/danger-zone classes - this
+ * panel keeps its own copy rather than importing SegmentQuickFields's (same duplication precedent
+ * as `numberInput` elsewhere; the two panels sit side by side as siblings in the Edit step but are
+ * otherwise independent components). `border` shorthand is written out as its longhand equivalents
+ * - see HeaderBar.styles.ts's comment for why (StyleX silently drops the shorthand form).
  */
 export const styles = stylex.create({
+  panel: {
+    backgroundColor: colorVars["--color-background-surface"],
+    borderRadius: radiusVars["--radius-element"],
+  },
+  panelTitle: {
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+  },
+  groupBorder: {
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopStyle: "dashed",
+    borderTopColor: colorVars["--color-border-emphasized"],
+  },
+  groupLabel: {
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+  },
+  plainField: {
+    font: "inherit",
+    color: "inherit",
+    backgroundColor: colorVars["--color-background-surface"],
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: colorVars["--color-border"],
+    borderRadius: 4,
+    padding: "4px 8px",
+  },
+  inputNarrow: {
+    width: 80,
+  },
+  readonlyText: {
+    fontSize: textSizeVars["--font-size-sm"],
+    color: colorVars["--color-text-secondary"],
+  },
+  emptyNote: {
+    margin: "4px 0 0",
+    fontSize: textSizeVars["--font-size-sm"],
+    color: colorVars["--color-text-secondary"],
+  },
+  dangerZone: {
+    marginTop: 14,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopStyle: "dashed",
+    borderTopColor: colorVars["--color-border-red"],
+  },
   fileList: {
     display: "flex",
     flexDirection: "column",

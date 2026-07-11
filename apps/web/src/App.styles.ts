@@ -9,14 +9,15 @@ import { colorVars, spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
  * `steps/EditStep/EditStep.styles.ts` once that step became its own component.
  *
  * `.app h2` is deliberately NOT here — despite the `.app`-scoped selector, it never targeted
- * anything App.tsx itself renders. It matched `<h2>` elements two levels down, inside two other,
- * already-migrated components' shared `.qf-panel-title` class (SegmentQuickFields/BgmSettingsPanel
- * panel titles). Because `.app h2` (class+tag) has higher specificity than `.qf-panel-title`
- * (class-only), it was silently winning font-size/margin on those headings and uniquely supplying
- * text-transform/letter-spacing (no other rule set those). StyleX has no descendant-selector
- * equivalent, so instead of leaving a phantom App-scoped rule around, its winning values were
- * folded directly into `.qf-panel-title` in styles.css (see the comment on that rule) — same
- * rendered result, but the rule now lives with its true owner instead of a mis-scoped ancestor.
+ * anything App.tsx itself renders. It matched `<h2>` elements two levels down, inside another
+ * component's own panel-title heading (BgmSettingsPanel, before its 2026-07-11 Cut-settings-grid
+ * migration to a component-owned `Text` element). Because `.app h2` (class+tag) had higher
+ * specificity than that heading's own marker class (class-only), it was silently winning font-
+ * size/margin on it and uniquely supplying text-transform/letter-spacing (no other rule set
+ * those). StyleX has no descendant-selector equivalent, so instead of leaving a phantom App-scoped
+ * rule around, its winning values were folded directly into that component's own styling (now
+ * BgmSettingsPanel.styles.ts's `panelTitle`) — same rendered result, but the rule now lives with
+ * its true owner instead of a mis-scoped ancestor.
  *
  * `miniStripRow`/`sequencePlayerSticky`/`stepBody` added in StyleX migration batch 5 — ported 1:1
  * from styles.css's old `.mini-strip-row`/`.sequence-player-sticky`/`.step-body` rules. These wrap

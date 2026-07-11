@@ -1,7 +1,7 @@
 import * as stylex from "@stylexjs/stylex";
-import { colorVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
+import { colorVars } from "@astryxdesign/core/theme/tokens.stylex";
 
-/** Owned solely by TransitionsGroup - see RangeGroup.styles.ts's comment for why `groupBorder`/
+/** Owned solely by TitleGroup - see RangeGroup.styles.ts's comment for why `groupBorder`/
  * `groupLabel`/`plainField` are duplicated per group component rather than shared globally. */
 export const styles = stylex.create({
   groupBorder: {
@@ -24,23 +24,14 @@ export const styles = stylex.create({
     borderRadius: 4,
     padding: "4px 8px",
   },
+  inputFull: {
+    width: "100%",
+    boxSizing: "border-box",
+  },
   selectMedium: {
     width: 180,
   },
   inputNarrow: {
     width: 80,
-  },
-  transition: {
-    marginBottom: 10,
-  },
-  noteNeutral: {
-    margin: "4px 0 0",
-    fontSize: textSizeVars["--font-size-sm"],
-    color: colorVars["--color-text-secondary"],
-  },
-  noteWarning: {
-    margin: "4px 0 0",
-    fontSize: textSizeVars["--font-size-sm"],
-    color: colorVars["--color-text-yellow"],
   },
 });

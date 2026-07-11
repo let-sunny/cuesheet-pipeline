@@ -3,7 +3,7 @@ import * as stylex from "@stylexjs/stylex";
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 5) — rules ported
  * 1:1 from the old `.crop-edit-*` classes in styles.css (all owned solely by this component; no
- * `.plain-button`/`.plain-field` marker collisions since every element here is a plain `<div>`).
+ * plain-button/plain-input marker-class collisions since every element here is a plain `<div>`).
  *
  * Colors are deliberately fixed hex/rgba values regardless of theme (not `var(--...)` tokens) —
  * this overlay sits directly on actual video pixels, so it needs to read consistently against

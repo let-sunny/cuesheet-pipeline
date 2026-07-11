@@ -7,9 +7,8 @@ import { colorVars } from "@astryxdesign/core/theme/tokens.stylex";
  * the hand-rolled `.settings-field` markup. The only remaining raw elements are the `<input>`s
  * bound to `useNumericField` (FPS/Width/Height/Fade), whose transient-text/commit contract doesn't
  * match Astryx NumberInput's value/onChange/onBlur shape - `numberInput` below ports the old shared
- * `.plain-field` marker class's look 1:1, now owned solely by this component instead of a global
- * class (2026-07-11 stock-audit completion pass - `.plain-field` still exists in styles.css for
- * other, not-yet-migrated components, but this one no longer references it).
+ * plain-input marker class's look 1:1, now owned solely by this component instead of a global class
+ * (2026-07-11 stock-audit completion pass).
  */
 export const styles = stylex.create({
   numberInput: {

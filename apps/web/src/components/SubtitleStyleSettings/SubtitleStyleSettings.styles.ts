@@ -14,11 +14,11 @@ import { colorVars } from "@astryxdesign/core/theme/tokens.stylex";
  * those classes so it can never visually drift from the real thing, see the component doc
  * comment). `.swatch` was migrated separately (batch 4) into its own `components/Swatch/`
  * component, now used indirectly via the shared `ui/ColorField` wrapper (2026-07-11 stock-audit
- * completion pass). `numberInput` below ports the old shared `.plain-field` marker class's look
+ * completion pass). `numberInput` below ports the old shared plain-input marker class's look
  * 1:1 for the Size/Outline width/Background padding fields (native `<input>`s bound to
  * useNumericField - see that hook's file comment), now owned solely by this component instead of a
- * global class. Position moved to a stock Astryx `Selector`, so `.plain-field` no longer styles a
- * `<select>` here either.
+ * global class. Position moved to a stock Astryx `Selector`, so that old marker class no longer
+ * styles a `<select>` here either.
  */
 export const styles = stylex.create({
   previewStage: {

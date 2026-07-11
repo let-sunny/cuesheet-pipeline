@@ -1,32 +1,54 @@
 import * as stylex from "@stylexjs/stylex";
-import { colorVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
+import { colorVars, radiusVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
- * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 3). Only the
- * rules owned solely by the Narration block (kept inline in SegmentQuickFields.tsx, see its doc
- * comment for why it isn't its own group component) live here now — the Range/Transitions/
- * Subtitle groups' own styles (`readonlyValue`/`noteNeutral`/`transition`/`subtitleTextarea`)
- * moved out to their own `<Group>.styles.ts` files alongside this panel's decomposition into
- * group components. Most of `SegmentQuickFields`'s classes are the shared `.qf-*` grid tokens
- * (`.quick-fields`/`.qf-panel-title`/`.qf-group`/`.qf-group-label`/`.qf-row`/`.qf-field`/
- * `.qf-suffix`/`.qf-readonly`/`.qf-note`/`.qf-danger-zone`) reused by BgmSettingsPanel/
- * ProjectMetaFields/SubtitleStylePresetsSettings/SegmentStyleOverride, plus the `.field-narrow`/
- * `.field-medium`/`.field-full` width tokens and `.narration-empty-note` (shared with
- * BgmSettingsPanel/IntroOutroEditor) — all of those stay in styles.css.
+ * Cut-settings grid migration (2026-07-11): `panel` replaces the old shared panel-shell class
+ * (styles.css) - now owned solely by this component instead of a class also reused by
+ * BgmSettingsPanel (which keeps its own copy in BgmSettingsPanel.styles.ts, same duplication
+ * precedent as `numberInput` elsewhere). `groupBorder`/`groupLabel`/`plainField`/`selectMedium`
+ * mirror RangeGroup.styles.ts's copies, for the Narration group kept inline here (see this file's
+ * own doc comment on why Narration isn't promoted to its own group component). `dangerZone`
+ * replaces the old danger-zone class.
  *
- * Also NOT migrated (stays plain CSS, see styles.css): `.qf-actions-row` — it overrides the shared
- * `.qf-row`'s `gap` (16px -> 8px) at equal specificity (both single classes), winning today only
- * by being later in styles.css's source order. This app's StyleX output is injected *before*
- * styles.css, so moving `.qf-actions-row`'s `gap` into a StyleX atomic class would lose that same
- * cascade tie to `.qf-row` (same root cause as HeaderBar's theme toggle / BgmSettingsPanel's
- * bgm-file-play/name — see HeaderBar.styles.ts's comment). ActionsGroup's div keeps both plain
- * classNames (`qf-row qf-actions-row`) unchanged.
- *
- * `border` shorthand written as its longhand equivalents (`borderTopWidth`/`borderTopStyle`/
- * `borderTopColor`) — see HeaderBar.styles.ts's comment for why (StyleX silently drops the
- * shorthand form).
+ * `border` shorthand is written out as its longhand equivalents (`borderTopWidth`/
+ * `borderTopStyle`/`borderTopColor`) - see HeaderBar.styles.ts's comment for why (StyleX silently
+ * drops the shorthand form).
  */
 export const styles = stylex.create({
+  // Padding is set via VStack's own `paddingBlock`/`paddingInline` props (component props first,
+  // per the Astryx cheat sheet's "Custom styling" rule) - only background/radius need xstyle here.
+  panel: {
+    backgroundColor: colorVars["--color-background-surface"],
+    borderRadius: radiusVars["--radius-element"],
+  },
+  groupBorder: {
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopStyle: "dashed",
+    borderTopColor: colorVars["--color-border-emphasized"],
+  },
+  groupLabel: {
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+  },
+  plainField: {
+    font: "inherit",
+    color: "inherit",
+    backgroundColor: colorVars["--color-background-surface"],
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: colorVars["--color-border"],
+    borderRadius: 4,
+    padding: "4px 8px",
+  },
+  selectMedium: {
+    width: 180,
+  },
+  narrationEmptyNote: {
+    margin: "4px 0 0",
+    fontSize: textSizeVars["--font-size-sm"],
+    color: colorVars["--color-text-secondary"],
+  },
   narrationWarning: {
     margin: "4px 0 0",
     fontSize: textSizeVars["--font-size-sm"],
@@ -41,5 +63,12 @@ export const styles = stylex.create({
   narrationAudio: {
     width: "100%",
     height: 32,
+  },
+  dangerZone: {
+    marginTop: 14,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopStyle: "dashed",
+    borderTopColor: colorVars["--color-border-red"],
   },
 });
