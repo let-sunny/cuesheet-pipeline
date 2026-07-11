@@ -120,6 +120,22 @@ describe("MomentPalette category filter", () => {
     await waitFor(() => expect(screen.queryByText("knitting a sock cuff")).toBeNull());
     expect(screen.getByText("the cat walks in")).not.toBeNull();
   });
+
+  it("reflects the active filter in the header count instead of a static total (2026-07-11)", async () => {
+    vi.mocked(fetchMoments).mockResolvedValue(twoCategories);
+    render(<MomentPalette {...baseProps()} />);
+    await waitFor(() => expect(screen.getByText("knitting a sock cuff")).not.toBeNull());
+    // No filter active: plain total.
+    expect(screen.getByText("Scene candidates (2)")).not.toBeNull();
+
+    // Filtering to "Cat (1)" narrows the grid to 1 of the 2 total cards.
+    fireEvent.click(screen.getByRole("button", { name: "Cat (1)" }));
+    await waitFor(() => expect(screen.getByText("Scene candidates (1 of 2)")).not.toBeNull());
+
+    // Clicking the already-active chip again clears the filter back to the plain total.
+    fireEvent.click(screen.getByRole("button", { name: "Cat (1)" }));
+    await waitFor(() => expect(screen.getByText("Scene candidates (2)")).not.toBeNull());
+  });
 });
 
 describe("MomentPalette load states", () => {
