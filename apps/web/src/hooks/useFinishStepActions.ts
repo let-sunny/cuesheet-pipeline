@@ -22,6 +22,8 @@ export interface UseFinishStepActionsOptions {
 
 export interface UseFinishStepActionsResult {
   updateProject: (patch: Partial<Project>) => void;
+  /** Relinks all cuts by changing the cuesheet-root `clipDir` (e.g. after moving the footage folder). */
+  updateClipDir: (value: string) => void;
   /** Resolution preset switching — also rescales subtitleStyle/styleOverride's absolute px values. */
   handleChangeResolution: (width: number, height: number) => void;
   updateNarration: (patch: Partial<NarrationConfig>) => void;
@@ -48,6 +50,14 @@ export function useFinishStepActions({
     }
     recordContinuousChange();
     setDraft((prev) => (prev ? { ...prev, project: { ...prev.project, ...patch } } : prev));
+  }, [draft, recordContinuousChange, setDraft]);
+
+  const updateClipDir = useCallback((value: string) => {
+    if (!draft) {
+      return;
+    }
+    recordContinuousChange();
+    setDraft((prev) => (prev ? { ...prev, clipDir: value } : prev));
   }, [draft, recordContinuousChange, setDraft]);
 
   // Resolution preset switching in the render settings dialog — since subtitleStyle/styleOverride's
@@ -187,6 +197,7 @@ export function useFinishStepActions({
 
   return {
     updateProject,
+    updateClipDir,
     handleChangeResolution,
     updateNarration,
     updateSubtitleStyle,

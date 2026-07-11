@@ -10,19 +10,20 @@ afterEach(cleanup);
 
 function setup(initial: CueSheet, dirty = false) {
   const toast = vi.fn();
+  const recordContinuousChange = vi.fn();
   const hook = renderHook(() => {
     const [draft, setDraft] = useState<CueSheet | null>(initial);
     const actions = useFinishStepActions({
       draft,
       setDraft,
       recordDiscreteChange: vi.fn(),
-      recordContinuousChange: vi.fn(),
+      recordContinuousChange,
       dirty,
       toast,
     });
     return { draft, ...actions };
   });
-  return { ...hook, toast };
+  return { ...hook, toast, recordContinuousChange };
 }
 
 describe("useFinishStepActions", () => {
@@ -57,6 +58,16 @@ describe("useFinishStepActions", () => {
 
     expect(result.current.draft?.subtitleStylePresets).toEqual({});
     expect(result.current.draft?.segments[0]?.stylePreset).toBeNull();
+  });
+
+  it("updateClipDir patches the root clipDir field and records a continuous change", () => {
+    const sheet = makeCueSheet({ clipDir: "media/clips" });
+    const { result, recordContinuousChange } = setup(sheet);
+
+    act(() => result.current.updateClipDir("media/new-clips"));
+
+    expect(result.current.draft?.clipDir).toBe("media/new-clips");
+    expect(recordContinuousChange).toHaveBeenCalled();
   });
 
   it("handleChangeResolution is a no-op when the resolution is unchanged", () => {

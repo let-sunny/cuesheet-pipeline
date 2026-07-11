@@ -9,7 +9,9 @@ import { styles } from "./ProjectMetaFields.styles.js";
 
 interface Props {
   project: Project;
+  clipDir: string;
   onChange: (patch: Partial<Project>) => void;
+  onClipDirChange: (value: string) => void;
 }
 
 /** Rounds to the nearest even integer (ties round up) - width/height must be even for video encoding. */
@@ -19,7 +21,7 @@ function nearestEven(n: number): number {
 }
 
 /** Project meta fields (name/fps/resolution) shown inside the settings dialog — values that don't change per episode. */
-export function ProjectMetaFields({ project, onChange }: Props) {
+export function ProjectMetaFields({ project, clipDir, onChange, onClipDirChange }: Props) {
   // Transient "rounded to N" notes for width/height, shown briefly after a blur/Enter commit that
   // snapped an odd value to the nearest even one (schema requires width/height to be even).
   const [widthNote, setWidthNote] = useState<string | null>(null);
@@ -64,6 +66,13 @@ export function ProjectMetaFields({ project, onChange }: Props) {
     // doesn't match the hook's DOM-binding contract - kept native, wrapped in Field for the
     // label/status/layout only.
     <FormLayout direction="horizontal-labels">
+      <TextInput
+        label="Source folder"
+        value={clipDir}
+        onChange={(value) => onClipDirChange(value)}
+        description="Folder holding the raw footage. Change this to relink all cuts after moving the footage."
+        data-testid="project-clip-dir"
+      />
       <TextInput label="Name" value={project.name} onChange={(value) => onChange({ name: value })} />
       <Field label="FPS" inputID="project-fps">
         <input id="project-fps" type="number" min={1} {...stylex.props(styles.numberInput)} {...fpsField} />

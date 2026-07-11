@@ -52,7 +52,12 @@ export function FinishStep({
         description="Episode-wide settings that rarely change per cut."
         data-testid="export-section-project-meta"
       >
-        <ProjectMetaFields project={draft.project} onChange={actions.updateProject} />
+        <ProjectMetaFields
+          project={draft.project}
+          clipDir={draft.clipDir}
+          onChange={actions.updateProject}
+          onClipDirChange={actions.updateClipDir}
+        />
       </FinishSettingsSection>
 
       <FinishSettingsSection
