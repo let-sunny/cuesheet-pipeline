@@ -24,21 +24,24 @@ import {
 export const styles = stylex.create({
   // Padding is set via VStack's own `paddingBlock`/`paddingInline` props (component props first,
   // per the Astryx cheat sheet's "Custom styling" rule) - only background/radius/fill need xstyle.
-  // flexGrow 1 + minHeight 0: fill the fields column's (stretched) height so the card reads as the
-  // same height as the scene/video beside it, and let the tab bar below stick while the groups
-  // scroll within the column (2026-07-11 user feedback). overflowX hidden guards the same
-  // no-horizontal-scroll rule the column sets.
+  // The panel is the scroll container (flexGrow 1 fills the fields column's stretched height so the
+  // card reads as the same height as the scene/video beside it; overflowY auto + minHeight 0 scroll
+  // the groups when a cut's fields are taller than the column). overflowX hidden guards the
+  // no-horizontal-scroll rule (2026-07-11 user feedback).
   panel: {
     backgroundColor: colorVars["--color-background-surface"],
     borderRadius: radiusVars["--radius-element"],
     flexGrow: 1,
     minHeight: 0,
+    overflowY: "auto",
     overflowX: "hidden",
   },
   // The Cut/Effects tabs stay pinned to the top of the panel while the groups scroll under them, so
   // switching tabs never requires scrolling back up (2026-07-11 user feedback). It carries the
   // surface background and spans the panel's inline padding (negative margin + matching padding) so
-  // scrolled content doesn't show through beside or beneath the tabs.
+  // scrolled content doesn't show through beside it, and sits flush to the panel's top padding edge
+  // when stuck. The negative top margin + matching padding pull it up over the panel's own top
+  // padding so there's no dead gap above the tabs before scrolling.
   tabBar: {
     position: "sticky",
     top: 0,

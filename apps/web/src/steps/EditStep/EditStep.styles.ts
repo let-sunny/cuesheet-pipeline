@@ -94,7 +94,8 @@ export const styles = stylex.create({
     flexDirection: "column",
     minHeight: 0,
     maxHeight: "calc(100vh - 24px)",
-    overflowY: "auto",
-    overflowX: "hidden",
+    // The panel child is the scroll container (it owns the sticky tab bar); the column just bounds
+    // its height and clips, so scrolling happens on the panel, not here.
+    overflow: "hidden",
   },
 });
