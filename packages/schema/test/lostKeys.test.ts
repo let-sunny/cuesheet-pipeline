@@ -45,7 +45,40 @@ describe("findLostFieldPaths", () => {
     expect(findLostFieldPaths({ a: undefined }, {})).toEqual([]);
   });
 
+  it("does not treat a wholly undefined original (top-level) as lost", () => {
+    expect(findLostFieldPaths(undefined, { a: 1 })).toEqual([]);
+  });
+
   it("is not lost if the key remains even when its value changed (type coercion/default fill)", () => {
     expect(findLostFieldPaths({ a: 1 }, { a: 2, b: 3 })).toEqual([]);
+  });
+
+  it("marks the whole value lost (root path) when the serialized side is undefined entirely", () => {
+    expect(findLostFieldPaths({ a: 1 }, undefined)).toEqual(["(root)"]);
+  });
+
+  it("marks an array as lost (with its path) when the serialized side isn't an array", () => {
+    expect(findLostFieldPaths({ list: [1, 2] }, { list: "not-an-array" })).toEqual(["list"]);
+  });
+
+  it("marks an object as lost (with its path) when the serialized side is null instead", () => {
+    expect(findLostFieldPaths({ nested: { a: 1 } }, { nested: null })).toEqual(["nested"]);
+  });
+
+  it("marks an object as lost when the serialized side is an array instead of an object", () => {
+    expect(findLostFieldPaths({ nested: { a: 1 } }, { nested: [1] })).toEqual(["nested"]);
+  });
+
+  it("marks an object as lost when the serialized side is a primitive instead of an object", () => {
+    expect(findLostFieldPaths({ nested: { a: 1 } }, { nested: 5 })).toEqual(["nested"]);
+  });
+
+  it("recurses element-wise into arrays, reporting a nested loss with its index in the path", () => {
+    const lost = findLostFieldPaths({ list: [{ a: 1 }, { b: 2 }] }, { list: [{ a: 1 }, {}] });
+    expect(lost).toEqual(["list[1].b"]);
+  });
+
+  it("reports the root path itself as lost when the whole tree is an unrecognized object at the top level", () => {
+    expect(findLostFieldPaths({ a: 1 }, [1])).toEqual(["(root)"]);
   });
 });
