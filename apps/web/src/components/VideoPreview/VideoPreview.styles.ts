@@ -169,7 +169,7 @@ export const styles = stylex.create({
   },
   notice: {
     fontSize: textSizeVars["--font-size-sm"],
-    color: colorVars["--color-text-yellow"],
+    color: colorVars["--color-warning"],
   },
   noticeProxyPreparing: {
     margin: `${spacingVars["--spacing-2"]} 0`,

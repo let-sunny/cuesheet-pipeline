@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { colorVars } from "@astryxdesign/core/theme/tokens.stylex";
+import { colorVars, spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /** Owned solely by TitleGroup - see RangeGroup.styles.ts's comment for why `groupBorder`/
  * `groupLabel` are duplicated per group component rather than shared globally. The Text/Preset/
@@ -10,7 +10,7 @@ import { colorVars } from "@astryxdesign/core/theme/tokens.stylex";
  * ui/NumericInput's file comment). */
 export const styles = stylex.create({
   groupBorder: {
-    paddingTop: 10,
+    paddingTop: spacingVars["--spacing-2"],
     borderTopWidth: 1,
     borderTopStyle: "dashed",
     borderTopColor: colorVars["--color-border-emphasized"],

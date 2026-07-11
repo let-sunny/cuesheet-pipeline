@@ -75,7 +75,7 @@ export const styles = stylex.create({
   },
   dirtyBadge: {
     fontSize: textSizeVars["--font-size-sm"],
-    color: colorVars["--color-text-yellow"],
+    color: colorVars["--color-warning"],
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: colorVars["--color-border-yellow"],

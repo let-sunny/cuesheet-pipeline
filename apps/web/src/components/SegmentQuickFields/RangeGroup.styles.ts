@@ -1,5 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
-import { colorVars, textSizeVars, fontWeightVars } from "@astryxdesign/core/theme/tokens.stylex";
+import {
+  colorVars,
+  fontWeightVars,
+  spacingVars,
+  textSizeVars,
+} from "@astryxdesign/core/theme/tokens.stylex";
 
 /** Owned solely by RangeGroup (2026-07-11 Cut-settings grid migration). `groupLabel`/`groupBorder`
  * replace the old shared group-label/group-border rules (styles.css) - each group component now
@@ -12,7 +17,7 @@ import { colorVars, textSizeVars, fontWeightVars } from "@astryxdesign/core/them
  * instead of a co-located rule. */
 export const styles = stylex.create({
   groupBorder: {
-    paddingTop: 10,
+    paddingTop: spacingVars["--spacing-2"],
     borderTopWidth: 1,
     borderTopStyle: "dashed",
     borderTopColor: colorVars["--color-border-emphasized"],
@@ -35,12 +40,12 @@ export const styles = stylex.create({
   // Length readout's error treatment when in >= out (rangeError set) - same "error" color token
   // IntroOutroEditor/MomentPalette already use for their own inline validation notes.
   lengthErrorText: {
-    color: colorVars["--color-text-red"],
+    color: colorVars["--color-error"],
     fontWeight: fontWeightVars["--font-weight-semibold"],
   },
   rangeError: {
-    margin: "4px 0 0",
+    margin: `${spacingVars["--spacing-1"]} 0 0`,
     fontSize: textSizeVars["--font-size-sm"],
-    color: colorVars["--color-text-red"],
+    color: colorVars["--color-error"],
   },
 });

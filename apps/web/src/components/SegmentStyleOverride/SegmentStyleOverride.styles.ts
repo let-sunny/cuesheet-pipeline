@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md) — rules ported 1:1 from the old
@@ -20,22 +21,22 @@ import * as stylex from "@stylexjs/stylex";
  */
 export const styles = stylex.create({
   override: {
-    marginTop: 10,
+    marginTop: spacingVars["--spacing-2"],
   },
   toggle: {
     display: "flex",
     alignItems: "center",
-    gap: 6,
+    gap: spacingVars["--spacing-1-5"],
   },
   fields: {
     display: "flex",
     flexDirection: "column",
-    gap: 10,
-    marginTop: 8,
+    gap: spacingVars["--spacing-2"],
+    marginTop: spacingVars["--spacing-2"],
   },
   actions: {
     display: "flex",
-    gap: 8,
-    marginTop: 4,
+    gap: spacingVars["--spacing-2"],
+    marginTop: spacingVars["--spacing-1"],
   },
 });

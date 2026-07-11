@@ -1,5 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
-import { colorVars, radiusVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
+import {
+  colorVars,
+  radiusVars,
+  spacingVars,
+  textSizeVars,
+} from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Cut-settings grid migration (2026-07-11): `panel` replaces the old shared panel-shell class
@@ -24,7 +29,7 @@ export const styles = stylex.create({
     borderRadius: radiusVars["--radius-element"],
   },
   groupBorder: {
-    paddingTop: 10,
+    paddingTop: spacingVars["--spacing-2"],
     borderTopWidth: 1,
     borderTopStyle: "dashed",
     borderTopColor: colorVars["--color-border-emphasized"],
@@ -34,17 +39,17 @@ export const styles = stylex.create({
     letterSpacing: "0.05em",
   },
   narrationEmptyNote: {
-    margin: "4px 0 0",
+    margin: `${spacingVars["--spacing-1"]} 0 0`,
     fontSize: textSizeVars["--font-size-sm"],
     color: colorVars["--color-text-secondary"],
   },
   narrationWarning: {
-    margin: "4px 0 0",
+    margin: `${spacingVars["--spacing-1"]} 0 0`,
     fontSize: textSizeVars["--font-size-sm"],
-    color: colorVars["--color-text-yellow"],
+    color: colorVars["--color-warning"],
   },
   narrationPreview: {
-    paddingTop: 8,
+    paddingTop: spacingVars["--spacing-2"],
     borderTopWidth: 1,
     borderTopStyle: "dashed",
     borderTopColor: colorVars["--color-border-emphasized"],
@@ -53,9 +58,11 @@ export const styles = stylex.create({
     width: "100%",
     height: 32,
   },
+  // --color-border-red used as a danger-zone top border - a border-tuned tint, not status text;
+  // left as-is per the semantic-token pass (see HeaderBar.styles.ts's raw-vs-semantic comment).
   dangerZone: {
-    marginTop: 14,
-    paddingTop: 10,
+    marginTop: spacingVars["--spacing-3"],
+    paddingTop: spacingVars["--spacing-2"],
     borderTopWidth: 1,
     borderTopStyle: "dashed",
     borderTopColor: colorVars["--color-border-red"],

@@ -40,8 +40,8 @@ export const styles = stylex.create({
   miniStripRow: {
     display: "flex",
     alignItems: "center",
-    gap: 10,
-    marginTop: 12,
+    gap: spacingVars["--spacing-2"],
+    marginTop: spacingVars["--spacing-3"],
   },
   // Sequential playback sticky area: fixed below the mini timeline, with the edit content below it
   // still visible as-is.
@@ -50,14 +50,14 @@ export const styles = stylex.create({
     top: 0,
     zIndex: 20,
     backgroundColor: colorVars["--color-background-body"],
-    padding: "12px 0",
-    marginTop: 12,
+    padding: `${spacingVars["--spacing-3"]} 0`,
+    marginTop: spacingVars["--spacing-3"],
     borderBottomWidth: 1,
     borderBottomStyle: "solid",
     borderBottomColor: colorVars["--color-background-muted"],
   },
   stepBody: {
-    marginTop: 16,
+    marginTop: spacingVars["--spacing-4"],
   },
   // Full-page loading/error/not-found placeholder shown before the app shell mounts (no draft
   // loaded yet) - ported from the old `.status`(+`.empty-state`) classes in styles.css, now a

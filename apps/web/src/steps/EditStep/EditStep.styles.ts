@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md) — moved here from the old
@@ -9,11 +10,11 @@ export const styles = stylex.create({
   editLayout: {
     display: "flex",
     flexDirection: "column",
-    gap: 12,
+    gap: spacingVars["--spacing-3"],
   },
   trimLayout: {
     display: "flex",
-    gap: 16,
+    gap: spacingVars["--spacing-4"],
     alignItems: "flex-start",
   },
   // Two-column workspace wrapping everything to the right of the cut list (video + field panel).
@@ -33,7 +34,7 @@ export const styles = stylex.create({
     minWidth: 0,
     display: "flex",
     flexWrap: "wrap",
-    gap: 16,
+    gap: spacingVars["--spacing-4"],
     alignItems: "flex-start",
     position: "sticky",
     top: 12,

@@ -40,6 +40,6 @@ export const styles = stylex.create({
   note: {
     margin: `${spacingVars["--spacing-1"]} 0 0`,
     fontSize: textSizeVars["--font-size-sm"],
-    color: colorVars["--color-text-yellow"],
+    color: colorVars["--color-warning"],
   },
 });
