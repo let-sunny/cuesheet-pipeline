@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { forwardRef, useImperativeHandle } from "react";
 import type { ComponentProps, Ref } from "react";
-import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Title } from "@cuesheet/schema";
 import { TITLE_FONT_SIZE_PX, TITLE_TEXT_COLOR } from "@cuesheet/render/remotion";
@@ -12,9 +12,10 @@ import { TitleOverlay } from "./TitleOverlay.js";
 // assert TitleOverlay wires the composition/inputProps/duration/dimensions correctly) and (b)
 // exposes a PlayerRef whose methods/event-registration the restart and play/pause controls are
 // asserted to call.
-const { mockSeekTo, mockToggle, mockAddEventListener, mockRemoveEventListener } = vi.hoisted(() => ({
+const { mockSeekTo, mockToggle, mockPlay, mockAddEventListener, mockRemoveEventListener } = vi.hoisted(() => ({
   mockSeekTo: vi.fn(),
   mockToggle: vi.fn(),
+  mockPlay: vi.fn(),
   mockAddEventListener: vi.fn(),
   mockRemoveEventListener: vi.fn(),
 }));
@@ -24,6 +25,7 @@ vi.mock("@remotion/player", () => ({
     useImperativeHandle(ref, () => ({
       seekTo: mockSeekTo,
       toggle: mockToggle,
+      play: mockPlay,
       addEventListener: mockAddEventListener,
       removeEventListener: mockRemoveEventListener,
     }));
@@ -115,6 +117,11 @@ describe("TitleOverlay", () => {
     const overlayWithDim = withDim.container.querySelector('[data-testid="title-overlay"]')!;
     expect(overlayWithDim.children.length).toBe(3);
     withDim.unmount();
+  });
+
+  it("nudges the player to start playing on mount (autoPlay is not relied on alone)", async () => {
+    renderOverlay();
+    await waitFor(() => expect(mockPlay).toHaveBeenCalled());
   });
 
   it("restart control calls the player's seekTo(0)", () => {
