@@ -108,6 +108,7 @@ export function EditStep({
               subtitleStylePresets={draft.subtitleStylePresets}
               projectHeight={draft.project.height}
               projectWidth={draft.project.width}
+              projectFps={draft.project.fps}
             />
           </div>
           <div

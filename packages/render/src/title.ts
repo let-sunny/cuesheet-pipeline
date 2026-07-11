@@ -8,6 +8,7 @@ import { bundle } from "@remotion/bundler";
 import { ensureBrowser, renderFrames, selectComposition } from "@remotion/renderer";
 import type { CueSheet, Title } from "@cuesheet/schema";
 import type { TitleCardProps } from "./remotion/TitleCard.js";
+import { TITLE_TEXT_COLOR } from "./remotion/titleCardStyle.js";
 
 /** Where prepareTitleAssets writes the captured PNG-sequence cache (gitignored). */
 export const DEFAULT_TITLE_CACHE_DIR = "media/title-cache";
@@ -207,12 +208,3 @@ export async function normalizeFrameFilenames(
     await rename(from, join(dir, finalName));
   }
 }
-
-/**
- * Fixed title-card text color (no schema field for this yet - every preset renders in this one
- * cozy, warm tone). SYNC: duplicated by hand in remotion/index.tsx's DEFAULT_PROPS.color, which is
- * only a Studio-preview default and isn't read by real renders (those always pass this constant via
- * renderTitleFrames's inputProps above) - see that file's comment for why there's no shared runtime
- * module between the two.
- */
-const TITLE_TEXT_COLOR = "#3a3128";

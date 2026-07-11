@@ -61,6 +61,7 @@ function baseProps(overrides: Partial<Parameters<typeof VideoPreview>[0]> = {}) 
     subtitleStylePresets: undefined,
     projectHeight: 1080,
     projectWidth: 1920,
+    projectFps: 30,
     ...overrides,
   };
 }

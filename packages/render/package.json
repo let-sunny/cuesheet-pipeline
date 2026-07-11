@@ -6,6 +6,16 @@
   "type": "module",
   "main": "./dist/plan.js",
   "types": "./dist/plan.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/plan.d.ts",
+      "default": "./dist/plan.js"
+    },
+    "./remotion": {
+      "types": "./dist/remotion/TitleCard.d.ts",
+      "default": "./dist/remotion/TitleCard.js"
+    }
+  },
   "bin": {
     "cuesheet-render": "./dist/index.js"
   },

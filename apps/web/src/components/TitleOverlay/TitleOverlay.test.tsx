@@ -1,114 +1,135 @@
 // @vitest-environment jsdom
-import { cleanup, render } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { forwardRef, useImperativeHandle } from "react";
+import type { ComponentProps, Ref } from "react";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Title } from "@cuesheet/schema";
-import { TitleOverlay, backdropOpacity, isTitleVisible, typingRevealedCount } from "./TitleOverlay.js";
+import { TITLE_TEXT_COLOR } from "@cuesheet/render/remotion";
+import { TitleOverlay } from "./TitleOverlay.js";
 
-afterEach(cleanup);
+// @remotion/player's real <Player> can't run inside jsdom (it drives a real Remotion composition
+// render loop) - mocked to a stub that (a) exposes the exact props it was given (so tests can
+// assert TitleOverlay wires the composition/inputProps/duration/dimensions correctly) and (b)
+// exposes a PlayerRef whose methods/event-registration the restart and play/pause controls are
+// asserted to call.
+const { mockSeekTo, mockToggle, mockAddEventListener, mockRemoveEventListener } = vi.hoisted(() => ({
+  mockSeekTo: vi.fn(),
+  mockToggle: vi.fn(),
+  mockAddEventListener: vi.fn(),
+  mockRemoveEventListener: vi.fn(),
+}));
+
+vi.mock("@remotion/player", () => ({
+  Player: forwardRef(function MockPlayer(props: Record<string, unknown>, ref: Ref<unknown>) {
+    useImperativeHandle(ref, () => ({
+      seekTo: mockSeekTo,
+      toggle: mockToggle,
+      addEventListener: mockAddEventListener,
+      removeEventListener: mockRemoveEventListener,
+    }));
+    return (
+      <div
+        data-testid="mock-player"
+        data-input-props={JSON.stringify(props.inputProps)}
+        data-duration-in-frames={String(props.durationInFrames)}
+        data-composition-width={String(props.compositionWidth)}
+        data-composition-height={String(props.compositionHeight)}
+        data-fps={String(props.fps)}
+      />
+    );
+  }),
+}));
+
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
 
 const baseTitle: Title = { text: "Cast on", preset: "typing", durationS: 2 };
 
-describe("isTitleVisible", () => {
-  it("is true only within [0, durationS]", () => {
-    expect(isTitleVisible(-0.1, 2)).toBe(false);
-    expect(isTitleVisible(0, 2)).toBe(true);
-    expect(isTitleVisible(1, 2)).toBe(true);
-    expect(isTitleVisible(2, 2)).toBe(true);
-    expect(isTitleVisible(2.1, 2)).toBe(false);
-  });
-});
-
-describe("backdropOpacity", () => {
-  it("is 0 when dim is 0 or the title isn't visible", () => {
-    expect(backdropOpacity(0, 2, 1)).toBe(0);
-    expect(backdropOpacity(0.5, 2, 3)).toBe(0);
-  });
-
-  it("ramps up from 0 to the requested dim over the fade-in window", () => {
-    expect(backdropOpacity(0.5, 2, 0)).toBeCloseTo(0, 5);
-    // fadeT = min(durationS/2, 0.4) = 0.4 for durationS=2 -> at t=0.2 (half of fadeT), opacity is half of dim
-    expect(backdropOpacity(0.5, 2, 0.2)).toBeCloseTo(0.25, 5);
-    expect(backdropOpacity(0.5, 2, 0.4)).toBeCloseTo(0.5, 5);
-  });
-
-  it("holds at the requested dim during the middle, then ramps back down to 0 by durationS", () => {
-    expect(backdropOpacity(0.5, 2, 1)).toBeCloseTo(0.5, 5);
-    expect(backdropOpacity(0.5, 2, 2)).toBeCloseTo(0, 5);
-  });
-});
-
-describe("typingRevealedCount", () => {
-  it("reveals characters at a fixed fast pace (2/30s each), completing early then holding", () => {
-    // Matches the render's CHAR_FRAMES=2 pace: ~15 chars/sec, independent of the title duration.
-    expect(typingRevealedCount(4, 2, 0)).toBe(0);
-    expect(typingRevealedCount(4, 2, 2 / 30)).toBe(1); // one char after 2 frames
-    expect(typingRevealedCount(4, 2, 8 / 30)).toBe(4); // all four revealed by ~0.27s
-    expect(typingRevealedCount(4, 2, 1)).toBe(4); // and held for the rest of the duration
-  });
-
-  it("never exceeds the text length", () => {
-    expect(typingRevealedCount(4, 2, 999)).toBe(4);
-  });
-});
+function renderOverlay(overrides: Partial<ComponentProps<typeof TitleOverlay>> = {}) {
+  return render(
+    <TitleOverlay title={baseTitle} projectWidth={1920} projectHeight={1080} projectFps={30} {...overrides} />,
+  );
+}
 
 describe("TitleOverlay", () => {
   it("renders nothing when there is no title", () => {
-    const { container } = render(<TitleOverlay title={undefined} localTimeS={0} />);
+    const { container } = renderOverlay({ title: undefined });
     expect(container.firstChild).toBeNull();
   });
 
-  it("renders nothing once localTimeS is past durationS", () => {
-    const { container } = render(<TitleOverlay title={baseTitle} localTimeS={3} />);
-    expect(container.firstChild).toBeNull();
+  it("runs the real TitleCard composition through the Player, with the title's text/preset/duration and the project's dimensions/fps as inputProps", () => {
+    const { getByTestId } = renderOverlay({
+      title: { text: "Cast on today", preset: "wordStagger", durationS: 3 },
+      projectWidth: 1080,
+      projectHeight: 1920,
+      projectFps: 24,
+    });
+    const player = getByTestId("mock-player");
+    const inputProps = JSON.parse(player.getAttribute("data-input-props")!);
+    expect(inputProps).toEqual({
+      text: "Cast on today",
+      preset: "wordStagger",
+      durationInSeconds: 3,
+      fps: 24,
+      color: TITLE_TEXT_COLOR,
+      width: 1080,
+      height: 1920,
+    });
+    expect(player.getAttribute("data-composition-width")).toBe("1080");
+    expect(player.getAttribute("data-composition-height")).toBe("1920");
+    expect(player.getAttribute("data-fps")).toBe("24");
   });
 
-  it("renders the typing preset's characters via string slicing, revealing more as localTimeS advances", () => {
-    const early = render(<TitleOverlay title={baseTitle} localTimeS={0.1} />);
-    const earlyText = early.container.querySelector('[data-testid="title-overlay"]')?.textContent ?? "";
-    early.unmount();
-    const late = render(<TitleOverlay title={baseTitle} localTimeS={1.9} />);
-    const lateText = late.container.querySelector('[data-testid="title-overlay"]')?.textContent ?? "";
-    late.unmount();
-    expect(lateText.length).toBeGreaterThan(earlyText.length);
-    expect(baseTitle.text.startsWith(lateText)).toBe(true);
-  });
+  it("computes durationInFrames from durationS * fps, rounded and clamped to at least 1", () => {
+    const normal = renderOverlay({ title: { ...baseTitle, durationS: 2 }, projectFps: 30 });
+    expect(normal.getByTestId("mock-player").getAttribute("data-duration-in-frames")).toBe("60");
+    normal.unmount();
 
-  it("renders the fade preset's text", () => {
-    const { container } = render(<TitleOverlay title={{ ...baseTitle, preset: "fade" }} localTimeS={1} />);
-    expect(container.textContent).toContain("Cast on");
-  });
-
-  it("renders one span per word for the wordStagger preset", () => {
-    const { container } = render(
-      <TitleOverlay title={{ ...baseTitle, text: "Cast on today", preset: "wordStagger" }} localTimeS={1} />,
-    );
-    // Words are separate sibling spans laid out with a CSS flex gap (no space character in the
-    // DOM text itself), so each word's own span is queried individually rather than reading
-    // container.textContent as one string.
-    const words = Array.from(container.querySelectorAll("[data-testid='title-overlay'] div > span")).map(
-      (el) => el.textContent,
-    );
-    expect(words).toEqual(["Cast", "on", "today"]);
-  });
-
-  it("renders a pastel marker behind the last word for the highlight preset", () => {
-    const { container } = render(
-      <TitleOverlay title={{ ...baseTitle, text: "Cast on", preset: "highlight" }} localTimeS={1} />,
-    );
-    expect(container.textContent).toBe("Caston");
-    // jsdom normalizes the inline hex color to rgb() - #A7C7E7 === rgb(167, 199, 231).
-    expect(container.innerHTML).toContain("rgb(167, 199, 231)");
+    const tiny = renderOverlay({ title: { ...baseTitle, durationS: 0.01 }, projectFps: 30 });
+    expect(tiny.getByTestId("mock-player").getAttribute("data-duration-in-frames")).toBe("1");
+    tiny.unmount();
   });
 
   it("renders a backdrop dim layer only when title.backdrop is set", () => {
-    const without = render(<TitleOverlay title={baseTitle} localTimeS={1} />);
-    expect(without.container.querySelectorAll("div").length).toBe(2); // container + stage, no backdrop div
+    const without = renderOverlay();
+    // container has: stage + controls, no backdrop div.
+    const overlayWithout = without.container.querySelector('[data-testid="title-overlay"]')!;
+    expect(overlayWithout.children.length).toBe(2);
     without.unmount();
 
-    const withDim = render(
-      <TitleOverlay title={{ ...baseTitle, backdrop: { dim: 0.5 } }} localTimeS={1} />,
-    );
-    expect(withDim.container.querySelectorAll("div").length).toBe(3); // container + backdrop + stage
+    const withDim = renderOverlay({ title: { ...baseTitle, backdrop: { dim: 0.5 } } });
+    // container has: backdrop + stage + controls.
+    const overlayWithDim = withDim.container.querySelector('[data-testid="title-overlay"]')!;
+    expect(overlayWithDim.children.length).toBe(3);
     withDim.unmount();
+  });
+
+  it("restart control calls the player's seekTo(0)", () => {
+    const { getByTestId } = renderOverlay();
+    fireEvent.click(getByTestId("title-preview-restart"));
+    expect(mockSeekTo).toHaveBeenCalledWith(0);
+  });
+
+  it("play/pause control calls the player's toggle()", () => {
+    const { getByTestId } = renderOverlay();
+    fireEvent.click(getByTestId("title-preview-playpause"));
+    expect(mockToggle).toHaveBeenCalledOnce();
+  });
+
+  it("registers play/pause listeners on the player and flips the toggle control's label accordingly", () => {
+    const { getByTestId } = renderOverlay();
+    expect(mockAddEventListener).toHaveBeenCalledWith("play", expect.any(Function));
+    expect(mockAddEventListener).toHaveBeenCalledWith("pause", expect.any(Function));
+
+    const onPause = mockAddEventListener.mock.calls.find(([name]) => name === "pause")![1] as () => void;
+    const onPlay = mockAddEventListener.mock.calls.find(([name]) => name === "play")![1] as () => void;
+
+    expect(getByTestId("title-preview-playpause").getAttribute("aria-label")).toBe("Pause title preview");
+    act(() => onPause());
+    expect(getByTestId("title-preview-playpause").getAttribute("aria-label")).toBe("Play title preview");
+    act(() => onPlay());
+    expect(getByTestId("title-preview-playpause").getAttribute("aria-label")).toBe("Pause title preview");
   });
 });

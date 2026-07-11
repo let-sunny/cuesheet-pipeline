@@ -43,10 +43,12 @@ interface Props {
   subtitleStyle: SubtitleStyle;
   /** Named subtitle style presets dictionary - merged in ahead of the segment's own styleOverride. */
   subtitleStylePresets: SubtitleStylePresets | undefined;
-  /** Used to convert subtitleStyle.margin (px, relative to source resolution) into overlay position (%). */
+  /** Used to convert subtitleStyle.margin (px, relative to source resolution) into overlay position (%); also passed to TitleOverlay's Player as the composition height. */
   projectHeight: number;
-  /** Used to convert subtitleStyle.size/outlineWidth (px, relative to source resolution) into cqw relative to overlay width. */
+  /** Used to convert subtitleStyle.size/outlineWidth (px, relative to source resolution) into cqw relative to overlay width; also passed to TitleOverlay's Player as the composition width. */
   projectWidth: number;
+  /** Passed to TitleOverlay's Player as the composition frame rate. */
+  projectFps: number;
 }
 
 /** Handle for controlling the preview from outside (e.g. global shortcuts in App.tsx). */
@@ -83,6 +85,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     subtitleStylePresets,
     projectHeight,
     projectWidth,
+    projectFps,
   },
   ref,
 ) {
@@ -517,7 +520,14 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
                 lockRatio={lockRatio}
               />
             ) : null}
-            {!cropEditDraft ? <TitleOverlay title={segment.title} localTimeS={currentTime - segment.in} /> : null}
+            {!cropEditDraft ? (
+              <TitleOverlay
+                title={segment.title}
+                projectWidth={projectWidth}
+                projectHeight={projectHeight}
+                projectFps={projectFps}
+              />
+            ) : null}
             {!cropEditDraft && segment.subtitle.trim() !== "" ? (
               <div
                 className={`video-subtitle-overlay video-subtitle-overlay-${effectiveSubtitleStyle.position}`}

@@ -44,6 +44,9 @@ importers:
       '@cuesheet/schema':
         specifier: workspace:*
         version: link:../../packages/schema
+      '@remotion/player':
+        specifier: ^4.0.487
+        version: 4.0.487(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       '@stylexjs/stylex':
         specifier: ^0.18.3
         version: 0.18.3
@@ -53,6 +56,9 @@ importers:
       react-dom:
         specifier: ^19.2.7
         version: 19.2.7(react@19.2.7)
+      remotion:
+        specifier: ^4.0.487
+        version: 4.0.487(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
     devDependencies:
       '@astryxdesign/build':
         specifier: '*'
