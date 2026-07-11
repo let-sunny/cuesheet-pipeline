@@ -173,15 +173,17 @@ export const styles = stylex.create({
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: colorVars["--color-accent"],
-    backgroundColor: colorVars["--color-accent-muted"],
+    // Same guaranteed-translucent accent tint as `range` (see its comment) rather than the raw
+    // `--color-accent-muted` token, which is opaque in the Neutral theme (and Stone-dark) and would
+    // paint this pan pill as a solid box.
+    backgroundColor: `color-mix(in srgb, ${colorVars["--color-accent"]} 15%, transparent)`,
     cursor: "grab",
     touchAction: "none",
-    // A hover-darkened/lightened step on top of accent-muted, via Astryx's own `--color-tint-hover`
-    // token (black in light mode, white in dark - "used with color-mix for hover states" per its
-    // own doc comment) rather than a second fixed color, so the hover step still tracks whichever
-    // theme/mode is active.
+    // A hover-darkened/lightened step via Astryx's own `--color-tint-hover` token (black in light
+    // mode, white in dark - "used with color-mix for hover states" per its own doc comment) so the
+    // hover step tracks whichever theme/mode is active.
     ":hover": {
-      backgroundColor: `color-mix(in srgb, ${colorVars["--color-accent-muted"]}, ${colorVars["--color-tint-hover"]} 12%)`,
+      backgroundColor: `color-mix(in srgb, ${colorVars["--color-accent"]} 15%, ${colorVars["--color-tint-hover"]} 12%)`,
     },
   },
   panEdge: {
