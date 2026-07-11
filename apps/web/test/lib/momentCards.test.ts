@@ -5,6 +5,7 @@ import {
   buildCards,
   computeCategoryCounts,
   computeInUseCutNumbers,
+  filterByStatus,
   filterCards,
   hasFaceTag,
   nearestFrame,
@@ -165,5 +166,26 @@ describe("filterCards", () => {
     const inUse = new Map([[faceCard.key, 1]]);
     const result = filterCards(cards, "all", "excluded", inUse);
     expect(result.some((c) => c.key === faceCard.key)).toBe(false);
+  });
+});
+
+describe("filterByStatus + faceted category counts", () => {
+  const cards = buildCards(fixtures);
+  const noneInUse = new Map<string, number>();
+
+  it("counts categories over the status-filtered set, so a category with no matches reads 0", () => {
+    // Under "Excluded only", only the face-tagged (wearing) and low-quality (materials) cards
+    // qualify. A category with no excluded card (e.g. cat, quality 5, no face) must NOT appear in
+    // the counts - this is the fix for the user-facing bug where "Wearing (4)" showed nothing once
+    // "Excluded only" was active: the chip count has to reflect the active status filter.
+    const excludedOnly = filterByStatus(cards, "excluded", noneInUse);
+    const counts = computeCategoryCounts(excludedOnly);
+    expect(counts.get("wearing")).toBe(1); // the [얼굴노출] card
+    expect(counts.get("materials")).toBe(1); // the quality-2 object card
+    expect(counts.get("cat")).toBeUndefined(); // quality 5, no face - not excluded, so 0
+    expect(counts.get("knitting")).toBeUndefined();
+    // And the count matches what filterCards actually renders for that category.
+    expect(filterCards(cards, "cat", "excluded", noneInUse).length).toBe(0);
+    expect(filterCards(cards, "wearing", "excluded", noneInUse).length).toBe(1);
   });
 });

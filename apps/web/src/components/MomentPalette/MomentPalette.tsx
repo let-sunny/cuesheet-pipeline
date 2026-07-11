@@ -20,6 +20,7 @@ import {
   STATUS_FILTER_LABEL,
   computeCategoryCounts,
   computeInUseCutNumbers,
+  filterByStatus,
   filterCards,
   hasFaceTag,
   nearestFrame,
@@ -75,11 +76,19 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moments]);
 
-  const counts = useMemo(() => computeCategoryCounts(cards), [cards]);
-
   // Whether a card is "in use", and if so, which cut number (timeline segment order, 1-based)
   // it was added as. Lets the same cut be tracked with the same number between the Compose and Edit steps.
   const inUseCutNumber = useMemo(() => computeInUseCutNumbers(cards, segments), [cards, segments]);
+
+  // Category chip counts are computed over the STATUS-filtered set (not all cards) so the numbers
+  // reflect the active status filter. Without this, "Wearing (4)" promises 4 while an active
+  // "Excluded only" shows 0 (no wearing card is excluded), which reads as a broken filter - the
+  // count must always match what clicking the chip actually reveals (faceted-filter convention).
+  const statusFilteredCards = useMemo(
+    () => filterByStatus(cards, statusFilter, inUseCutNumber),
+    [cards, statusFilter, inUseCutNumber],
+  );
+  const counts = useMemo(() => computeCategoryCounts(statusFilteredCards), [statusFilteredCards]);
 
   const filtered = filterCards(cards, selectedCategory, statusFilter, inUseCutNumber);
   // Whether either filter axis narrows the grid - drives the header count (below), which
@@ -150,7 +159,7 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
             <div role="group" aria-label="Filter by category" {...stylex.props(styles.filtersCategory)}>
               <FilterChip
                 size="sm"
-                label={`All (${cards.length})`}
+                label={`All (${statusFilteredCards.length})`}
                 isPressed={selectedCategory === "all"}
                 onPressedChange={() => setSelectedCategory("all")}
               />

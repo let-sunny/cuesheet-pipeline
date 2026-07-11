@@ -117,7 +117,18 @@ export function filterCards(
   inUseCutNumber: Map<string, number>,
 ): MomentCard[] {
   const byCategory = selectedCategory === "all" ? cards : cards.filter((c) => c.category === selectedCategory);
-  return byCategory.filter((c) => {
+  return filterByStatus(byCategory, statusFilter, inUseCutNumber);
+}
+
+/** The status-axis filter alone (no category). Extracted so the category chip counts can be
+ * computed over the status-filtered set - otherwise a chip like "Wearing (4)" promises 4 while an
+ * active "Excluded only" filter shows 0 (no wearing card is excluded), which reads as broken. */
+export function filterByStatus(
+  cards: MomentCard[],
+  statusFilter: StatusFilter,
+  inUseCutNumber: Map<string, number>,
+): MomentCard[] {
+  return cards.filter((c) => {
     if (statusFilter === "all") {
       return true;
     }
