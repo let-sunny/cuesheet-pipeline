@@ -25,9 +25,14 @@ import { colorVars, radiusVars, spacingVars, textSizeVars } from "@astryxdesign/
  * shorthand form).
  */
 export const styles = stylex.create({
+  // flexGrow 1 + minHeight 0: fill the fields column's stretched height (same as the cut-settings
+  // panel) so the card matches the video column's height instead of ending at its own content.
   panel: {
     backgroundColor: colorVars["--color-background-surface"],
     borderRadius: radiusVars["--radius-element"],
+    flexGrow: 1,
+    minHeight: 0,
+    overflowX: "hidden",
   },
   panelTitle: {
     textTransform: "uppercase",

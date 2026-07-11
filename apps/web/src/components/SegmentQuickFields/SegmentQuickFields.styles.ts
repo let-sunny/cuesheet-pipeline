@@ -23,10 +23,32 @@ import {
  */
 export const styles = stylex.create({
   // Padding is set via VStack's own `paddingBlock`/`paddingInline` props (component props first,
-  // per the Astryx cheat sheet's "Custom styling" rule) - only background/radius need xstyle here.
+  // per the Astryx cheat sheet's "Custom styling" rule) - only background/radius/fill need xstyle.
+  // flexGrow 1 + minHeight 0: fill the fields column's (stretched) height so the card reads as the
+  // same height as the scene/video beside it, and let the tab bar below stick while the groups
+  // scroll within the column (2026-07-11 user feedback). overflowX hidden guards the same
+  // no-horizontal-scroll rule the column sets.
   panel: {
     backgroundColor: colorVars["--color-background-surface"],
     borderRadius: radiusVars["--radius-element"],
+    flexGrow: 1,
+    minHeight: 0,
+    overflowX: "hidden",
+  },
+  // The Cut/Effects tabs stay pinned to the top of the panel while the groups scroll under them, so
+  // switching tabs never requires scrolling back up (2026-07-11 user feedback). It carries the
+  // surface background and spans the panel's inline padding (negative margin + matching padding) so
+  // scrolled content doesn't show through beside or beneath the tabs.
+  tabBar: {
+    position: "sticky",
+    top: 0,
+    zIndex: 1,
+    backgroundColor: colorVars["--color-background-surface"],
+    marginInline: `calc(-1 * ${spacingVars["--spacing-4"]})`,
+    paddingInline: spacingVars["--spacing-4"],
+    marginTop: `calc(-1 * ${spacingVars["--spacing-3"]})`,
+    paddingTop: spacingVars["--spacing-3"],
+    paddingBottom: spacingVars["--spacing-1"],
   },
   groupBorder: {
     paddingTop: spacingVars["--spacing-2"],

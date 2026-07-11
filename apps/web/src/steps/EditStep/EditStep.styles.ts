@@ -35,18 +35,26 @@ export const styles = stylex.create({
     display: "flex",
     flexWrap: "wrap",
     gap: spacingVars["--spacing-4"],
-    alignItems: "flex-start",
+    // `stretch` (was flex-start) makes the fields column match the video column's height so the
+    // cut-settings card is the same height as the scene/video beside it, instead of ending short
+    // at its own content height (2026-07-11 user feedback). The video column opts back out via its
+    // own alignSelf below so it keeps its natural height (no dead whitespace) when the fields
+    // column is instead the taller one.
+    alignItems: "stretch",
     position: "sticky",
     top: 12,
     alignSelf: "flex-start",
   },
   // Left column (wide): scene header -> video -> playback/trim controls are already bundled
   // together inside a single VideoPreview block, so this just sets that column's width.
+  // alignSelf flex-start: keep the video at its natural height rather than being stretched to the
+  // fields column's height on the rare cut whose fields content is the taller of the two.
   trimVideoCol: {
     flexGrow: 2,
     flexShrink: 1,
     flexBasis: 480,
     minWidth: 480,
+    alignSelf: "flex-start",
   },
   // Right column (narrow, next to the video): subtitle/speed/volume/narration/crop field panel.
   // 424/440 -> a fixed 344 (13-inch density pass, 2026-07-10, docs/screen-spec.md's baseline-
@@ -68,11 +76,25 @@ export const styles = stylex.create({
   // `position: sticky` kept re-pinning it near the top. Capping this column's own height to the
   // viewport and scrolling *inside* it (independent of the sticky video column staying put) keeps
   // the video fixed while every group stays reachable regardless of viewport height.
+  // Stretches to the video column's height (trimWorkspace `alignItems: stretch`) and lays its
+  // single panel child out as a flex column so the panel can fill that height (see the panel's
+  // flexGrow in SegmentQuickFields/BgmSettingsPanel styles) - the card then reads as the same
+  // height as the scene beside it. Scrolls *inside* (overflowY) when a cut's fields are taller than
+  // the column, capped to the viewport so the bottom (destructive Delete) never lands past the fold
+  // (this replaces the old JS-measured maxHeight; the static viewport cap is enough now that the
+  // column height comes from the sibling video column, not a pre-stick offset calc). overflowX
+  // hidden + minWidth 0 keep any wide field (fixed-width inputs, the title Player preview) from
+  // pushing a horizontal scrollbar - nothing in this narrow column may scroll sideways.
   trimFieldsCol: {
     flexGrow: 0,
     flexShrink: 0,
     flexBasis: 344,
-    maxHeight: "calc(100vh - 32px)",
+    minWidth: 0,
+    display: "flex",
+    flexDirection: "column",
+    minHeight: 0,
+    maxHeight: "calc(100vh - 24px)",
     overflowY: "auto",
+    overflowX: "hidden",
   },
 });
