@@ -1,4 +1,7 @@
+import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
+import { Text } from "@astryxdesign/core/Text";
+import { VStack } from "@astryxdesign/core/VStack";
 
 export type RenderState =
   | { status: "idle" }
@@ -22,7 +25,7 @@ export interface ExportOutputSectionProps {
  */
 export function ExportOutputSection({ dirty, renderState, onOpenRenderDialog, onDownloadSrt }: ExportOutputSectionProps) {
   return (
-    <div className="render-cta" data-testid="export-section-cta">
+    <VStack gap={3} data-testid="export-section-cta">
       <Button
         label={renderState.status === "rendering" ? `Exporting… ${renderState.progress}%` : "Export"}
         variant="primary"
@@ -34,24 +37,27 @@ export function ExportOutputSection({ dirty, renderState, onOpenRenderDialog, on
         data-testid="export-button"
       />
       {renderState.status === "success" ? (
-        <a href={`/${renderState.path}`} download>
-          Download {renderState.path}
-        </a>
+        <Banner
+          status="success"
+          title="Export complete"
+          endContent={
+            <a href={`/${renderState.path}`} download>
+              Download {renderState.path}
+            </a>
+          }
+        />
       ) : null}
       {renderState.status === "error" ? (
-        <div className="render-error-block">
-          <span className="render-note render-note-error">Export failed: {renderState.error}</span>
-          {renderState.errorDetail ? (
-            <details className="render-error-detail">
-              <summary>Show full ffmpeg output</summary>
-              <pre>{renderState.errorDetail}</pre>
-            </details>
-          ) : null}
-        </div>
+        // The full ffmpeg dump renders as Banner's collapsible content (expand/collapse toggle
+        // appears automatically once children are passed) - collapsed by default, same as the old
+        // <details>/<summary>, so the short title always shows and the long dump only on demand.
+        <Banner status="error" title={`Export failed: ${renderState.error}`}>
+          {renderState.errorDetail ? <pre>{renderState.errorDetail}</pre> : null}
+        </Banner>
       ) : null}
-      <span className="render-note">
+      <Text type="supporting" color="secondary">
         Export runs against the cuesheet that was saved when it started — edits/saves made while exporting won't be included in this export.
-      </span>
+      </Text>
 
       <Button
         label="Download subtitles (.srt)"
@@ -61,10 +67,10 @@ export function ExportOutputSection({ dirty, renderState, onOpenRenderDialog, on
         data-testid="export-download-srt"
       />
       {dirty ? (
-        <span className="render-note">
+        <Text type="supporting" color="secondary">
           Subtitles are based on the cuesheet saved to disk — save first, then download.
-        </span>
+        </Text>
       ) : null}
-    </div>
+    </VStack>
   );
 }

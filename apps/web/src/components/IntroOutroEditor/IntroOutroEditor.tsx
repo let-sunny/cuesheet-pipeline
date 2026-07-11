@@ -2,6 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { Button } from "@astryxdesign/core/Button";
+import { Field } from "@astryxdesign/core/Field";
+import { Grid } from "@astryxdesign/core/Grid";
+import { Heading } from "@astryxdesign/core/Heading";
+import { Text } from "@astryxdesign/core/Text";
+import { TextInput } from "@astryxdesign/core/TextInput";
+import { VStack } from "@astryxdesign/core/VStack";
 import { baseName, INTRO_OUTRO_MAX_DURATION_S } from "../../clipPaths.js";
 import { fetchClipFiles, uploadClip, type ClipFile } from "../../api.js";
 import {
@@ -30,11 +36,12 @@ interface UploadState {
 }
 
 /**
- * The intro/outro assignment UI. Fetches the list of video files in clipDir from the server
- * (/api/clip-files) and lets the user pick one via a select (files over 15s are disabled and
- * unselectable), while keeping a direct path input in a collapsible section for paths outside
- * clipDir or special cases. If a path is selected/entered, it also shows an inline video
- * preview + a "which clip" label + a [Clear] button.
+ * The intro/outro assignment UI - a two-up `Grid` (Intro | Outro), the density target the rest of
+ * the Finish step's sections follow (docs/design-principles.md). Fetches the list of video files
+ * in clipDir from the server (/api/clip-files) and lets the user pick one via a select (files over
+ * 15s are disabled and unselectable), while keeping a direct path input (`TextInput`, in a
+ * Collapsible) for paths outside clipDir or special cases. If a path is selected/entered, it also
+ * shows an inline video preview + a "which clip" label + a [Clear] button.
  * intro/outro are independent file paths unrelated to clipDir (see the schema comment).
  */
 export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelectClip, onClear }: Props) {
@@ -121,18 +128,27 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
   const matchedOutroFile = matchedFileName(outro, clipDir, files);
 
   return (
-    <div {...stylex.props(styles.editor)}>
-      <div className="settings-group">
-        <h3>Intro</h3>
+    // Fixed 2-column grid (not the responsive minWidth API) - with exactly 2 children, minWidth's
+    // auto-fill/auto-fit math can add a phantom 3rd track on a wide section and starve both real
+    // columns (measured via a Playwright screenshot pass on FinishSettingsSection's own heading|
+    // fields grid, same root cause) - a fixed count sidesteps that entirely.
+    <Grid columns={2} gap={6}>
+      <VStack gap={3}>
+        <Heading level={4}>Intro</Heading>
         {intro ? (
           <div {...stylex.props(styles.current)}>
             <span {...stylex.props(styles.clipName)}>Clip: {clipLabel(intro, clipDir)}</span>
             <Button label="Clear" variant="ghost" size="sm" onClick={() => onClear("intro")} />
           </div>
         ) : null}
-        <label className="settings-field wide-input">
-          <span>Choose file</span>
+        {/* The file list is dynamic (server-fetched) with per-item disabled options (over the
+            duration cap) and a loading placeholder - kept as a native <select> wrapped in Field
+            rather than swapped to Astryx's Selector, which is a popover/combobox component (see
+            its dist source), not a drop-in replacement for a plain enum <select> with this much
+            dynamic state; flagged as a follow-up once that's worth the behavioral risk. */}
+        <Field label="Choose file" inputID="intro-file-select" width="100%">
           <select
+            id="intro-file-select"
             className="plain-field"
             value={matchedIntroFile ?? ""}
             onChange={(e) => {
@@ -150,9 +166,11 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
               </option>
             ))}
           </select>
-        </label>
+        </Field>
         {!filesLoading && files.length === 0 && filesNote ? (
-          <p className="narration-empty-note">{filesNote}</p>
+          <Text type="supporting" color="secondary">
+            {filesNote}
+          </Text>
         ) : null}
         <div
           {...stylex.props(styles.dropzone, introDragOver && styles.dropzoneActive)}
@@ -195,16 +213,12 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
           {introUpload.error ? <p {...stylex.props(styles.uploadError)}>{introUpload.error}</p> : null}
         </div>
         <Collapsible trigger="Enter path manually" defaultIsOpen={!matchedIntroFile && intro != null}>
-          <label className="settings-field wide-input">
-            <span>Path</span>
-            <input
-              type="text"
-              className="plain-field"
-              value={intro ?? ""}
-              placeholder="Leave empty for none"
-              onChange={(e) => onChangeText({ intro: e.target.value === "" ? null : e.target.value })}
-            />
-          </label>
+          <TextInput
+            label="Path"
+            value={intro ?? ""}
+            placeholder="Leave empty for none"
+            onChange={(value) => onChangeText({ intro: value === "" ? null : value })}
+          />
         </Collapsible>
         {intro ? (
           introErrorKind ? (
@@ -220,19 +234,19 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
             />
           )
         ) : null}
-      </div>
+      </VStack>
 
-      <div className="settings-group">
-        <h3>Outro</h3>
+      <VStack gap={3}>
+        <Heading level={4}>Outro</Heading>
         {outro ? (
           <div {...stylex.props(styles.current)}>
             <span {...stylex.props(styles.clipName)}>Clip: {clipLabel(outro, clipDir)}</span>
             <Button label="Clear" variant="ghost" size="sm" onClick={() => onClear("outro")} />
           </div>
         ) : null}
-        <label className="settings-field wide-input">
-          <span>Choose file</span>
+        <Field label="Choose file" inputID="outro-file-select" width="100%">
           <select
+            id="outro-file-select"
             className="plain-field"
             value={matchedOutroFile ?? ""}
             onChange={(e) => {
@@ -250,9 +264,11 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
               </option>
             ))}
           </select>
-        </label>
+        </Field>
         {!filesLoading && files.length === 0 && filesNote ? (
-          <p className="narration-empty-note">{filesNote}</p>
+          <Text type="supporting" color="secondary">
+            {filesNote}
+          </Text>
         ) : null}
         <div
           {...stylex.props(styles.dropzone, outroDragOver && styles.dropzoneActive)}
@@ -295,16 +311,12 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
           {outroUpload.error ? <p {...stylex.props(styles.uploadError)}>{outroUpload.error}</p> : null}
         </div>
         <Collapsible trigger="Enter path manually" defaultIsOpen={!matchedOutroFile && outro != null}>
-          <label className="settings-field wide-input">
-            <span>Path</span>
-            <input
-              type="text"
-              className="plain-field"
-              value={outro ?? ""}
-              placeholder="Leave empty for none"
-              onChange={(e) => onChangeText({ outro: e.target.value === "" ? null : e.target.value })}
-            />
-          </label>
+          <TextInput
+            label="Path"
+            value={outro ?? ""}
+            placeholder="Leave empty for none"
+            onChange={(value) => onChangeText({ outro: value === "" ? null : value })}
+          />
         </Collapsible>
         {outro ? (
           outroErrorKind ? (
@@ -320,8 +332,8 @@ export function IntroOutroEditor({ intro, outro, clipDir, onChangeText, onSelect
             />
           )
         ) : null}
-      </div>
-    </div>
+      </VStack>
+    </Grid>
   );
 }
 

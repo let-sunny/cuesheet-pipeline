@@ -35,19 +35,24 @@ describe("ExportOutputSection", () => {
     expect(screen.getByText("Download out.mp4")).not.toBeNull();
   });
 
-  it("shows the error message, and the detail only if provided", () => {
+  it("shows the error message, and the detail (behind an expand toggle) only if provided", () => {
     const { rerender } = render(
       <ExportOutputSection {...baseProps({ renderState: { status: "error", error: "ffmpeg failed" } })} />,
     );
     expect(screen.getByText("Export failed: ffmpeg failed")).not.toBeNull();
-    expect(screen.queryByText("Show full ffmpeg output")).toBeNull();
+    // No errorDetail -> Banner gets no children, so it renders no expand/collapse toggle at all.
+    expect(screen.queryByRole("button", { name: "Expand" })).toBeNull();
 
     rerender(
       <ExportOutputSection
         {...baseProps({ renderState: { status: "error", error: "ffmpeg failed", errorDetail: "stack trace" } })}
       />,
     );
-    expect(screen.getByText("Show full ffmpeg output")).not.toBeNull();
+    // Banner's collapsible content only mounts once expanded (see Banner's dist source: `showContent
+    // = hasChildren && isExpanded`) - collapsed by default, same as the old <details>/<summary>.
+    expect(screen.queryByText("stack trace")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Expand" }));
+    expect(screen.getByText("stack trace")).not.toBeNull();
   });
 
   it("disables the srt download and shows a note while dirty", () => {

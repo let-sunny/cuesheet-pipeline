@@ -1,13 +1,16 @@
+import { Divider } from "@astryxdesign/core/Divider";
+import { Section } from "@astryxdesign/core/Section";
+import { VStack } from "@astryxdesign/core/VStack";
 import type { CueSheet } from "@cuesheet/schema";
 import type { UseFinishStepActionsResult } from "../../hooks/useFinishStepActions.js";
 import { ProjectMetaFields } from "../../components/ProjectMetaFields/index.js";
 import { SubtitleStyleSettings } from "../../components/SubtitleStyleSettings/index.js";
-import { NarrationSettings } from "../../components/NarrationSettings/index.js";
 import { SubtitleStylePresetsSettings } from "../../components/SubtitleStylePresetsSettings/index.js";
 import { IntroOutroEditor } from "../../components/IntroOutroEditor/index.js";
 import { BgmSummarySection } from "../../components/BgmSummarySection/index.js";
 import { ExportOutputSection } from "../../components/ExportOutputSection/index.js";
 import type { RenderState } from "../../components/ExportOutputSection/index.js";
+import { FinishSettingsSection } from "../../components/FinishSettingsSection/index.js";
 
 export type { RenderState };
 
@@ -24,12 +27,13 @@ export interface FinishStepProps {
 }
 
 /**
- * The (3) Export step's arrangement (screen-spec section 5) — section order: Project -> Subtitle
- * style (global) -> Subtitle style presets -> Intro/outro -> Background music (summary only, real
- * editing lives in the (2) Edit step's BGM gutter) -> Narration -> Output. Thin: each section is
- * its own tested component (ProjectMetaFields/SubtitleStyleSettings/SubtitleStylePresetsSettings/
- * IntroOutroEditor/NarrationSettings/BgmSummarySection/ExportOutputSection) - this component only
- * arranges them and wires the currently selected preset/project's data and callbacks in.
+ * The (3) Export step's arrangement — section order: Project -> Subtitle style (global) ->
+ * Subtitle style presets -> Intro/outro -> Background music (a one-line pointer only, real editing
+ * lives in the (2) Edit step's BGM gutter) -> Output. Narration moved to the (2) Edit step (a
+ * separate task) - not rendered here anymore. Astryx-catalog rebuild (docs/design-principles.md):
+ * each settings-heavy section composes the shared `FinishSettingsSection` (Section + heading/fields
+ * Grid, not Card), so this component stays a pure arrangement - no layout logic of its own, only
+ * wiring each section's data/callbacks in.
  */
 export function FinishStep({
   draft,
@@ -42,12 +46,20 @@ export function FinishStep({
   onOpenRenderDialog,
 }: FinishStepProps) {
   return (
-    <div className="finish-layout" data-testid="export-step">
-      <div data-testid="export-section-project-meta">
+    <VStack gap={0} data-testid="export-step">
+      <FinishSettingsSection
+        heading="Project"
+        description="Episode-wide settings that rarely change per cut."
+        data-testid="export-section-project-meta"
+      >
         <ProjectMetaFields project={draft.project} onChange={actions.updateProject} />
-      </div>
+      </FinishSettingsSection>
 
-      <div data-testid="export-section-subtitle-style">
+      <FinishSettingsSection
+        heading="Subtitle style"
+        description="The global look, applied unless a cut or preset overrides it."
+        data-testid="export-section-subtitle-style"
+      >
         <SubtitleStyleSettings
           subtitleStyle={draft.subtitleStyle}
           onSubtitleStyleChange={actions.updateSubtitleStyle}
@@ -56,9 +68,13 @@ export function FinishStep({
           previewClip={draft.segments[0]?.clip}
           previewClipTimeS={draft.segments[0] ? draft.segments[0].in + 0.3 : 0}
         />
-      </div>
+      </FinishSettingsSection>
 
-      <div data-testid="export-section-subtitle-presets">
+      <FinishSettingsSection
+        heading="Subtitle style presets"
+        description="Reusable named overrides a cut can opt into instead of its own override."
+        data-testid="export-section-subtitle-presets"
+      >
         <SubtitleStylePresetsSettings
           presets={draft.subtitleStylePresets}
           globalStyle={draft.subtitleStyle}
@@ -67,9 +83,14 @@ export function FinishStep({
           onDelete={actions.deleteSubtitleStylePreset}
           onChangePreset={actions.updateSubtitleStylePreset}
         />
-      </div>
+      </FinishSettingsSection>
 
-      <div data-testid="export-section-intro-outro">
+      <FinishSettingsSection
+        heading="Intro / outro"
+        description="Bookend clips attached before and after the cut list."
+        hasDivider={false}
+        data-testid="export-section-intro-outro"
+      >
         <IntroOutroEditor
           intro={draft.intro}
           outro={draft.outro}
@@ -78,20 +99,20 @@ export function FinishStep({
           onSelectClip={onSelectIntroOutroClip}
           onClear={onClearIntroOutro}
         />
-      </div>
+      </FinishSettingsSection>
 
-      <BgmSummarySection trackCount={draft.bgm.length} />
-
-      <div data-testid="export-section-narration">
-        <NarrationSettings narration={draft.narration} onNarrationChange={actions.updateNarration} />
-      </div>
-
-      <ExportOutputSection
-        dirty={dirty}
-        renderState={renderState}
-        onOpenRenderDialog={onOpenRenderDialog}
-        onDownloadSrt={actions.handleDownloadSrt}
-      />
-    </div>
+      <Section variant="transparent" padding={4}>
+        <VStack gap={3}>
+          <BgmSummarySection trackCount={draft.bgm.length} />
+          <Divider />
+          <ExportOutputSection
+            dirty={dirty}
+            renderState={renderState}
+            onOpenRenderDialog={onOpenRenderDialog}
+            onDownloadSrt={actions.handleDownloadSrt}
+          />
+        </VStack>
+      </Section>
+    </VStack>
   );
 }

@@ -3,22 +3,19 @@ import { textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md) — rules ported 1:1 from the old
- * `.intro-outro-*` classes in styles.css (all owned solely by this component). Left behind in
- * styles.css (not migrated): `.settings-group`/`.settings-field`/`.wide-input`/`.plain-field`
- * (shared width-token/marker classes used by several not-yet-migrated components) and
- * `.narration-empty-note`/`.empty` (shared with BgmSettingsPanel/SegmentQuickFields and other
- * empty-state messages, respectively).
+ * `.intro-outro-*` classes in styles.css (all owned solely by this component). The outer 2-up
+ * layout (formerly a hand-rolled `editor` flex row here) is now Astryx's `Grid` (Finish/Export
+ * step Astryx-catalog rebuild) - `.settings-group`/`.settings-field`/`.wide-input`/`.plain-field`
+ * are also gone from this component's own markup, but stay in styles.css since several other,
+ * not-yet-migrated components still use them. `.narration-empty-note`/`.empty` (shared with
+ * BgmSettingsPanel/SegmentQuickFields and other empty-state messages, respectively) are also left
+ * behind for the same reason.
  *
  * `background`/`border` shorthands are written out as their longhand equivalents
  * (`backgroundColor`, `borderWidth`+`borderStyle`+`borderColor`) — see HeaderBar.styles.ts's
  * comment for why (StyleX silently drops the shorthand form).
  */
 export const styles = stylex.create({
-  editor: {
-    display: "flex",
-    gap: 24,
-    flexWrap: "wrap",
-  },
   current: {
     display: "flex",
     alignItems: "center",

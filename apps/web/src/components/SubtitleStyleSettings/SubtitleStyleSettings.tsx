@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
+import { Field } from "@astryxdesign/core/Field";
+import { FormLayout } from "@astryxdesign/core/FormLayout";
 import { Slider } from "@astryxdesign/core/Slider";
+import { Text } from "@astryxdesign/core/Text";
+import { TextInput } from "@astryxdesign/core/TextInput";
 import type { SubtitleBackground, SubtitleStyle } from "@cuesheet/schema";
 import { useNumericField } from "../../hooks/useNumericField.js";
 import {
@@ -26,10 +30,11 @@ export interface SubtitleStyleSettingsProps {
 }
 
 /**
- * "Subtitle style (global)" section of the Export step (③) — following screen-spec section 5's
- * order: a compact live preview stage / one group for size/color/outline / one group for the
- * background box (toggle+color+opacity+padding) / position and edge margin each on their own row
- * / preview note. Shares its control pattern with the per-cut override (SegmentStyleOverride).
+ * "Subtitle style (global)" section's fields column - the Export step's `FinishSettingsSection`
+ * wrapper owns the heading/description, this renders just the content: a compact live preview
+ * stage, then a `FormLayout` of size/color/outline fields, the background box group
+ * (toggle+color+opacity+padding), position, and edge margin, then a preview note. Shares its
+ * control pattern with the per-cut override (SegmentStyleOverride).
  */
 export function SubtitleStyleSettings({
   subtitleStyle,
@@ -68,9 +73,7 @@ export function SubtitleStyleSettings({
   });
 
   return (
-    <div className="settings-group settings-group-wide">
-      <h3>Subtitle style (global)</h3>
-
+    <>
       {/* Compact live preview - directly under the header so it stays visible while every control
           below it is adjusted (2026-07-09 addition - restores in-place feedback after the earlier,
           bulkier preview was removed; reuses the exact overlay classes/merge helpers the Edit step's
@@ -83,136 +86,165 @@ export function SubtitleStyleSettings({
         previewClipTimeS={previewClipTimeS}
       />
 
-      {/* Size/color/outline group */}
-      <label className="settings-field field-text-medium">
-        <span>Font</span>
-        <input
-          type="text"
-          className="plain-field"
-          value={subtitleStyle.font}
-          onChange={(e) => onSubtitleStyleChange({ font: e.target.value })}
-        />
-      </label>
-      <label className="settings-field field-narrow">
-        <span>Size</span>
-        <input type="number" className="plain-field" min={1} {...sizeField} />
-      </label>
-      <label className="settings-field">
-        <span>
-          Color <Swatch color={subtitleStyle.color} />
-        </span>
-        <div className="color-field-inputs">
+      {/* horizontal-labels: labels beside inputs (FormLayout.doc.mjs's settings-page guidance).
+          Size/Outline width stay native <input>s bound to useNumericField (see that hook's file
+          comment on why NumberInput's value/onChange/onBlur shape doesn't match), wrapped in Field
+          for the label/layout only. Color/Outline color/Background color are a native color-picker
+          + hex-text pair plus a Swatch preview - a composite control with no single Astryx input
+          equivalent, so they stay native too, grouped under one Field label each. Position is a
+          native <select> kept for the same reason (see IntroOutroEditor's file comment - Astryx's
+          Selector is a popover/combobox, not a drop-in replacement for a plain enum <select>). */}
+      <FormLayout direction="horizontal-labels">
+        <TextInput label="Font" value={subtitleStyle.font} onChange={(value) => onSubtitleStyleChange({ font: value })} />
+        <Field label="Size" inputID="subtitle-size">
+          <input id="subtitle-size" type="number" className="plain-field" min={1} style={NARROW_INPUT_STYLE} {...sizeField} />
+        </Field>
+        <Field label="Color" inputID="subtitle-color">
+          <div className="color-field-inputs">
+            <input
+              id="subtitle-color"
+              type="color"
+              value={toColorInputValue(subtitleStyle.color)}
+              onChange={(e) => onSubtitleStyleChange({ color: e.target.value })}
+            />
+            <input
+              type="text"
+              className="plain-field"
+              value={subtitleStyle.color}
+              onChange={(e) => onSubtitleStyleChange({ color: e.target.value })}
+            />
+            <Swatch color={subtitleStyle.color} />
+          </div>
+        </Field>
+        <Field label="Outline color" inputID="subtitle-outline-color">
+          <div className="color-field-inputs">
+            <input
+              id="subtitle-outline-color"
+              type="color"
+              value={toColorInputValue(subtitleStyle.outlineColor)}
+              onChange={(e) => onSubtitleStyleChange({ outlineColor: e.target.value })}
+            />
+            <input
+              type="text"
+              className="plain-field"
+              value={subtitleStyle.outlineColor}
+              onChange={(e) => onSubtitleStyleChange({ outlineColor: e.target.value })}
+            />
+            <Swatch color={subtitleStyle.outlineColor} />
+          </div>
+        </Field>
+        <Field label="Outline width" inputID="subtitle-outline-width">
           <input
-            type="color"
-            value={toColorInputValue(subtitleStyle.color)}
-            onChange={(e) => onSubtitleStyleChange({ color: e.target.value })}
-          />
-          <input
-            type="text"
+            id="subtitle-outline-width"
+            type="number"
             className="plain-field"
-            value={subtitleStyle.color}
-            onChange={(e) => onSubtitleStyleChange({ color: e.target.value })}
-          />
-        </div>
-      </label>
-      <label className="settings-field">
-        <span>
-          Outline color{" "}
-          <Swatch color={subtitleStyle.outlineColor} />
-        </span>
-        <div className="color-field-inputs">
-          <input
-            type="color"
-            value={toColorInputValue(subtitleStyle.outlineColor)}
-            onChange={(e) => onSubtitleStyleChange({ outlineColor: e.target.value })}
-          />
-          <input
-            type="text"
-            className="plain-field"
-            value={subtitleStyle.outlineColor}
-            onChange={(e) => onSubtitleStyleChange({ outlineColor: e.target.value })}
-          />
-        </div>
-      </label>
-      <label className="settings-field field-narrow">
-        <span>Outline width</span>
-        <input type="number" className="plain-field" min={0} {...outlineWidthField} />
-      </label>
-
-      {/* Background box group (toggle+color+opacity+padding) */}
-      <CheckboxInput label="Background box" value={background != null} onChange={handleBackgroundToggle} />
-      {background ? (
-        <>
-          <label className="settings-field">
-            <span>
-              Background color <Swatch color={background.color} />
-            </span>
-            <div className="color-field-inputs">
-              <input
-                type="color"
-                value={toColorInputValue(background.color)}
-                onChange={(e) => patchBackground({ color: e.target.value })}
-              />
-              <input
-                type="text"
-                className="plain-field"
-                value={background.color}
-                onChange={(e) => patchBackground({ color: e.target.value })}
-              />
-            </div>
-          </label>
-          {/* Value folded into the label, valueDisplay="none" (2026-07-09 diagnosed fix - see
-              SegmentQuickFields/TitleGroup.tsx's Backdrop dim slider for the full rationale: near
-              the slider's max, the thumb overlaps an adjacent same-row text display regardless of
-              column width). */}
-          <Slider
-            label={`Background opacity (${Math.round(background.opacity * 100)}%)`}
-            value={Math.round(background.opacity * 100)}
             min={0}
-            max={100}
-            step={5}
-            valueDisplay="none"
-            onChange={(v: number) => patchBackground({ opacity: v / 100 })}
+            style={NARROW_INPUT_STYLE}
+            {...outlineWidthField}
           />
-          <label className="settings-field field-narrow">
-            <span>Background padding (px)</span>
-            <input type="number" className="plain-field" min={0} max={120} {...paddingField} />
-          </label>
-        </>
-      ) : null}
+        </Field>
 
-      {/* Position and edge margin - each its own row (2026-07-09 revision: combining them into one
-          qf-row squeezed the panel enough to clip the "Position" label and cramp the slider - they
-          have plenty of vertical room here, so there's no reason to force them onto one line). */}
-      <label className="settings-field field-medium">
-        <span>Position</span>
-        <select
-          className="plain-field"
-          value={subtitleStyle.position}
-          onChange={(e) =>
-            onSubtitleStyleChange({
-              position: e.target.value as SubtitleStyle["position"],
-            })
-          }
-        >
-          <option value="bottom">Bottom</option>
-          <option value="top">Top</option>
-          <option value="center">Center</option>
-        </select>
-      </label>
-      <Slider
-        label={`Edge margin (${margin}px)`}
-        value={margin}
-        min={8}
-        max={600}
-        step={1}
-        valueDisplay="none"
-        isDisabled={subtitleStyle.position === "center"}
-        onChange={(v: number) => onSubtitleStyleChange({ margin: v })}
-      />
+        {/* Background box group (toggle+color+opacity+padding). CheckboxInput/Slider aren't
+            FormLayoutContext-aware (only Field/TextInput/NumberInput/Selector split themselves
+            into the horizontal-labels grid's label|control cells - confirmed via their dist
+            source), so each is wrapped in its own label-hidden Field here purely so it occupies a
+            proper 2-cell grid row instead of desyncing every Field row that follows it (measured
+            via a Playwright screenshot pass - labels and fields visibly paired off-by-one without
+            this). The control's own inline label (already visible) is the real one; Field's is
+            hidden. */}
+        <Field label="Background box" inputID="subtitle-bg-toggle" isLabelHidden>
+          <CheckboxInput
+            label="Background box"
+            value={background != null}
+            onChange={handleBackgroundToggle}
+          />
+        </Field>
+        {background ? (
+          <>
+            <Field label="Background color" inputID="subtitle-bg-color">
+              <div className="color-field-inputs">
+                <input
+                  id="subtitle-bg-color"
+                  type="color"
+                  value={toColorInputValue(background.color)}
+                  onChange={(e) => patchBackground({ color: e.target.value })}
+                />
+                <input
+                  type="text"
+                  className="plain-field"
+                  value={background.color}
+                  onChange={(e) => patchBackground({ color: e.target.value })}
+                />
+                <Swatch color={background.color} />
+              </div>
+            </Field>
+            {/* Value folded into the label, valueDisplay="none" (2026-07-09 diagnosed fix - see
+                SegmentQuickFields/TitleGroup.tsx's Backdrop dim slider for the full rationale: near
+                the slider's max, the thumb overlaps an adjacent same-row text display regardless of
+                column width). */}
+            <Field label="Background opacity" inputID="subtitle-bg-opacity" isLabelHidden>
+              <Slider
+                label={`Background opacity (${Math.round(background.opacity * 100)}%)`}
+                value={Math.round(background.opacity * 100)}
+                min={0}
+                max={100}
+                step={5}
+                valueDisplay="none"
+                onChange={(v: number) => patchBackground({ opacity: v / 100 })}
+              />
+            </Field>
+            <Field label="Background padding (px)" inputID="subtitle-bg-padding">
+              <input
+                id="subtitle-bg-padding"
+                type="number"
+                className="plain-field"
+                min={0}
+                max={120}
+                style={NARROW_INPUT_STYLE}
+                {...paddingField}
+              />
+            </Field>
+          </>
+        ) : null}
 
-      <p className="settings-note">Preview above updates live; see the ② Edit step for it composited over the actual video.</p>
-    </div>
+        {/* Position and edge margin - each its own row (2026-07-09 revision: combining them into
+            one qf-row squeezed the panel enough to clip the "Position" label and cramp the slider -
+            they have plenty of vertical room here, so there's no reason to force them onto one
+            line). */}
+        <Field label="Position" inputID="subtitle-position">
+          <select
+            id="subtitle-position"
+            className="plain-field"
+            value={subtitleStyle.position}
+            onChange={(e) =>
+              onSubtitleStyleChange({
+                position: e.target.value as SubtitleStyle["position"],
+              })
+            }
+          >
+            <option value="bottom">Bottom</option>
+            <option value="top">Top</option>
+            <option value="center">Center</option>
+          </select>
+        </Field>
+        <Field label="Edge margin" inputID="subtitle-edge-margin" isLabelHidden>
+          <Slider
+            label={`Edge margin (${margin}px)`}
+            value={margin}
+            min={8}
+            max={600}
+            step={1}
+            valueDisplay="none"
+            isDisabled={subtitleStyle.position === "center"}
+            onChange={(v: number) => onSubtitleStyleChange({ margin: v })}
+          />
+        </Field>
+      </FormLayout>
+
+      <Text type="supporting" color="secondary">
+        Preview above updates live; see the ② Edit step for it composited over the actual video.
+      </Text>
+    </>
   );
 }
 
@@ -299,3 +331,9 @@ const DEFAULT_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75
  * saved yet.
  */
 const DEFAULT_MARGIN = 40;
+
+/** Field's own `width` prop only applies in its default (non horizontal-labels) rendering mode, so
+ * for this FormLayout it has no effect (confirmed via Field's dist source) - capping the native
+ * `<input>`'s own width is what keeps short numeric fields from stretching to the fields column's
+ * full width (docs/design-principles.md's density rule). */
+const NARROW_INPUT_STYLE = { maxWidth: 140 };

@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { Field } from "@astryxdesign/core/Field";
+import { FormLayout } from "@astryxdesign/core/FormLayout";
+import { TextInput } from "@astryxdesign/core/TextInput";
 import type { Project } from "@cuesheet/schema";
 import { useNumericField } from "../../hooks/useNumericField.js";
 
@@ -52,56 +55,83 @@ export function ProjectMetaFields({ project, onChange }: Props) {
   });
 
   return (
-    <div className="settings-group">
-      <label className="settings-field field-text-medium">
-        <span>Name</span>
+    // horizontal-labels: labels beside inputs (FormLayout.doc.mjs's own settings-page guidance),
+    // collapsing to vertical under 480px. Width/Height/Fade fields keep the native <input> bound to
+    // useNumericField (transient in-progress text decoupled from the committed value - see that
+    // hook's file comment) rather than swapping to NumberInput, whose value/onChange/onBlur shape
+    // doesn't match the hook's DOM-binding contract - kept native, wrapped in Field for the
+    // label/status/layout only.
+    <FormLayout direction="horizontal-labels">
+      <TextInput label="Name" value={project.name} onChange={(value) => onChange({ name: value })} />
+      <Field label="FPS" inputID="project-fps">
+        <input id="project-fps" type="number" className="plain-field" min={1} style={NARROW_INPUT_STYLE} {...fpsField} />
+      </Field>
+      <Field
+        label="Width"
+        inputID="project-width"
+        status={widthNote ? { type: "warning", message: widthNote } : undefined}
+      >
         <input
-          type="text"
-          className="plain-field"
-          value={project.name}
-          onChange={(e) => onChange({ name: e.target.value })}
-        />
-      </label>
-      <label className="settings-field field-narrow">
-        <span>FPS</span>
-        <input type="number" className="plain-field" min={1} {...fpsField} />
-      </label>
-      <label className="settings-field field-narrow">
-        <span>Width</span>
-        <input
+          id="project-width"
           type="number"
           className="plain-field"
           min={2}
           step={2}
+          style={NARROW_INPUT_STYLE}
           {...widthField}
           onFocus={() => setWidthNote(null)}
         />
-      </label>
-      {widthNote ? <p className="qf-note">{widthNote}</p> : null}
-      <label className="settings-field field-narrow">
-        <span>Height</span>
+      </Field>
+      <Field
+        label="Height"
+        inputID="project-height"
+        status={heightNote ? { type: "warning", message: heightNote } : undefined}
+      >
         <input
+          id="project-height"
           type="number"
           className="plain-field"
           min={2}
           step={2}
+          style={NARROW_INPUT_STYLE}
           {...heightField}
           onFocus={() => setHeightNote(null)}
         />
-      </label>
-      {heightNote ? <p className="qf-note">{heightNote}</p> : null}
-      {/* Episode fade in/out (PRD backlog #3) - a pair, so they sit side by side (screen-spec
-          rule 4), matching the Width/Height row's field width above. */}
-      <label className="settings-field field-narrow">
-        <span>Fade in</span>
-        <input type="number" className="plain-field" min={0} max={3} step={0.1} {...fadeInField} />
-        <span className="qf-suffix">s</span>
-      </label>
-      <label className="settings-field field-narrow">
-        <span>Fade out</span>
-        <input type="number" className="plain-field" min={0} max={3} step={0.1} {...fadeOutField} />
-        <span className="qf-suffix">s</span>
-      </label>
-    </div>
+      </Field>
+      <Field label="Fade in" inputID="project-fade-in" description="Seconds faded in at the very start of the export.">
+        <input
+          id="project-fade-in"
+          type="number"
+          className="plain-field"
+          min={0}
+          max={3}
+          step={0.1}
+          style={NARROW_INPUT_STYLE}
+          {...fadeInField}
+        />
+      </Field>
+      <Field label="Fade out" inputID="project-fade-out" description="Seconds faded out at the very end of the export.">
+        <input
+          id="project-fade-out"
+          type="number"
+          className="plain-field"
+          min={0}
+          max={3}
+          step={0.1}
+          style={NARROW_INPUT_STYLE}
+          {...fadeOutField}
+        />
+      </Field>
+    </FormLayout>
   );
 }
+
+/**
+ * Field's own `width` prop only applies in its default (non horizontal-labels) rendering mode -
+ * confirmed via Field's dist source, its horizontal-labels branch never reads `width` at all - so
+ * for this FormLayout it has no effect. Capping the native `<input>`'s own width is what actually
+ * keeps short numeric fields (FPS/Width/Height/Fade) from stretching to the fields column's full
+ * width the way Name (free text) should stretch (docs/design-principles.md's density rule) - a
+ * 3-digit value doesn't need a 900px-wide box.
+ */
+const NARROW_INPUT_STYLE = { maxWidth: 140 };

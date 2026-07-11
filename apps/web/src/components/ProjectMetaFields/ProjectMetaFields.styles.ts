@@ -1,14 +1,15 @@
 import * as stylex from "@stylexjs/stylex";
 
 /**
- * Component anatomy migration (docs/styling-migration.md) — every class this component renders
- * (`.settings-group`, `.settings-field`, `.field-text-medium`, `.field-narrow`, `.plain-field`,
- * `.qf-note`) is a shared width-token/marker class also used by other, not-yet-migrated
- * components (SubtitleStyleSettings, NarrationSettings, IntroOutroEditor, RenderSettingsDialog,
- * SegmentQuickFields,
- * etc.) — see the doc's "find every rule the component owns" step. None of them are owned solely
- * by ProjectMetaFields, so there is nothing to move out yet; those tokens stay in styles.css
- * until every consumer is migrated. This file stays as an intentionally empty placeholder (same
- * degenerate case as StepNav/StepNav.styles.ts) so the folder anatomy is uniform.
+ * Astryx catalog migration (Finish/Export step rebuild, docs/design-principles.md) — this
+ * component now composes stock `FormLayout`/`Field`/`TextInput` (see ProjectMetaFields.tsx)
+ * instead of the hand-rolled `.settings-field`/`.plain-field` markup. The only remaining raw
+ * elements are the `<input>`s bound to `useNumericField` (FPS/Width/Height/Fade), which keep the
+ * `.plain-field` class for its basic bordered-input chrome - that class (along with
+ * `.settings-group`, `.field-text-medium`, `.field-narrow`, `.qf-note`) is still owned by other,
+ * not-yet-migrated components (NarrationSettings, RenderSettingsDialog, SegmentQuickFields, etc.),
+ * so it stays in styles.css rather than moving here. This file stays as an intentionally empty
+ * placeholder (same degenerate case as StepNav/StepNav.styles.ts) so the folder anatomy is
+ * uniform.
  */
 export const styles = stylex.create({});
