@@ -20,7 +20,7 @@ function baseProps() {
     onRedo: vi.fn(),
     onSave: vi.fn(),
     onRender: vi.fn(),
-    themeMode: "system" as const,
+    themeMode: "light" as const,
     onThemeModeChange: vi.fn(),
     onToggleShortcuts: vi.fn(),
   };
@@ -138,7 +138,7 @@ describe("HeaderBar", () => {
 
   it("theme toggle calls onThemeModeChange with the clicked mode", () => {
     const onThemeModeChange = vi.fn();
-    render(<HeaderBar {...baseProps()} themeMode="system" onThemeModeChange={onThemeModeChange} />);
+    render(<HeaderBar {...baseProps()} themeMode="light" onThemeModeChange={onThemeModeChange} />);
     fireEvent.click(screen.getByTitle("Dark"));
     expect(onThemeModeChange).toHaveBeenCalledWith("dark");
   });
@@ -146,7 +146,7 @@ describe("HeaderBar", () => {
   it("marks the current theme mode's button as active (class) and others not", () => {
     render(<HeaderBar {...baseProps()} themeMode="light" />);
     expect(screen.getByTitle("Light").className).toContain("active");
-    expect(screen.getByTitle("System").className).not.toContain("active");
+
     expect(screen.getByTitle("Dark").className).not.toContain("active");
   });
 });

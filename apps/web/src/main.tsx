@@ -2,9 +2,9 @@ import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Theme } from "@astryxdesign/core/theme";
 import { ToastViewport } from "@astryxdesign/core/Toast";
-import { stoneTheme } from "@astryxdesign/theme-stone/built";
+import { y2kTheme } from "@astryxdesign/theme-y2k/built";
 import "@astryxdesign/core/reset.css";
-import "@astryxdesign/theme-stone/theme.css";
+import "@astryxdesign/theme-y2k/theme.css";
 import { App } from "./App.js";
 import { loadThemeMode, saveThemeMode } from "./lib/theme.js";
 import "./styles.css";
@@ -29,7 +29,7 @@ function Root() {
   };
 
   return (
-    <Theme theme={stoneTheme} mode={themeMode}>
+    <Theme theme={y2kTheme} mode={themeMode}>
       <ToastViewport position="bottomEnd" maxVisible={3}>
         <App themeMode={themeMode} onThemeModeChange={handleThemeModeChange} />
       </ToastViewport>

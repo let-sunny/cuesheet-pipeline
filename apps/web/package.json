@@ -15,6 +15,7 @@
   "dependencies": {
     "@astryxdesign/core": "*",
     "@astryxdesign/theme-stone": "*",
+    "@astryxdesign/theme-y2k": "0.1.4",
     "@cuesheet/render": "workspace:*",
     "@cuesheet/schema": "workspace:*",
     "@stylexjs/stylex": "^0.18.3",

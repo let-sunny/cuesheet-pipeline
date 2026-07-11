@@ -1,6 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
-import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { Slider } from "@astryxdesign/core/Slider";
 import { Button } from "@astryxdesign/core/Button";
 import type { Segment, SubtitleBackground, SubtitleStyle, SubtitleStyleOverride } from "@cuesheet/schema";
@@ -58,7 +57,6 @@ export function SegmentStyleOverride({
       </div>
 
       {override ? (
-        <Collapsible trigger="Style details" defaultIsOpen>
           <div className="style-override-fields">
             <label className="settings-field">
               <span>Size</span>
@@ -169,7 +167,6 @@ export function SegmentStyleOverride({
               <Button label="Remove override" variant="ghost" size="sm" onClick={onClear} />
             </div>
           </div>
-        </Collapsible>
       ) : null}
     </div>
   );

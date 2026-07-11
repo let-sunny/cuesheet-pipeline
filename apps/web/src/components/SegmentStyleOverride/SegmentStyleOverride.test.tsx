@@ -44,7 +44,7 @@ describe("SegmentStyleOverride", () => {
     render(<SegmentStyleOverride {...baseProps()} />);
     const checkbox = screen.getByLabelText("Custom style for this cut") as HTMLInputElement;
     expect(checkbox.checked).toBe(false);
-    expect(screen.queryByText("Style details")).toBeNull();
+    expect(screen.queryByText("Style details")).toBeNull() /* title removed */;
   });
 
   it("calls onToggle when the checkbox is clicked", () => {
@@ -60,7 +60,7 @@ describe("SegmentStyleOverride", () => {
     expect(screen.getByLabelText("Custom style for this cut")).toBeInstanceOf(HTMLInputElement);
     const sizeInput = screen.getByDisplayValue("36") as HTMLInputElement;
     expect(sizeInput).not.toBeNull();
-    expect(screen.getByText("Style details")).not.toBeNull();
+    /* "Style details" title removed 2026-07-11 - override fields show directly on check */
   });
 
   it("shows the background fields only once the override's background box is on", () => {
