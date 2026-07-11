@@ -134,18 +134,19 @@ describe("VideoPreview", () => {
     const { container } = render(<VideoPreview {...baseProps()} />);
     const video = container.querySelector("video")!;
     const button = screen.getByTestId("video-control-play");
-    expect(button.textContent).toBe("Play");
+    // Icon-only control: assert the accessible name (aria-label), not the glyph text content.
+    expect(button.getAttribute("aria-label")).toBe("Play");
 
     fireEvent.click(button);
     // jsdom's play()/pause() stubs (see beforeAll above) don't dispatch play/pause events on their
     // own the way a real browser does - dispatch it manually to simulate that, same pattern as the
     // video error-event tests above (which likewise await the resulting state update via waitFor).
     video.dispatchEvent(new Event("play"));
-    await waitFor(() => expect(screen.getByTestId("video-control-play").textContent).toBe("Pause"));
+    await waitFor(() => expect(screen.getByTestId("video-control-play").getAttribute("aria-label")).toBe("Pause"));
 
     fireEvent.click(screen.getByTestId("video-control-play"));
     video.dispatchEvent(new Event("pause"));
-    await waitFor(() => expect(screen.getByTestId("video-control-play").textContent).toBe("Play"));
+    await waitFor(() => expect(screen.getByTestId("video-control-play").getAttribute("aria-label")).toBe("Play"));
   });
 
   it("toggles the active playmode button between Loop range and Full clip", () => {

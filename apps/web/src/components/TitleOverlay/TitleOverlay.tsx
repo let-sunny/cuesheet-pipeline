@@ -37,40 +37,11 @@ export function TitleOverlay({ title, projectWidth, projectHeight, projectFps }:
     if (!player) {
       return;
     }
-    let started = false;
-    const onPlay = () => {
-      started = true;
-      setIsPlaying(true);
-    };
+    const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
     player.addEventListener("play", onPlay);
     player.addEventListener("pause", onPause);
-    // Explicitly kick off playback rather than relying on the `autoPlay` prop alone: the Player's
-    // own autoPlay does not reliably start on mount (its first render tick can be throttled, and
-    // play() called too early - before the Player has finished initializing - is a no-op), which
-    // read as "the preview never animates" even though the composition and its frame context are
-    // wired correctly. Retry play() a few times until the Player confirms it started (the `play`
-    // event flips `started`), so the title reliably plays on load and whenever the title changes.
-    let attempts = 0;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const tryPlay = () => {
-      if (started || attempts >= MAX_PLAY_ATTEMPTS) {
-        return;
-      }
-      attempts += 1;
-      try {
-        player.play();
-      } catch {
-        // Player not ready on this tick; retried below (and `autoPlay` remains a fallback).
-      }
-      timer = setTimeout(tryPlay, PLAY_RETRY_MS);
-    };
-    const raf = requestAnimationFrame(tryPlay);
     return () => {
-      cancelAnimationFrame(raf);
-      if (timer !== undefined) {
-        clearTimeout(timer);
-      }
       player.removeEventListener("play", onPlay);
       player.removeEventListener("pause", onPause);
     };
@@ -110,6 +81,13 @@ export function TitleOverlay({ title, projectWidth, projectHeight, projectFps }:
           fps={projectFps}
           loop
           autoPlay
+          // Required for autoPlay to actually start: the Player pre-mounts silent audio tags, so
+          // even this audio-less title composition is treated as media and the browser's autoplay
+          // policy blocks playback that isn't muted + user-initiated - which left the preview frozen
+          // at frame 0. `initiallyMuted` is Remotion's documented fix (docs/player/autoplay: "useful
+          // if the video must autoplay regardless of the autoplay policy of the browser"); the title
+          // has no audio, so muting has no downside.
+          initiallyMuted
           controls={false}
           style={PLAYER_STYLE}
           acknowledgeRemotionLicense
@@ -140,8 +118,3 @@ export function TitleOverlay({ title, projectWidth, projectHeight, projectFps }:
 /** Transparent over the video stage - the TitleCard composition itself sets no background, so the
  * Player's own wrapper must not paint an opaque one either. */
 const PLAYER_STYLE = { width: "100%", height: "100%", backgroundColor: "transparent" };
-
-/** How many times to retry starting playback before giving up (falling back to the autoPlay prop). */
-const MAX_PLAY_ATTEMPTS = 12;
-/** Delay between play() retries while waiting for the Player to finish initializing. */
-const PLAY_RETRY_MS = 80;
