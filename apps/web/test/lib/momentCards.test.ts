@@ -133,6 +133,20 @@ describe("computeInUseCutNumbers", () => {
     const map = computeInUseCutNumbers(cards, []);
     expect(map.size).toBe(0);
   });
+
+  it("gives each cut number to exactly one card - no duplicate numbers when several candidates overlap one cut", () => {
+    const cards = buildCards(fixtures);
+    const sameClip = cards.filter((c) => c.clipFileName === cards[0]!.clipFileName);
+    // One wide cut spanning at least two candidate cards on the same clip.
+    const lo = Math.min(...sameClip.map((c) => c.inS));
+    const hi = Math.max(...sameClip.map((c) => c.outS));
+    expect(sameClip.length).toBeGreaterThan(1);
+    const map = computeInUseCutNumbers(cards, [seg({ clip: cards[0]!.clipFileName, in: lo, out: hi })]);
+    // Exactly one card claims cut #1; the numbers assigned are all distinct.
+    const numbers = [...map.values()];
+    expect(numbers.filter((n) => n === 1)).toHaveLength(1);
+    expect(new Set(numbers).size).toBe(numbers.length);
+  });
 });
 
 describe("filterCards", () => {

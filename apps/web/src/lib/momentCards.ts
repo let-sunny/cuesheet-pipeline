@@ -93,13 +93,32 @@ export function computeCategoryCounts(cards: MomentCard[]): Map<Category, number
  * steps. "In use" means some added segment overlaps the card's own (clip, in, out) range.
  */
 export function computeInUseCutNumbers(cards: MomentCard[], segments: Segment[]): Map<string, number> {
+  // Timeline cuts are sequential and non-overlapping, so each cut's number (its 1-based timeline
+  // order) must map to exactly ONE scene card - the card that cut was made from. Iterate the cuts
+  // (not the cards) and give each cut's number to its single best-overlapping, not-yet-claimed card
+  // on the same clip. The old card-driven "any card overlapping any segment gets that segment's
+  // number" duplicated numbers (several fine-grained candidates overlap one long cut) and over-
+  // counted "in use", contradicting the one-cut-one-number model (2026-07-12 fix).
   const map = new Map<string, number>();
-  for (const c of cards) {
-    const idx = segments.findIndex((s) => s.clip === c.clipFileName && s.in < c.outS && s.out > c.inS);
-    if (idx !== -1) {
-      map.set(c.key, idx + 1);
+  const claimed = new Set<string>();
+  segments.forEach((s, idx) => {
+    let best: MomentCard | undefined;
+    let bestOverlap = 0;
+    for (const c of cards) {
+      if (claimed.has(c.key) || c.clipFileName !== s.clip) {
+        continue;
+      }
+      const overlap = Math.min(s.out, c.outS) - Math.max(s.in, c.inS);
+      if (overlap > bestOverlap) {
+        bestOverlap = overlap;
+        best = c;
+      }
     }
-  }
+    if (best) {
+      map.set(best.key, idx + 1);
+      claimed.add(best.key);
+    }
+  });
   return map;
 }
 
