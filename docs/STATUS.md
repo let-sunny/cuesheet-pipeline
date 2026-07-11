@@ -3,7 +3,7 @@
 > This document is the single entry point for "where things stand right now, and what exists
 > for what purpose." Rule: update this document at every milestone and commit it to git.
 > Detailed design rationale and decisions live in the linked documents; this one holds only
-> the map. (Last updated: 2026-07-11)
+> the map. (Last updated: 2026-07-12)
 
 ## North Star
 
@@ -18,9 +18,9 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 |---|---|---|
 | `packages/schema` | Cuesheet types + validation (contract's center, zod), `.describe()` field docs, mechanical repair hints on failures | Stable. 82 tests |
 | `packages/bridge` | MCP server for Claude Code connection (natural-language editing) | Stable. 36 tests. 5 tools (`get_cuesheet`/`update_cuesheet`/`validate_cuesheet`/`get_schema`/`get_capabilities`), structured edit receipts, change-summary diff, `CUESHEET_BRIDGE_READONLY` mode |
-| `packages/render` | Cuesheet -> ffmpeg render (CLI + buildRenderPlan, incl. two-pass fallback for captured-frames titles + large HEVC concats); title cards render via Remotion (`packages/render/src/remotion/`) | Stable. 110 tests, verified with real renders (single-pass, two-pass, and a real Remotion title capture) |
-| `apps/web` | Touch-up editor: cut editing, single zoomable-filmstrip trim (TrimStrip), full timeline + BGM drag, proxy playback, export button | Actively evolving. 539 tests. Edit step's 3 columns fit a 13-inch laptop; recolors entirely from the active Astryx theme (stone/y2k/neutral switcher) |
-| `packages/draft` | **Core**: raw footage folder -> automatic rough-cut cuesheet generation (CLI `cuesheet-draft`: scan for inventory + frame extraction -> assemble for assembly; vision judgment handled by Claude) | Promoted to a proper package. 44 tests (incl. `--json` envelope contract tests), scan/assemble E2E verified against a real footage folder |
+| `packages/render` | Cuesheet -> ffmpeg render (CLI + buildRenderPlan, split into `plan*.ts` helpers; incl. two-pass fallback for captured-frames titles + large HEVC concats); title cards render via Remotion (`packages/render/src/remotion/`) | Stable. 150 tests, verified with real renders (single-pass, two-pass, and a real Remotion title capture) |
+| `apps/web` | Touch-up editor: cut editing, single zoomable-filmstrip trim (TrimStrip), full timeline + BGM drag, proxy playback, export button. Title preview is plain-React/rAF (dropped @remotion/player). Playback/undo-redo controls use the design system's icons (Astryx `Icon` + lucide) | Actively evolving. 711 tests. Server routes + `useEditStepActions` split into small tested modules. Edit step's 3 columns fit a 13-inch laptop; recolors entirely from the active Astryx theme (stone/y2k/neutral switcher) |
+| `packages/draft` | **Core**: raw footage folder -> automatic rough-cut cuesheet generation (CLI `cuesheet-draft`: scan for inventory + frame extraction -> assemble for assembly; vision judgment handled by Claude) | Promoted to a proper package. 50 tests (incl. `--json` envelope contract tests), scan/assemble E2E verified against a real footage folder |
 | `media/proxies/` | 720p H.264 proxies for web preview (auto-generated, git-ignored) | Automatic |
 | `media/dotmix_src` | Symlink to the user's raw footage folder (git-ignored) | — |
 | `proto_dotmix.cuesheet.json` | v1 auto-generated rough-cut sample (based on 12 local dotmix clips) | Verified |
@@ -35,6 +35,42 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 - **Proxy playback**: original 4K HEVC can't play in-browser -> 720p H.264 proxy for preview, render uses the original
 - **iCloud rule**: must check `stat blocks=0` before reading source footage (reading a placeholder hangs forever), manage space with `brctl download/evict`
 - **AI-legibility as its own backlog**: a dedicated survey (wiki "AI-Legible System Design", covering astryx internals + shadcn/Stripe/GitHub/Cloudflare/Vercel/Storybook/v0) found the missing layer is turning CLAUDE.md's prose conventions into scripts that fail when broken, not more documentation — motivated `check:repo`, CI, `.describe()`-driven `get_schema`, `get_capabilities`, and the AGENTS.md smoke test (issues #5-#16)
+
+## 2026-07-12: title-preview rework, design-system icons, theme/logic bug fixes, coverage + refactor
+
+A large touch-up + quality pass (tests: 1039 total — schema 92, bridge 36, draft 50, render 150,
+web 711).
+
+- **Title preview dropped `@remotion/player`** in favour of a plain-React, `requestAnimationFrame`
+  driven preview (`apps/web/src/components/TitlePreview/`, `useTitleFrameLoop`). The Player never
+  reliably animated in this Vite+workspace environment (crash -> frozen frame-0 -> real-browser
+  freeze). Root cause was ultimately the browser autoplay policy (documented fix: `initiallyMuted`),
+  but plain React reusing Remotion's pure `spring`/`interpolate` math is guaranteed to animate with
+  zero Player runtime and is proven by deterministic frame-advance tests. The Node render pipeline
+  still uses Remotion, unchanged. See the wiki "Working With AI Tools and Libraries" principle 9.
+- **Playback + undo/redo controls now use the design system's icon layer** (Astryx `Icon`
+  chevronLeft/Right for undo/redo; lucide-react Play/Pause/Skip*/ChevronFirst through Astryx
+  `<Icon icon={...}>` for the video + sequence transports and new "go to start" buttons) instead of
+  hand-rolled unicode glyphs. Astryx's semantic set has no media-transport icons; its docs point to
+  lucide for out-of-set icons.
+- **Title defaults**: color white, size 500, font Pretendard. Pretendard is loaded in the browser
+  (preview); **loading it into the Remotion render for export parity is still pending** (see below).
+- **Bug fixes**: (1) trim strip "inverted" in the Neutral theme — `--color-accent-muted` is opaque
+  in some themes, so the kept-range fill is now a guaranteed-translucent `color-mix` accent tint
+  (range + pan pill). (2) `formatClock(59.9, true)` returned `0:60` (independent min/sec rounding) —
+  now reduces to whole seconds first. The reported subtitle-size "mismatch" (Edit vs Play-all) was
+  measured and is **not a bug** — identical video-relative ratio, only different preview sizes.
+- **Coverage + refactor**: added unit tests across `apps/web/src/lib` (83->96% stmts) + schema
+  (->100%); split the oversized `server/routes.ts` (881->45), `server/media.ts` (614->42),
+  `render/plan.ts` (703->471), and `useEditStepActions.ts` (544->350) into small, tested modules
+  under the "testability as the size limit" rule (no behavior change).
+- **Usability research -> GitHub issue #20** (7 ranked findings for review). Two functional defects
+  from the QA pass: Neutral trim (fixed above); two "Split" controls disagree on disabled state
+  (P2, deferred — tied to the "redundant range/split affordances" usability call in #20).
+- **Pending (#44)**: load Pretendard into the Remotion render (`packages/render`) so exported titles
+  match the preview font — needs the font bundled into the composition + a `delayRender`/font-ready
+  gate; deferred to avoid a risky late-night render-pipeline change. Export currently falls back to
+  the platform sans for titles.
 
 ## 2026-07-11: title cards now render via Remotion, replacing ASS + hand-rolled HTML capture
 
