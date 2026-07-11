@@ -89,6 +89,11 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
     [cards, statusFilter, inUseCutNumber],
   );
   const counts = useMemo(() => computeCategoryCounts(statusFilteredCards), [statusFilteredCards]);
+  // Which category chips exist at all is decided by the FULL set (not the status-filtered one), so
+  // the chip row stays stable as you toggle the status filter - a category that drops to 0 under
+  // "Excluded only" stays visible showing "(0)" rather than vanishing (user feedback: a category
+  // blinking out of the row is disorienting; 0 should read as 0).
+  const fullCounts = useMemo(() => computeCategoryCounts(cards), [cards]);
 
   const filtered = filterCards(cards, selectedCategory, statusFilter, inUseCutNumber);
   // Whether either filter axis narrows the grid - drives the header count (below), which
@@ -163,7 +168,7 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
                 isPressed={selectedCategory === "all"}
                 onPressedChange={() => setSelectedCategory("all")}
               />
-              {CATEGORY_ORDER.filter((cat) => (counts.get(cat) ?? 0) > 0).map((cat) => (
+              {CATEGORY_ORDER.filter((cat) => (fullCounts.get(cat) ?? 0) > 0).map((cat) => (
                 <FilterChip
                   key={cat}
                   size="sm"
