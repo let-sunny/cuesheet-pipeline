@@ -8,7 +8,6 @@ import { bundle } from "@remotion/bundler";
 import { ensureBrowser, renderFrames, selectComposition } from "@remotion/renderer";
 import type { CueSheet, Title } from "@cuesheet/schema";
 import type { TitleCardProps } from "./remotion/TitleCard.js";
-import { TITLE_TEXT_COLOR } from "./remotion/titleCardStyle.js";
 
 /** Where prepareTitleAssets writes the captured PNG-sequence cache (gitignored). */
 export const DEFAULT_TITLE_CACHE_DIR = "media/title-cache";
@@ -32,17 +31,21 @@ export type TitleAsset = TitleFramesAsset;
 
 /**
  * Content-addressed cache key for a title card's captured frames - same (text, preset, durationS,
- * project dimensions/fps) always produces the same key, so a re-render (or a second cut reusing
- * the same title) can skip capture entirely on a cache hit.
+ * color, size, project dimensions/fps) always produces the same key, so a re-render (or a second
+ * cut reusing the same title) can skip capture entirely on a cache hit. color/size are included
+ * because changing either changes the rendered PNG frames themselves, so a cache hit on the old
+ * key would otherwise serve stale (wrong color/size) frames.
  */
 export function titleCacheKey(
-  title: Pick<Title, "text" | "preset" | "durationS">,
+  title: Pick<Title, "text" | "preset" | "durationS" | "color" | "size">,
   project: Pick<CueSheet["project"], "width" | "height" | "fps">,
 ): string {
   const payload = JSON.stringify({
     text: title.text,
     preset: title.preset,
     durationS: title.durationS,
+    color: title.color,
+    size: title.size,
     width: project.width,
     height: project.height,
     fps: project.fps,
@@ -158,7 +161,8 @@ async function renderTitleFrames(args: {
     preset: title.preset,
     durationInSeconds: title.durationS,
     fps: project.fps,
-    color: TITLE_TEXT_COLOR,
+    color: title.color,
+    fontSize: title.size,
     width: project.width,
     height: project.height,
   };

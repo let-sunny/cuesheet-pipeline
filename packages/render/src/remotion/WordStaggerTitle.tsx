@@ -1,9 +1,10 @@
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
-import { TITLE_FONT_FAMILY, TITLE_FONT_SIZE_PX } from "./titleCardStyle.js";
+import { TITLE_FONT_FAMILY } from "./titleCardStyle.js";
 
 export interface WordStaggerTitleProps {
   text: string;
   color: string;
+  fontSize: number;
 }
 
 /**
@@ -11,7 +12,7 @@ export interface WordStaggerTitleProps {
  * translate) via its own spring, delayed a fixed number of frames per word index so they arrive in
  * sequence rather than all at once.
  */
-export function WordStaggerTitle({ text, color }: WordStaggerTitleProps) {
+export function WordStaggerTitle({ text, color, fontSize }: WordStaggerTitleProps) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const words = text.split(" ");
@@ -26,7 +27,7 @@ export function WordStaggerTitle({ text, color }: WordStaggerTitleProps) {
           columnGap: "0.4em",
           rowGap: "0.1em",
           fontFamily: TITLE_FONT_FAMILY,
-          fontSize: TITLE_FONT_SIZE_PX,
+          fontSize,
           color,
         }}
       >

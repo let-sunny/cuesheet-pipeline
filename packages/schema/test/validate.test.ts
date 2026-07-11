@@ -244,7 +244,7 @@ describe("validateCueSheet - pass cases", () => {
     }
   });
 
-  it("is valid with a full title card (typing preset, explicit backdrop dim)", () => {
+  it("is valid with a full title card (typing preset, explicit backdrop dim, color, size)", () => {
     const input = {
       ...(sample as Record<string, unknown>),
       segments: [
@@ -253,7 +253,14 @@ describe("validateCueSheet - pass cases", () => {
           in: 0,
           out: 1,
           subtitle: "",
-          title: { text: "Cast on", preset: "typing", durationS: 2.5, backdrop: { dim: 0.4 } },
+          title: {
+            text: "Cast on",
+            preset: "typing",
+            durationS: 2.5,
+            backdrop: { dim: 0.4 },
+            color: "#ffffff",
+            size: 90,
+          },
         },
       ],
     };
@@ -265,11 +272,13 @@ describe("validateCueSheet - pass cases", () => {
         preset: "typing",
         durationS: 2.5,
         backdrop: { dim: 0.4 },
+        color: "#ffffff",
+        size: 90,
       });
     }
   });
 
-  it("defaults title.durationS to 3 when unspecified", () => {
+  it("defaults title.durationS/color/size when unspecified", () => {
     const input = {
       ...(sample as Record<string, unknown>),
       segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", title: { text: "Hi", preset: "fade" } }],
@@ -278,6 +287,32 @@ describe("validateCueSheet - pass cases", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.segments[0]?.title?.durationS).toBe(3);
+      expect(result.data.segments[0]?.title?.color).toBe("#3a3128");
+      expect(result.data.segments[0]?.title?.size).toBe(72);
+    }
+  });
+
+  it("fails when title.color is not a valid hex color", () => {
+    const result = validateCueSheet({
+      ...(sample as Record<string, unknown>),
+      segments: [
+        { clip: "a.mp4", in: 0, out: 1, subtitle: "", title: { text: "Hi", preset: "fade", color: "not-a-color" } },
+      ],
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.startsWith("segments[0].title.color:"))).toBe(true);
+    }
+  });
+
+  it("fails when title.size is not positive", () => {
+    const result = validateCueSheet({
+      ...(sample as Record<string, unknown>),
+      segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", title: { text: "Hi", preset: "fade", size: 0 } }],
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.startsWith("segments[0].title.size:"))).toBe(true);
     }
   });
 

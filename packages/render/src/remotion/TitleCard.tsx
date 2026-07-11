@@ -6,8 +6,9 @@ import { WordStaggerTitle } from "./WordStaggerTitle.js";
 
 // Re-exported so this file (the `@cuesheet/render/remotion` subpath's target - see package.json's
 // exports map) is the single entry point browser code (apps/web's TitleOverlay) needs to run the
-// real composition: the component/props plus the one color constant it isn't handed via schema.
-export { TITLE_TEXT_COLOR } from "./titleCardStyle.js";
+// real composition: the component plus the color/size fallback constants (used when a cuesheet
+// predates the title.color/title.size schema fields).
+export { TITLE_FONT_SIZE_PX, TITLE_TEXT_COLOR } from "./titleCardStyle.js";
 
 /**
  * Props for the "TitleCard" Remotion composition (registered in index.tsx) - this is the
@@ -23,6 +24,8 @@ export interface TitleCardProps extends Record<string, unknown> {
   durationInSeconds: number;
   fps: number;
   color: string;
+  /** Title font size in pixels (schema's title.size); passed through to whichever preset renders. */
+  fontSize: number;
   /** Project output dimensions (cue.project.width/height) - not read by TitleCard itself (the
    * AbsoluteFill layout fills whatever canvas size the composition resolves to), but threaded
    * through so index.tsx's calculateMetadata can override the composition's width/height per
@@ -40,15 +43,15 @@ export interface TitleCardProps extends Record<string, unknown> {
  * frame capture (title.ts's prepareTitleAssets) omits the background automatically for png output,
  * so the card composites onto the underlying footage via alpha, not a solid color.
  */
-export function TitleCard({ text, preset, color }: TitleCardProps) {
+export function TitleCard({ text, preset, color, fontSize }: TitleCardProps) {
   switch (preset) {
     case "fade":
-      return <FadeTitle text={text} color={color} />;
+      return <FadeTitle text={text} color={color} fontSize={fontSize} />;
     case "wordStagger":
-      return <WordStaggerTitle text={text} color={color} />;
+      return <WordStaggerTitle text={text} color={color} fontSize={fontSize} />;
     case "typing":
-      return <TypewriterTitle text={text} color={color} />;
+      return <TypewriterTitle text={text} color={color} fontSize={fontSize} />;
     case "highlight":
-      return <HighlightTitle text={text} color={color} />;
+      return <HighlightTitle text={text} color={color} fontSize={fontSize} />;
   }
 }

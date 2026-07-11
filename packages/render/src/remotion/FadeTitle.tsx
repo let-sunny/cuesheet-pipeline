@@ -1,9 +1,10 @@
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
-import { TITLE_FONT_FAMILY, TITLE_FONT_SIZE_PX } from "./titleCardStyle.js";
+import { TITLE_FONT_FAMILY } from "./titleCardStyle.js";
 
 export interface FadeTitleProps {
   text: string;
   color: string;
+  fontSize: number;
 }
 
 /**
@@ -11,7 +12,7 @@ export interface FadeTitleProps {
  * (0.96 -> 1 scale, 0 -> 1 opacity), plus a gentle fade-out over the last ~12 frames so the card
  * never hard-cuts away right before the cut's own footage takes over.
  */
-export function FadeTitle({ text, color }: FadeTitleProps) {
+export function FadeTitle({ text, color, fontSize }: FadeTitleProps) {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
 
@@ -30,7 +31,7 @@ export function FadeTitle({ text, color }: FadeTitleProps) {
           transform: `scale(${scale})`,
           opacity: enterOpacity * exitOpacity,
           fontFamily: TITLE_FONT_FAMILY,
-          fontSize: TITLE_FONT_SIZE_PX,
+          fontSize,
           letterSpacing: "0.02em",
           color,
         }}

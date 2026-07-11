@@ -121,7 +121,9 @@ describe("SegmentQuickFields", () => {
     render(
       <SegmentQuickFields
         {...baseProps({
-          segment: segment({ title: { text: "hi", preset: "typing", durationS: 3 } as never }),
+          segment: segment({
+            title: { text: "hi", preset: "typing", durationS: 3, color: "#3a3128", size: 72 } as never,
+          }),
         })}
       />,
     );

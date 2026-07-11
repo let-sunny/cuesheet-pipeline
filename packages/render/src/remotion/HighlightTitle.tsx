@@ -1,9 +1,10 @@
 import { AbsoluteFill, spring, useCurrentFrame, useVideoConfig } from "remotion";
-import { TITLE_FONT_FAMILY, TITLE_FONT_SIZE_PX } from "./titleCardStyle.js";
+import { TITLE_FONT_FAMILY } from "./titleCardStyle.js";
 
 export interface HighlightTitleProps {
   text: string;
   color: string;
+  fontSize: number;
 }
 
 /**
@@ -12,7 +13,7 @@ export interface HighlightTitleProps {
  * it via `scaleX`, transform-origin left, driven by a spring (same damping as the other presets'
  * entrances for a consistent cozy feel).
  */
-export function HighlightTitle({ text, color }: HighlightTitleProps) {
+export function HighlightTitle({ text, color, fontSize }: HighlightTitleProps) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const words = text.split(" ");
@@ -28,7 +29,7 @@ export function HighlightTitle({ text, color }: HighlightTitleProps) {
           alignItems: "baseline",
           gap: "0.3em",
           fontFamily: TITLE_FONT_FAMILY,
-          fontSize: TITLE_FONT_SIZE_PX,
+          fontSize,
           color,
         }}
       >

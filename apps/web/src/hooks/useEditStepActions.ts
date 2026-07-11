@@ -411,7 +411,16 @@ export function useEditStepActions({
       const segments = prev.segments.map((s, idx) =>
         idx === i
           ? enabled
-            ? { ...s, title: { text: DEFAULT_TITLE_TEXT, preset: "typing" as const, durationS: DEFAULT_TITLE_DURATION_S } }
+            ? {
+                ...s,
+                title: {
+                  text: DEFAULT_TITLE_TEXT,
+                  preset: "typing" as const,
+                  durationS: DEFAULT_TITLE_DURATION_S,
+                  color: DEFAULT_TITLE_COLOR,
+                  size: DEFAULT_TITLE_SIZE,
+                },
+              }
             : withoutTitle(s)
           : s,
       );
@@ -538,6 +547,14 @@ const DEFAULT_TITLE_DURATION_S = 3;
  * as "did this even turn on?"; "Title" is schema-valid (any string) and visibly confirms the
  * toggle worked, same as Title's other fields (Typing preset, 3s) already default to something. */
 const DEFAULT_TITLE_TEXT = "Title";
+
+/** Matches the schema's title.color default (the cozy brown every title card used before this
+ * field existed) - see packages/render/src/remotion/titleCardStyle.ts's TITLE_TEXT_COLOR. */
+const DEFAULT_TITLE_COLOR = "#3a3128";
+
+/** Matches the schema's title.size default - see
+ * packages/render/src/remotion/titleCardStyle.ts's TITLE_FONT_SIZE_PX. */
+const DEFAULT_TITLE_SIZE = 72;
 
 /** Matches the schema's transition.durationS default (0.5) - the value written when a Transition
  * in/out toggle is first turned on. */

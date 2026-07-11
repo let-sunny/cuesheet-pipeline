@@ -4,7 +4,7 @@ import type { ComponentProps, Ref } from "react";
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Title } from "@cuesheet/schema";
-import { TITLE_TEXT_COLOR } from "@cuesheet/render/remotion";
+import { TITLE_FONT_SIZE_PX, TITLE_TEXT_COLOR } from "@cuesheet/render/remotion";
 import { TitleOverlay } from "./TitleOverlay.js";
 
 // @remotion/player's real <Player> can't run inside jsdom (it drives a real Remotion composition
@@ -45,7 +45,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-const baseTitle: Title = { text: "Cast on", preset: "typing", durationS: 2 };
+const baseTitle: Title = { text: "Cast on", preset: "typing", durationS: 2, color: "#3a3128", size: 72 };
 
 function renderOverlay(overrides: Partial<ComponentProps<typeof TitleOverlay>> = {}) {
   return render(
@@ -61,7 +61,7 @@ describe("TitleOverlay", () => {
 
   it("runs the real TitleCard composition through the Player, with the title's text/preset/duration and the project's dimensions/fps as inputProps", () => {
     const { getByTestId } = renderOverlay({
-      title: { text: "Cast on today", preset: "wordStagger", durationS: 3 },
+      title: { text: "Cast on today", preset: "wordStagger", durationS: 3, color: TITLE_TEXT_COLOR, size: TITLE_FONT_SIZE_PX },
       projectWidth: 1080,
       projectHeight: 1920,
       projectFps: 24,
@@ -74,12 +74,23 @@ describe("TitleOverlay", () => {
       durationInSeconds: 3,
       fps: 24,
       color: TITLE_TEXT_COLOR,
+      fontSize: TITLE_FONT_SIZE_PX,
       width: 1080,
       height: 1920,
     });
     expect(player.getAttribute("data-composition-width")).toBe("1080");
     expect(player.getAttribute("data-composition-height")).toBe("1920");
     expect(player.getAttribute("data-fps")).toBe("24");
+  });
+
+  it("passes the title's own color/size through to the Player's inputProps when set", () => {
+    const { getByTestId } = renderOverlay({
+      title: { text: "Cast on today", preset: "wordStagger", durationS: 3, color: "#ffffff", size: 90 },
+    });
+    const player = getByTestId("mock-player");
+    const inputProps = JSON.parse(player.getAttribute("data-input-props")!);
+    expect(inputProps.color).toBe("#ffffff");
+    expect(inputProps.fontSize).toBe(90);
   });
 
   it("computes durationInFrames from durationS * fps, rounded and clamped to at least 1", () => {
