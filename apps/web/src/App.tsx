@@ -23,7 +23,7 @@ import { MiniTimelineStrip } from "./components/MiniTimelineStrip/index.js";
 import { SequencePlayer } from "./components/SequencePlayer/index.js";
 import type { SequencePlayerHandle } from "./components/SequencePlayer/index.js";
 import { RenderSettingsDialog } from "./components/RenderSettingsDialog/index.js";
-import { Banner } from "./components/Banner/index.js";
+import { Banner } from "@astryxdesign/core/Banner";
 import { minutesAgoLabel } from "./lib/relativeTime.js";
 import { ComposeStep } from "./steps/ComposeStep/index.js";
 import { EditStep } from "./steps/EditStep/index.js";
@@ -260,7 +260,9 @@ export function App({ themeMode, onThemeModeChange, themeName, onThemeNameChange
 
       {externalChangePending ? (
         <Banner
-          actions={
+          status="info"
+          title="The cuesheet changed elsewhere - discard what's on screen and reload?"
+          endContent={
             <Button
               label="Reload"
               variant="secondary"
@@ -269,9 +271,7 @@ export function App({ themeMode, onThemeModeChange, themeName, onThemeNameChange
               data-testid="reload-banner-reload"
             />
           }
-        >
-          The cuesheet changed elsewhere - discard what's on screen and reload?
-        </Banner>
+        />
       ) : null}
 
       {/* screen-spec section 6: only one primary per group - "continue editing" is the
@@ -281,7 +281,9 @@ export function App({ themeMode, onThemeModeChange, themeName, onThemeNameChange
           (text + button + button), so space-between spread the buttons apart into a "disjointed" layout. */}
       {restoreSnapshot ? (
         <Banner
-          actions={
+          status="warning"
+          title={`You have unsaved edits from the last session (last edited ${minutesAgoLabel(restoreSnapshot.savedAt)}).`}
+          endContent={
             <>
               <Button
                 label="Continue editing"
@@ -299,9 +301,7 @@ export function App({ themeMode, onThemeModeChange, themeName, onThemeNameChange
               />
             </>
           }
-        >
-          You have unsaved edits from the last session (last edited {minutesAgoLabel(restoreSnapshot.savedAt)}).
-        </Banner>
+        />
       ) : null}
 
       <StepNav
