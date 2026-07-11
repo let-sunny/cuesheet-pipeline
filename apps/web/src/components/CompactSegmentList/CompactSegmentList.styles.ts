@@ -293,7 +293,4 @@ export const styles = stylex.create({
     // row's old right-aligned position now that they've moved off the main row.
     marginLeft: "auto",
   },
-  addButton: {
-    marginTop: spacingVars["--spacing-2"],
-  },
 });

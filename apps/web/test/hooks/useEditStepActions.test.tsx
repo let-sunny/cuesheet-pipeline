@@ -93,7 +93,7 @@ describe("useEditStepActions", () => {
       preset: "typing",
       durationS: 3,
       color: "#ffffff",
-      size: 100,
+      size: 500,
     });
 
     act(() => result.current.toggleSegmentTitle(0, false));

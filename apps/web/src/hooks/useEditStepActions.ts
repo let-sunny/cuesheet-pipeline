@@ -554,7 +554,7 @@ const DEFAULT_TITLE_COLOR = "#ffffff";
 
 /** Matches the schema's title.size default - see
  * packages/render/src/remotion/titleCardStyle.ts's TITLE_FONT_SIZE_PX. */
-const DEFAULT_TITLE_SIZE = 100;
+const DEFAULT_TITLE_SIZE = 500;
 
 /** Matches the schema's transition.durationS default (0.5) - the value written when a Transition
  * in/out toggle is first turned on. */

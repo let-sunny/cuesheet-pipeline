@@ -23,8 +23,6 @@ interface Props {
   moments: ClipMoments[];
   onSelect: (i: number) => void;
   onChangeSubtitle: (i: number, subtitle: string) => void;
-  /** Duplicates the selected cut right after it (not adding an empty cut — see addSegment in App.tsx). */
-  onAdd: () => void;
   onRemove: (i: number) => void;
   onMove: (i: number, direction: -1 | 1) => void;
   bgm: BgmCue[];
@@ -63,7 +61,6 @@ export function CompactSegmentList({
   moments,
   onSelect,
   onChangeSubtitle,
-  onAdd,
   onRemove,
   onMove,
   bgm,
@@ -129,11 +126,9 @@ export function CompactSegmentList({
     return () => window.removeEventListener("resize", measureRows);
   }, []);
 
-  // Scroll the selected row into view whenever the cut count changes (duplicate/delete). The
-  // "Duplicate selected cut" button sits at the bottom of the list, so clicking it makes the
-  // browser scroll there, but the duplicate is inserted right after the original (in the middle
-  // of the list) — leaving this alone would leave the newly created cut off-screen, reviving the
-  // original "did it even duplicate?" problem in a different form.
+  // Scroll the selected row into view whenever the cut count changes (duplicate/delete) - the
+  // duplicate is inserted right after the original (in the middle of a possibly-long list), so
+  // without this the newly created cut could land off-screen ("did it even duplicate?").
   useEffect(() => {
     rowRefs.current[selectedIndex]?.scrollIntoView({ block: "nearest" });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -455,15 +450,6 @@ export function CompactSegmentList({
               </div>
             );
           })}
-          <Button
-            label="Duplicate selected cut"
-            variant="secondary"
-            size="sm"
-            onClick={onAdd}
-            tooltip="Duplicates the selected cut right after it (useful for splitting a long clip into separate cuts)"
-            xstyle={styles.addButton}
-            data-testid="cut-list-add"
-          />
         </div>
       </div>
     </div>

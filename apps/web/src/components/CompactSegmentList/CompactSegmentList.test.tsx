@@ -33,7 +33,6 @@ function baseProps(overrides: Partial<ComponentProps<typeof CompactSegmentList>>
     moments: [] as ClipMoments[],
     onSelect: vi.fn(),
     onChangeSubtitle: vi.fn(),
-    onAdd: vi.fn(),
     onRemove: vi.fn(),
     onMove: vi.fn(),
     bgm: [] as BgmCue[],
@@ -130,17 +129,14 @@ describe("CompactSegmentList", () => {
     expect(screen.getAllByRole("button", { name: "Move down" })[1]).toHaveProperty("disabled", true);
   });
 
-  it("calls onMove/onRemove/onAdd from their respective buttons", () => {
+  it("calls onMove/onRemove from their respective row buttons", () => {
     const onMove = vi.fn();
     const onRemove = vi.fn();
-    const onAdd = vi.fn();
-    render(<CompactSegmentList {...baseProps({ onMove, onRemove, onAdd })} />);
+    render(<CompactSegmentList {...baseProps({ onMove, onRemove })} />);
     fireEvent.click(screen.getAllByRole("button", { name: "Move down" })[0]!);
     expect(onMove).toHaveBeenCalledWith(0, 1);
     fireEvent.click(screen.getAllByRole("button", { name: "Delete" })[0]!);
     expect(onRemove).toHaveBeenCalledWith(0);
-    fireEvent.click(screen.getByRole("button", { name: "Duplicate selected cut" }));
-    expect(onAdd).toHaveBeenCalledTimes(1);
   });
 
   it("shows the BGM count badge and toggles the gutter collapse", () => {

@@ -72,7 +72,6 @@ export function EditStep({
             setSelectedIndex(i);
           }}
           onChangeSubtitle={(i, subtitle) => actions.updateSegment(i, { subtitle })}
-          onAdd={actions.addSegment}
           onRemove={actions.removeSegment}
           onMove={actions.moveSegment}
           bgm={draft.bgm}

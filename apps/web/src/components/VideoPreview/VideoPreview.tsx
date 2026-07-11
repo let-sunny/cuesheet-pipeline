@@ -4,7 +4,7 @@ import { Badge } from "@astryxdesign/core/Badge";
 import { Button } from "@astryxdesign/core/Button";
 import { Icon } from "@astryxdesign/core/Icon";
 import { IconButton } from "@astryxdesign/core/IconButton";
-import { Pause, Play } from "lucide-react";
+import { Pause, Play, SkipBack } from "lucide-react";
 import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import type { Segment, SubtitleStyle, SubtitleStylePresets } from "@cuesheet/schema";
 import { ToolbarButton } from "../ui/ToolbarButton/index.js";
@@ -315,6 +315,17 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
     video.pause();
   };
 
+  /** Jump the playhead back to the start of this cut's range (its `in` point). */
+  const handleGoToStart = () => {
+    const video = videoRef.current;
+    if (!video || !segment) {
+      return;
+    }
+    resetShuttle();
+    video.currentTime = segment.in;
+    setCurrentTime(segment.in);
+  };
+
   const handleSetIn = () => {
     if (!segment) {
       return;
@@ -447,7 +458,6 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
           {sceneInfo.kind === "monotonous" ? (
             <Badge variant={TIMELAPSE_BADGE_VARIANT} label="Timelapse cut" xstyle={styles.sceneBadge} />
           ) : null}
-          <span {...stylex.props(styles.contextSceneLabel)}>Scene</span>
           <span {...stylex.props(styles.contextSceneText)}>{sceneText}</span>
         </div>
         <div {...stylex.props(styles.contextLine)} title={subtitleSummary}>
@@ -590,6 +600,15 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
 
           {/* Playback controls — a single row attached directly below the video(+scrub) (screen-spec section 3). */}
           <div {...stylex.props(styles.videoControlsRow)}>
+            <IconButton
+              label="Go to start"
+              icon={<Icon icon={SkipBack} />}
+              variant="secondary"
+              size="sm"
+              tooltip="Go to start"
+              onClick={handleGoToStart}
+              data-testid="video-control-go-to-start"
+            />
             <IconButton
               label={isPlaying ? "Pause" : "Play"}
               icon={<Icon icon={isPlaying ? Pause : Play} />}

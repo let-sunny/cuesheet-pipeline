@@ -1,6 +1,8 @@
 import { HStack } from "@astryxdesign/core/HStack";
+import { Icon } from "@astryxdesign/core/Icon";
 import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
+import { Percent } from "lucide-react";
 import type { NumericFieldBindings } from "../../hooks/useNumericField.js";
 import { NumericInput } from "../ui/NumericInput/index.js";
 import { styles } from "./PlaybackGroup.styles.js";
@@ -36,9 +38,14 @@ export function PlaybackGroup({ speedField, volumeField, speedAtCap }: PlaybackG
             one meaningful surface for this; a passive always-on hover hint isn't worth that
             conflict. */}
         <NumericInput field={speedField} label="Speed" testId="cut-field-speed" width={60} />
-        <Text type="supporting">x</Text>
+        {/* Multiplication SIGN (U+00D7), not the letter "x" - the speed unit ("1.5x" playback).
+            Astryx/lucide have no "multiply" glyph in their icon sets (only a close X, which would
+            read as a delete), so the correct typographic symbol is used here. */}
+        <Text type="supporting">{"×"}</Text>
         <NumericInput field={volumeField} label="Volume" testId="cut-field-volume" width={60} />
-        <Text type="supporting">%</Text>
+        {/* Volume unit - the Percent icon (the field's "Volume" label already carries the meaning,
+            so the icon is a decorative unit marker). */}
+        <Icon icon={Percent} size="sm" color="secondary" />
       </HStack>
       {speedAtCap ? (
         <Text type="supporting" xstyle={styles.note}>

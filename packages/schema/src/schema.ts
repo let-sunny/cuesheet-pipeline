@@ -255,7 +255,7 @@ export const titleSchema = z.object({
   size: z
     .number()
     .positive("size must be positive")
-    .default(100)
+    .default(500)
     .describe("Title font size in pixels, relative to the project's output resolution (like subtitleStyle.size)."),
 });
 

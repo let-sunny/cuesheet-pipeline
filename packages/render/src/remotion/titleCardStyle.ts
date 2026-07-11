@@ -36,7 +36,7 @@ export const ABSOLUTE_FILL_CENTERED_STYLE: CSSProperties = {
  * (packages/render/src/title.ts) - falling back to the platform sans if unavailable. */
 export const TITLE_FONT_FAMILY =
   "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo', sans-serif";
-export const TITLE_FONT_SIZE_PX = 100;
+export const TITLE_FONT_SIZE_PX = 500;
 
 /**
  * Fixed title-card text color (no schema field for this yet - every preset renders in this one
