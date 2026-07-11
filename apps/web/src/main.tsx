@@ -13,6 +13,9 @@ import "@astryxdesign/core/reset.css";
 import "@astryxdesign/theme-stone/theme.css";
 import "@astryxdesign/theme-y2k/theme.css";
 import "@astryxdesign/theme-neutral/theme.css";
+// Pretendard - the default title-card face (TITLE_FONT_FAMILY). Loaded here so the title preview
+// (TitlePreview) actually renders in Pretendard rather than falling back to the platform sans.
+import "pretendard/dist/web/variable/pretendardvariable.css";
 import { App } from "./App.js";
 import type { ThemeName } from "./lib/theme.js";
 import { loadTheme, loadThemeMode, saveTheme, saveThemeMode } from "./lib/theme.js";

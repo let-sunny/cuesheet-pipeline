@@ -3,8 +3,10 @@ import type { MouseEvent } from "react";
 import * as stylex from "@stylexjs/stylex";
 import type { CueSheet, Segment, SubtitleStyle, SubtitleStylePresets } from "@cuesheet/schema";
 import { Button } from "@astryxdesign/core/Button";
+import { Icon } from "@astryxdesign/core/Icon";
 import { IconButton } from "@astryxdesign/core/IconButton";
 import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
+import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { cropPreviewStyle } from "../../lib/cropPreview.js";
 import { TitleOverlay } from "../TitleOverlay/index.js";
 import type { ClipMoments, NarrationFile } from "../../api.js";
@@ -503,7 +505,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
         <div {...stylex.props(styles.transport)}>
           <IconButton
             label="Previous cut"
-            icon={<span aria-hidden="true">⏮</span>}
+            icon={<Icon icon={SkipBack} />}
             variant="ghost"
             tooltip="Previous cut"
             isDisabled={currentIndex <= 0}
@@ -512,7 +514,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
           />
           <IconButton
             label={playing ? "Pause" : "Play"}
-            icon={<span aria-hidden="true">{playing ? "⏸" : "⏵"}</span>}
+            icon={<Icon icon={playing ? Pause : Play} />}
             variant="secondary"
             isDisabled={!currentSegment}
             onClick={() => setPlaying((p) => !p)}
@@ -520,7 +522,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
           />
           <IconButton
             label="Next cut"
-            icon={<span aria-hidden="true">⏭</span>}
+            icon={<Icon icon={SkipForward} />}
             variant="ghost"
             tooltip="Next cut"
             isDisabled={currentIndex >= segments.length - 1}

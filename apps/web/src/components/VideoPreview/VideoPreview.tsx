@@ -2,7 +2,9 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "re
 import * as stylex from "@stylexjs/stylex";
 import { Badge } from "@astryxdesign/core/Badge";
 import { Button } from "@astryxdesign/core/Button";
+import { Icon } from "@astryxdesign/core/Icon";
 import { IconButton } from "@astryxdesign/core/IconButton";
+import { Pause, Play } from "lucide-react";
 import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import type { Segment, SubtitleStyle, SubtitleStylePresets } from "@cuesheet/schema";
 import { ToolbarButton } from "../ui/ToolbarButton/index.js";
@@ -590,7 +592,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
           <div {...stylex.props(styles.videoControlsRow)}>
             <IconButton
               label={isPlaying ? "Pause" : "Play"}
-              icon={<span aria-hidden="true">{isPlaying ? "⏸" : "⏵"}</span>}
+              icon={<Icon icon={isPlaying ? Pause : Play} />}
               variant="primary"
               size="sm"
               onClick={isPlaying ? handlePause : handlePlay}

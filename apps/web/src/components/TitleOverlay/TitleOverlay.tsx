@@ -1,6 +1,4 @@
-import { useState } from "react";
 import * as stylex from "@stylexjs/stylex";
-import { IconButton } from "@astryxdesign/core/IconButton";
 import type { Title } from "@cuesheet/schema";
 import { TITLE_FONT_SIZE_PX, TITLE_TEXT_COLOR } from "@cuesheet/render/remotion";
 import { TitlePreview } from "../TitlePreview/index.js";
@@ -20,15 +18,14 @@ export interface TitleOverlayProps {
  * Live preview of a cut's title card (PRD backlog #2) - renders TitlePreview (apps/web's own
  * plain-React, requestAnimationFrame-driven component - see its doc comment) instead of running
  * the composition through `@remotion/player`'s `<Player>`, which repeatedly failed to reliably
- * animate in this Vite+workspace environment. This is the first full-anatomy component in the
- * repo (folder + co-located .styles.ts + co-located test + index.ts - see CLAUDE.md "component
- * layering"). Owns the play/pause + restart state the controls below drive, passed down to
- * TitlePreview as plain props (`playing`/`restartToken`) rather than an imperative ref.
+ * animate in this Vite+workspace environment.
+ *
+ * The preview auto-loops on its own (playing is always on); it carries NO play/pause/restart
+ * controls of its own (2026-07-12 user feedback - a floating control chip over the video overlapped
+ * the burned-in subtitle). It's a passive, always-animating preview layered over the video, so the
+ * title reads in the context of the actual footage without adding chrome on top of it.
  */
 export function TitleOverlay({ title, projectWidth, projectHeight, projectFps }: TitleOverlayProps) {
-  const [isPlaying, setIsPlaying] = useState(true);
-  const [restartToken, setRestartToken] = useState(0);
-
   if (!title) {
     return null;
   }
@@ -53,44 +50,10 @@ export function TitleOverlay({ title, projectWidth, projectHeight, projectFps }:
           fps={projectFps}
           projectWidth={projectWidth}
           projectHeight={projectHeight}
-          playing={isPlaying}
-          restartToken={restartToken}
-        />
-      </div>
-      <div {...stylex.props(styles.controls)}>
-        <IconButton
-          label="Restart title preview"
-          // Fixed white glyph color - the scrim behind these controls is a fixed dark regardless
-          // of app theme (see styles.controls), so the glyph must stay fixed-light too rather than
-          // following the app's (theme-dependent) default text color, or it would be invisible
-          // against the scrim in light theme. // theme-exempt
-          icon={
-            <span aria-hidden="true" style={ICON_GLYPH_STYLE}>
-              {"⏮"}
-            </span>
-          }
-          variant="ghost"
-          size="sm"
-          onClick={() => setRestartToken((t) => t + 1)}
-          data-testid="title-preview-restart"
-        />
-        <IconButton
-          label={isPlaying ? "Pause title preview" : "Play title preview"}
-          icon={
-            <span aria-hidden="true" style={ICON_GLYPH_STYLE}>
-              {isPlaying ? "⏸" : "⏵"}
-            </span>
-          }
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsPlaying((p) => !p)}
-          data-testid="title-preview-playpause"
+          playing
+          restartToken={0}
         />
       </div>
     </div>
   );
 }
-
-/** Fixed white - pairs with styles.controls's fixed-dark scrim (see the icon prop's doc comment
- * above). // theme-exempt */
-const ICON_GLYPH_STYLE = { color: "#ffffff" };

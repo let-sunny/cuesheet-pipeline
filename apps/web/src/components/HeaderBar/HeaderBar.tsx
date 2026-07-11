@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
+import { Icon } from "@astryxdesign/core/Icon";
 import { IconButton } from "@astryxdesign/core/IconButton";
 import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import { Selector } from "@astryxdesign/core/Selector";
@@ -96,7 +97,7 @@ export function HeaderBar({
       <div {...stylex.props(styles.saveRow)}>
         <IconButton
           label="Undo"
-          icon={<span aria-hidden="true">↶</span>}
+          icon={<Icon icon="chevronLeft" />}
           variant="ghost"
           size="sm"
           isDisabled={!canUndo}
@@ -106,7 +107,7 @@ export function HeaderBar({
         />
         <IconButton
           label="Redo"
-          icon={<span aria-hidden="true">↷</span>}
+          icon={<Icon icon="chevronRight" />}
           variant="ghost"
           size="sm"
           isDisabled={!canRedo}

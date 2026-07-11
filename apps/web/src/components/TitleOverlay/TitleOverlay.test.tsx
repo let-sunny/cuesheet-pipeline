@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render } from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ComponentProps } from "react";
 import type { Title } from "@cuesheet/schema";
@@ -89,42 +89,22 @@ describe("TitleOverlay", () => {
 
   it("renders a backdrop dim layer only when title.backdrop is set", () => {
     const without = renderOverlay();
-    // container has: stage + controls, no backdrop div.
+    // container has just the stage (no controls of its own - the preview auto-loops).
     const overlayWithout = without.container.querySelector('[data-testid="title-overlay"]')!;
-    expect(overlayWithout.children.length).toBe(2);
+    expect(overlayWithout.children.length).toBe(1);
     without.unmount();
 
     const withDim = renderOverlay({ title: { ...baseTitle, backdrop: { dim: 0.5 } } });
-    // container has: backdrop + stage + controls.
+    // container has: backdrop + stage.
     const overlayWithDim = withDim.container.querySelector('[data-testid="title-overlay"]')!;
-    expect(overlayWithDim.children.length).toBe(3);
+    expect(overlayWithDim.children.length).toBe(2);
     withDim.unmount();
   });
 
-  it("starts playing by default", () => {
+  it("drives the auto-looping preview (always playing, never externally restarted)", () => {
     const { getByTestId } = renderOverlay();
-    expect(getByTestId("mock-title-preview").getAttribute("data-playing")).toBe("true");
-  });
-
-  it("restart control bumps the restartToken passed to TitlePreview", () => {
-    const { getByTestId } = renderOverlay();
-    expect(getByTestId("mock-title-preview").getAttribute("data-restart-token")).toBe("0");
-    fireEvent.click(getByTestId("title-preview-restart"));
-    expect(getByTestId("mock-title-preview").getAttribute("data-restart-token")).toBe("1");
-    fireEvent.click(getByTestId("title-preview-restart"));
-    expect(getByTestId("mock-title-preview").getAttribute("data-restart-token")).toBe("2");
-  });
-
-  it("play/pause control toggles the playing prop passed to TitlePreview and flips the control's label", () => {
-    const { getByTestId } = renderOverlay();
-    expect(getByTestId("title-preview-playpause").getAttribute("aria-label")).toBe("Pause title preview");
-
-    fireEvent.click(getByTestId("title-preview-playpause"));
-    expect(getByTestId("mock-title-preview").getAttribute("data-playing")).toBe("false");
-    expect(getByTestId("title-preview-playpause").getAttribute("aria-label")).toBe("Play title preview");
-
-    fireEvent.click(getByTestId("title-preview-playpause"));
-    expect(getByTestId("mock-title-preview").getAttribute("data-playing")).toBe("true");
-    expect(getByTestId("title-preview-playpause").getAttribute("aria-label")).toBe("Pause title preview");
+    const preview = getByTestId("mock-title-preview");
+    expect(preview.getAttribute("data-playing")).toBe("true");
+    expect(preview.getAttribute("data-restart-token")).toBe("0");
   });
 });

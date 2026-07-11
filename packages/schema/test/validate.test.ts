@@ -287,8 +287,8 @@ describe("validateCueSheet - pass cases", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.data.segments[0]?.title?.durationS).toBe(3);
-      expect(result.data.segments[0]?.title?.color).toBe("#3a3128");
-      expect(result.data.segments[0]?.title?.size).toBe(72);
+      expect(result.data.segments[0]?.title?.color).toBe("#ffffff");
+      expect(result.data.segments[0]?.title?.size).toBe(100);
     }
   });
 

@@ -548,13 +548,13 @@ const DEFAULT_TITLE_DURATION_S = 3;
  * toggle worked, same as Title's other fields (Typing preset, 3s) already default to something. */
 const DEFAULT_TITLE_TEXT = "Title";
 
-/** Matches the schema's title.color default (the cozy brown every title card used before this
- * field existed) - see packages/render/src/remotion/titleCardStyle.ts's TITLE_TEXT_COLOR. */
-const DEFAULT_TITLE_COLOR = "#3a3128";
+/** Matches the schema's title.color default (white, so the title reads over most footage) - see
+ * packages/render/src/remotion/titleCardStyle.ts's TITLE_TEXT_COLOR. */
+const DEFAULT_TITLE_COLOR = "#ffffff";
 
 /** Matches the schema's title.size default - see
  * packages/render/src/remotion/titleCardStyle.ts's TITLE_FONT_SIZE_PX. */
-const DEFAULT_TITLE_SIZE = 72;
+const DEFAULT_TITLE_SIZE = 100;
 
 /** Matches the schema's transition.durationS default (0.5) - the value written when a Transition
  * in/out toggle is first turned on. */

@@ -92,8 +92,8 @@ describe("useEditStepActions", () => {
       text: "Title",
       preset: "typing",
       durationS: 3,
-      color: "#3a3128",
-      size: 72,
+      color: "#ffffff",
+      size: 100,
     });
 
     act(() => result.current.toggleSegmentTitle(0, false));

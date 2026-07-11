@@ -30,9 +30,13 @@ export const ABSOLUTE_FILL_CENTERED_STYLE: CSSProperties = {
   alignItems: "center",
 };
 
-/** Shared type/size for every title-card preset (cozy serif look, PRD backlog #2's mood). */
-export const TITLE_FONT_FAMILY = "Georgia, serif";
-export const TITLE_FONT_SIZE_PX = 72;
+/** Shared font/size for every title-card preset. Pretendard (a widely-used Korean-first sans) is
+ * the default face (2026-07-12 user choice); it must be loaded wherever the title is drawn - the
+ * browser preview loads it via @font-face (apps/web), and the Node render loads it before capture
+ * (packages/render/src/title.ts) - falling back to the platform sans if unavailable. */
+export const TITLE_FONT_FAMILY =
+  "'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, 'Apple SD Gothic Neo', sans-serif";
+export const TITLE_FONT_SIZE_PX = 100;
 
 /**
  * Fixed title-card text color (no schema field for this yet - every preset renders in this one
@@ -42,4 +46,4 @@ export const TITLE_FONT_SIZE_PX = 72;
  * @remotion/player was dropped after repeated frozen-frame failures in this environment) read
  * this single constant, so there's no hand-synced duplicate left to drift.
  */
-export const TITLE_TEXT_COLOR = "#3a3128";
+export const TITLE_TEXT_COLOR = "#ffffff";
