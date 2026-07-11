@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { continueRender, delayRender } from "remotion";
 import type { TitlePreset } from "@cuesheet/schema";
 import { FadeTitle } from "./FadeTitle.js";
 import { FadeTitleView } from "./FadeTitleView.js";
@@ -62,6 +64,7 @@ export interface TitleCardViewProps extends TitleViewFrameProps {
  * so the card composites onto the underlying footage via alpha, not a solid color.
  */
 export function TitleCard({ text, preset, color, fontSize }: TitleCardProps) {
+  usePretendardReady();
   switch (preset) {
     case "fade":
       return <FadeTitle text={text} color={color} fontSize={fontSize} />;
@@ -72,6 +75,29 @@ export function TitleCard({ text, preset, color, fontSize }: TitleCardProps) {
     case "highlight":
       return <HighlightTitle text={text} color={color} fontSize={fontSize} />;
   }
+}
+
+/**
+ * Holds render frames (delayRender) until Pretendard - the title font, imported as an @font-face in
+ * index.tsx - has finished loading in the render's Chrome, so titles capture in Pretendard rather
+ * than the platform-sans fallback that would show if a frame rendered before the webfont was ready.
+ * Fails open (releases the frame anyway) if the font never resolves, so a font problem can never
+ * hang a render to the delayRender timeout. Render-only: TitleCardView (the browser preview) loads
+ * Pretendard through apps/web's own @font-face and doesn't use Remotion's delayRender.
+ */
+function usePretendardReady() {
+  const [handle] = useState(() => delayRender("Loading the Pretendard title font"));
+  useEffect(() => {
+    let released = false;
+    const release = () => {
+      if (!released) {
+        released = true;
+        continueRender(handle);
+      }
+    };
+    document.fonts.load("1em 'Pretendard Variable'").then(release).catch(release);
+    return release;
+  }, [handle]);
 }
 
 /**

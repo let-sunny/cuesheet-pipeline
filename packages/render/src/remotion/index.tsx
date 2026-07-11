@@ -1,3 +1,7 @@
+// Pretendard @font-face + woff2 - bundled into the render so the title composition's Chrome draws
+// titles in Pretendard (matching TITLE_FONT_FAMILY / the browser preview) instead of falling back
+// to the platform sans. TitleCard gates render frames on this font finishing loading (delayRender).
+import "pretendard/dist/web/variable/pretendardvariable.css";
 import { Composition, registerRoot } from "remotion";
 import { TitleCard, type TitleCardProps } from "./TitleCard.js";
 import { TITLE_FONT_SIZE_PX, TITLE_TEXT_COLOR } from "./titleCardStyle.js";
