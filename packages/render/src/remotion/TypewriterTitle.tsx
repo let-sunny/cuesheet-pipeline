@@ -30,9 +30,9 @@ export function TypewriterTitle({ text, color }: TypewriterTitleProps) {
         <span
           style={{
             display: "inline-block",
-            width: "0.5em",
-            height: "0.9em",
-            marginLeft: "0.08em",
+            width: "0.08em",
+            height: "1.05em",
+            marginLeft: "0.06em",
             backgroundColor: color,
             opacity: cursorVisible ? cursorOpacity : 0,
           }}

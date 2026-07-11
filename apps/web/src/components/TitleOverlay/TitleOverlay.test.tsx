@@ -38,10 +38,12 @@ describe("backdropOpacity", () => {
 });
 
 describe("typingRevealedCount", () => {
-  it("reveals characters proportionally to elapsed time", () => {
+  it("reveals characters at a fixed fast pace (2/30s each), completing early then holding", () => {
+    // Matches the render's CHAR_FRAMES=2 pace: ~15 chars/sec, independent of the title duration.
     expect(typingRevealedCount(4, 2, 0)).toBe(0);
-    expect(typingRevealedCount(4, 2, 1)).toBe(2);
-    expect(typingRevealedCount(4, 2, 2)).toBe(4);
+    expect(typingRevealedCount(4, 2, 2 / 30)).toBe(1); // one char after 2 frames
+    expect(typingRevealedCount(4, 2, 8 / 30)).toBe(4); // all four revealed by ~0.27s
+    expect(typingRevealedCount(4, 2, 1)).toBe(4); // and held for the rest of the duration
   });
 
   it("never exceeds the text length", () => {

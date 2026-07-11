@@ -75,13 +75,20 @@ export function backdropOpacity(dim: number, durationS: number, localTimeS: numb
  * reveal (packages/render/src/remotion/TypewriterTitle.tsx), just evaluated continuously here
  * instead of in fixed per-frame steps.
  */
-export function typingRevealedCount(textLength: number, durationS: number, localTimeS: number): number {
-  if (textLength <= 0) {
+export function typingRevealedCount(textLength: number, _durationS: number, localTimeS: number): number {
+  if (textLength <= 0 || localTimeS < 0) {
     return 0;
   }
-  const progress = Math.min(1, Math.max(0, localTimeS / durationS));
-  return Math.min(textLength, Math.floor(progress * textLength + 1e-6));
+  // A FIXED, fast reveal pace that matches the render (TypewriterTitle types one char every
+  // CHAR_FRAMES=2 frames at project fps ~= SEC_PER_CHAR below), then HOLDS the full text. Earlier
+  // this spread the whole text across the entire duration, so a mid-playhead scrub only ever showed
+  // a partial, stuck-looking string (user report: "it cuts off at 'titl'"). Typing must complete
+  // early and hold, not creep to the last frame.
+  return Math.min(textLength, Math.floor(localTimeS / SEC_PER_CHAR));
 }
+
+/** Seconds per revealed character - mirrors the render's CHAR_FRAMES=2 at ~30fps (a calm ~15 cps). */
+const SEC_PER_CHAR = 2 / 30;
 
 /** Ease-out cubic, the same curve every preset below (and their Remotion counterparts) uses for entrances. */
 function easeOutCubic(t: number): number {
@@ -111,9 +118,9 @@ function TypingTitle({ text, durationS, localTimeS }: TypingTitleProps) {
       <span
         style={{
           display: "inline-block",
-          width: "0.5em",
-          height: "0.9em",
-          marginLeft: "0.08em",
+          width: "0.08em",
+          height: "1.05em",
+          marginLeft: "0.06em",
           backgroundColor: "currentcolor",
           verticalAlign: "text-bottom",
           opacity: cursorVisible && cursorOn ? 1 : 0,

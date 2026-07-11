@@ -266,8 +266,11 @@ export const styles = stylex.create({
     color: colorVars["--color-text-pink"],
   },
   // A small amber "todo" dot marking a cut that has no subtitle yet (only rendered in that state -
-  // see CompactSegmentList.tsx). Amber, not red: a missing subtitle is a to-do, not an error (some
-  // cuts, e.g. timelapse connectors, may intentionally stay unsubtitled).
+  // see CompactSegmentList.tsx). Uses the yellow BACKGROUND/BORDER container tokens (the same pair
+  // the category Badges use), not `--color-warning` ink: the ink token is a dark olive/mustard in
+  // the Stone/Neutral light themes, so a filled dot with it read as a muddy near-black blob and lost
+  // the amber affordance (theme audit 2026-07-11). The container pair stays amber-family across all
+  // three themes. Amber, not red: a missing subtitle is a to-do, not an error.
   subtitleDot: {
     flexGrow: 0,
     flexShrink: 0,
@@ -275,7 +278,10 @@ export const styles = stylex.create({
     width: 8,
     height: 8,
     borderRadius: "50%",
-    backgroundColor: colorVars["--color-warning"],
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: colorVars["--color-border-yellow"],
+    backgroundColor: colorVars["--color-background-yellow"],
   },
   actions: {
     flexGrow: 0,

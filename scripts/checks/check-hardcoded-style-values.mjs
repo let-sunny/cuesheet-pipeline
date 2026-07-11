@@ -24,7 +24,6 @@ const DOMAIN_OVERLAY_FILES = new Set([
   "apps/web/src/components/TitleOverlay/TitleOverlay.styles.ts",
   "apps/web/src/components/SequencePlayer/SequencePlayer.styles.ts",
   "apps/web/src/components/CropEditOverlay/CropEditOverlay.styles.ts",
-  "apps/web/src/components/Swatch/Swatch.styles.ts",
 ]);
 
 const RAW_COLOR = /#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?)\s*\(/;

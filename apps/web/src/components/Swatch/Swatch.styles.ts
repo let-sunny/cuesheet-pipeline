@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { radiusVars, spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
+import { colorVars, radiusVars, spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 4) — ported 1:1
@@ -22,6 +22,6 @@ export const styles = stylex.create({
     marginRight: spacingVars["--spacing-1"],
     borderWidth: 1,
     borderStyle: "solid",
-    borderColor: "#00000055",
+    borderColor: colorVars["--color-border"],
   },
 });
