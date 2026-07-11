@@ -1,25 +1,36 @@
 import * as stylex from "@stylexjs/stylex";
-import { colorVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
+import {
+  colorVars,
+  radiusVars,
+  spacingVars,
+  textSizeVars,
+} from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy (CLAUDE.md "component layering") - see docs/research/trim-ux-conventions.md
  * section 4 for the interaction spec this renders. Longhand properties throughout
  * (backgroundColor, borderWidth/borderStyle/borderColor) per the styling-migration.md convention.
+ *
+ * Radius/spacing migration (2026-07-11, design-principles.md #5 strict rule): `gap`/`margin`/
+ * `padding`/`borderRadius` read from Astryx's `spacingVars`/`radiusVars` - every corner here is a
+ * trim-strip part, so all get `--radius-element`. Structural sizing/positioning (`height`, `top`,
+ * the handle/playhead centering offsets derived directly from their own width/height) stays
+ * literal - those are geometry, not spacing between elements.
  */
 export const styles = stylex.create({
   root: {
     display: "flex",
     flexDirection: "column",
-    gap: 4,
+    gap: spacingVars["--spacing-1"],
   },
   // The filmstrip surface - fixed height (~48px, screen-spec section 4.1), clips the cell
   // separators/thumbnails to its rounded corners.
   track: {
     position: "relative",
     height: 48,
-    marginTop: 4,
-    marginBottom: 4,
-    borderRadius: 4,
+    marginTop: spacingVars["--spacing-1"],
+    marginBottom: spacingVars["--spacing-1"],
+    borderRadius: radiusVars["--radius-element"],
     overflow: "hidden",
     cursor: "pointer",
     touchAction: "none",
@@ -51,13 +62,13 @@ export const styles = stylex.create({
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "flex-end",
-    paddingBottom: 2,
+    paddingBottom: spacingVars["--spacing-0-5"],
     pointerEvents: "none",
   },
   rulerTick: {
     width: 1,
     height: 8,
-    marginBottom: 2,
+    marginBottom: spacingVars["--spacing-0-5"],
     backgroundColor: colorVars["--color-border"],
   },
   rulerLabel: {
@@ -92,7 +103,7 @@ export const styles = stylex.create({
     width: 12,
     height: 20,
     marginLeft: -6,
-    borderRadius: 3,
+    borderRadius: radiusVars["--radius-element"],
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: colorVars["--color-accent"],
@@ -113,13 +124,13 @@ export const styles = stylex.create({
   zoomRow: {
     display: "flex",
     justifyContent: "flex-end",
-    gap: 6,
+    gap: spacingVars["--spacing-1-5"],
   },
   // Pan control (section 4.3) - a slim scrollbar-shaped trough, only rendered while zoomed in.
   panTrough: {
     position: "relative",
     height: 10,
-    borderRadius: 5,
+    borderRadius: radiusVars["--radius-element"],
     cursor: "pointer",
     touchAction: "none",
     backgroundColor: colorVars["--color-background-muted"],
@@ -129,7 +140,7 @@ export const styles = stylex.create({
     top: 2,
     bottom: 2,
     minWidth: 2,
-    borderRadius: 1,
+    borderRadius: radiusVars["--radius-element"],
     backgroundColor: colorVars["--color-accent"],
     pointerEvents: "none",
   },
@@ -137,7 +148,7 @@ export const styles = stylex.create({
     position: "absolute",
     top: 0,
     bottom: 0,
-    borderRadius: 5,
+    borderRadius: radiusVars["--radius-element"],
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: colorVars["--color-accent"],

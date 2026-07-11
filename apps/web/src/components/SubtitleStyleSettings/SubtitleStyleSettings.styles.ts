@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { radiusVars, spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md) — rules ported 1:1 from the old
@@ -17,6 +18,13 @@ import * as stylex from "@stylexjs/stylex";
  * (`numberInput`) is gone (2026-07-11 stock-input migration) - they're now a stock Astryx
  * `TextInput` via the shared `ui/NumericInput` adapter, which gets its width via `xstyle` instead
  * of a co-located rule. Position moved to a stock Astryx `Selector` via `ui/SelectField`.
+ *
+ * Radius/spacing migration (2026-07-11, design-principles.md #5 strict rule): `borderRadius`/
+ * `marginBottom` read from Astryx's `radiusVars`/`spacingVars` instead of literal px, snapped to
+ * the nearest spacing step where it fell between two (14 -> 12, ties round down per the existing
+ * repo convention - see MomentPalette.styles.ts's 10 -> 8). `--radius-element` (not `--container`)
+ * matches the same-shaped real video-preview panel in VideoPreview.styles.ts's `videoPreview`.
+ * Structural sizing (`maxWidth: 360`, the 16/9 aspect ratio) stays literal.
  */
 export const styles = stylex.create({
   previewStage: {
@@ -25,10 +33,10 @@ export const styles = stylex.create({
     maxWidth: 360,
     aspectRatio: "16 / 9",
     backgroundColor: "var(--stage-bg)",
-    borderRadius: 6,
+    borderRadius: radiusVars["--radius-element"],
     overflow: "hidden",
     containerType: "inline-size",
-    marginBottom: 14,
+    marginBottom: spacingVars["--spacing-3"],
   },
   previewThumb: {
     position: "absolute",

@@ -1,5 +1,10 @@
 import * as stylex from "@stylexjs/stylex";
-import { colorVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex";
+import {
+  colorVars,
+  radiusVars,
+  spacingVars,
+  textSizeVars,
+} from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md) — rules ported 1:1 from the old
@@ -21,6 +26,12 @@ import { colorVars, textSizeVars } from "@astryxdesign/core/theme/tokens.stylex"
  * `background`/`border` shorthands are written out as their longhand equivalents
  * (`backgroundColor`, `borderWidth`+`borderStyle`+`borderColor`) — see HeaderBar.styles.ts's
  * comment for why (StyleX silently drops the shorthand form).
+ *
+ * Radius/spacing migration (2026-07-11, design-principles.md #5 strict rule): `gap`/`padding`/
+ * `margin`/`borderRadius` read from Astryx's `spacingVars`/`radiusVars`, snapped to the nearest
+ * step where a value fell between two (10 -> 8, ties round down per the existing repo convention -
+ * see MomentPalette.styles.ts's own comment). `select`/`preview`/`dropzone` are all input-sized
+ * boxes, so they get `--radius-element`. Structural sizing (`maxWidth: 360`) stays literal.
  */
 export const styles = stylex.create({
   grid: {
@@ -33,8 +44,8 @@ export const styles = stylex.create({
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: colorVars["--color-border"],
-    borderRadius: 4,
-    padding: "4px 8px",
+    borderRadius: radiusVars["--radius-element"],
+    padding: `${spacingVars["--spacing-1"]} ${spacingVars["--spacing-2"]}`,
     width: "100%",
     boxSizing: "border-box",
     minWidth: 0,
@@ -42,8 +53,8 @@ export const styles = stylex.create({
   current: {
     display: "flex",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 8,
+    gap: spacingVars["--spacing-2"],
+    marginBottom: spacingVars["--spacing-2"],
     fontSize: textSizeVars["--font-size-sm"],
     color: colorVars["--color-text-primary"],
   },
@@ -53,15 +64,15 @@ export const styles = stylex.create({
     whiteSpace: "nowrap",
   },
   missing: {
-    marginTop: 10,
+    marginTop: spacingVars["--spacing-2"],
     color: colorVars["--color-text-secondary"],
     fontSize: textSizeVars["--font-size-sm"],
   },
   preview: {
     width: "100%",
     maxWidth: 360,
-    marginTop: 10,
-    borderRadius: 4,
+    marginTop: spacingVars["--spacing-2"],
+    borderRadius: radiusVars["--radius-element"],
     backgroundColor: "black",
     display: "block",
   },
@@ -69,13 +80,13 @@ export const styles = stylex.create({
     display: "flex",
     alignItems: "center",
     flexWrap: "wrap",
-    gap: 10,
-    marginTop: 8,
-    padding: 10,
+    gap: spacingVars["--spacing-2"],
+    marginTop: spacingVars["--spacing-2"],
+    padding: spacingVars["--spacing-2"],
     borderWidth: 1,
     borderStyle: "dashed",
     borderColor: colorVars["--color-border-emphasized"],
-    borderRadius: 4,
+    borderRadius: radiusVars["--radius-element"],
   },
   dropzoneActive: {
     borderColor: colorVars["--color-accent"],

@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { radiusVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 5) — rules ported
@@ -9,6 +10,12 @@ import * as stylex from "@stylexjs/stylex";
  * this overlay sits directly on actual video pixels, so it needs to read consistently against
  * arbitrary footage rather than following the app's own light/dark theme (ported as-is from the
  * original comment in styles.css).
+ *
+ * Radius migration (2026-07-11, design-principles.md #5 strict rule): `handle`'s `borderRadius`
+ * reads from Astryx's `radiusVars` (crop-overlay handles are an "element"-tier small box per the
+ * task's mapping). The `top`/`left`/`right`/`bottom` centering offsets (all derived directly from
+ * the handle's own 12px width/height) are geometry, not spacing between elements, so they stay
+ * literal.
  */
 export const styles = stylex.create({
   overlay: {
@@ -34,7 +41,7 @@ export const styles = stylex.create({
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: "#f0a34a",
-    borderRadius: 2,
+    borderRadius: radiusVars["--radius-element"],
     touchAction: "none",
   },
   handleNw: {
