@@ -39,22 +39,29 @@ export.
 
 ### Header (global)
 
-Save (+ dirty indicator) - Export (via settings dialog) - Undo/Redo buttons - theme toggle
-(system/light/dark) - keyboard shortcut help (?)
+Save (+ dirty indicator) - Export (via settings dialog) - Undo/Redo (icon buttons:
+chevronLeft/chevronRight) - theme toggle (system/light/dark) - keyboard shortcut help (?)
 
 ### Step navigation
 
-(1) Scenes -> (2) Edit -> (3) Export (cut-count badge)
+Scenes -> Edit -> Export, each shown with a meaning icon (Film / Scissors / Download) rather
+than a step number. Scenes carries an in-use/total scene-count badge, Edit carries a
+subtitled/total-cut-count badge; Export has no badge.
 
 ### (1) Scenes (choosing material)
 
 - Scene candidates: cards (thumbnail, clip name, timestamp, scene description, shot-type
   badge, quality)
-- Card states: In use (cut N) / Auto-excluded (badge with reason — quality or face — shown
-  dimmed) — filter [All / In use only / Excluded only]
+- Card states: In use (cut N) / Auto-excluded (reason shown: quality or face) — filter
+  [All / In use only / Excluded only]. **N is the cut's 1-based position in the timeline's
+  ordered cut list, and the mapping is 1:1** — each cut number appears on exactly one card (the
+  card that cut was actually assembled from), the same number the (2) Edit step shows for that
+  cut. It is never a duplicate-able "how many candidates overlap this cut" count.
 - Category filter (shot type)
-- [Add] / [Remove] (cards excluded for face reasons need a confirmation prompt before adding)
-- On a card: [Set as intro] / [Set as outro] (disabled + reason if longer than 15s)
+- A single state-driven [Add]/[Remove] toggle per card (icon-only, bottom-right corner; cards
+  excluded for face reasons still need a confirmation prompt before adding)
+- Setting a card's clip as intro/outro now happens from the (2) Edit step's Cut actions (see
+  below), not from the Scenes card itself
 
 ### (2) Edit (polish — single screen, no modes)
 
@@ -63,29 +70,42 @@ Save (+ dirty indicator) - Export (via settings dialog) - Undo/Redo buttons - th
 - **Timeline (mini)**: blocks (thumbnail / clip boundary line / current-cut highlight), zoom
   (Cmd+wheel, +/-, Shift+Z to reset), BGM drag
 - **Video column (sticky)**: scene header (#n, badge, description) -> video (preview with
-  reframe applied, live subtitle overlay, merged style) -> playback controls (play/pause,
-  scrub, set In/Out, split)
-- **Play all**: cuts play back to back (double-buffered), previous/next cut, speed 1x/1.5x/2x,
-  progress-bar jump, subtitle + scene-hint overlay, editing allowed during playback
-- **Cut settings** (grouping and order per screen-spec section 4): Range (In/Out/length),
-  Playback (speed/volume), Subtitle (+ Subtitle style for this cut: size/color/outline/
-  background/margin, promote to/release from global), Narration (file picker, preview, length
-  warning), Reframe (edit with locked aspect ratio / release / full frame), Cut actions
-  (split Cmd+B, merge with next cut Cmd+J, duplicate selected cut, delete, set as intro/outro)
+  reframe applied, live subtitle + title-card overlay, merged style) -> playback controls (go to
+  start, play/pause icon reflecting real play state, mark In/Out, split, capture frame, reframe
+  entry point) -> a quieter Loop range/Full clip toggle below the primary controls
+- **Play all**: cuts play back to back (double-buffered) inside a strict 16:9 stage (so the
+  video never letterboxes and the subtitle sizes correctly), go-to-start/previous/play-pause/next
+  cut as icons, speed 1x/1.5x/2x, progress-bar jump, subtitle + scene-hint overlay, editing
+  allowed during playback
+- **Cut settings** (two tabs, grouping and order per screen-spec section 4): **Cut** tab —
+  Range (In/Out/length), Playback (speed/volume), Narration (file picker, preview, length
+  warning, shown only when in use), Cut actions (Split Cmd+B / Merge with next cut Cmd+J /
+  Duplicate on one row, Set as intro / Set as outro — disabled + reason if the clip is longer
+  than 15s — on their own row), Delete (destructive, separated). **Effects** tab — Subtitle
+  (+ Subtitle style for this cut: size/color/outline/background/margin, promote to/release from
+  global, optional named style preset), Title (text/preset/duration/color/size/backdrop dim),
+  Transitions (fade/dip in and out). Reframe is not a Cut settings group — its entry point lives
+  on the video toolbar itself (see Video column, above).
 - **Keyboard shortcuts**: Space, J/K/L (reverse/pause/play, repeat to speed up), I/O, arrow
   keys, Cmd+B/J/Z/Shift+Z, Tab, ?
-- Undo/Redo (50-deep stack, batches consecutive edits), localStorage snapshot-restore banner
+- Undo/Redo (icon buttons), 50-deep stack, batches consecutive edits, localStorage
+  snapshot-restore banner
 
 ### (3) Export (output)
 
-- Project metadata (name/fps/resolution)
-- Subtitle style (global): font size, color (color picker), outline, background box
-  (color/opacity/margin), position (top/middle/bottom), edge margin — preview updates live in
-  the (2) Edit video column
+- Project metadata (name/fps/resolution, episode-level fade in/out)
+- Subtitle style: one section folds together the global look (font size, color, outline,
+  background box, position, edge margin) and every named, reusable style preset a cut can opt
+  into — preview updates live in the (2) Edit video column
 - Intro/outro: file picker (shows length, disabled above 15s) + collapsible manual entry +
   clear button
-- BGM editing (file/range/volume)
-- Narration: on/off toggle, folder, overall volume, help text
+- Background music: one-line summary only in this step; editing itself is moving to a
+  collapsible side panel (in progress, separate work)
+- Narration: on/off toggle, folder, overall volume, Ducking (duck-under-narration amount + fade
+  duration), help text — the settings component (`NarrationSettings`) is built and tested but
+  not currently wired into any step, so project-level narration settings aren't reachable from
+  the running app yet; only per-cut narration file selection (the (2) Edit step's Cut settings)
+  works today
 - Export dialog: resolution presets (720p/1080p/4K — subtitle metrics scale proportionally),
   burn-in subtitles vs. clean, summary, progress, download
 - Subtitle download (.srt)
@@ -216,49 +236,50 @@ and CLI's schema versions ever drift, we choose a loud failure over silent data 
 
 ## 11. Backlog (in priority order)
 
-1. **Named subtitle style presets** — reusable presets (e.g., default/inner-voice/shout)
-   assignable per cut; completes the per-cut override story.
-2. **Title cards with presets (user-finalized trio)** — `segment.title?: {text, preset,
-   durationS?}` optional field; presets matched to the cozy knitting-vlog mood:
-   **Gooey** (organic blobs assembling into text; **Melt** variant for exit — letters
-   drip away, SVG-filter based), **Particle** (fibers/sparkles assembling, canvas),
-   **Typing** (per-letter typewriter + cursor). Titles support an optional backdrop
-   dim layer (`title.backdrop: {dim: 0-1}`) fading with the title — cheap in both
-   render paths. Transition-only dimming (no title) belongs to the fades feature
-   (dip-to-dim as a cut-boundary property), not to titles.
-   Web preview via CSS/JS. Render paths: Typing via ASS/libass karaoke; Gooey/Particle
-   via headless frame-capture -> alpha overlay compositing (spike in progress validating
-   both paths + caching strategy per (text, preset)).
-3. **Fades** — design sketch (2026-07-09): contract adds optional `segment.transitionIn?`
-   / `transitionOut?: { type: "fade" | "dip", durationS: 0.2-2 (default 0.5), dim?: 0-1
-   (dip target; 1 = black) }` and project-level `fadeIn/fadeOut` for episode ends.
-   Render: video via fade filter (in/out offsets from segment bounds), audio via afade
-   in the same window; "dip" = fade to a dim/black frame then back (pairs with the
-   title backdrop-dim concept but lives on the cut boundary). Preview: CSS opacity ramp
-   on the video element driven by playback position (approximation is acceptable — parity
-   note in UI). UI: TRANSITIONS group in cut settings after TITLE; episode-level fades in
-   Export project section. Editing grammar note: chapter transitions (no-subtitle gaps)
-   are the natural place for dips — the /episode pipeline may propose them there later.
-4. **Audio ducking** — design sketch (2026-07-09): when a narration clip plays over a
-   BGM track, the BGM volume dips automatically. Contract: project-level
-   `narration.ducking?: { amount: 0-1 (default 0.6 = duck to 40%), fadeS: 0.1-1
-   (default 0.3) }` — no per-cut fields (ducking windows derive from narration
-   placements already in the cuesheet). Render: sidechaincompress is overkill for
-   known windows — use volume automation instead: for each BGM track, a volume filter
-   with enable/It expressions (or piecewise volume ramps) over the narration windows
-   projected onto output time; windows merge when narrations overlap. Preview: BGM
-   audio element volume ramp driven by the playback clock (same approximation pattern
-   as transitions). UI: one Ducking row (toggle + amount slider) inside the Narration
-   settings section in Export. Editing-grammar fit: narration is sparse and windowed —
-   automation beats a live compressor for determinism and render parity.
-5. YouTube chapter list generation from no-subtitle gaps (grammar: gaps = chapter breaks).
-6. **Thumbnail frame capture** — design sketch (2026-07-09): `GET
-   /api/frame-capture?clip=<name>&atS=<source-seconds>` extracts a full-resolution
-   PNG from the ORIGINAL clip via seek-based ffmpeg (-ss before -i) server-side
-   (the preview proxy is 720p — thumbnails need source pixels); response
-   Content-Disposition names it `<project> <m.ss>.png`. UI: a camera button under
-   the Edit-step video (captures the current preview position mapped to source
-   time). Use case: YouTube thumbnail candidates without leaving the editor.
+The six items below were the active backlog when this document was last written top-to-bottom;
+all six have since shipped (some with details that changed from the original design sketch,
+noted inline) — kept here, marked shipped, so the design rationale isn't lost, rather than
+deleted outright. The **remaining backlog** (still open) is the second, unnumbered-heading list
+further down.
+
+1. ~~Named subtitle style presets~~ — **shipped**: reusable presets are assignable per cut via
+   the Style preset select in Subtitle (Effects tab), and are created/edited in the Export
+   step's single, folded "Subtitle style" section (global look + every preset together — see
+   section 3 and screen-spec section 5).
+2. ~~Title cards with presets~~ — **shipped**, with the preset lineup changed from the
+   originally-sketched Gooey/Melt/Particle/Typing trio (superseded during implementation):
+   shipped presets are **fade** (calm scale+opacity entrance), **wordStagger** (each word eases
+   in with a stagger), **typing** (typewriter reveal + blinking cursor), and **highlight** (a
+   pastel marker sweeps in behind the last word). `segment.title` also carries editable color
+   and size (defaults `#ffffff` / 500, font Pretendard, bundled into the render so exports match
+   the preview) plus the optional backdrop dim layer (`title.backdrop: {dim: 0-1}`) as designed.
+   All four presets render the same way: Remotion, headless frame-capture -> transparent PNG
+   sequence -> alpha-overlay composite at render time (no separate ASS/libass path). The browser
+   preview (`TitlePreview`) runs the identical animation math in plain React +
+   `requestAnimationFrame` rather than `@remotion/player` (which repeatedly failed to animate
+   reliably in this Vite+workspace setup — see docs/goals for the history), so it stays
+   pixel-identical without a Remotion runtime in the browser; it auto-loops with no
+   play/pause/restart controls of its own (a floating control chip used to overlap the burned-in
+   subtitle).
+3. ~~Fades~~ — **shipped** as designed: `segment.transitionIn?`/`transitionOut?` (Transitions
+   group, Effects tab) and project-level `fadeInS`/`fadeOutS` (Export's Project section).
+4. **Audio ducking** — schema/render shipped as designed (`narration.ducking?: {amount, fadeS}`,
+   volume-automation over the narration windows) and a settings component exists
+   (`NarrationSettings`: a Ducking row — toggle + amount slider + fade-duration field — inside
+   Narration) — but that component isn't wired into any step yet, so there is currently no way to
+   reach it (or any other project-level narration setting: on/off, folder, volume) from the
+   running app. Only per-cut narration file selection (the (2) Edit step's Cut settings) works
+   today. Wiring `NarrationSettings` into a step is the remaining work.
+5. YouTube chapter list generation from no-subtitle gaps (grammar: gaps = chapter breaks) —
+   **prototyped**: `scripts/youtube-chapters.mjs` derives a chapter list from a cuesheet and
+   prints `m:ss Title` lines to paste into a YouTube description. Not yet integrated into the
+   editor UI/export flow.
+6. ~~Thumbnail frame capture~~ — **shipped**: `GET /api/frame-capture?clip=<name>&atS=<source-
+   seconds>` extracts a full-resolution PNG from the original clip server-side; the Edit step's
+   video toolbar has a "Capture frame" button that captures the current preview position mapped
+   to source time.
+
+### Remaining backlog (unprioritized)
 
 1. Detect "mistake / frog it and restart" narratives (frame comparison across the timeline —
    target 90%+ recall)

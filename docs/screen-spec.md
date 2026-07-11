@@ -45,7 +45,9 @@
 
 `[App name] [Step nav] ... [Undo][Redo] | [Theme toggle] [?] | [Save (dirty dot)] [Export]`
 — the primary actions (Save/Export) sit at the far right. Export always opens through a
-dialog.
+dialog. Undo/Redo are icon buttons (Astryx `Icon` `chevronLeft`/`chevronRight`), not text. The
+step nav's three tabs show a meaning icon each (Film / Scissors / Download for Scenes / Edit /
+Export) instead of a step-number prefix.
 
 **Dirty-state emphasis (2026-07-09 addition, section 6 applied concretely to this group)**:
 Save and Export are a two-button group, so exactly one of them is `primary` at any time — which
@@ -59,85 +61,97 @@ steady (clean) state; the header's own group has its own state-dependent primary
 ## 2. (1) Scenes
 
 ```
-[Category filter row][Status filter row (All / In use only / Excluded only)]
+[Status filter row (SegmentedControl: All / In use / Excluded)]
+[Category filter row (horizontally-scrolling pill strip, one row, never wraps)]
 [Candidate grid — cards]
 ```
+Status and category are two independent facets, not one flat chip row (2026-07-11 faceted-
+filtering restructure): status is a stock Astryx `SegmentedControl`; category is a standalone
+`ToggleButton`-based pill strip (not `ToggleButtonGroup` — its React-context coordination broke
+under this app's dev-server module duplication). A category chip's count reflects the active
+status filter (so "Wearing (4)" never promises a count the status filter would then show as 0);
+a category that drops to 0 stays visible, disabled, rather than vanishing (an empty option is
+still a real, expected option, not a broken one).
+
 **Horizontal card layout (2026-07-11 QA fix)**: cards changed from thumbnail-stacked-on-top to a
 **horizontal card** — a larger thumbnail column on the left, metadata stacked on the right — per
 the researched convention (Premiere's bin thumbnail view, Final Cut's event browser, DaVinci's
-media pool all lay clip cards out this way; no invented UI patterns, CLAUDE.md). The full-width
-exclusion-reason banner (item b below) stays above this left/right split, spanning the whole card,
-unchanged from before.
+media pool all lay clip cards out this way; no invented UI patterns, CLAUDE.md). Every card —
+excluded or not — renders at the same fixed row height now (2026-07-11 uniform-height fix); the
+exclusion reason no longer adds a sibling banner row above it (see the state-representation rule
+below), which is what makes a uniform height possible in every state.
 
-Card-internal hierarchy: thumbnail -> status badge (in-use / excluded reason) -> scene
-description (full text, not clamped — this screen exists to read the description and
-choose, so it must never be truncated) -> metadata (clip, timestamp, shot type, quality) ->
-action row (a single state-driven [Add]/[Remove] toggle, primary; [Set intro]/[Set outro]
-secondary — primary and secondary must be visually distinct).
+Card-internal hierarchy (2026-07-11 revision, superseding the paragraphs below — see the
+2026-07-11 changelog entries): thumbnail (in-use badge overlaid top; excluded-reason scrim
+overlaid bottom, only when excluded) -> scene description (clamped to ~3 lines/60px with
+internal scroll for anything longer — earlier language below said "never truncated"; that was
+revised once a long description was found growing the whole card and breaking the grid's
+uniform row height) -> metadata cluster (clip filename + time range on one line, category badge
++ quality on the next) -> a single state-driven [Add]/[Remove] icon-only toggle, pinned to the
+card's bottom-right corner (the card's single most important action gets its single most
+prominent corner). Setting a card's clip as intro/outro is no longer done from this card at all
+— it moved to the (2) Edit step's Cut actions (section 4) — so there is no second action here.
 
-**Single add/remove toggle (2026-07-09 revision)**: one button, not a pair - label and
-variant flip with whether the card is already added (`Add`/primary when unused, `Remove`/
-destructive when in use), instead of always rendering both buttons and disabling+hiding
-whichever doesn't apply. A card's excluded (auto-filtered) state doesn't change this - the
-same confirm-before-adding flow (face policy check) still runs regardless of which state the
-toggle is in when clicked. Set-intro/outro labels were also shortened from "Set as intro"/
-"Set as outro" to "Set intro"/"Set outro" (full meaning stays in the tooltip) - this pair
-stays a stacked (not side-by-side) row at typical card widths, since the side-by-side slot
-(~69px each) is tight enough that truncation wasn't safe to assume fixed by the shorter text
-alone without real-browser measurement (see styles.css's `.moment-io-actions` comment).
+**Single add/remove toggle (2026-07-09 revision, icon-only since 2026-07-11)**: one button, not
+a pair - label and variant flip with whether the card is already added (`Add`/`check` icon when
+unused, `Remove`/`close` icon when in use, both `variant="ghost"` — position alone signals
+primacy here, not a heavier fill), instead of always rendering both buttons and disabling+hiding
+whichever doesn't apply. A card's excluded (auto-filtered) state doesn't change this - the same
+confirm-before-adding flow (face policy check) still runs regardless of which state the toggle
+is in when clicked.
 
-**Card-internal spacing (2026-07-08 revision)**: the thumbnail is full-bleed, no padding
-(fills the card edge to edge). Everything below it (description/metadata/actions) sits in
-one body container with a unified 12px padding and a 10px gap between groups
-(description <-> metadata <-> actions); within the actions group, [Add]/[Remove] and
-[Set as intro]/[Set as outro] sit tighter (6px). Because the Astryx Card is used with
-padding=0, this single body container (`.moment-card-body`) owns all padding/spacing —
-individual children must not carry their own padding. The metadata row (category badge,
-length, quality) is baseline-aligned.
+**Card-internal spacing (2026-07-08 revision, superseded in part 2026-07-11)**: the thumbnail is
+full-bleed, no padding (fills its column edge to edge). Everything to its right (description/
+metadata/action) sits in one body container (`cardBody`) with a unified padding and a gap
+between groups; because the Astryx Card is used with padding=0, this single body container owns
+all padding/spacing — individual children must not carry their own padding.
 
-**Thumbnail composition (2026-07-09 addition — rule 6's palette-card exception, narrowed)**: the
-media area (frame image + index/timestamp chip + "in use" badge) is expressed with Astryx
-components, not custom markup: `AspectRatio ratio={16/9}` wraps the frame image, wrapped in turn by
-`Overlay` (`position="top"`, `scrim={false}` so it never dims the frame) whose `content` is a single
-flex row (space-between) holding the chip and badge. Astryx `Thumbnail` doesn't fit here (it's
-fixed-square with no overlay slot at all). The index/timestamp chip stays a plain styled span, not
-a `Badge` — it names "which clip/where", carrying no status semantics, so `Badge`'s
-success/warning/error vocabulary would be a mismatch; the "in use" indicator genuinely is a status,
-so that one is a real `Badge` (`variant="success"`). The full-width exclusion-reason banner (item b
-below) stays custom, deliberately outside this Overlay composition — Overlay always renders its
-content as an overlapping layer on top of the media it wraps, but the banner must sit above the
-thumbnail in normal flow (pushing it down, covering none of the frame) and spans the whole card,
-not just the thumbnail — the opposite of what Overlay composes.
+**Thumbnail composition (2026-07-11 revision)**: the thumbnail is a plain, full-bleed `img`
+(`objectFit: cover`) inside a fixed-width column (`thumbCol`, ~45% of the card, `position:
+relative`) stretched to the card row's own fixed height by the row's `alignItems: stretch` — not
+`AspectRatio`, which would derive its own height from a 16:9 ratio regardless of the row's actual
+box and leave letterbox gaps once every card was pinned to one uniform height (2026-07-11 fix,
+below). An Astryx `Overlay` (`scrim={false}`, `position="top"`) anchors just the in-use badge (a
+real `Badge`, `variant="success"`, the cut number as its label) to the thumbnail's top; the
+index/timestamp chip that used to share that corner was removed (2026-07-11 user feedback —
+declutter the thumbnail, all text metadata moved to the card's right side, see the metadata
+cluster above). The excluded-reason text (below) is a second, separate absolute overlay anchored
+to the same `thumbCol`, not part of the `Overlay` composition.
 
-**State representation rule (2026-07-08 revision — fixes the "which one is dimmed and why"
-misread)**: excluded cards (quality below threshold / face exposure) must not dim the whole
-card via opacity — full dimming reads as "disabled/loading". Instead: (a) desaturate only
-the thumbnail image (grayscale 60-80%) — the scene itself stays legible, the only signal is
-"the auto-draft didn't pick this". (b) State the exclusion reason on a full-width banner at
-the very top of the card — far more noticeable than a small corner badge. (c) The [Add]
-button stays enabled — exclusion means "the automation filtered it out", not "forbidden";
-the user can always bring it back, and the button state must show that. Description and
-metadata text keep full contrast (not dimmed).
+**State representation rule (2026-07-11 revision, superseding the 2026-07-08 rule below)**:
+excluded cards (quality below threshold / face exposure) are told apart from a normal card by
+(a) a 1px card border colored by rejection reason (red for face, yellow for quality) and (b) the
+reason text on a translucent-black scrim across the bottom of the thumbnail only (not a
+full-width banner above the card — a banner added a whole extra row's height to only excluded
+cards, breaking the grid's uniform row height, which is why it was replaced). Full-opacity
+dimming and thumbnail desaturation were both tried and abandoned (both hurt readability); the
+card and thumbnail always render at full contrast. The [Add]/[Remove] toggle stays enabled
+either way — exclusion means "the automation filtered it out", not "forbidden"; the user can
+always bring it back.
 
 ## 3. (2) Edit (single screen)
 
 ```
 [Timeline (zoom controls at the far right)]
 [Play all button]
-[BGM section header: chevron + "Background music" (+count) ..... + Add track]
-+gu+- Cut list -----------+ +- Video column (sticky) ------------+
-|tt| row: subtitle (inline)| | scene header (#n, badge, desc)     |
-|er|   |scene line|badge   | | video (reframe, subtitle overlay)  |
++--+- Cut list -------------+ +- Video column (sticky) ------------+
+|  | row: subtitle (inline) | | scene header (#n, badge, desc)     |
+|  |   |scene line|badge    | | video (reframe, title/subtitle     |
+|  |                        | |   overlay)                         |
 |  |                        | | TrimStrip (filmstrip, drag In/Out) |
 |  |                        | |   zoom row (-/Fit cut/Fit clip/+)  |
 |  |                        | |   pan control (only while zoomed)  |
-|  |                        | | playback controls (one row: Play/  |
-|  |                        | |   Pause, In, Out, split, capture)  |
+|  |                        | | playback controls (one row: go to  |
+|  |                        | |   start, Play/Pause, mark In/Out,  |
+|  |                        | |   split, capture frame, reframe)   |
 |  |                        | |   playback-mode toggle (secondary, |
 |  |                        | |   smaller than Play — Loop/Full)   |
-|  |                        | +- Cut settings OR BGM settings -----+
-+--+------------------------+   (right column swaps per selection)
+|  |                        | +- Cut settings (two tabs) ----------+
++--+------------------------+
 ```
+Background music editing is moving out of this arrangement into a collapsible side panel (in
+progress, separate work) — not pinned to a specific column/layout here while that move is
+underway.
 
 **No thumbnail in the cut list row (2026-07-11 QA fix)**: the row's subtitle text + scene
 description already identify the cut, and clicking a row shows it in the right-side VideoPreview,
@@ -145,45 +159,21 @@ so the thumbnail was redundant width on a compact list whose whole point is fitt
 video column. The freed ~50px (thumbnail + its gap) goes to the subtitle text column. The Scenes
 step's cards (section 2) keep thumbnails — that screen has no right-side preview to fall back on.
 
-**Play/Pause + control-row hierarchy (2026-07-11 QA fix)**: the playback-controls Play button now
-reflects actual `<video>` play state (label/action flip to Pause while playing) instead of only
-ever offering Play — previously there was no way to stop playback from this row. The playback-mode
-toggle (Loop range / Full clip) below it is a secondary setting, not this area's primary action, so
-it's sized and colored quieter than the primary Play/Pause button (never visually larger than it).
+**Video toolbar row (2026-07-11/07-12 revisions)**: go to start (lucide `SkipBack`) / Play-Pause
+(lucide `Play`/`Pause`, reflecting the actual `<video>` play state instead of only ever offering
+Play) / Mark In / Mark Out / Split / Capture frame, then — unless a reframe edit is already in
+progress (in which case its own Full frame/Apply/Cancel/Clear toolbar takes over) — a Reframe (or
+"Adjust reframe", once a crop exists) entry point. Reframe is not a Cut settings group (section 4)
+— its edits happen directly on the video via an overlay, so its entry point lives here, beside the
+other video-toolbar actions ("structure matches flow"). Below this row, the playback-mode toggle
+(Loop range / Full clip, a stock Astryx `SegmentedControl`) is a secondary setting, sized and
+colored quieter than the primary Play/Pause button (never visually larger than it).
 
-**BGM section header (2026-07-11 QA fix)**: restyled onto the standard collapsible-section-header
-convention (Notion toggle / VS Code sidebar section) — a small, quiet chevron + title on the left,
-"+ Add track" as the section's action on the right of the same header line. The header row's own
-height is independent of collapsed/track-count state; only the vertical BGM gutter's *width*
-(a lane strip beside the cut list, not a block above/below it) changes with collapse.
-
-**BGM gutter (2026-07-09, replaces the earlier "Timeline · Background music (BGM)" section
-that lived in the Export step)**: background music editing moved next to the cut list because
-you cannot place music against nothing — you need to see cut content (thumbnails/subtitles/scene
-lines) to decide "the music changes at cut #3". Design:
-- Each bgm cue renders as a **vertical bar in the gutter spanning the cut rows it covers** — not
-  a proportional-time horizontal lane. Storage stays seconds (the schema/render contract is
-  unchanged); the gutter converts cut index <-> accumulated playback time
-  (`lib/bgmCutMapping.ts`) purely for display/editing.
-- **Anchoring**: dragging a bar (move) or its top/bottom edge (resize) snaps to **cut
-  boundaries**, never an arbitrary pixel/second. Bar geometry is read directly off the actual
-  rendered row elements' `offsetTop`/`offsetHeight` (not computed from a separate proportional
-  time axis), so it is pixel-exact with the cut list by construction — a row growing (subtitle
-  text wrapping) keeps the bar aligned without any separate sync logic.
-- **Overlaps are allowed** (e.g. a music bed under a shorter sting) — overlapping cues are
-  assigned to separate lanes (`lib/bgmLanes.ts`, greedy interval scheduling) and render as
-  parallel thin columns in the gutter, each independently clickable/draggable.
-- **Collapsible**: the whole gutter can be collapsed to a thin strip via its header toggle (a
-  count badge shows how many tracks exist while collapsed, since tracks can multiply).
-- **Selection swaps the right column**: clicking a bar sets the panel on the right to
-  `BgmSettingsPanel` instead of Cut settings — file picker (with pre-listen: a play/stop button
-  next to each candidate file, so auditioning doesn't require assigning first), start/end shown
-  as cut numbers ("Cuts 3-17") alongside the seconds they resolve to, volume, and a separated
-  destructive [Remove track]. Clicking a cut row (not a bar) swaps the panel back to Cut
-  settings. "+ Add track" (gutter header) adds a track defaulting to span just the currently
-  selected cut.
-- Works alongside "Play all" so timing can be audited by ear while watching.
-- The Export step (section 5) now shows only a one-line, read-only summary — see there.
+**Play all stage (2026-07-12 fix)**: the stage keeps a strict 16:9 box (derived via `aspectRatio`,
+not a height cap independent of width) so the video never letterboxes/pillarboxes regardless of
+viewport size, and the subtitle overlay sizes itself in `cqw` (container-query width units)
+relative to that same box — matching the (2) Edit video column's own subtitle sizing approach
+(`lib/subtitleOverlay.ts`, shared) so what's previewed here matches what exports.
 
 **TrimStrip (2026-07-09, replaces the earlier "two-level trim" two-stacked-bars design)**: mapping
 a long clip's *entire* duration onto one scrub bar's pixel width makes a short in/out range (e.g.
@@ -265,102 +255,124 @@ the video column via its own `flexGrow`.
 
 **No panel title (2026-07-11 QA fix)**: the "Cut settings" `<h2>` above G1 was removed — the
 panel's context is already obvious while scrolling vertically through it (`data-testid="cut-
-settings-panel"` stays as the stable test hook, just with no visible title). G1 now sits at the
-panel's own top padding via the pre-existing `.qf-group:first-child` rule, which already zeroed a
-first group's own top padding/divider for exactly this case.
+settings-panel"` stays as the stable test hook, just with no visible title).
 
-**G1. Range** — one row: `In [narrow] Out [narrow] Length 12.3s (read-only)`
-**G2. Playback** — one row: `Speed [narrow]x Volume [narrow]%` (paired alignment, never
-  oversized). Speed is capped at **16x** (input: min 0.1, step 0.1, max 16; over-entry clamps
-  instead of erroring, with a note shown once the cap is hit) — browsers throw setting
-  `HTMLMediaElement.playbackRate` above 16, which would otherwise crash this same preview. The
-  schema enforces the same cap (`speed must be <= 16`), and VideoPreview/SequencePlayer also
-  defensively clamp the value actually assigned to `playbackRate` (belt-and-suspenders for
-  old/hand-edited data and the J/K/L shuttle's further multiplier).
-**G3. Subtitle** — textarea (full) + a **Style preset** select (medium, shown only once at
-  least one preset exists — see section 5's "Subtitle style presets") sitting above the
-  collapsible sub-section **"Subtitle style for this cut"** (indented/bordered to make clear
-  it belongs under Subtitle): size, color, outline, background (color + opacity in one row),
-  margin + [Apply to all cuts] [Release]. Merge order when both are present: global subtitle
-  style < the selected preset < this cut's own override (per-cut override always wins last —
-  see ARCHITECTURE.md's schema contracts section).
-**G4. Title** (PRD backlog #2, 2026-07-09 addition) — a **Title card for this cut** checkbox;
-  once on: text (full, 80-char cap), preset select + duration (paired row, matching the G2
-  Speed/Volume pairing pattern) and a **Backdrop dim** slider (0-100%, 0% = no dim layer).
-  Preset options: **Typing** (per-letter typewriter + cursor, ASS/libass karaoke at render
-  time), **Gooey** (organic blobs assembling into text), **Melt** (Gooey's exit variant —
-  entrance then a drip/fade departure), **Particle** (fibers/sparkles assembling, canvas) — the
-  latter three render via headless frame-capture -> alpha overlay at render time (see
-  docs/research/title-render-spike.md). Placed directly after Subtitle (both are text-overlay
-  concerns) and before Transitions/Narration/Reframe.
-**G5. Transitions** (PRD backlog #3, 2026-07-09 addition) — two independent sub-blocks,
-  **Transition in** and **Transition out**, each a checkbox that once on reveals: type select
-  (Fade/Dip) + duration (narrow, paired row, matching the G2 Speed/Volume pairing pattern) and a
+**Two tabs (2026-07-11, 13-inch density pass)**: the panel splits into a **Cut** tab (the edits
+made while actually trimming/arranging a cut) and an **Effects** tab (the cosmetic overlay
+edits), roughly halving the panel's vertical length so it fits a 13-inch viewport without
+scrolling — this superseded the earlier single-column G1-G8 layout described in older revisions
+of this section. Group numbering below (G1, G2, ...) now numbers within each tab, not across the
+whole panel.
+
+**Cut tab** — Range -> Playback -> Narration (conditional) -> Cut actions -> Delete (destructive,
+separated):
+- **G1. Range** — one row: `In [narrow] Out [narrow] Length 12.3s (read-only)`
+- **G2. Playback** — one row: `Speed [narrow] Volume [narrow]` plus a decorative Percent icon
+  after Volume (the "x" unit text that used to sit next to Speed was dropped as redundant — the
+  field's own "Speed" label already carries the meaning). Speed is capped at **16x** (input: min
+  0.1, step 0.1, max 16; over-entry clamps instead of erroring, with a note shown once the cap is
+  hit) — browsers throw setting `HTMLMediaElement.playbackRate` above 16, which would otherwise
+  crash this same preview. The schema enforces the same cap (`speed must be <= 16`), and
+  VideoPreview/SequencePlayer also defensively clamp the value actually assigned to
+  `playbackRate` (belt-and-suspenders for old/hand-edited data and the J/K/L shuttle's further
+  multiplier).
+- **Narration** (shown only when narration is in use) — select (medium) + preview + length
+  warning. Kept inline rather than promoted to its own numbered group (small, always
+  conditional).
+- **Cut actions** — two rows (2026-07-11 user feedback: intro/outro assignment reads as a
+  distinct kind of action from the edit-this-cut buttons, so it now sits on its own line): row 1
+  is [Split Cmd+B] [Merge with next cut Cmd+J] [Duplicate]; row 2 is [Set as intro] [Set as
+  outro] (disabled + reason if the clip is longer than 15s — this is where intro/outro
+  assignment lives now; the (1) Scenes card no longer has these buttons, see section 2). No
+  primary in either row — none of these five is a dominant/default action, so all are
+  `secondary`/`ghost`.
+- **Destructive zone** (separate, panel bottom of this tab) — [Delete], alone, separated by a
+  divider + extra spacing and rendered `variant="destructive"`. Deliberately isolated so it can
+  never be mistaken for a routine action (section 0-5 "destructive/rare actions ... last" taken
+  literally — last and set apart, not just last in reading order).
+
+**Effects tab** — Subtitle -> Title -> Transitions:
+- **Subtitle** — textarea (full) + a **Style preset** select (medium, shown only once at least
+  one preset exists — see section 5's "Subtitle style" section) sitting above the collapsible
+  sub-section **"Subtitle style for this cut"** (indented/bordered to make clear it belongs under
+  Subtitle): size, color, outline, background (color + opacity in one row), margin + [Apply to
+  all cuts] [Release]. Merge order when both are present: global subtitle style < the selected
+  preset < this cut's own override (per-cut override always wins last).
+- **Title** — a **Title card for this cut** checkbox; once on: text (full, 80-char cap), preset
+  select + duration (paired row, matching the Playback group's Speed/Volume pairing pattern),
+  color + size (paired row), and a **Backdrop dim** slider (0-100%, 0% = no dim layer). Preset
+  options, shipped (superseding an earlier design sketch that named a different Gooey/Melt/
+  Particle/Typing lineup): **Fade** (calm scale+opacity entrance), **Word stagger** (each word
+  eases in with a stagger), **Typing** (typewriter reveal + blinking cursor), **Highlight** (a
+  pastel marker sweeps in behind the last word). Defaults: color `#ffffff`, size 500, font
+  Pretendard (bundled into the render so exports match the preview). All four presets render the
+  same way — Remotion, headless frame-capture -> transparent PNG sequence -> alpha-overlay
+  composite at render time (no separate ASS/libass path for any preset). The live preview in the
+  video column (`TitleOverlay`/`TitlePreview`) runs the identical animation math in plain React +
+  `requestAnimationFrame` rather than `@remotion/player` (which repeatedly failed to animate
+  reliably in this environment), so it's pixel-identical without a Remotion runtime in the
+  browser; it auto-loops with no play/pause/restart controls of its own (a floating control chip
+  used to overlap the burned-in subtitle).
+- **Transitions** — two independent sub-blocks, **Transition in** and **Transition out**, each a
+  checkbox that once on reveals: type select (Fade/Dip) + duration (narrow, paired row) and a
   **Dip amount** slider (0-100%, shown only when type is Dip — Fade always fades fully to black,
   so it has no amount control). A parity note under the group states the Edit-step video's
-  fade/dip is an opacity-ramp approximation, not the real render. Placed directly after Title
-  (both are "what happens at/over the edges of this cut's frame" concerns) and before Narration.
-**G6. Narration** — select (medium) + preview + length warning (shown only when narration
-  is in use)
-**G7. Reframe** — status display + [Edit] [Release] (Edit opens an overlay mode on the video)
-**G8. Cut actions** — one row of buttons: [Split Cmd+B] [Merge with next cut Cmd+J]
-  [Duplicate] [Set as intro] [Set as outro]. No primary in this row — none of these five is
-  a dominant/default action, so all are `secondary`/`ghost` (2026-07-08 revision: this group
-  used to also hold Delete at the end, visually pushed right by a CSS trick; that read as
-  "just another cut action" and risked a misclick on a destructive operation).
-**Destructive zone (separate from G8, panel bottom)** — [Delete], alone, separated from G8 by
-  a divider + extra spacing and rendered `variant="destructive"`. This is not a numbered G
-  group: it is deliberately isolated so it can never be mistaken for a routine action (section
-  0-5 "destructive/rare actions ... last" taken literally — last and set apart, not just last
-  in reading order).
+  fade/dip is an opacity-ramp approximation, not the real render.
 
-Rationale: G1-G3 cover 90% of the edit loop (range -> subtitle), G4-G8 are occasional.
-"Subtitle style for this cut" is a sub-property of subtitle, so it lives inside G3 — never
-its own section (this is the core fix for the current problem). The clip filename in G1 is
-read-only plain text (not an input) — the only legitimate way to change which source clip a
-cut points to is picking a scene in (1) Scenes or duplicating an existing cut; hand-typing a
-filename is error-prone and was never a real, supported path.
+**Reframe is not a Cut settings group.** Its entry point ([Reframe]/[Adjust reframe]) lives on
+the video toolbar itself, next to Capture frame (section 3) — reframe edits happen directly on
+the video via an overlay, so its entry point belongs there ("structure matches flow"), not in
+this panel.
 
-**Confirmed width tokens for G1/G2 (2026-07-08, measured)**: label column 40px, `narrow`
+Rationale: Range/Playback/Subtitle cover most of the edit loop; Narration/Title/Transitions/Cut
+actions are occasional — splitting them across Cut/Effects tabs is what keeps either tab short
+enough for a 13-inch viewport. "Subtitle style for this cut" is a sub-property of subtitle, so it
+lives inside the Subtitle group — never its own section. The clip filename in Range is read-only
+plain text (not an input) — the only legitimate way to change which source clip a cut points to
+is picking a scene in (1) Scenes or duplicating an existing cut; hand-typing a filename is
+error-prone and was never a real, supported path.
+
+**Confirmed width tokens for Range/Playback (2026-07-08, measured)**: label column 40px, `narrow`
 input 80px (up from 64px — 64px let a 5-character decimal value like `39.87` collide with
 the native number-input spinner and get visually clipped, reproduced on a real cut), field
 slot (label + input + unit suffix) 144px fixed regardless of whether a unit suffix is
 present. The fixed slot width is what makes the second field in each row (Out / Volume)
 start at the same x across both rows — without it, a 1-character label ("Out") vs a
-2-character label ("Volume") plus the presence/absence of a unit suffix ("x" / "%") shifted
+2-character label ("Volume") plus the presence/absence of a unit suffix shifted
 the second input's start position by as much as 24px row to row, which read as the whole row
-leaning right. The read-only `Length` text in G1 wraps to its own line when the panel is too
+leaning right. The read-only `Length` text in Range wraps to its own line when the panel is too
 narrow to fit all three items on one row (`qf-row` already used `flex-wrap: wrap`) — this is
 expected degradation, not a bug.
 
 ## 5. (3) Export
 
-Section order (the natural order of preparing output): **Project** (name, fps, resolution,
-episode fade in/out — PRD backlog #3, a narrow-field pair like Width/Height above it)
--> **Subtitle style (global)** (compact live preview / size/color/outline as one group /
-background box as one group / position + edge margin, each its own row / note pointing at the
-(2) Edit video column for the composited-over-actual-video version) -> **Subtitle style
-presets** (PRD backlog #1, 2026-07-09 addition — immediately follows the global style since a
-preset is "another named version of the same thing"): one row per existing preset (name field,
-compact preview chip reusing the same overlay CSS as the global style's preview, a collapsible
-"Edit" with the same size/color/outline/margin fields as the per-cut override, [Delete]) plus a
-"New preset name" + [Create preset] row at the bottom -> **Intro/outro** (select +
-release, collapsible manual entry) -> **Background music** (one-line summary only — editing
-lives in the (2) Edit step, see section 3) -> **Narration** (toggle, folder, volume, **Ducking**
-sub-block, help text) -> **Output** ([Download subtitles .srt] [Export...] — Export dialog:
-resolution presets / burn-in subtitles / summary / start).
+**Section order (2026-07-11 fold-in, superseding the "Subtitle style presets" separate-section
+design described below)**: **Project** (name, fps, resolution, episode fade in/out, a
+narrow-field pair like Width/Height above it) -> **Subtitle style** (folds the global look and
+every named, reusable preset into ONE section — `SubtitleStylePresetsSettings` owns an "editing:
+global vs. which preset" target select, so what used to be a separate "Subtitle style presets"
+section, one Collapsible field-set stacked per preset, is gone; that layout became unwieldy past
+a couple of presets) -> **Intro/outro** (select + release, collapsible manual entry) ->
+**Background music** (one-line summary only in this step; editing itself is moving to a
+collapsible side panel — see section 3 — in progress, separate work) -> **Output** ([Download
+subtitles .srt] [Export...] — Export dialog: resolution presets / burn-in subtitles / summary /
+start).
 
-**Ducking** (PRD backlog #4, 2026-07-09 addition) — a sub-toggle inside Narration, shown only
-while narration itself is enabled: a checkbox ("Duck background music during narration") that
-once on reveals a **Duck amount** slider (0-100%, default 60%) and a **Fade duration** narrow
-number field (seconds, 0.1-1, default 0.3). No per-cut field exists - ducking windows are
-derived entirely from where narration is already placed, so there's nothing to configure per
-cut. Unlike Transitions' fade/dip (which has a live opacity-ramp preview on the video element),
-there is currently no live BGM/narration audio playback anywhere in the (2) Edit step's Play
-all (BGM/narration only get a standalone audition player in their own settings panels) - so
-ducking has no in-editor preview yet, only a note under the group saying so. Wiring an actual
-preview needs a BGM/narration playback engine synced to Play all's clock first (not yet built);
-until then this is export-only, same as any other render-only feature would be.
+**Narration is not currently rendered in this step.** The design below (toggle, folder, volume,
+Ducking sub-block) describes a settings component (`NarrationSettings`) that is built and tested
+but not wired into this step (or any step) yet — so none of it is reachable from the running app
+right now; only per-cut narration file selection (the (2) Edit step's Cut settings) works today.
+Wiring it back in is open work (see PRD section 11).
+
+**Ducking** (as designed in `NarrationSettings`, once wired in) — a sub-toggle inside Narration,
+shown only while narration itself is enabled: a checkbox ("Duck background music during
+narration") that once on reveals a **Duck amount** slider (0-100%, default 60%) and a **Fade
+duration** narrow number field (seconds, 0.1-1, default 0.3). No per-cut field exists - ducking
+windows are derived entirely from where narration is already placed, so there's nothing to
+configure per cut. Unlike Transitions' fade/dip (which has a live opacity-ramp preview on the
+video element), there is currently no live BGM/narration audio playback anywhere in the (2) Edit
+step's Play all (BGM/narration only get a standalone audition player in their own settings
+panels) - so ducking has no in-editor preview, only a note under the group saying so.
 
 **Layout tokens (2026-07-09 revision — fixes the "inputs are tiny and right-skewed" bug)**: a
 section's form content is capped at a **readable column width** (620px; 680px for the subtitle
@@ -371,7 +383,8 @@ the left of its field** — never `justify-content: space-between` (that was the
 the section stretched to the full step-body width, space-between threw the label to the far left
 and the field to the far right with a large empty gap between, which read as "tiny, right-skewed
 inputs" even though the fields themselves weren't small). Field width is chosen by content type,
-not by the row: numbers use the shared `narrow` token (80px, same as Cut settings' G1/G2); short
+not by the row: numbers use the shared `narrow` token (80px, same as Cut settings' Range/Playback
+groups); short
 free text (Name, Font) uses a wider `medium` text token (240px, `.field-text-medium` — distinct
 from the 180px `.field-medium` used for selects elsewhere, since 180px reads cramped for a text
 field); color rows keep the swatch + hex pair immediately adjacent to the label, never split
@@ -419,6 +432,24 @@ Buttons that belong to one group render inside one container (not spread across 
 stay visually together, and action groups in banners/dialog footers are right-aligned.
 
 ## Changelog
+- 2026-07-12 — reconciliation pass: audited this document against the running implementation
+  after a long editing session and corrected the parts that had drifted. Biggest fix: the
+  Scenes-card cut number (section 2) is the cut's 1-based **timeline** position, 1:1 with cuts
+  (never a duplicate-able overlap count) — the same number shown in (2) Edit. Also: Scenes cards
+  no longer carry Set-intro/outro (moved to Edit's Cut actions) and their exclusion/description
+  representation changed (scrim on the thumbnail + a colored border, not a full-width banner +
+  desaturation; description now clamps/scrolls rather than never truncating); Cut settings
+  (section 4) split into Cut/Effects tabs and Reframe moved out to the video toolbar; Playback
+  dropped the Speed "x" unit text and gained a Percent icon; Title's shipped presets are
+  fade/wordStagger/typing/highlight (not the originally-sketched Gooey/Melt/Particle trio),
+  rendered via Remotion with a plain-React/rAF browser preview (`TitlePreview`, no
+  `@remotion/player`); Undo/Redo and the video/Play-all transport controls are icon buttons; the
+  step nav uses meaning icons instead of step numbers; the Play-all stage is a strict 16:9 box
+  with `cqw`-sized subtitles; Export's Subtitle style section folds global + presets together
+  (no separate "Subtitle style presets" section) and currently has no Narration section (the
+  settings component exists but isn't wired into any step yet); BGM's exact layout is left
+  unpinned here while it moves to a collapsible side panel (separate, in-progress work). See
+  PRD.md's equivalent sections for the same corrections.
 - 2026-07-11 — live-testing QA round, six fixes: (1) Edit-tab video controls' Play button now
   reflects real play state (flips to Pause, section 3); (2) the cut list row's thumbnail removed
   (section 3) - subtitle/scene text + the right-side VideoPreview already identify the cut; (3)
