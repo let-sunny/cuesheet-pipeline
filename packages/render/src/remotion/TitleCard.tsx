@@ -4,6 +4,11 @@ import { HighlightTitle } from "./HighlightTitle.js";
 import { TypewriterTitle } from "./TypewriterTitle.js";
 import { WordStaggerTitle } from "./WordStaggerTitle.js";
 
+// Re-exported so this file (the `@cuesheet/render/remotion` subpath's target - see package.json's
+// exports map) is the single entry point browser code (apps/web's TitleOverlay) needs to run the
+// real composition: the component/props plus the one color constant it isn't handed via schema.
+export { TITLE_TEXT_COLOR } from "./titleCardStyle.js";
+
 /**
  * Props for the "TitleCard" Remotion composition (registered in index.tsx) - this is the
  * `Record<string, unknown>`-extending shape both the bundle's defaultProps and title.ts's

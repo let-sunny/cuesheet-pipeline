@@ -1,5 +1,6 @@
 import { Composition, registerRoot } from "remotion";
 import { TitleCard, type TitleCardProps } from "./TitleCard.js";
+import { TITLE_TEXT_COLOR } from "./titleCardStyle.js";
 
 /**
  * Remotion bundle entry point (see title.ts's prepareTitleAssets, which points @remotion/bundler's
@@ -32,17 +33,14 @@ registerRoot(RemotionRoot);
  * Default props used only for the Studio/preview default (real renders always pass their own
  * inputProps via selectComposition/renderFrames - title.ts's prepareTitleAssets passes
  * cue.project.width/height/fps and the title's own text/preset/durationS there, overriding every
- * field below via calculateMetadata). Color kept in sync by hand with title.ts's TITLE_TEXT_COLOR
- * constant (SYNC: no shared runtime module between the Node-side render pipeline and this
- * Remotion-bundled entry, so this is a deliberate, documented duplication rather than an
- * accidental one).
+ * field below via calculateMetadata).
  */
 const DEFAULT_PROPS: TitleCardProps = {
   text: "",
   preset: "fade",
   durationInSeconds: 1,
   fps: 30,
-  color: "#3a3128",
+  color: TITLE_TEXT_COLOR,
   width: 1920,
   height: 1080,
 };

@@ -434,7 +434,12 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
             {sceneHintText}
           </div>
         ) : null}
-        <TitleOverlay title={currentSegment?.title} localTimeS={videoNow - (currentSegment?.in ?? 0)} />
+        <TitleOverlay
+          title={currentSegment?.title}
+          projectWidth={projectWidth}
+          projectHeight={projectHeight}
+          projectFps={cue.project.fps}
+        />
         {subtitle !== "" ? (
           <div
             {...stylex.props(

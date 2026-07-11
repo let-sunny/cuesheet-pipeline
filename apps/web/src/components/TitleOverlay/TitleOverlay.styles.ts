@@ -1,4 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
+import { spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
 
 /**
  * Component anatomy exemplar (CLAUDE.md "component layering"): styles live in their own
@@ -25,11 +26,18 @@ export const styles = stylex.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  typingText: {
-    fontFamily: "Pretendard, system-ui, sans-serif",
-    fontWeight: 700,
-    color: "#ffffff",
-    textShadow: "0 0 6px rgba(0,0,0,0.6), 0 0 2px rgba(0,0,0,0.8)",
-    whiteSpace: "pre",
+  // Compact restart/play-pause controls, pinned near the bottom of the video stage this overlay
+  // sits over (not part of document flow, so it never eats layout - CLAUDE.md screen-spec rule).
+  // pointerEvents is re-enabled here despite the container above disabling it, so the buttons stay
+  // clickable while the rest of the overlay (the title-card animation itself) stays click-through.
+  controls: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: spacingVars["--spacing-2"],
+    display: "flex",
+    justifyContent: "center",
+    gap: spacingVars["--spacing-1"],
+    pointerEvents: "auto",
   },
 });
