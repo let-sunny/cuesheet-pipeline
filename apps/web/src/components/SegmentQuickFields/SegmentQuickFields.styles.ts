@@ -36,23 +36,6 @@ export const styles = stylex.create({
     overflowY: "auto",
     overflowX: "hidden",
   },
-  // The Cut/Effects tabs stay pinned to the top of the panel while the groups scroll under them, so
-  // switching tabs never requires scrolling back up (2026-07-11 user feedback). It carries the
-  // surface background and spans the panel's inline padding (negative margin + matching padding) so
-  // scrolled content doesn't show through beside it, and sits flush to the panel's top padding edge
-  // when stuck. The negative top margin + matching padding pull it up over the panel's own top
-  // padding so there's no dead gap above the tabs before scrolling.
-  tabBar: {
-    position: "sticky",
-    top: 0,
-    zIndex: 1,
-    backgroundColor: colorVars["--color-background-surface"],
-    marginInline: `calc(-1 * ${spacingVars["--spacing-4"]})`,
-    paddingInline: spacingVars["--spacing-4"],
-    marginTop: `calc(-1 * ${spacingVars["--spacing-3"]})`,
-    paddingTop: spacingVars["--spacing-3"],
-    paddingBottom: spacingVars["--spacing-1"],
-  },
   groupBorder: {
     paddingTop: spacingVars["--spacing-2"],
     borderTopWidth: 1,
