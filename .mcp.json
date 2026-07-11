@@ -6,6 +6,10 @@
       "env": {
         "CUESHEET_PATH": "project.cuesheet.json"
       }
+    },
+    "astryx-docs": {
+      "type": "http",
+      "url": "https://astryx.atmeta.com/mcp"
     }
   }
 }

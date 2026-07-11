@@ -129,6 +129,16 @@ exposes a few plain HTTP endpoints beyond the bridge's MCP tools:
   `out.mp4` is also, confusingly, the `cuesheet-render` CLI's own default output argument — the
   two are independent paths that happen to share a name.
 
+## UI / design system
+
+If a task touches the web editor's UI (`apps/web`), that's development work, not operating the
+pipeline — read [CLAUDE.md](./CLAUDE.md) instead of relying on this file. In short: the editor is
+built on the Astryx design system, and CLAUDE.md's `<!-- ASTRYX:START -->` block (in "Design
+principles") is the generated component/template catalog cheat sheet — check it (and `astryx
+build "<idea>"` / `astryx template --list`) before hand-building any structure, per the
+"adopt templates by purpose/goal/data-hierarchy, check the catalog first" principle in
+`docs/design-principles.md`.
+
 ## File/path conventions
 
 - `episodes/<slug>.cuesheet.json` — per-episode cuesheet naming used by `pnpm episode` (`<slug>`

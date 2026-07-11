@@ -23,6 +23,7 @@
     "e2e:ui": "playwright test --config tests/e2e/playwright.config.ts --ui"
   },
   "devDependencies": {
+    "@astryxdesign/cli": "0.1.4",
     "@playwright/test": "^1.61.1",
     "@types/node": "^22.20.0",
     "typescript": "^5.6.0",
