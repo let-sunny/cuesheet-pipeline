@@ -4,13 +4,29 @@ import type {
   BgmCue,
   CueSheet,
   Segment,
-  SubtitleStyle,
   SubtitleStyleOverride,
   Title,
   Transition,
 } from "@cuesheet/schema";
-import { cumulativeCutStarts, cutRangeToSeconds } from "../lib/bgmCutMapping.js";
-import { computeMergeEligibility } from "../lib/segmentMerge.js";
+import { addBgmTrackToSheet, changeBgmRangeInSheet, removeBgmTrackAt, updateBgmAt } from "../lib/bgmEditing.js";
+import {
+  clearSegmentCropAt,
+  duplicateSegmentAfter,
+  removeSegmentAt,
+  splitSegmentAt,
+  swapSegmentAt,
+  updateSegmentInSheet,
+} from "../lib/segmentListEditing.js";
+import { computeMergeEligibility, mergeSegmentAt } from "../lib/segmentMerge.js";
+import {
+  changeSegmentStylePresetAt,
+  clearSegmentStyleOverrideAt,
+  promoteSegmentStyleOverrideAt,
+  toggleSegmentStyleOverrideAt,
+  updateSegmentStyleOverrideAt,
+} from "../lib/subtitleStyleOverrideEditing.js";
+import { toggleSegmentTitleAt, updateSegmentTitleAt } from "../lib/titleEditing.js";
+import { toggleSegmentTransitionAt, updateSegmentTransitionAt } from "../lib/transitionEditing.js";
 
 export interface UseEditStepActionsOptions {
   draft: CueSheet | null;
@@ -48,16 +64,17 @@ export interface UseEditStepActionsResult {
   updateSegmentTransition: (i: number, side: "in" | "out", patch: Partial<Transition>) => void;
 }
 
-/** Default span (in cuts) a freshly added BGM track covers, when there are enough cuts to fill it -
- * through cut 3 (index 2). Chosen so a new track is immediately visible/draggable without already
- * spanning the whole episode. */
-const DEFAULT_BGM_TRACK_SPAN_CUTS = 3;
-
 /**
  * All the "edit this cut's fields" / "edit this BGM track" handlers backing the (2) Edit step —
  * SegmentQuickFields, BgmSettingsPanel, and CompactSegmentList's cut-list actions. Also backs the
  * global Cmd+J / Cmd+B shortcuts (mergeSegmentWithNext), which is why this hook is called
  * unconditionally in App.tsx rather than only while the Edit step is mounted.
+ *
+ * Each action here is thin wiring (guard -> record the change -> setDraft) over a pure
+ * draft-transformation function in src/lib/ (segmentListEditing.ts, segmentMerge.ts,
+ * bgmEditing.ts, subtitleStyleOverrideEditing.ts, titleEditing.ts, transitionEditing.ts) - those
+ * modules hold the actual logic and are unit-tested directly; this hook only owns the React
+ * plumbing (draft/setDraft, change recording, selection state, confirm() prompts).
  */
 export function useEditStepActions({
   draft,
@@ -73,13 +90,7 @@ export function useEditStepActions({
       return;
     }
     recordContinuousChange();
-    setDraft((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const segments = prev.segments.map((s, idx) => (idx === i ? { ...s, ...patch } : s));
-      return { ...prev, segments };
-    });
+    setDraft((prev) => (prev ? updateSegmentInSheet(prev, i, patch) : prev));
   }, [draft, recordContinuousChange, setDraft]);
 
   // The "Add segment" button — the previous behavior of appending an empty cut at the end was the
@@ -99,15 +110,12 @@ export function useEditStepActions({
       if (!prev) {
         return prev;
       }
-      const source = prev.segments[selectedIndex];
-      if (!source) {
+      const result = duplicateSegmentAfter(prev, selectedIndex);
+      if (!result) {
         return prev;
       }
-      const insertAt = selectedIndex + 1;
-      const segments = [...prev.segments];
-      segments.splice(insertAt, 0, { ...source, subtitle: "" });
-      setSelectedIndex(insertAt);
-      return { ...prev, segments };
+      setSelectedIndex(result.insertAt);
+      return result.cue;
     });
   }, [draft, recordDiscreteChange, selectedIndex, setDraft, setSelectedIndex]);
 
@@ -116,13 +124,7 @@ export function useEditStepActions({
       return;
     }
     recordDiscreteChange();
-    setDraft((prev) => {
-      if (!prev || prev.segments.length <= 1) {
-        return prev;
-      }
-      const segments = prev.segments.filter((_, idx) => idx !== i);
-      return { ...prev, segments };
-    });
+    setDraft((prev) => (prev ? (removeSegmentAt(prev, i) ?? prev) : prev));
   }, [draft, recordDiscreteChange, setDraft]);
 
   const moveSegment = useCallback((i: number, direction: -1 | 1) => {
@@ -138,16 +140,12 @@ export function useEditStepActions({
       if (!prev) {
         return prev;
       }
-      const segments = [...prev.segments];
-      const a = segments[i];
-      const b = segments[target];
-      if (!a || !b) {
+      const result = swapSegmentAt(prev, i, direction);
+      if (!result) {
         return prev;
       }
-      segments[i] = b;
-      segments[target] = a;
-      setSelectedIndex(target);
-      return { ...prev, segments };
+      setSelectedIndex(result.newIndex);
+      return result.cue;
     });
   }, [draft, recordDiscreteChange, setDraft, setSelectedIndex]);
 
@@ -163,23 +161,7 @@ export function useEditStepActions({
       return;
     }
     recordDiscreteChange();
-    setDraft((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const s = prev.segments[i];
-      if (!s) {
-        return prev;
-      }
-      if (at - s.in < 0.2 || s.out - at < 0.2) {
-        return prev;
-      }
-      const first: Segment = { ...s, out: at };
-      const second: Segment = { ...s, in: at, subtitle: "" };
-      const segments = [...prev.segments];
-      segments.splice(i, 1, first, second);
-      return { ...prev, segments };
-    });
+    setDraft((prev) => (prev ? (splitSegmentAt(prev, i, at) ?? prev) : prev));
   }, [draft, recordDiscreteChange, setDraft]);
 
   const mergeSegmentWithNext = useCallback((i: number) => {
@@ -202,20 +184,7 @@ export function useEditStepActions({
       }
     }
     recordDiscreteChange();
-    setDraft((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const cur = prev.segments[i];
-      const nxt = prev.segments[i + 1];
-      if (!cur || !nxt) {
-        return prev;
-      }
-      const merged: Segment = { ...cur, out: nxt.out };
-      const segments = [...prev.segments];
-      segments.splice(i, 2, merged);
-      return { ...prev, segments };
-    });
+    setDraft((prev) => (prev ? (mergeSegmentAt(prev, i) ?? prev) : prev));
   }, [draft, recordDiscreteChange, setDraft]);
 
   const clearSegmentCrop = useCallback((i: number) => {
@@ -223,13 +192,7 @@ export function useEditStepActions({
       return;
     }
     recordDiscreteChange();
-    setDraft((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const segments = prev.segments.map((s, idx) => (idx === i ? { ...s, crop: null } : s));
-      return { ...prev, segments };
-    });
+    setDraft((prev) => (prev ? clearSegmentCropAt(prev, i) : prev));
   }, [draft, recordDiscreteChange, setDraft]);
 
   const updateBgm = useCallback((i: number, patch: Partial<BgmCue>) => {
@@ -237,13 +200,7 @@ export function useEditStepActions({
       return;
     }
     recordContinuousChange();
-    setDraft((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const bgm = prev.bgm.map((c, idx) => (idx === i ? { ...c, ...patch } : c));
-      return { ...prev, bgm };
-    });
+    setDraft((prev) => (prev ? updateBgmAt(prev, i, patch) : prev));
   }, [draft, recordContinuousChange, setDraft]);
 
   // Adds a track (the Edit step gutter's "+ Add track" button) - defaults to starting at cut 1
@@ -257,17 +214,7 @@ export function useEditStepActions({
     }
     recordDiscreteChange();
     const newIndex = draft.bgm.length;
-    setDraft((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const cumStart = cumulativeCutStarts(prev.segments);
-      const lastCutIdx = prev.segments.length - 1;
-      const endCutIdx = Math.min(lastCutIdx, DEFAULT_BGM_TRACK_SPAN_CUTS - 1);
-      const { start, end } = cutRangeToSeconds(0, endCutIdx, cumStart);
-      const cue: BgmCue = { file: "", start, end, volume: 1 };
-      return { ...prev, bgm: [...prev.bgm, cue] };
-    });
+    setDraft((prev) => (prev ? addBgmTrackToSheet(prev).cue : prev));
     setSelectedBgmIndex(newIndex);
   }, [draft, recordDiscreteChange, setDraft, setSelectedBgmIndex]);
 
@@ -278,15 +225,7 @@ export function useEditStepActions({
       return;
     }
     recordContinuousChange();
-    setDraft((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const cumStart = cumulativeCutStarts(prev.segments);
-      const { start, end } = cutRangeToSeconds(startCutIdx, endCutIdx, cumStart);
-      const bgm = prev.bgm.map((c, idx) => (idx === bgmIndex ? { ...c, start, end } : c));
-      return { ...prev, bgm };
-    });
+    setDraft((prev) => (prev ? changeBgmRangeInSheet(prev, bgmIndex, startCutIdx, endCutIdx) : prev));
   }, [draft, recordContinuousChange, setDraft]);
 
   const removeBgmTrack = useCallback((i: number) => {
@@ -294,28 +233,16 @@ export function useEditStepActions({
       return;
     }
     recordDiscreteChange();
-    setDraft((prev) => (prev ? { ...prev, bgm: prev.bgm.filter((_, idx) => idx !== i) } : prev));
+    setDraft((prev) => (prev ? removeBgmTrackAt(prev, i) : prev));
     setSelectedBgmIndex(null);
   }, [draft, recordDiscreteChange, setDraft, setSelectedBgmIndex]);
 
-  // "Style for this cut only" toggle — turning it on starts the override as a straight copy of the
-  // global subtitleStyle (so the visible value doesn't change the instant it's toggled), letting
-  // the user adjust values from there. Turning it off (= clearing the override) removes the
-  // styleOverride key. The toggle itself is a discrete edit.
   const toggleSegmentStyleOverride = useCallback((i: number, enabled: boolean) => {
     if (!draft) {
       return;
     }
     recordDiscreteChange();
-    setDraft((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const segments = prev.segments.map((s, idx) =>
-        idx === i ? (enabled ? { ...s, styleOverride: { ...prev.subtitleStyle } } : withoutStyleOverride(s)) : s,
-      );
-      return { ...prev, segments };
-    });
+    setDraft((prev) => (prev ? toggleSegmentStyleOverrideAt(prev, i, enabled) : prev));
   }, [draft, recordDiscreteChange, setDraft]);
 
   const updateSegmentStyleOverride = useCallback((i: number, patch: Partial<SubtitleStyleOverride>) => {
@@ -323,15 +250,7 @@ export function useEditStepActions({
       return;
     }
     recordContinuousChange();
-    setDraft((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const segments = prev.segments.map((s, idx) =>
-        idx === i ? { ...s, styleOverride: { ...(s.styleOverride ?? {}), ...patch } } : s,
-      );
-      return { ...prev, segments };
-    });
+    setDraft((prev) => (prev ? updateSegmentStyleOverrideAt(prev, i, patch) : prev));
   }, [draft, recordContinuousChange, setDraft]);
 
   const clearSegmentStyleOverride = useCallback((i: number) => {
@@ -339,13 +258,7 @@ export function useEditStepActions({
       return;
     }
     recordDiscreteChange();
-    setDraft((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const segments = prev.segments.map((s, idx) => (idx === i ? withoutStyleOverride(s) : s));
-      return { ...prev, segments };
-    });
+    setDraft((prev) => (prev ? clearSegmentStyleOverrideAt(prev, i) : prev));
   }, [draft, recordDiscreteChange, setDraft]);
 
   // "Promote to global style" — merges this cut's override into the global subtitleStyle and
@@ -366,18 +279,7 @@ export function useEditStepActions({
       return;
     }
     recordDiscreteChange();
-    setDraft((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const target = prev.segments[i];
-      if (!target?.styleOverride) {
-        return prev;
-      }
-      const mergedGlobal: SubtitleStyle = { ...prev.subtitleStyle, ...target.styleOverride };
-      const segments = prev.segments.map((s, idx) => (idx === i ? withoutStyleOverride(s) : s));
-      return { ...prev, subtitleStyle: mergedGlobal, segments };
-    });
+    setDraft((prev) => (prev ? (promoteSegmentStyleOverrideAt(prev, i) ?? prev) : prev));
   }, [draft, recordDiscreteChange, setDraft]);
 
   // "Style preset" select in Cut settings (SUBTITLE group) - "" clears back to no preset (null,
@@ -388,35 +290,15 @@ export function useEditStepActions({
       return;
     }
     recordDiscreteChange();
-    setDraft((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const segments = prev.segments.map((s, idx) => (idx === i ? { ...s, stylePreset: presetName } : s));
-      return { ...prev, segments };
-    });
+    setDraft((prev) => (prev ? changeSegmentStylePresetAt(prev, i, presetName) : prev));
   }, [draft, recordDiscreteChange, setDraft]);
 
-  // "Title card for this cut" toggle - turning it on starts from a sane default (typing, 3s, no
-  // dim) so the preview shows something immediately, same pattern as the subtitle style override toggle.
   const toggleSegmentTitle = useCallback((i: number, enabled: boolean) => {
     if (!draft) {
       return;
     }
     recordDiscreteChange();
-    setDraft((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const segments = prev.segments.map((s, idx) =>
-        idx === i
-          ? enabled
-            ? { ...s, title: { text: DEFAULT_TITLE_TEXT, preset: "typing" as const, durationS: DEFAULT_TITLE_DURATION_S } }
-            : withoutTitle(s)
-          : s,
-      );
-      return { ...prev, segments };
-    });
+    setDraft((prev) => (prev ? toggleSegmentTitleAt(prev, i, enabled) : prev));
   }, [draft, recordDiscreteChange, setDraft]);
 
   const updateSegmentTitle = useCallback((i: number, patch: Partial<Title>) => {
@@ -424,39 +306,15 @@ export function useEditStepActions({
       return;
     }
     recordContinuousChange();
-    setDraft((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const segments = prev.segments.map((s, idx) =>
-        idx === i && s.title ? { ...s, title: { ...s.title, ...patch } } : s,
-      );
-      return { ...prev, segments };
-    });
+    setDraft((prev) => (prev ? updateSegmentTitleAt(prev, i, patch) : prev));
   }, [draft, recordContinuousChange, setDraft]);
 
-  // "Transition in"/"Transition out" toggle (PRD backlog #3) - turning one on starts from a sane
-  // default (fade, 0.5s) so the preview shows something immediately, same pattern as the Title
-  // toggle above.
   const toggleSegmentTransition = useCallback((i: number, side: "in" | "out", enabled: boolean) => {
     if (!draft) {
       return;
     }
     recordDiscreteChange();
-    setDraft((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const key = side === "in" ? "transitionIn" : "transitionOut";
-      const segments = prev.segments.map((s, idx) =>
-        idx === i
-          ? enabled
-            ? { ...s, [key]: { type: "fade" as const, durationS: DEFAULT_TRANSITION_DURATION_S } }
-            : withoutTransition(s, side)
-          : s,
-      );
-      return { ...prev, segments };
-    });
+    setDraft((prev) => (prev ? toggleSegmentTransitionAt(prev, i, side, enabled) : prev));
   }, [draft, recordDiscreteChange, setDraft]);
 
   const updateSegmentTransition = useCallback((i: number, side: "in" | "out", patch: Partial<Transition>) => {
@@ -464,20 +322,7 @@ export function useEditStepActions({
       return;
     }
     recordContinuousChange();
-    setDraft((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const key = side === "in" ? "transitionIn" : "transitionOut";
-      const segments = prev.segments.map((s, idx) => {
-        if (idx !== i) {
-          return s;
-        }
-        const current = side === "in" ? s.transitionIn : s.transitionOut;
-        return current ? { ...s, [key]: { ...current, ...patch } } : s;
-      });
-      return { ...prev, segments };
-    });
+    setDraft((prev) => (prev ? updateSegmentTransitionAt(prev, i, side, patch) : prev));
   }, [draft, recordContinuousChange, setDraft]);
 
   return {
@@ -503,42 +348,3 @@ export function useEditStepActions({
     updateSegmentTransition,
   };
 }
-
-// When clearing an override, drop the styleOverride key entirely (don't leave the value as null) —
-// null is also schema-valid as "no override" (nullable), but this standardizes on omission
-// (undefined) to avoid leaving an unnecessary "styleOverride": null in the saved file.
-function withoutStyleOverride(segment: Segment): Segment {
-  const { styleOverride: _styleOverride, ...rest } = segment;
-  return rest;
-}
-
-// Same convention as withoutStyleOverride: drop the `title` key entirely (rather than leaving it
-// null) when a cut's title card is turned off.
-function withoutTitle(segment: Segment): Segment {
-  const { title: _title, ...rest } = segment;
-  return rest;
-}
-
-// Same convention as withoutTitle: drop the `transitionIn`/`transitionOut` key entirely (rather
-// than leaving it null) when that side's transition is turned off.
-function withoutTransition(segment: Segment, side: "in" | "out"): Segment {
-  if (side === "in") {
-    const { transitionIn: _transitionIn, ...rest } = segment;
-    return rest;
-  }
-  const { transitionOut: _transitionOut, ...rest } = segment;
-  return rest;
-}
-
-/** Matches the schema's title.durationS default (3) - the value shown right after the toggle is turned on, before onChangeTitle's first patch lands. */
-const DEFAULT_TITLE_DURATION_S = 3;
-
-/** Default text a title card starts with when the toggle is turned on (2026-07-09 QA-2 fix) - a
- * blank string left the preview showing nothing at all until the user typed something, which read
- * as "did this even turn on?"; "Title" is schema-valid (any string) and visibly confirms the
- * toggle worked, same as Title's other fields (Typing preset, 3s) already default to something. */
-const DEFAULT_TITLE_TEXT = "Title";
-
-/** Matches the schema's transition.durationS default (0.5) - the value written when a Transition
- * in/out toggle is first turned on. */
-const DEFAULT_TRANSITION_DURATION_S = 0.5;

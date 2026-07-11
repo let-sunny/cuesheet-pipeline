@@ -26,7 +26,7 @@
  *   (a cheap static registry read, no MCP transport needed) match AGENTS.md's table exactly.
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -49,7 +49,7 @@ const RENDER_INDEX_SRC = join(repoRoot, "packages/render/src/index.ts");
 const EPISODE_MJS_SRC = join(repoRoot, "scripts/episode.mjs");
 const BRIDGE_SERVER_SRC = join(repoRoot, "packages/bridge/src/server.ts");
 const BRIDGE_INDEX_SRC = join(repoRoot, "packages/bridge/src/index.ts");
-const WEB_ROUTES_SRC = join(repoRoot, "apps/web/src/server/routes.ts");
+const WEB_SERVER_SRC_DIR = join(repoRoot, "apps/web/src/server");
 
 const violations = [];
 
@@ -136,23 +136,44 @@ function checkBridgeToolNames(agentsMd) {
   }
 }
 
-/** Every documented `METHOD /path` must exist in routes.ts, checked with the same method guard. */
+/**
+ * Every documented `METHOD /path` must exist somewhere under apps/web/src/server/ (routes.ts and
+ * media.ts used to hold every handler directly; both are now thin composers over per-route-group
+ * modules under routes/ and media/ - concatenating every .ts file in the tree keeps this check
+ * agnostic to which specific file a given mount call lives in), checked with the same method guard.
+ */
 function checkHttpEndpoints(agentsMd) {
-  const routesSrc = readFileSync(WEB_ROUTES_SRC, "utf-8");
+  const serverSrc = readServerSrcTree(WEB_SERVER_SRC_DIR);
   for (const endpoint of extractHttpEndpoints(agentsMd)) {
     const [method, path] = endpoint.split(" ");
-    const mountIndex = routesSrc.indexOf(`middlewares.use("${path}"`);
+    const mountIndex = serverSrc.indexOf(`middlewares.use("${path}"`);
     if (mountIndex === -1) {
-      violations.push(`AGENTS.md documents ${endpoint}, but routes.ts has no middleware mounted at "${path}".`);
+      violations.push(
+        `AGENTS.md documents ${endpoint}, but no file under apps/web/src/server/ mounts middleware at "${path}".`,
+      );
       continue;
     }
-    const window = routesSrc.slice(mountIndex, mountIndex + 400);
+    const window = serverSrc.slice(mountIndex, mountIndex + 400);
     if (!window.includes(`req.method !== "${method}"`)) {
       violations.push(
-        `AGENTS.md documents ${endpoint}, but the "${path}" handler in routes.ts doesn't guard on method === ${method}.`,
+        `AGENTS.md documents ${endpoint}, but the "${path}" handler doesn't guard on method === ${method}.`,
       );
     }
   }
+}
+
+/** Recursively concatenates every .ts file's source under dir (used to search for a mount call regardless of which sibling module it lives in). */
+function readServerSrcTree(dir) {
+  let combined = "";
+  for (const name of readdirSync(dir)) {
+    const path = join(dir, name);
+    if (statSync(path).isDirectory()) {
+      combined += readServerSrcTree(path);
+    } else if (name.endsWith(".ts")) {
+      combined += `\n${readFileSync(path, "utf-8")}`;
+    }
+  }
+  return combined;
 }
 
 /** Every documented CUESHEET_* env var must actually be read (process.env.NAME) in bridge/src/index.ts. */
