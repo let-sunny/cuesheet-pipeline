@@ -206,7 +206,9 @@ export const styles = stylex.create({
     textAlign: "center",
     whiteSpace: "normal",
     overflowWrap: "break-word",
-    backgroundColor: "#000000b3",
+    // A translucent black scrim sits ON the video thumbnail (not app chrome), so it stays a fixed
+    // dark regardless of the active theme - dimming reads the same on any theme.
+    backgroundColor: "#000000b3", // theme-exempt
   },
   exclusionScrimFace: {
     color: colorVars["--color-error"],
