@@ -95,7 +95,14 @@ export const styles = stylex.create({
     position: "absolute",
     top: 0,
     bottom: 0,
-    backgroundColor: colorVars["--color-accent-muted"],
+    // A guaranteed-TRANSLUCENT accent tint (mixed down to ~15% over transparent) rather than the
+    // raw `--color-accent-muted` token: that token is a low-alpha tint in most themes but an OPAQUE
+    // near-white in the Neutral theme, which covered the kept range's thumbnails and made the strip
+    // read inverted (the trimmed-away scrim was semi-transparent, so only the trimmed part showed
+    // its frames). color-mix keeps the kept range faintly tinted but always see-through, in every
+    // theme (2026-07-12 Neutral-theme trim-inversion fix). Same color-mix-over-token pattern as
+    // panThumb's hover below.
+    backgroundColor: `color-mix(in srgb, ${colorVars["--color-accent"]} 15%, transparent)`,
     borderWidth: 2,
     borderStyle: "solid",
     borderColor: colorVars["--color-accent"],
