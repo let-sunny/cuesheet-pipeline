@@ -1,6 +1,10 @@
 import { join } from "node:path";
-import type { CueSheet, Segment } from "@cuesheet/schema";
+import type { CueSheet } from "@cuesheet/schema";
+import { atempoChain } from "./atempo.js";
 import { buildDuckingGainExpression, deriveDuckingWindows } from "./ducking.js";
+import { assertCropMatchesProjectAspect, type SourceDimensions } from "./planCrop.js";
+import { drawtextFilter, resolveSubtitleStyle, subtitleOverflowWarning } from "./planSubtitles.js";
+import { applyTransition, clampTransitionDurations, transitionAudioFilters } from "./planTransitions.js";
 import { computeSegmentOutputTimings } from "./timeline.js";
 import type { TitleAsset } from "./title.js";
 import {
@@ -11,6 +15,9 @@ import {
   needsTwoPassRender,
   type RenderCommand,
 } from "./twoPass.js";
+
+export type { SourceDimensions } from "./planCrop.js";
+export { resolveSubtitleStyle } from "./planSubtitles.js";
 
 export { buildDuckingGainExpression, deriveDuckingWindows, mergeDuckingWindows } from "./ducking.js";
 export type { DuckingWindow } from "./ducking.js";
@@ -61,11 +68,6 @@ export interface RenderPlan {
    * this stays a plain data field so buildRenderPlan itself has no I/O/logging side effects.
    */
   warnings: string[];
-}
-
-export interface SourceDimensions {
-  width: number;
-  height: number;
 }
 
 export interface RenderPlanOptions {
@@ -467,237 +469,3 @@ function buildBasePassCommand(
   return { command: { args, filterComplex, outputPath, label: control.label }, warnings };
 }
 
-/**
- * Verifies that each cropped segment's actual pixel aspect ratio (crop.w*srcWidth /
- * crop.h*srcHeight) matches the project's aspect ratio (project.width/project.height) within
- * CROP_ASPECT_TOLERANCE — beyond that, render/plan.ts's crop -> scale=W:H (no letterboxing)
- * would stretch the image. Throws a field-path style error naming the offending cut; a no-op
- * for segments with no crop or no matching sourceDimensions entry.
- */
-function assertCropMatchesProjectAspect(cue: CueSheet, sourceDimensions?: Record<string, SourceDimensions>): void {
-  if (!sourceDimensions) return;
-  const projectAspect = cue.project.width / cue.project.height;
-  cue.segments.forEach((s, i) => {
-    if (!s.crop) return;
-    const dims = sourceDimensions[s.clip];
-    if (!dims) return;
-    const cropAspect = (s.crop.w * dims.width) / (s.crop.h * dims.height);
-    const deviation = Math.abs(cropAspect - projectAspect) / projectAspect;
-    if (deviation > CROP_ASPECT_TOLERANCE) {
-      throw new Error(
-        `segments[${i}].crop: clip "${s.clip}" (source ${dims.width}x${dims.height}) crop aspect ` +
-          `${cropAspect.toFixed(3)} deviates from project aspect ${projectAspect.toFixed(3)} by ` +
-          `more than ${CROP_ASPECT_TOLERANCE * 100}%`,
-      );
-    }
-  });
-}
-
-/** Escapes text for ffmpeg drawtext (backslash, colon, single quote, percent) */
-function escapeDrawtext(text: string): string {
-  return text
-    .replace(/\\/g, "\\\\")
-    .replace(/:/g, "\\:")
-    .replace(/'/g, "\\'")
-    .replace(/%/g, "\\%");
-}
-
-/** atempo only supports 0.5-2.0 -> speeds outside that range are decomposed into a chain */
-function atempoChain(speed: number): string[] {
-  const parts: number[] = [];
-  let s = speed;
-  while (s > 2) {
-    parts.push(2);
-    s /= 2;
-  }
-  while (s < 0.5) {
-    parts.push(0.5);
-    s *= 2;
-  }
-  parts.push(Number(s.toFixed(6)));
-  return parts.map((p) => `atempo=${p}`);
-}
-
-/**
- * Cross-clamps a cut's transitionIn/transitionOut durations against each other so they never
- * overlap: each is first clamped to outputDurationS individually (unchanged from before), then, if
- * their SUM still exceeds outputDurationS, both are scaled down proportionally (ratio preserved) so
- * dIn + dOut <= outputDurationS, floored at 0.1s each. Without this, e.g. a 1.5s cut with a 2s
- * transitionIn and a 2s transitionOut each independently clamp to 1.5s - the two fade/dip windows
- * then span the ENTIRE cut and overlap each other, compounding into a near-total blackout instead
- * of the intended in->hold->out envelope (reproduced via a real render, see plan.test.ts and
- * QA-2's transition_collision_strip.png). Shared by both the video side (applyTransition) and the
- * audio side (transitionAudioFilters) so the two stay in lockstep.
- */
-function clampTransitionDurations(
-  transitionIn: CueSheet["segments"][number]["transitionIn"],
-  transitionOut: CueSheet["segments"][number]["transitionOut"],
-  outputDurationS: number,
-): { dIn: number; dOut: number } {
-  const MIN_S = 0.1;
-  let dIn = transitionIn ? Math.min(transitionIn.durationS, outputDurationS) : 0;
-  let dOut = transitionOut ? Math.min(transitionOut.durationS, outputDurationS) : 0;
-  const sum = dIn + dOut;
-  if (sum > outputDurationS && sum > 0) {
-    const scale = outputDurationS / sum;
-    if (transitionIn) dIn = Math.max(MIN_S, dIn * scale);
-    if (transitionOut) dOut = Math.max(MIN_S, dOut * scale);
-  }
-  return { dIn, dOut };
-}
-
-/**
- * Video-side fade/dip at one edge of a cut (PRD backlog #3). Offsets are on the segment's own
- * OUTPUT timeline: "in" starts at st=0, "out" ends at st=outputDurationS (i.e. starts at
- * outputDurationS-d). d is the already cross-clamped duration for this side (see
- * clampTransitionDurations) rather than the raw transition.durationS, so a transitionIn+transitionOut
- * pair that would otherwise overlap on a short cut never produces overlapping fade windows.
- *
- * "fade" fades the whole composited frame (video+subtitle+title, since this runs last in the
- * per-clip video chain) directly to/from black via the plain `fade` filter - a single filter link.
- *
- * "dip" instead overlays a separate black layer whose alpha ramps 0<->dim (dim<1 = a partial dip
- * that never fully hides the frame) - the exact same alpha-overlay technique as the title backdrop
- * dim above (`color=black,format=yuva420p,fade=...:alpha=1,colorchannelmixer=aa=<dim>` then
- * `overlay`), just windowed to the cut boundary instead of held for a title's whole duration:
- * - "in": alpha starts at dim (t=0) and fades OUT to 0 by t=d (`fade=t=out`), i.e. the cut
- *   opens fully dipped and reveals the footage.
- * - "out": alpha starts at 0 and fades IN to dim by the cut's end (`fade=t=in`), i.e. the footage
- *   is covered by the dip right before the cut ends.
- * Each side's own color layer spans the clip's whole outputDurationS so its alpha value is exactly
- * 0 outside its own transition window (no separate `enable` clause needed, unlike the title
- * backdrop which needs one because it shares the frame with non-title footage on either side).
- */
-function applyTransition(
-  filters: string[],
-  vLabel: string,
-  i: number,
-  side: "in" | "out",
-  transition: NonNullable<CueSheet["segments"][number]["transitionIn"]>,
-  d: number,
-  outputDurationS: number,
-  W: number,
-  H: number,
-  fps: number,
-): string {
-  const st = side === "in" ? 0 : outputDurationS - d;
-
-  if (transition.type === "fade") {
-    const label = `vtx${side}${i}`;
-    filters.push(`[${vLabel}]fade=t=${side}:st=${st}:d=${d}[${label}]`);
-    return label;
-  }
-
-  const dim = transition.dim ?? 1;
-  const alphaFade = side === "in" ? `fade=t=out:st=0:d=${d}:alpha=1` : `fade=t=in:st=${st}:d=${d}:alpha=1`;
-  const colorLabel = `dip${side}${i}`;
-  filters.push(
-    `color=black:size=${W}x${H}:duration=${outputDurationS}:rate=${fps},format=yuva420p,` +
-      `${alphaFade},colorchannelmixer=aa=${dim}[${colorLabel}]`,
-  );
-  const label = `vdip${side}${i}`;
-  filters.push(`[${vLabel}][${colorLabel}]overlay=0:0[${label}]`);
-  return label;
-}
-
-/**
- * Audio-side fade for the same cut boundary transitions, regardless of type (fade/dip) - both get
- * a plain `afade` over the same [st, st+d] window as the video side (screen-spec/PRD: "audio afade
- * same windows"). dIn/dOut are the same cross-clamped durations passed to applyTransition (see
- * clampTransitionDurations) so the audio and video envelopes always agree. Returns filter fragments
- * meant to be appended to a clip's existing audio chain.
- */
-function transitionAudioFilters(
-  transitionIn: CueSheet["segments"][number]["transitionIn"],
-  transitionOut: CueSheet["segments"][number]["transitionOut"],
-  dIn: number,
-  dOut: number,
-  outputDurationS: number,
-): string[] {
-  const parts: string[] = [];
-  if (transitionIn) {
-    parts.push(`afade=t=in:st=0:d=${dIn}`);
-  }
-  if (transitionOut) {
-    parts.push(`afade=t=out:st=${outputDurationS - dOut}:d=${dOut}`);
-  }
-  return parts;
-}
-
-/**
- * Effective subtitle style per segment = shallow merge, in order: global subtitleStyle < named
- * preset (if segment.stylePreset references one in cue.subtitleStylePresets) < segment.styleOverride
- * (per-cut override always wins last). background is the one exception at each merge step and is
- * replaced wholesale rather than partially merged (avoids ambiguous leftovers like opacity from a
- * partial merge) — since each step is itself a shallow merge that overwrites whole object fields,
- * this rule is satisfied without any extra handling. Mirrored field-for-field by the web editor's
- * live preview (apps/web/src/lib/subtitleOverlay.ts's mergeSubtitleStyle) - see ARCHITECTURE.md.
- */
-export function resolveSubtitleStyle(cue: CueSheet, segment: Segment): CueSheet["subtitleStyle"] {
-  let style = cue.subtitleStyle;
-  if (segment.stylePreset) {
-    const preset = cue.subtitleStylePresets?.[segment.stylePreset];
-    if (preset) {
-      style = { ...style, ...preset };
-    }
-  }
-  if (segment.styleOverride) {
-    style = { ...style, ...segment.styleOverride };
-  }
-  return style;
-}
-
-function drawtextFilter(text: string, style: CueSheet["subtitleStyle"]): string {
-  const t = escapeDrawtext(text);
-  let base =
-    `drawtext=text='${t}':fontsize=${style.size}:fontcolor=${style.color}` +
-    `:borderw=${style.outlineWidth}:bordercolor=${style.outlineColor}:font='${style.font}'`;
-  if (style.background) {
-    const { color, opacity, padding } = style.background;
-    base += `:box=1:boxcolor=${color}@${opacity}:boxborderw=${padding}`;
-  }
-  const x = "(w-text_w)/2";
-  let y: string;
-  switch (style.position) {
-    case "top":
-      y = String(style.margin);
-      break;
-    case "center":
-      y = "(h-text_h)/2";
-      break;
-    default:
-      y = `h-text_h-${style.margin}`; // bottom
-  }
-  return `${base}:x=${x}:y=${y}`;
-}
-
-/** Relative tolerance for the crop-vs-project-aspect check (1%). */
-const CROP_ASPECT_TOLERANCE = 0.01;
-
-/**
- * Cheap heuristic for "this subtitle might overflow the frame" - drawtext never wraps text, so a
- * run of characters with no spaces just draws off both edges of the frame once it's wide enough.
- * This is a rough character-count-vs-estimated-pixel-width guard, not a precise prediction (exact
- * wrap parity with drawtext isn't feasible without the actual font metrics) - it's the last-resort
- * guard right before the real ffmpeg render, mirroring the same heuristic/ratio the web editor
- * shows at edit time (apps/web/src/lib/subtitleOverflow.ts).
- */
-const AVG_CHAR_WIDTH_RATIO = 0.6;
-
-function longestUnwrappableToken(text: string): string {
-  return text
-    .split(/\s+/)
-    .reduce((longest, token) => (token.length > longest.length ? token : longest), "");
-}
-
-function subtitleOverflowWarning(text: string, fontSizePx: number, frameWidthPx: number): string | null {
-  const token = longestUnwrappableToken(text);
-  if (token.length === 0) {
-    return null;
-  }
-  const estimatedWidthPx = token.length * fontSizePx * AVG_CHAR_WIDTH_RATIO;
-  if (estimatedWidthPx <= frameWidthPx) {
-    return null;
-  }
-  return `a ${token.length}-character run with no spaces may not fit the frame width at render (estimate only, drawtext doesn't wrap)`;
-}

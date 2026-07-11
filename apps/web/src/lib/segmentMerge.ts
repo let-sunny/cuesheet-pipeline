@@ -7,6 +7,24 @@ export type MergeEligibility = { eligible: true } | { eligible: false; reason: s
 /** How close (seconds) the gap between two cuts' in/out has to be to count as "adjacent" when merging. */
 export const MERGE_ADJACENCY_GAP_S = 2;
 
+/**
+ * Merges segment i with segment i+1 into one segment spanning both (keeps segment i's other
+ * fields, extends its `out` to segment i+1's `out`). Purely structural - the caller is responsible
+ * for checking computeMergeEligibility and confirming subtitle loss with the user first. Returns
+ * null when either segment doesn't exist (index out of range).
+ */
+export function mergeSegmentAt(cue: CueSheet, i: number): CueSheet | null {
+  const current = cue.segments[i];
+  const next = cue.segments[i + 1];
+  if (!current || !next) {
+    return null;
+  }
+  const merged = { ...current, out: next.out };
+  const segments = [...cue.segments];
+  segments.splice(i, 2, merged);
+  return { ...cue, segments };
+}
+
 export function computeMergeEligibility(draft: CueSheet | null, index: number): MergeEligibility {
   if (!draft) {
     return { eligible: false, reason: "No cuesheet" };
