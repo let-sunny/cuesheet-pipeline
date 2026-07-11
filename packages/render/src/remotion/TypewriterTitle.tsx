@@ -1,5 +1,5 @@
-import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
-import { TITLE_FONT_FAMILY } from "./titleCardStyle.js";
+import { useCurrentFrame, useVideoConfig } from "remotion";
+import { TypewriterTitleView } from "./TypewriterTitleView.js";
 
 export interface TypewriterTitleProps {
   text: string;
@@ -8,42 +8,14 @@ export interface TypewriterTitleProps {
 }
 
 /**
- * "typing" preset - a typewriter reveal via STRING SLICING (never per-character opacity/DOM
- * churn), matching the render pipeline's frame-steppable, deterministic contract. `charsShown`
- * advances one character every CHAR_FRAMES frames (>= 2, a calm pace rather than a jittery one),
- * followed by a smooth blinking block cursor while text remains to reveal.
+ * "typing" preset - thin Remotion wrapper over TypewriterTitleView, which owns the actual
+ * animation math (shared with apps/web's browser preview - see TypewriterTitleView.tsx's doc
+ * comment).
  */
 export function TypewriterTitle({ text, color, fontSize }: TypewriterTitleProps) {
   const frame = useCurrentFrame();
-  const chars = Array.from(text);
-  const charsShown = Math.min(chars.length, Math.floor(frame / CHAR_FRAMES));
-  const shown = chars.slice(0, charsShown).join("");
-  const cursorOpacity = interpolate(frame % CURSOR_BLINK_FRAMES, [0, CURSOR_BLINK_FRAMES / 2, CURSOR_BLINK_FRAMES], [1, 0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const cursorVisible = charsShown < chars.length;
-
+  const { fps, durationInFrames } = useVideoConfig();
   return (
-    <AbsoluteFill style={{ justifyContent: "center", alignItems: "center" }}>
-      <div style={{ fontFamily: TITLE_FONT_FAMILY, fontSize, color, display: "flex", alignItems: "center" }}>
-        <span>{shown}</span>
-        <span
-          style={{
-            display: "inline-block",
-            width: "0.08em",
-            height: "1.05em",
-            marginLeft: "0.06em",
-            backgroundColor: color,
-            opacity: cursorVisible ? cursorOpacity : 0,
-          }}
-        />
-      </div>
-    </AbsoluteFill>
+    <TypewriterTitleView frame={frame} fps={fps} durationInFrames={durationInFrames} text={text} color={color} fontSize={fontSize} />
   );
 }
-
-/** Frames held per revealed character - >= 2 keeps the reveal calm rather than jittery. */
-const CHAR_FRAMES = 2;
-/** Full blink cycle (on -> off -> on) length in frames. */
-const CURSOR_BLINK_FRAMES = 16;

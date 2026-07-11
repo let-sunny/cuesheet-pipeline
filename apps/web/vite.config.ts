@@ -14,21 +14,12 @@ export default defineConfig({
   // because the provider it renders under lives in the other copy, and every such interaction
   // becomes a silent no-op. Deduping collapses them to the app's single copy so context connects.
   resolve: {
-    // `remotion` + `@remotion/player`: the title preview runs the real TitleCard composition
-    // (imported from @cuesheet/render's dist) inside @remotion/player's <Player>. Both sides import
-    // `remotion`; if the browser loads two copies, the Player's composition context never reaches
-    // TitleCard's useCurrentFrame() and the preview throws/blanks (same dual-instance-context class
-    // as the astryx case below). Deduping to one `remotion` connects the Player to the composition.
-    dedupe: ["@astryxdesign/core", "@stylexjs/stylex", "react", "react-dom", "remotion", "@remotion/player"],
-  },
-  // Do NOT pre-bundle the Remotion browser packages. optimizeDeps pre-bundling inlines
-  // @remotion/player's own copy of Remotion's Internals (the timeline/frame CONTEXT that drives
-  // useCurrentFrame) separately from the standalone `remotion` that the compiled TitleCard
-  // (@cuesheet/render/dist) reads - so the Player advanced its frame while TitleCard stayed pinned
-  // at frame 0 (confirmed: composition renders but never animates). Leaving them un-pre-bundled +
-  // deduped makes every `import "remotion"` resolve to the one node_modules/remotion ESM module, so
-  // the Player and the composition share the exact same runtime frame context.
-  optimizeDeps: {
-    exclude: ["remotion", "@remotion/player", "@cuesheet/render"],
+    // `remotion`: TitlePreview (apps/web's own plain-React, requestAnimationFrame-driven
+    // component - @remotion/player was dropped, see docs/goals, after repeatedly failing to
+    // reliably animate in this environment) renders TitleCardView (from @cuesheet/render/remotion,
+    // imported from its dist build), which calls `spring`/`interpolate` from `remotion` - pure
+    // math, so a single deduped copy is only a hygiene measure here, not load-bearing the way it
+    // was for the old Player/composition context pairing.
+    dedupe: ["@astryxdesign/core", "@stylexjs/stylex", "react", "react-dom", "remotion"],
   },
 });

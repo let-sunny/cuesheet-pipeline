@@ -1,45 +1,35 @@
 // @vitest-environment jsdom
-import { forwardRef, useImperativeHandle } from "react";
-import type { ComponentProps, Ref } from "react";
-import { act, cleanup, fireEvent, render, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ComponentProps } from "react";
 import type { Title } from "@cuesheet/schema";
 import { TITLE_FONT_SIZE_PX, TITLE_TEXT_COLOR } from "@cuesheet/render/remotion";
 import { TitleOverlay } from "./TitleOverlay.js";
 
-// @remotion/player's real <Player> can't run inside jsdom (it drives a real Remotion composition
-// render loop) - mocked to a stub that (a) exposes the exact props it was given (so tests can
-// assert TitleOverlay wires the composition/inputProps/duration/dimensions correctly) and (b)
-// exposes a PlayerRef whose methods/event-registration the restart and play/pause controls are
-// asserted to call.
-const { mockSeekTo, mockToggle, mockPlay, mockAddEventListener, mockRemoveEventListener } = vi.hoisted(() => ({
-  mockSeekTo: vi.fn(),
-  mockToggle: vi.fn(),
-  mockPlay: vi.fn(),
-  mockAddEventListener: vi.fn(),
-  mockRemoveEventListener: vi.fn(),
+// TitlePreview itself is unit-tested separately (its own frame-advance/pause/restart behavior) -
+// stubbed here to a props-echoing marker so these tests can assert TitleOverlay wires the right
+// content/duration/dimensions/playing/restartToken down to it, without needing to drive a real
+// rAF loop from this file.
+const { mockTitlePreview } = vi.hoisted(() => ({
+  mockTitlePreview: vi.fn((props: Record<string, unknown>) => (
+    <div
+      data-testid="mock-title-preview"
+      data-text={String(props.text)}
+      data-preset={String(props.preset)}
+      data-color={String(props.color)}
+      data-font-size={String(props.fontSize)}
+      data-duration-in-frames={String(props.durationInFrames)}
+      data-fps={String(props.fps)}
+      data-project-width={String(props.projectWidth)}
+      data-project-height={String(props.projectHeight)}
+      data-playing={String(props.playing)}
+      data-restart-token={String(props.restartToken)}
+    />
+  )),
 }));
 
-vi.mock("@remotion/player", () => ({
-  Player: forwardRef(function MockPlayer(props: Record<string, unknown>, ref: Ref<unknown>) {
-    useImperativeHandle(ref, () => ({
-      seekTo: mockSeekTo,
-      toggle: mockToggle,
-      play: mockPlay,
-      addEventListener: mockAddEventListener,
-      removeEventListener: mockRemoveEventListener,
-    }));
-    return (
-      <div
-        data-testid="mock-player"
-        data-input-props={JSON.stringify(props.inputProps)}
-        data-duration-in-frames={String(props.durationInFrames)}
-        data-composition-width={String(props.compositionWidth)}
-        data-composition-height={String(props.compositionHeight)}
-        data-fps={String(props.fps)}
-      />
-    );
-  }),
+vi.mock("../TitlePreview/index.js", () => ({
+  TitlePreview: (props: Record<string, unknown>) => mockTitlePreview(props),
 }));
 
 afterEach(() => {
@@ -61,47 +51,39 @@ describe("TitleOverlay", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("runs the real TitleCard composition through the Player, with the title's text/preset/duration and the project's dimensions/fps as inputProps", () => {
+  it("renders TitlePreview with the title's text/preset/duration and the project's dimensions/fps", () => {
     const { getByTestId } = renderOverlay({
       title: { text: "Cast on today", preset: "wordStagger", durationS: 3, color: TITLE_TEXT_COLOR, size: TITLE_FONT_SIZE_PX },
       projectWidth: 1080,
       projectHeight: 1920,
       projectFps: 24,
     });
-    const player = getByTestId("mock-player");
-    const inputProps = JSON.parse(player.getAttribute("data-input-props")!);
-    expect(inputProps).toEqual({
-      text: "Cast on today",
-      preset: "wordStagger",
-      durationInSeconds: 3,
-      fps: 24,
-      color: TITLE_TEXT_COLOR,
-      fontSize: TITLE_FONT_SIZE_PX,
-      width: 1080,
-      height: 1920,
-    });
-    expect(player.getAttribute("data-composition-width")).toBe("1080");
-    expect(player.getAttribute("data-composition-height")).toBe("1920");
-    expect(player.getAttribute("data-fps")).toBe("24");
+    const preview = getByTestId("mock-title-preview");
+    expect(preview.getAttribute("data-text")).toBe("Cast on today");
+    expect(preview.getAttribute("data-preset")).toBe("wordStagger");
+    expect(preview.getAttribute("data-color")).toBe(TITLE_TEXT_COLOR);
+    expect(preview.getAttribute("data-font-size")).toBe(String(TITLE_FONT_SIZE_PX));
+    expect(preview.getAttribute("data-project-width")).toBe("1080");
+    expect(preview.getAttribute("data-project-height")).toBe("1920");
+    expect(preview.getAttribute("data-fps")).toBe("24");
   });
 
-  it("passes the title's own color/size through to the Player's inputProps when set", () => {
+  it("passes the title's own color/size through when set", () => {
     const { getByTestId } = renderOverlay({
       title: { text: "Cast on today", preset: "wordStagger", durationS: 3, color: "#ffffff", size: 90 },
     });
-    const player = getByTestId("mock-player");
-    const inputProps = JSON.parse(player.getAttribute("data-input-props")!);
-    expect(inputProps.color).toBe("#ffffff");
-    expect(inputProps.fontSize).toBe(90);
+    const preview = getByTestId("mock-title-preview");
+    expect(preview.getAttribute("data-color")).toBe("#ffffff");
+    expect(preview.getAttribute("data-font-size")).toBe("90");
   });
 
   it("computes durationInFrames from durationS * fps, rounded and clamped to at least 1", () => {
     const normal = renderOverlay({ title: { ...baseTitle, durationS: 2 }, projectFps: 30 });
-    expect(normal.getByTestId("mock-player").getAttribute("data-duration-in-frames")).toBe("60");
+    expect(normal.getByTestId("mock-title-preview").getAttribute("data-duration-in-frames")).toBe("60");
     normal.unmount();
 
     const tiny = renderOverlay({ title: { ...baseTitle, durationS: 0.01 }, projectFps: 30 });
-    expect(tiny.getByTestId("mock-player").getAttribute("data-duration-in-frames")).toBe("1");
+    expect(tiny.getByTestId("mock-title-preview").getAttribute("data-duration-in-frames")).toBe("1");
     tiny.unmount();
   });
 
@@ -119,35 +101,30 @@ describe("TitleOverlay", () => {
     withDim.unmount();
   });
 
-  it("nudges the player to start playing on mount (autoPlay is not relied on alone)", async () => {
-    renderOverlay();
-    await waitFor(() => expect(mockPlay).toHaveBeenCalled());
+  it("starts playing by default", () => {
+    const { getByTestId } = renderOverlay();
+    expect(getByTestId("mock-title-preview").getAttribute("data-playing")).toBe("true");
   });
 
-  it("restart control calls the player's seekTo(0)", () => {
+  it("restart control bumps the restartToken passed to TitlePreview", () => {
     const { getByTestId } = renderOverlay();
+    expect(getByTestId("mock-title-preview").getAttribute("data-restart-token")).toBe("0");
     fireEvent.click(getByTestId("title-preview-restart"));
-    expect(mockSeekTo).toHaveBeenCalledWith(0);
+    expect(getByTestId("mock-title-preview").getAttribute("data-restart-token")).toBe("1");
+    fireEvent.click(getByTestId("title-preview-restart"));
+    expect(getByTestId("mock-title-preview").getAttribute("data-restart-token")).toBe("2");
   });
 
-  it("play/pause control calls the player's toggle()", () => {
+  it("play/pause control toggles the playing prop passed to TitlePreview and flips the control's label", () => {
     const { getByTestId } = renderOverlay();
-    fireEvent.click(getByTestId("title-preview-playpause"));
-    expect(mockToggle).toHaveBeenCalledOnce();
-  });
-
-  it("registers play/pause listeners on the player and flips the toggle control's label accordingly", () => {
-    const { getByTestId } = renderOverlay();
-    expect(mockAddEventListener).toHaveBeenCalledWith("play", expect.any(Function));
-    expect(mockAddEventListener).toHaveBeenCalledWith("pause", expect.any(Function));
-
-    const onPause = mockAddEventListener.mock.calls.find(([name]) => name === "pause")![1] as () => void;
-    const onPlay = mockAddEventListener.mock.calls.find(([name]) => name === "play")![1] as () => void;
-
     expect(getByTestId("title-preview-playpause").getAttribute("aria-label")).toBe("Pause title preview");
-    act(() => onPause());
+
+    fireEvent.click(getByTestId("title-preview-playpause"));
+    expect(getByTestId("mock-title-preview").getAttribute("data-playing")).toBe("false");
     expect(getByTestId("title-preview-playpause").getAttribute("aria-label")).toBe("Play title preview");
-    act(() => onPlay());
+
+    fireEvent.click(getByTestId("title-preview-playpause"));
+    expect(getByTestId("mock-title-preview").getAttribute("data-playing")).toBe("true");
     expect(getByTestId("title-preview-playpause").getAttribute("aria-label")).toBe("Pause title preview");
   });
 });

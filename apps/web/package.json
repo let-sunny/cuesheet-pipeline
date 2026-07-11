@@ -19,7 +19,6 @@
     "@astryxdesign/theme-y2k": "0.1.4",
     "@cuesheet/render": "workspace:*",
     "@cuesheet/schema": "workspace:*",
-    "@remotion/player": "^4.0.487",
     "@stylexjs/stylex": "^0.18.3",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
