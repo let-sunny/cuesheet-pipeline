@@ -1,0 +1,44 @@
+name: Bug report
+description: Something in the pipeline, editor, or render output behaves wrong.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: The wrong behavior, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part this is in (best guess is fine).
+      options:
+        - web (editor UI)
+        - draft (scan / vision / assemble)
+        - render (ffmpeg / output)
+        - schema
+        - bridge (MCP)
+        - other / not sure
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Environment / context
+      description: >-
+        Whatever is relevant: OS, ffmpeg variant (plain `ffmpeg` vs `ffmpeg-full`), a cuesheet
+        snippet, CI vs local, error output.
+    validations:
+      required: false

@@ -293,6 +293,52 @@ A single package only:
 pnpm --filter @cuesheet/schema test
 ```
 
+## Branch & PR workflow (user rule, 2026-07-12)
+
+Initial development is over. `main` is a **protected branch** — no one, not even the repo
+owner (`enforce_admins` is on), pushes to it directly. Every change lands through a pull
+request, one feature (or fix) per PR:
+
+1. **Branch off `main`** — `feat/<slug>`, `fix/<slug>`, `docs/<slug>`, etc. Never commit on
+   `main` locally intending to push it.
+2. **Open a PR as a draft first** (per the standing draft-first rule) and let the user review
+   before marking it ready. Link the issue it closes (`Closes #N`) when there is one.
+3. **CI must pass.** The required status check is the `build, typecheck, test` job
+   (`.github/workflows/ci.yml`) — build + typecheck + `pnpm -r test` + `pnpm check:repo`. A red
+   PR cannot merge. `strict` is on, so the branch must be up to date with `main` before merging.
+4. **Squash-merge only.** Merge commits and rebase merges are disabled repo-wide; one PR
+   collapses to one conventional-commit on `main`, and the head branch auto-deletes on merge.
+   Reviews are not required to merge (solo repo, `required_approving_review_count: 0`) — the
+   gate is "PR opened + CI green", not human approval.
+
+The protection lives in GitHub as a **repository ruleset** ("main protection"), not classic
+branch protection and not in the repo; inspect it with `gh api
+repos/let-sunny/cuesheet-pipeline/rulesets` (or `.../rules/branches/main` for the rules
+actually in force on `main`). Its `bypass_actors` is empty, so there is no admin override —
+emergency changes are no exception: a hotfix is still a branch + PR (CI is fast, ~2 min).
+
+Issues and PRs are templated under `.github/` — a PR body template
+(`.github/pull_request_template.md`) and issue forms (`.github/ISSUE_TEMPLATE/`). Fill them in
+rather than starting from a blank body; the PR template already carries the `Closes #N`,
+summary, and verification structure this repo expects.
+
+## Commands
+
+From the root:
+
+```bash
+pnpm install
+pnpm -r build      # build everything
+pnpm -r typecheck  # type check
+pnpm -r test       # tests (vitest)
+```
+
+A single package only:
+
+```bash
+pnpm --filter @cuesheet/schema test
+```
+
 ## Stack
 
 - TypeScript 5.x (strict, `noUncheckedIndexedAccess`)
