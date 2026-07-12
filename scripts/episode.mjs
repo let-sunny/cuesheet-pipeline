@@ -15,8 +15,8 @@
 import { existsSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { spawnSync, spawn } from "node:child_process";
 import { createConnection } from "node:net";
-import { basename, extname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { basename, extname, relative, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const repoRoot = resolve(fileURLToPath(new URL(".", import.meta.url)), "..");
 const WEB_PORT = 5173;
@@ -89,6 +89,23 @@ function ensureDraftBuilt() {
   return cliPath;
 }
 
+function ensureActiveEpisodeBuilt() {
+  const distPath = resolve(repoRoot, "packages/active-episode/dist/index.js");
+  if (existsSync(distPath)) {
+    return distPath;
+  }
+  console.log("@cuesheet/active-episode isn't built yet, building it first...");
+  const result = spawnSync("pnpm", ["--filter", "@cuesheet/active-episode", "build"], {
+    cwd: repoRoot,
+    stdio: "inherit",
+  });
+  if (result.status !== 0) {
+    console.error("@cuesheet/active-episode build failed");
+    process.exit(result.status ?? 1);
+  }
+  return distPath;
+}
+
 function openBrowser(url) {
   const opener = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
   spawn(opener, [url], { stdio: "ignore", detached: true }).unref();
@@ -126,6 +143,13 @@ async function main() {
   const cuesheetPath = resolve(episodesDir, `${slug}.cuesheet.json`);
   mkdirSync(episodesDir, { recursive: true });
 
+  // Record this as the active episode so the web editor and the MCP bridge both edit it
+  // (they resolve the active cuesheet from .active-episode). Stored repo-relative.
+  const relCuesheetPath = relative(repoRoot, cuesheetPath);
+  const { writeActiveEpisode } = await import(pathToFileURL(ensureActiveEpisodeBuilt()).href);
+  writeActiveEpisode(repoRoot, relCuesheetPath);
+  console.log(`Active episode -> ${relCuesheetPath} (written to .active-episode)`);
+
   const manifestPath = resolve(draftDir, "manifest.json");
   if (existsSync(manifestPath) && !flags.rescan) {
     console.log(`Already scanned, skipping: ${manifestPath} (use --rescan to scan again)`);
@@ -151,14 +175,13 @@ async function main() {
   if (await isPortOpen(WEB_PORT)) {
     console.log(
       `\nThe web editor is already running at http://localhost:${WEB_PORT} (leaving it as is).\n` +
-        `If it's running for a different episode, CUESHEET_PATH may differ - restart the server to view this episode:\n` +
-        `  CUESHEET_PATH=${cuesheetPath} pnpm --filter @cuesheet/web dev`,
+        `If it's running for a different episode, restart it to pick up the new active episode:\n` +
+        `  pnpm --filter @cuesheet/web dev`,
     );
   } else {
-    console.log(`Starting the web editor... (CUESHEET_PATH=${cuesheetPath})`);
+    console.log(`Starting the web editor... (active episode: ${relCuesheetPath})`);
     const child = spawn("pnpm", ["--filter", "@cuesheet/web", "dev"], {
       cwd: repoRoot,
-      env: { ...process.env, CUESHEET_PATH: cuesheetPath },
       detached: true,
       stdio: "ignore",
     });

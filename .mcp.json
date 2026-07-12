@@ -2,10 +2,7 @@
   "mcpServers": {
     "cuesheet-bridge": {
       "command": "node",
-      "args": ["packages/bridge/dist/index.js"],
-      "env": {
-        "CUESHEET_PATH": "project.cuesheet.json"
-      }
+      "args": ["packages/bridge/dist/index.js"]
     },
     "astryx-docs": {
       "type": "http",
