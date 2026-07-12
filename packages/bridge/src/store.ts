@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { cueSheetSchema, findLostFieldPaths, validateCueSheet } from "@cuesheet/schema";
+import { cueSheetSchema, ensureSegmentIds, findLostFieldPaths, validateCueSheet } from "@cuesheet/schema";
 import type { ValidationResult } from "@cuesheet/schema";
 import { z } from "zod";
 
@@ -46,8 +46,11 @@ export function updateCuesheet(path: string, next: unknown): ValidationResult {
     };
   }
 
-  writeFileSync(path, `${JSON.stringify(result.data, null, 2)}\n`, "utf-8");
-  return result;
+  // Stamp a stable id onto any segment that lacks one (an agent computing a whole cuesheet need
+  // not mint ids; new segments get one here). Added keys never trip findLostFieldPaths above.
+  const stamped = ensureSegmentIds(result.data);
+  writeFileSync(path, `${JSON.stringify(stamped, null, 2)}\n`, "utf-8");
+  return { ok: true, data: stamped };
 }
 
 /**

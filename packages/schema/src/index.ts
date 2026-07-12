@@ -41,3 +41,5 @@ export type { ValidationResult } from "./validate.js";
 export { deriveHint } from "./hints.js";
 
 export { findLostFieldPaths } from "./lostKeys.js";
+
+export { newSegmentId, ensureSegmentIds } from "./segmentId.js";
