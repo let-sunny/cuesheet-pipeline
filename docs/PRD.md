@@ -111,10 +111,12 @@ subtitled/total-cut-count badge; Export has no badge.
   (a collapsible side rail for placing/dragging tracks against cuts + a top property bar for the
   selected track)
 - Narration: on/off toggle, folder, overall volume, Ducking (duck-under-narration amount + fade
-  duration), help text — the settings component (`NarrationSettings`) is built and tested but
-  not currently wired into any step, so project-level narration settings aren't reachable from
-  the running app yet; only per-cut narration file selection (the (2) Edit step's Cut settings)
-  works today
+  duration), help text — schema and render support narration fully, but the settings component
+  (`NarrationSettings`) that sets `narration.enabled` is built and tested yet **not mounted in any
+  step**. So narration can't be turned on from the app UI (only via the bridge or a hand-edited
+  cuesheet), and because the per-cut narration picker in Cut settings is gated on
+  `narration.enabled`, it never appears either. Kept as a deferred feature — the original intent is
+  narration that auto-attaches at subtitle positions; tracked in issue #21, not to be removed.
 - Export dialog: resolution presets (720p/1080p/4K — subtitle metrics scale proportionally),
   burn-in subtitles vs. clean, summary, progress, download
 - Subtitle download (.srt)
