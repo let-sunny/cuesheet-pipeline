@@ -8,6 +8,9 @@ test("add a BGM track, the gutter bar appears, and its settings panel opens", as
   await expect(page.getByTestId("bgm-bar-0")).toHaveCount(0);
   await expect(page.getByTestId("bgm-settings-panel")).toHaveCount(0);
 
+  // BgmSidePanel is collapsed by default (2026-07-12 relocation - no longer stacked above the cut
+  // list) - expand it before the add-track button is reachable.
+  await page.getByTestId("bgm-panel-toggle").click();
   await page.getByTestId("bgm-add-track").click();
 
   await expect(page.getByTestId("bgm-bar-0")).toBeVisible();
@@ -43,6 +46,8 @@ test("a new track starts at cut 1, and its bar can be dragged (default placement
   }
   await expect(page.getByTestId("cut-row-6")).toBeVisible();
 
+  // BgmSidePanel is collapsed by default (2026-07-12 relocation) - expand it first.
+  await page.getByTestId("bgm-panel-toggle").click();
   await page.getByTestId("bgm-add-track").click();
 
   // Default placement (2026-07-09 fix): a new track always starts at cut 1 - previously it

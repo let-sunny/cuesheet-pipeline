@@ -9,8 +9,9 @@ import {
 
 /**
  * Component anatomy migration (docs/styling-migration.md, StyleX migration batch 3) — rules
- * ported 1:1 from the old `.compact-list-*`/`.bgm-gutter-*` classes in styles.css (all owned
- * solely by this component).
+ * ported 1:1 from the old `.compact-list-*` classes in styles.css (all owned solely by this
+ * component). BGM gutter/bar styles moved to `BgmSidePanel.styles.ts` alongside the BGM gutter
+ * itself (2026-07-12 relocation) - `rowBgmDragHighlight` stays here since it styles a cut row.
  *
  * `.scene-shot-badge` (+ `.shot-*` variants) is gone from styles.css (2026-07-11 stock-audit
  * completion pass) - replaced by a stock Astryx `Badge` (`sceneBadge` below trims its default size,
@@ -21,9 +22,9 @@ import {
  * layer no longer needs to out-order a global plain-input marker class, since it's gone from this
  * component's markup).
  *
- * The BGM gutter toggle and the row action buttons (move up/down, delete) are now stock Astryx
- * Button/IconButton (2026-07-11 stock-component migration) - the old `.bgm-gutter-toggle`/
- * `.compact-list-actions button` plain-CSS exceptions are gone with them.
+ * The row action buttons (move up/down, delete) are now stock Astryx IconButton (2026-07-11
+ * stock-component migration) - the old `.compact-list-actions button` plain-CSS exception is gone
+ * with them.
  *
  * `background`/`border` shorthands are written out as their longhand equivalents
  * (`backgroundColor`, `borderWidth`+`borderStyle`+`borderColor`) — see HeaderBar.styles.ts's
@@ -34,105 +35,10 @@ import {
  * Spacing/radius migration (2026-07-11, design-principles.md #5 strict rule, same reasoning as
  * MomentPalette.styles.ts's comment): `gap`/`padding`/`margin`/`borderRadius` read from Astryx's
  * `spacingVars`/`radiusVars`. Structural row/column sizing (`list`'s 300px column, `index`'s 20px
- * number gutter, `gutterHandle`'s 9px drag-handle thickness, `subtitleDot`'s 8px dot) and color/
- * font-size stay literal/deferred, same reasoning as before.
+ * number gutter, `subtitleDot`'s 8px dot) and color/font-size stay literal/deferred, same
+ * reasoning as before.
  */
 export const styles = stylex.create({
-  panel: {
-    display: "flex",
-    flexDirection: "column",
-    gap: spacingVars["--spacing-1-5"],
-    flexGrow: 0,
-    flexShrink: 0,
-    flexBasis: "auto",
-    minWidth: 0,
-  },
-  // Section-header separation (2026-07-11 QA fix, design-principles.md #4) - a thin bottom
-  // border + a little breathing room below is what keeps this compact header reading as its own
-  // section instead of blending into the first cut row right underneath it (the user's actual
-  // complaint was misreading the header's "+ Add track" as a cut-list action, not just its icon).
-  gutterHeader: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: spacingVars["--spacing-2"],
-    paddingBottom: spacingVars["--spacing-1-5"],
-    borderBottomWidth: 1,
-    borderBottomStyle: "solid",
-    borderBottomColor: colorVars["--color-border"],
-  },
-  // Icon+text+count-badge composition passed as the gutter-toggle Button's `children` (2026-07-11
-  // stock-component migration) - Button itself only lays out a single icon/label pair internally,
-  // so this custom composition needs its own flex row to match the previous look.
-  gutterToggleContent: {
-    display: "flex",
-    alignItems: "center",
-    gap: spacingVars["--spacing-1"],
-  },
-  gutterCountBadge: {
-    padding: `0 ${spacingVars["--spacing-1"]}`,
-    borderRadius: radiusVars["--radius-element"],
-    fontSize: textSizeVars["--font-size-xs"],
-    fontWeight: fontWeightVars["--font-weight-semibold"],
-    backgroundColor: colorVars["--color-background-green"],
-    color: colorVars["--color-text-green"],
-  },
-  listBody: {
-    display: "flex",
-    alignItems: "flex-start",
-    gap: spacingVars["--spacing-2"],
-    minWidth: 0,
-  },
-  gutter: {
-    position: "relative",
-    flexGrow: 0,
-    flexShrink: 0,
-    flexBasis: "auto",
-    alignSelf: "stretch",
-    touchAction: "none",
-  },
-  gutterBar: {
-    position: "absolute",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "stretch",
-    overflow: "hidden",
-    backgroundColor: colorVars["--color-background-green"],
-    borderWidth: 1,
-    borderStyle: "solid",
-    borderColor: colorVars["--color-border-green"],
-    borderRadius: radiusVars["--radius-inner"],
-    cursor: "grab",
-  },
-  gutterBarSelected: {
-    borderColor: colorVars["--color-accent"],
-    boxShadow: `0 0 0 1px ${colorVars["--color-accent"]}`,
-  },
-  // 6px -> 9px (2026-07-09 diagnosed drag-reliability fix) - a wider grab target for the
-  // resize-start/resize-end handles, alongside the window-level pointer listeners in
-  // CompactSegmentList.tsx that make the drag itself track reliably once grabbed.
-  gutterHandle: {
-    flexGrow: 0,
-    flexShrink: 0,
-    flexBasis: "auto",
-    height: 9,
-    cursor: "ns-resize",
-    backgroundColor: colorVars["--color-border-green"],
-  },
-  gutterBarLabel: {
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: "auto",
-    minHeight: 0,
-    overflow: "hidden",
-    writingMode: "vertical-rl",
-    textOrientation: "mixed",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-    fontSize: textSizeVars["--font-size-xs"],
-    padding: `${spacingVars["--spacing-1"]} ${spacingVars["--spacing-0-5"]}`,
-    pointerEvents: "none",
-  },
   // 480 -> 300 (13-inch density pass, 2026-07-10): freed width is what lets the video + cut
   // settings columns sit beside this list instead of wrapping below the video (see
   // EditStep.styles.ts's trimVideoCol/trimFieldsCol and docs/screen-spec.md's baseline-viewport
