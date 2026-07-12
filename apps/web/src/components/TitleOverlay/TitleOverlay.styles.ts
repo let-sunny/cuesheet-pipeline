@@ -14,9 +14,12 @@ export const styles = stylex.create({
     overflow: "hidden",
   },
   backdrop: {
+    // backgroundColor, NOT the `background` shorthand: StyleX silently drops the shorthand form in
+    // this repo (same reason border/etc. are written longhand - see HeaderBar.styles.ts), which
+    // left this backdrop transparent so the Backdrop dim slider had no visible effect (2026-07-12).
     position: "absolute",
     inset: 0,
-    background: "#000000",
+    backgroundColor: "#000000",
   },
   stage: {
     position: "absolute",
