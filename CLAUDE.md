@@ -387,8 +387,9 @@ Validated by schema, so only ever-valid cuesheets get saved.
 - Tools: `get_cuesheet` (read the current value), `update_cuesheet` (full replace + validate) — the
   latter is the core of "freedom": whatever the edit is, compute the whole new cuesheet and hand it
   over; it gets validated, then applied.
-- Registration: the `cuesheet-bridge` server in the root `.mcp.json`. The edit target is
-  `CUESHEET_PATH` (default `project.cuesheet.json`).
+- Registration: the `cuesheet-bridge` server in the root `.mcp.json`. The edit target is the
+  active episode, re-resolved per tool call: `CUESHEET_PATH` env > the `.active-episode` file >
+  `project.cuesheet.json`.
 - The web app watches this file to refresh the preview (planned).
 - So it flows without approval prompts, `.claude/settings.json` allows the bridge tools,
   Edit/Write, and the key pnpm commands. (For the autonomous editing cycle — the safety boundary is

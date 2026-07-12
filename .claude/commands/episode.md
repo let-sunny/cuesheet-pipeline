@@ -209,14 +209,15 @@ anytime in the editor, so err on the aggressive side - missing one is worse.
   If the response's `project.name` differs from `<slug>` (this episode's project
   name) - meaning the server is up for a different episode - tell the user a
   restart is needed (don't automatically kill and restart it yourself - the user
-  may be working on something else). The exact command to tell them:
+  may be working on something else). Step (1)'s `pnpm episode` already wrote this
+  episode to `.active-episode`, so the restart needs no env var - the editor reads
+  the active episode on startup:
 
   ```bash
-  CUESHEET_PATH=$(pwd)/episodes/<slug>.cuesheet.json pnpm --filter @cuesheet/web dev
+  pnpm --filter @cuesheet/web dev
   ```
 
-  If nothing is up on port 5173 (curl fails), just start it fresh with the command
-  above.
+  If nothing is up on port 5173 (curl fails), just start it fresh the same way.
 
 ### (6.5) YouTube chapters (optional output, cheap)
 
