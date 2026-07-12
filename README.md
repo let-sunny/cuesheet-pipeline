@@ -50,11 +50,19 @@ See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full package/data-flow map.
 pnpm install
 pnpm -r build                         # also needed once before opening Claude Code,
                                        # so the MCP bridge (cuesheet-bridge) has a dist to run
-pnpm episode "<raw footage folder>"   # scan + vision draft, then launches the editor
+pnpm episode "<raw footage folder>"   # scans the footage + boots the editor (no draft yet)
 ```
 
-Or from Claude Code, run `/episode <raw footage folder>` to generate the rough cut, then
-open the editor at `localhost:5173` to polish and export.
+`pnpm episode` only **scans and opens the editor** — it does not produce a rough cut. To
+generate the draft, run the vision-judgment pass in Claude Code:
+
+```
+/episode <raw footage folder>         # vision judgment -> assemble -> subtitles in your voice
+```
+
+Then open the editor at `localhost:5173` to polish and export. See
+**[docs/FIRST-EPISODE.md](docs/FIRST-EPISODE.md)** for the full first-run walkthrough — exact
+command order, expected time/cost, and the failure symptom to look for at each step.
 
 No footage on hand yet? `bash scripts/generate-sample-clips.sh` generates a couple of
 synthetic test clips (ffmpeg testsrc/color bars + tone, no copyright concerns) into

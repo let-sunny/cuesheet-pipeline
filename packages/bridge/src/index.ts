@@ -1,6 +1,9 @@
 #!/usr/bin/env node
+import { createRequire } from "node:module";
+import { resolve } from "node:path";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { createServer } from "./server.js";
+import { formatStartupBanner } from "./banner.js";
+import { BRIDGE_TOOL_NAMES, createServer } from "./server.js";
 
 /**
  * MCP bridge that Claude Code connects to.
@@ -21,5 +24,18 @@ const CUESHEET_PATH = process.env.CUESHEET_PATH ?? "./project.cuesheet.json";
 const CUESHEET_BRIDGE_READONLY = process.env.CUESHEET_BRIDGE_READONLY === "1";
 
 const server = createServer(CUESHEET_PATH, { readOnly: CUESHEET_BRIDGE_READONLY });
+
+// stderr only - stdout is the MCP stdio protocol channel. Tells the attached session what it
+// actually got (which file, which tools, that a stale pre-rebuild server won't hot-reload).
+const version = (createRequire(import.meta.url)("../package.json") as { version: string }).version;
+console.error(
+  formatStartupBanner({
+    cuesheetPath: resolve(CUESHEET_PATH),
+    toolNames: BRIDGE_TOOL_NAMES,
+    version,
+    readOnly: CUESHEET_BRIDGE_READONLY,
+  }),
+);
+
 const transport = new StdioServerTransport();
 await server.connect(transport);

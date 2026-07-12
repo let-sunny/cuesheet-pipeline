@@ -118,6 +118,18 @@ Every edit is "read the whole cuesheet, compute the whole new cuesheet, send it 
 defaults to `./project.cuesheet.json`) selects which file is being edited; the web editor
 watches the same file and refreshes automatically when the bridge writes to it.
 
+**After a rebuild, restart the session/bridge — and point `CUESHEET_PATH` at the episode you
+actually mean.** MCP servers do not hot-reload: a Claude Code session that attached before a
+`pnpm -r build` keeps running the previous `dist` (old tool set/behavior) until it is restarted.
+To make this visible, the bridge prints a startup banner to stderr on boot — resolved
+`CUESHEET_PATH`, package version, and the live tool names — so you can confirm what you attached
+to instead of guessing. Separately, the root `.mcp.json` pins `CUESHEET_PATH=project.cuesheet.json`
+(the seed cuesheet), so out of the box the bridge edits *that*, not an episode. To edit an episode
+via the bridge, launch it with `CUESHEET_PATH=episodes/<slug>.cuesheet.json` and restart — the same
+env-var handoff `.claude/commands/episode.md` step 6 uses for the web editor — rather than editing
+the tracked `.mcp.json` with a personal episode path. Unifying "the active episode" across the web
+editor, `pnpm episode`, and the bridge is tracked in #25.
+
 Setting `CUESHEET_BRIDGE_READONLY=1` runs the bridge read-only: every `update_cuesheet` call is
 refused with a structured `{ok:false, errors:[...]}` naming the variable to unset, and nothing
 is written. `get_cuesheet`, `validate_cuesheet`, and `get_schema` are unaffected — exactly what a
@@ -167,8 +179,10 @@ build "<idea>"` / `astryx template --list`) before hand-building any structure, 
 
 ## Typical workflows
 
-**New episode, end to end**: `pnpm episode "<folder>"` (scans, boots the editor) -> in Claude
-Code, `/episode <folder>` (vision judgment -> assemble -> subtitle voice pass) -> open
+**New episode, end to end** (step-by-step walkthrough with failure symptoms:
+[docs/FIRST-EPISODE.md](docs/FIRST-EPISODE.md)): `pnpm episode "<folder>"` (scans, boots the
+editor — no draft yet) -> in Claude Code, `/episode <folder>` (vision judgment -> assemble ->
+subtitle voice pass; this is what actually produces the draft) -> open
 `http://localhost:5173`, review the rough cut, hand-edit anything -> press render in the editor
 (lands at `out/<project-name> <timestamp>.mp4`, downloadable via the stable `GET /out.mp4`
 alias) (or run `cuesheet-render episodes/<slug>.cuesheet.json out.mp4`).
