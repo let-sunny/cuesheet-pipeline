@@ -102,7 +102,9 @@ const result = validateCueSheet(cueInput); // assembleDraft itself doesn't valid
 ]
 ```
 
-- `shotType`: `hand-closeup` / `object` / `cat` / `change` / `reveal` / `wearing` / `other`
+- `shotType`: an open string at the engine level; the vocabulary is domain data
+  (`domains/<name>/shot-types.json`). Knitting's: `hand-closeup` / `object` / `cat` / `change` /
+  `reveal` / `wearing` / `other`. With `assemble --domain <dir>`, out-of-vocabulary values are rejected.
   (a shot vocabulary drawn from the user's actual editing grammar).
 - `quality`: 1-5. Only 3 and above is accepted as a steady-speed highlight.
 - `monotonousRanges`: stretches with no change, just continued work. Timelapse-connector candidates.

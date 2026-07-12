@@ -23,6 +23,7 @@ export {
   facePolicyFileSchema,
   loadDomainBundle,
   resolveDomainAssembleConfig,
+  momentsFileSchemaFor,
 } from "./domain.js";
 export type { DomainBundle } from "./domain.js";
 
