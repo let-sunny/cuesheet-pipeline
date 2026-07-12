@@ -1,0 +1,31 @@
+name: Feature / enhancement
+description: Propose a capability or improvement.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: ask
+    attributes:
+      label: Ask
+      description: The capability you want, in one or two sentences — what should become possible.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Notes / context
+      description: >-
+        Why it matters, constraints, related files or prior decisions. Leave the design open if
+        it isn't decided yet — say so.
+    validations:
+      required: false
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: Urgency
+      description: "\"Backlog\" issues also get the `backlog` label added by hand."
+      options:
+        - Backlog (not now)
+        - Soon
+        - Blocking current work
+    validations:
+      required: true
