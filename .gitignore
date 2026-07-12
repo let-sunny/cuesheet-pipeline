@@ -42,3 +42,8 @@ archive/
 
 # active-episode pointer - points at a personal episode path, machine-local
 .active-episode
+
+# domain personal layer - a person's own transcripts and the voice profile distilled from them
+# (the theme files in domains/<name>/ are committed; the personal voice is not)
+domains/*/transcripts/
+domains/*/voice.generated.md

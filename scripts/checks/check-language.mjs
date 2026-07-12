@@ -28,6 +28,12 @@ const LANGUAGE_ALLOWLIST = new Set([
   // specify real subtitle-generation behavior - same rationale as voice-guide.md itself.
   ".claude/commands/episode.md",
 
+  // Knitting domain theme: the face policy carries the Korean face-exposure tag + heuristic
+  // vocabulary (functional matching literals, not translatable prose); the vision prompt quotes
+  // the same tag - same rationale as episode.md, from which these were lifted.
+  "domains/knitting/face-policy.json",
+  "domains/knitting/vision-prompt.md",
+
   // Docs quoting Korean terms/examples as the artifact being discussed, inside otherwise-English
   // prose (a UI-term glossary table, a spelling-convention recap, a literal sample string also
   // hardcoded below, literal user chat quotes, regex keywords matched against commit messages).

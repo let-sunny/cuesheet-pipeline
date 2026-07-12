@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "standard": "chin-line",
+  "memoTag": "[얼굴노출]",
+  "violationQuality": 1,
+  "heuristic": {
+    "partWords": ["얼굴", "입술", "눈~입", "이목구비"],
+    "riskWord": "노출"
+  },
+  "prose": "Face policy (absolute rule): faces may be exposed only up to the chin (anything above that, including the lips, is a violation). The same standard applies to the user as well as to other people such as family. If a moment has a violating frame, tag its memo with [얼굴노출] and lower quality to 1 so it's deprioritized for adoption (not excluded entirely - it can still be salvaged with a vertical crop in the editor, so it must stay in the palette)."
+}

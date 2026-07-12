@@ -1,0 +1,17 @@
+{
+  "qualityThreshold": 3,
+  "cutRhythm": {
+    "minCutS": 2,
+    "maxCutS": 3.5,
+    "avgTriggerS": 3.1,
+    "avgHighS": 3.0,
+    "trimStepS": 0.25
+  },
+  "timelapseConnector": {
+    "speed": 14,
+    "minSliceS": 30,
+    "maxSliceS": 60,
+    "capPerEpisode": 8
+  },
+  "boundaryPadS": 0.4
+}
