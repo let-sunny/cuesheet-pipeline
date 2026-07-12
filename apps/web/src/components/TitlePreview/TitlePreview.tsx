@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import type { TitlePreset } from "@cuesheet/schema";
 import { TitleCardView } from "@cuesheet/render/remotion";
-import { useTitleFrameLoop } from "../../hooks/useTitleFrameLoop.js";
 import { computeTitleStageTransform } from "../../lib/titleStageTransform.js";
 import { styles } from "./TitlePreview.styles.js";
 
@@ -13,6 +12,12 @@ export interface TitlePreviewProps {
   fontSize: number;
   /** Marker sweep color for the "highlight" preset; ignored by the other presets. */
   highlightColor?: string;
+  /** The exact animation frame to show. The title is timeline-driven (see TitleOverlay): the caller
+   * derives this from the cut's playback position, so the title animates in step with the footage
+   * and lands on its final frame when scrubbed/paused - it is NOT a self-looping preview anymore. */
+  frame: number;
+  /** Total title-animation length in frames - the presets author their reveal against this (e.g.
+   * typing spreads its characters across the whole span), independent of `frame`. */
   durationInFrames: number;
   fps: number;
   /** Project output dimensions - the composition renders at this native pixel size (the same
@@ -21,24 +26,19 @@ export interface TitlePreviewProps {
    * itself ends up rendered at (see computeTitleStageTransform). */
   projectWidth: number;
   projectHeight: number;
-  /** Pausing stops the rAF loop outright (see useTitleFrameLoop). */
-  playing: boolean;
-  /** Bump this (e.g. an incrementing counter) to reset playback to frame 0 - the caller (
-   * TitleOverlay) owns this alongside `playing`, since both are driven by the same restart/
-   * play-pause controls. */
-  restartToken: number;
 }
 
 /**
- * Plain-React, requestAnimationFrame-driven preview of a cut's title card (PRD backlog #2) -
- * renders the REAL preset animation math (TitleCardView, from `@cuesheet/render/remotion` -
- * `spring`/`interpolate` are pure functions, so this is pixel-identical to the real render with
- * zero Remotion runtime in the browser) instead of running it through `@remotion/player`'s
- * `<Player>`, which repeatedly failed to reliably animate in this Vite+workspace environment
- * (crash from a dual React instance, then frozen at frame 0 from a Player/composition Remotion-
- * context mismatch, then still frozen in a real browser even with an explicit play() nudge - see
- * docs/goals for the full history). Its own frame counter (useTitleFrameLoop) is guaranteed to
- * animate: plain React state advanced by rAF + elapsed real time, no external runtime required.
+ * Plain-React preview of a cut's title card (PRD backlog #2) - renders the REAL preset animation
+ * math (TitleCardView, from `@cuesheet/render/remotion` - `spring`/`interpolate` are pure functions,
+ * so this is pixel-identical to the real render with zero Remotion runtime in the browser) instead
+ * of running it through `@remotion/player`'s `<Player>`, which repeatedly failed to reliably animate
+ * in this Vite+workspace environment (see docs/goals for the history).
+ *
+ * The frame is fully controlled by the caller (TitleOverlay drives it from the cut's playback
+ * position), so the title appears at the cut's start, animates as the footage plays, and is gone
+ * once playback passes the title's duration - matching what the render bakes in. It used to
+ * self-loop on its own rAF clock, decoupled from the video, which read as "the title is always up".
  */
 export function TitlePreview({
   text,
@@ -46,14 +46,12 @@ export function TitlePreview({
   color,
   fontSize,
   highlightColor,
+  frame,
   durationInFrames,
   fps,
   projectWidth,
   projectHeight,
-  playing,
-  restartToken,
 }: TitlePreviewProps) {
-  const { frame } = useTitleFrameLoop({ fps, durationInFrames, playing, restartToken });
   const [box, setBox] = useState({ width: 0, height: 0 });
   const viewportRef = useRef<HTMLDivElement>(null);
 

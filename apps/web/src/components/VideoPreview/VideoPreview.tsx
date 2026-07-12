@@ -536,6 +536,9 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
             {!cropEditDraft ? (
               <TitleOverlay
                 title={segment.title}
+                currentTimeS={currentTime}
+                inS={segment.in}
+                isPlaying={isPlaying}
                 projectWidth={projectWidth}
                 projectHeight={projectHeight}
                 projectFps={projectFps}

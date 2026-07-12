@@ -6,10 +6,8 @@ import type { Title } from "@cuesheet/schema";
 import { TITLE_FONT_SIZE_PX, TITLE_TEXT_COLOR } from "@cuesheet/render/remotion";
 import { TitleOverlay } from "./TitleOverlay.js";
 
-// TitlePreview itself is unit-tested separately (its own frame-advance/pause/restart behavior) -
-// stubbed here to a props-echoing marker so these tests can assert TitleOverlay wires the right
-// content/duration/dimensions/playing/restartToken down to it, without needing to drive a real
-// rAF loop from this file.
+// TitlePreview itself is unit-tested separately - stubbed here to a props-echoing marker so these
+// tests can assert TitleOverlay wires the right content/duration/dimensions/frame down to it.
 const { mockTitlePreview } = vi.hoisted(() => ({
   mockTitlePreview: vi.fn((props: Record<string, unknown>) => (
     <div
@@ -19,11 +17,10 @@ const { mockTitlePreview } = vi.hoisted(() => ({
       data-color={String(props.color)}
       data-font-size={String(props.fontSize)}
       data-duration-in-frames={String(props.durationInFrames)}
+      data-frame={String(props.frame)}
       data-fps={String(props.fps)}
       data-project-width={String(props.projectWidth)}
       data-project-height={String(props.projectHeight)}
-      data-playing={String(props.playing)}
-      data-restart-token={String(props.restartToken)}
     />
   )),
 }));
@@ -39,9 +36,20 @@ afterEach(() => {
 
 const baseTitle: Title = { text: "Cast on", preset: "typing", durationS: 2, color: "#3a3128", size: 72, highlightColor: "#a7c7e7" };
 
+// Defaults put the playhead at the cut's in-point (elapsed 0), paused - i.e. inside the title
+// window, so the overlay renders. Individual tests override currentTimeS/inS/isPlaying.
 function renderOverlay(overrides: Partial<ComponentProps<typeof TitleOverlay>> = {}) {
   return render(
-    <TitleOverlay title={baseTitle} projectWidth={1920} projectHeight={1080} projectFps={30} {...overrides} />,
+    <TitleOverlay
+      title={baseTitle}
+      currentTimeS={0}
+      inS={0}
+      isPlaying={false}
+      projectWidth={1920}
+      projectHeight={1080}
+      projectFps={30}
+      {...overrides}
+    />,
   );
 }
 
@@ -89,22 +97,36 @@ describe("TitleOverlay", () => {
 
   it("renders a backdrop dim layer only when title.backdrop is set", () => {
     const without = renderOverlay();
-    // container has just the stage (no controls of its own - the preview auto-loops).
     const overlayWithout = without.container.querySelector('[data-testid="title-overlay"]')!;
-    expect(overlayWithout.children.length).toBe(1);
+    expect(overlayWithout.children.length).toBe(1); // just the stage
     without.unmount();
 
     const withDim = renderOverlay({ title: { ...baseTitle, backdrop: { dim: 0.5 } } });
-    // container has: backdrop + stage.
     const overlayWithDim = withDim.container.querySelector('[data-testid="title-overlay"]')!;
-    expect(overlayWithDim.children.length).toBe(2);
+    expect(overlayWithDim.children.length).toBe(2); // backdrop + stage
     withDim.unmount();
   });
 
-  it("drives the auto-looping preview (always playing, never externally restarted)", () => {
-    const { getByTestId } = renderOverlay();
-    const preview = getByTestId("mock-title-preview");
-    expect(preview.getAttribute("data-playing")).toBe("true");
-    expect(preview.getAttribute("data-restart-token")).toBe("0");
+  it("is hidden once playback passes the title's window (elapsed >= durationS)", () => {
+    // durationS 2, playhead at 3s past the in-point -> outside the window -> nothing rendered.
+    const { container } = renderOverlay({ currentTimeS: 3.5, inS: 0.5, isPlaying: true });
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("is hidden before the cut's in-point (elapsed < 0)", () => {
+    const { container } = renderOverlay({ currentTimeS: 0.2, inS: 1 });
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("shows the live frame while playing (frame tracks the playback position)", () => {
+    // elapsed = 1s, 30fps -> frame 30.
+    const { getByTestId } = renderOverlay({ currentTimeS: 1.5, inS: 0.5, isPlaying: true });
+    expect(getByTestId("mock-title-preview").getAttribute("data-frame")).toBe("30");
+  });
+
+  it("shows the settled final frame while paused (durationInFrames), so a just-added title reads", () => {
+    // Paused at the in-point: frame is the final frame (durationS 2 * 30fps = 60), not 0.
+    const { getByTestId } = renderOverlay({ currentTimeS: 0, inS: 0, isPlaying: false });
+    expect(getByTestId("mock-title-preview").getAttribute("data-frame")).toBe("60");
   });
 });

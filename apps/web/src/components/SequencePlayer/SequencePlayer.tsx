@@ -454,6 +454,9 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
         ) : null}
         <TitleOverlay
           title={currentSegment?.title}
+          currentTimeS={videoNow}
+          inS={currentSegment?.in ?? 0}
+          isPlaying={playing}
           projectWidth={projectWidth}
           projectHeight={projectHeight}
           projectFps={cue.project.fps}
