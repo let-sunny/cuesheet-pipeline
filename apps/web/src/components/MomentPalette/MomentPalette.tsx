@@ -33,6 +33,8 @@ interface Props {
   onAddSegment: (seg: Segment) => void;
   /** "Remove" for an already-added ("in use") card — removes the overlapping segment from the draft. */
   onRemoveSegment: (clip: string, inS: number, outS: number) => void;
+  /** Jump to the Edit step with this card's cut (0-based index) selected. */
+  onGoToEdit: (cutIndex: number) => void;
 }
 
 /**
@@ -40,7 +42,7 @@ interface Props {
  * with a single click. Added segments are auto-inserted in chronological order by (clip, in)
  * regardless of where they're added (the caller, App.tsx, guarantees that ordering).
  */
-export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props) {
+export function MomentPalette({ segments, onAddSegment, onRemoveSegment, onGoToEdit }: Props) {
   const [moments, setMoments] = useState<ClipMoments[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [frameMap, setFrameMap] = useState<Record<string, string[]>>({});
@@ -381,6 +383,19 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment }: Props
                             researched convention of a media browser's per-item action slot), not a
                             heavier fill that would compete with the card's actual content. */}
                         <div {...stylex.props(styles.actionsGroup)}>
+                          {/* Only in-use cards map to a cut, so only they get a jump-to-Edit button;
+                              placed left of Remove so the destructive action stays rightmost. */}
+                          {cutNumber !== undefined ? (
+                            <SceneCardButton
+                              icon={<Icon icon="chevronRight" size="sm" />}
+                              label="Go to Edit"
+                              variant="ghost"
+                              size="sm"
+                              tooltip="Open this cut in the Edit step"
+                              onClick={() => onGoToEdit(cutNumber - 1)}
+                              data-testid={`palette-card-goto-edit-${card.key}`}
+                            />
+                          ) : null}
                           <SceneCardButton
                             icon={<Icon icon={inUse ? "close" : "check"} size="sm" />}
                             label={inUse ? "Remove" : "Add"}

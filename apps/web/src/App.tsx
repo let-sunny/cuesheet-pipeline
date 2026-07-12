@@ -281,6 +281,7 @@ export function App({ themeMode, onThemeModeChange, themeName, onThemeNameChange
           (text + button + button), so space-between spread the buttons apart into a "disjointed" layout. */}
       {restoreSnapshot ? (
         <Banner
+          xstyle={styles.restoreBanner}
           status="warning"
           title={`You have unsaved edits from the last session (last edited ${minutesAgoLabel(restoreSnapshot.savedAt)}).`}
           endContent={
@@ -362,6 +363,7 @@ export function App({ themeMode, onThemeModeChange, themeName, onThemeNameChange
             segments={draft.segments}
             onAddSegment={composeActions.addMomentSegment}
             onRemoveSegment={composeActions.removeMatchingSegments}
+            onGoToEdit={goToEdit}
           />
         ) : null}
 

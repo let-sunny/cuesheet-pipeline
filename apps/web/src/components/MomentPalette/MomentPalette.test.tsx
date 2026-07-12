@@ -43,6 +43,7 @@ function baseProps(overrides: Partial<Parameters<typeof MomentPalette>[0]> = {})
     segments: [] as Segment[],
     onAddSegment: vi.fn(),
     onRemoveSegment: vi.fn(),
+    onGoToEdit: vi.fn(),
     ...overrides,
   };
 }
@@ -166,6 +167,19 @@ describe("MomentPalette status filter (SegmentedControl)", () => {
     expect(screen.getByRole("radio", { name: "All" })).not.toBeNull();
     expect(screen.getByRole("radio", { name: "In use" })).not.toBeNull();
     expect(screen.getByRole("radio", { name: "Excluded" })).not.toBeNull();
+  });
+
+  it("shows a 'Go to Edit' button only on in-use cards, jumping to that cut's index", async () => {
+    const onGoToEdit = vi.fn();
+    vi.mocked(fetchMoments).mockResolvedValue(oneInUseOneNot);
+    render(<MomentPalette {...baseProps({ segments: inUseSegments, onGoToEdit })} />);
+    await waitFor(() => expect(screen.getByText("knitting a sock cuff")).not.toBeNull());
+
+    // Only the in-use card (its cut is index 0) gets the jump button; the not-in-use card doesn't.
+    const buttons = screen.getAllByRole("button", { name: "Go to Edit" });
+    expect(buttons.length).toBe(1);
+    fireEvent.click(buttons[0]!);
+    expect(onGoToEdit).toHaveBeenCalledWith(0);
   });
 
   it("narrows the grid to in-use cards when the 'In use' radio is selected", async () => {
