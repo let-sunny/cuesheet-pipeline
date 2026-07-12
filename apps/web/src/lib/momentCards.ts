@@ -2,18 +2,13 @@ import type { Segment } from "@cuesheet/schema";
 import type { BadgeVariant } from "@astryxdesign/core/Badge";
 import type { ClipMoments, ShotType } from "../api.js";
 import { baseName, stem } from "../clipPaths.js";
+import { categoryBadgeVariant } from "./domainConfig.js";
+import type { DomainConfig } from "./domainConfig.js";
 
-export type Category =
-  | "knit-range"
-  | "knitting"
-  | "cat"
-  | "reveal"
-  | "materials"
-  | "outing"
-  | "mistake"
-  | "wearing"
-  | "change"
-  | "other";
+/** Category ids are open/domain-driven now (issue #31 item 1) - which ids exist, their labels,
+ * and their badge colors all come from the fetched DomainConfig (`config.categories`), not a
+ * hardcoded union anymore. */
+export type Category = string;
 
 export interface MomentCard {
   key: string;
@@ -36,7 +31,7 @@ export type StatusFilter = "all" | "in-use" | "excluded";
  * the palette card is meant to preview a single addable cut, not the whole timelapse-connector
  * source material.
  */
-export function buildCards(entries: ClipMoments[]): MomentCard[] {
+export function buildCards(entries: ClipMoments[], config: DomainConfig): MomentCard[] {
   const list: MomentCard[] = [];
   for (const entry of entries) {
     const clipFileName = baseName(entry.clip);
@@ -48,7 +43,7 @@ export function buildCards(entries: ClipMoments[]): MomentCard[] {
         clipFolder,
         inS: m.inS,
         outS: m.outS,
-        category: categoryFor(m.shotType, m.memo),
+        category: categoryFor(m.shotType, m.memo, config),
         memo: m.memo,
         quality: m.quality,
       });
@@ -63,7 +58,7 @@ export function buildCards(entries: ClipMoments[]): MomentCard[] {
         clipFolder,
         inS,
         outS,
-        category: "knit-range",
+        category: config.rangeCategory,
         memo: r.desc,
         quality: null,
       });
@@ -134,9 +129,10 @@ export function filterCards(
   selectedCategory: Category | "all",
   statusFilter: StatusFilter,
   inUseCutNumber: Map<string, number>,
+  config: DomainConfig,
 ): MomentCard[] {
   const byCategory = selectedCategory === "all" ? cards : cards.filter((c) => c.category === selectedCategory);
-  return filterByStatus(byCategory, statusFilter, inUseCutNumber);
+  return filterByStatus(byCategory, statusFilter, inUseCutNumber, config);
 }
 
 /** The status-axis filter alone (no category). Extracted so the category chip counts can be
@@ -146,6 +142,7 @@ export function filterByStatus(
   cards: MomentCard[],
   statusFilter: StatusFilter,
   inUseCutNumber: Map<string, number>,
+  config: DomainConfig,
 ): MomentCard[] {
   return cards.filter((c) => {
     if (statusFilter === "all") {
@@ -158,7 +155,7 @@ export function filterByStatus(
     if (inUse) {
       return false;
     }
-    return hasFaceTag(c.memo) || (c.quality !== null && c.quality < 3);
+    return hasFaceTag(c.memo, config) || (c.quality !== null && c.quality < 3);
   });
 }
 
@@ -181,50 +178,40 @@ export function nearestFrame(frames: string[], inS: number): string | null {
   return best;
 }
 
-export function hasFaceTag(memo: string): boolean {
-  return memo.includes(FACE_TAG);
+export function hasFaceTag(memo: string, config: DomainConfig): boolean {
+  return memo.includes(config.faceTag);
 }
 
-export function stripFaceTag(memo: string): string {
-  return memo.replace(FACE_TAG, "").trim();
+export function stripFaceTag(memo: string, config: DomainConfig): string {
+  return memo.replace(config.faceTag, "").trim();
 }
 
-function categoryFor(shotType: ShotType, memo: string): Category {
-  if (MISTAKE_PATTERN.test(memo)) {
-    return "mistake";
+/**
+ * Shot type -> the same Badge variant its category already uses in the Scenes palette
+ * (`categoryBadgeVariant`) - reused so the Edit step's per-cut scene badge (CompactSegmentList,
+ * VideoPreview) never invents a second color mapping for the same shot types (CLAUDE.md
+ * "component layering": dedup, don't restyle). "Timelapse cut" (a monotonous speed-range, not a
+ * shotType) isn't covered by this - it uses `config.rangeCategory`'s own badge variant directly
+ * (`categoryBadgeVariant(config, config.rangeCategory)`), since a speed-up connector is
+ * conceptually the same "monotonous range" category.
+ */
+export function shotTypeBadgeVariant(shotType: ShotType, config: DomainConfig): BadgeVariant {
+  const categoryId = config.shotTypeCategory[shotType] ?? "other";
+  return categoryBadgeVariant(config, categoryId);
+}
+
+/** memo-pattern override, applied BEFORE the shotType->category fallback (first pattern match
+ * wins) - e.g. a "mistake" memo pattern promotes a hand-closeup shot out of "knitting" into
+ * "mistake", same for "outing". Falls back to the shotType's configured category, and "other" if
+ * even that's unmapped (an open-string shotType the active domain doesn't know about). */
+function categoryFor(shotType: ShotType, memo: string, config: DomainConfig): Category {
+  for (const p of config.memoPatterns) {
+    if (new RegExp(p.pattern).test(memo)) {
+      return p.category;
+    }
   }
-  if (OUTING_PATTERN.test(memo)) {
-    return "outing";
-  }
-  return SHOT_TYPE_CATEGORY[shotType] ?? "other";
+  return config.shotTypeCategory[shotType] ?? "other";
 }
-
-/** The face-exposure risk tag the vision reader leaves in memo/desc. Replaced with a badge in
- * the display and the raw text is stripped out (so it doesn't leak into subtitles either).
- * This tag is not translated because it's a string literally embedded in the generated
- * (Korean) data — it's a content-matching marker, not a UI label. */
-export const FACE_TAG = "[얼굴노출]";
-
-/** Category -> Badge variant. Mapped to preserve the original styles.css category-tag color
- * intent as-is (knit-range=teal, knitting=blue, cat=purple, materials=green, mistake=red,
- * wearing=pink, change=cyan, other=gray are 1:1 with the old custom tags). reveal/outing used
- * to have their own custom category-tag colors (the tag-reveal and tag-outing variables,
- * respectively), but the Badge palette doesn't have those two colors, so they were folded into
- * the leftover orange/yellow. */
-export const CATEGORY_META: Record<Category, { label: string; badgeVariant: BadgeVariant }> = {
-  "knit-range": { label: "Knit range", badgeVariant: "teal" },
-  "knitting": { label: "Knitting", badgeVariant: "blue" },
-  "cat": { label: "Cat", badgeVariant: "purple" },
-  "reveal": { label: "Reveal", badgeVariant: "orange" },
-  "materials": { label: "Materials/props", badgeVariant: "green" },
-  "outing": { label: "Outing", badgeVariant: "yellow" },
-  "mistake": { label: "Mistake", badgeVariant: "red" },
-  "wearing": { label: "Wearing", badgeVariant: "pink" },
-  "change": { label: "Change", badgeVariant: "cyan" },
-  // BadgeVariantMap has no gray (only neutral/info/success/warning/error/blue/cyan/
-  // green/orange/pink/purple/red/teal/yellow exist), so substitute the closest one, neutral.
-  "other": { label: "Other", badgeVariant: "neutral" },
-};
 
 /* On-screen copy (PRD section 4 glossary, "[All / In use only / Excluded only]"). */
 export const STATUS_FILTER_LABEL: Record<StatusFilter, string> = {
@@ -232,44 +219,3 @@ export const STATUS_FILTER_LABEL: Record<StatusFilter, string> = {
   "in-use": "In use only",
   "excluded": "Excluded only",
 };
-
-export const CATEGORY_ORDER: Category[] = [
-  "knit-range",
-  "knitting",
-  "cat",
-  "reveal",
-  "materials",
-  "outing",
-  "mistake",
-  "wearing",
-  "change",
-  "other",
-];
-
-const SHOT_TYPE_CATEGORY: Record<ShotType, Category> = {
-  "hand-closeup": "knitting",
-  object: "materials",
-  cat: "cat",
-  change: "change",
-  reveal: "reveal",
-  wearing: "wearing",
-  other: "other",
-};
-
-/**
- * Shot type -> the same Badge variant its category already uses in the Scenes palette
- * (`CATEGORY_META`) - reused so the Edit step's per-cut scene badge (CompactSegmentList,
- * VideoPreview) never invents a second color mapping for the same shot types (CLAUDE.md
- * "component layering": dedup, don't restyle). "Timelapse cut" (a monotonous speed-range, not a
- * shotType) isn't in this map - it uses the "knit-range" category's own teal directly
- * (`TIMELAPSE_BADGE_VARIANT`), since a speed-up connector is conceptually the same "monotonous
- * knitting range" category.
- */
-export function shotTypeBadgeVariant(shotType: ShotType): BadgeVariant {
-  return CATEGORY_META[SHOT_TYPE_CATEGORY[shotType] ?? "other"].badgeVariant;
-}
-
-export const TIMELAPSE_BADGE_VARIANT: BadgeVariant = CATEGORY_META["knit-range"].badgeVariant;
-
-const MISTAKE_PATTERN = /풀|실수|다시\s*뜨/;
-const OUTING_PATTERN = /가게|야외|밖에|거리|걷|매장/;

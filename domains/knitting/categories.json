@@ -1,0 +1,28 @@
+{
+  "categories": [
+    { "id": "knit-range", "label": "Knit range", "color": "teal" },
+    { "id": "knitting", "label": "Knitting", "color": "blue" },
+    { "id": "cat", "label": "Cat", "color": "purple" },
+    { "id": "reveal", "label": "Reveal", "color": "orange" },
+    { "id": "materials", "label": "Materials/props", "color": "green" },
+    { "id": "outing", "label": "Outing", "color": "yellow" },
+    { "id": "mistake", "label": "Mistake", "color": "red" },
+    { "id": "wearing", "label": "Wearing", "color": "pink" },
+    { "id": "change", "label": "Change", "color": "cyan" },
+    { "id": "other", "label": "Other", "color": "neutral" }
+  ],
+  "shotTypeCategory": {
+    "hand-closeup": "knitting",
+    "object": "materials",
+    "cat": "cat",
+    "change": "change",
+    "reveal": "reveal",
+    "wearing": "wearing",
+    "other": "other"
+  },
+  "memoPatterns": [
+    { "category": "mistake", "pattern": "풀|실수|다시\\s*뜨" },
+    { "category": "outing", "pattern": "가게|야외|밖에|거리|걷|매장" }
+  ],
+  "rangeCategory": "knit-range"
+}

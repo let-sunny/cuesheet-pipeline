@@ -1,6 +1,7 @@
 import type { Segment } from "@cuesheet/schema";
 import type { ClipMoments, ShotType } from "../api.js";
 import { baseName } from "../clipPaths.js";
+import type { DomainConfig } from "./domainConfig.js";
 
 export type SceneInfo =
   | { kind: "moment"; memo: string; shotType: ShotType; inS: number; outS: number }
@@ -51,9 +52,10 @@ export function matchSceneInfo(
   return { kind: "none" };
 }
 
-export function shotTypeLabel(shotType: ShotType): string {
-  // Unknown (non-knitting-domain) shot type: fall back to its capitalized id rather than "".
-  return SHOT_TYPE_LABEL[shotType] ?? shotType.charAt(0).toUpperCase() + shotType.slice(1);
+export function shotTypeLabel(shotType: ShotType, config: DomainConfig): string {
+  // Unknown shot type (not in the active domain's config.shotTypeLabels): fall back to its
+  // capitalized id rather than "".
+  return config.shotTypeLabels[shotType] ?? shotType.charAt(0).toUpperCase() + shotType.slice(1);
 }
 
 function withinTolerance(t: number, startS: number, endS: number): boolean {
@@ -67,13 +69,3 @@ function withinTolerance(t: number, startS: number, endS: number): boolean {
  * proximity matching instead of exact matching.
  */
 const MATCH_TOLERANCE_S = 3;
-
-const SHOT_TYPE_LABEL: Record<ShotType, string> = {
-  "hand-closeup": "Hand",
-  object: "Object",
-  cat: "Cat",
-  change: "Change",
-  reveal: "Reveal",
-  wearing: "Wearing",
-  other: "Other",
-};

@@ -1,4 +1,5 @@
 import type { CueSheet } from "@cuesheet/schema";
+import type { DomainConfig } from "./lib/domainConfig.js";
 
 /** Empty state where no draft (cuesheet file) has been generated yet - PRD section 8 "No draft (empty state)" catalog. */
 export class CueSheetNotFoundError extends Error {}
@@ -82,6 +83,17 @@ export interface ProxyStatus {
 export async function fetchProxyStatus(): Promise<ProxyStatus> {
   const res = await fetch("/api/proxy-status");
   return (await res.json()) as ProxyStatus;
+}
+
+/** The active domain's scene-presentation model (labels, categories, shot->category map, memo
+ * patterns, face tag) - see lib/domainConfig.ts. Fetched once via the useDomainConfig hook/context
+ * (issue #31 item 1), not by each component that needs it. */
+export async function fetchDomainConfig(): Promise<DomainConfig> {
+  const res = await fetch("/api/domain");
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+  return (await res.json()) as DomainConfig;
 }
 
 // Open string: the shot vocabulary is domain data (domains/<name>/shot-types.json), so the web

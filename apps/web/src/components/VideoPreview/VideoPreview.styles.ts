@@ -25,8 +25,8 @@ import {
  * IntroOutroEditor.styles.ts's own `missing` style rather than kept as a shared global class, since
  * a 2-property rule doesn't earn a shared component of its own. The scene-shot badge
  * (`scene-shot-badge`+`shot-*`) is gone too - replaced by a stock Astryx `Badge`, colored via
- * `shotTypeBadgeVariant`/`TIMELAPSE_BADGE_VARIANT` (lib/momentCards.ts), the same category-color
- * mapping the Scenes palette already uses (dedup, not a second color system).
+ * `shotTypeBadgeVariant` (lib/momentCards.ts) / `categoryBadgeVariant` (lib/domainConfig.ts), the
+ * same category-color mapping the Scenes palette already uses (dedup, not a second color system).
  *
  * `background`/`border` shorthands are written out as their longhand equivalents - see
  * HeaderBar.styles.ts's comment for why (StyleX silently drops the shorthand form).

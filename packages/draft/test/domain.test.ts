@@ -92,3 +92,17 @@ describe("momentsFileSchemaFor (domain-narrowed shot vocabulary)", () => {
     expect(schema.safeParse(clipWith("plating")).success).toBe(false);
   });
 });
+
+describe("categories bundle (web palette presentation model)", () => {
+  it("loads the knitting categories, shot->category map, memo patterns, and range category", () => {
+    const bundle = loadDomainBundle(KNITTING);
+    expect(bundle.categories?.categories.find((c) => c.id === "cat")).toEqual({
+      id: "cat",
+      label: "Cat",
+      color: "purple",
+    });
+    expect(bundle.categories?.shotTypeCategory["hand-closeup"]).toBe("knitting");
+    expect(bundle.categories?.rangeCategory).toBe("knit-range");
+    expect(bundle.categories?.memoPatterns.map((p) => p.category)).toEqual(["mistake", "outing"]);
+  });
+});

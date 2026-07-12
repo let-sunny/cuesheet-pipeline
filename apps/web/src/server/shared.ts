@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { dirname, isAbsolute, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { resolveCuesheetPath } from "@cuesheet/active-episode";
+import { resolveCuesheetPath, resolveDomainDir } from "@cuesheet/active-episode";
 
 const here = dirname(fileURLToPath(import.meta.url));
 // src/server -> src -> web -> packages -> repo root
@@ -15,6 +15,15 @@ export const repoRoot = resolve(here, "../../../..");
  */
 export function cuesheetPath(): string {
   return resolveCuesheetPath({ repoRoot, env: process.env });
+}
+
+/**
+ * The active domain bundle directory this editor session reads its scene vocabulary from
+ * (DOMAIN_DIR env > .active-domain > domains/knitting), resolved the same way as the launcher and
+ * the assemble CLI so all three agree on which domain a run uses (issue #31).
+ */
+export function domainDir(): string {
+  return resolveDomainDir({ repoRoot, env: process.env });
 }
 
 /** Checks whether target is inside root (including root itself) — prevents path escape. */

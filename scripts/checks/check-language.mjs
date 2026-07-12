@@ -34,6 +34,11 @@ const LANGUAGE_ALLOWLIST = new Set([
   "domains/knitting/vision-prompt.md",
   "domains/knitting/voice-distill-prompt.md",
 
+  // Knitting domain theme's category vocabulary: memo-pattern regexes (mistake/outing) matched
+  // against real (Korean) scene memos - same functional-matching rationale as face-policy.json
+  // above, not translatable prose.
+  "domains/knitting/categories.json",
+
   // Docs quoting Korean terms/examples as the artifact being discussed, inside otherwise-English
   // prose (a UI-term glossary table, a spelling-convention recap, a literal sample string also
   // hardcoded below, literal user chat quotes, regex keywords matched against commit messages).
@@ -50,9 +55,17 @@ const LANGUAGE_ALLOWLIST = new Set([
 
   // Face-exposure tag constant + Korean-vocabulary regexes that classify real scene memos/
   // subtitles - functional matching against working content, not translatable prose.
-  "apps/web/src/lib/momentCards.ts",
   "apps/web/test/lib/momentCards.test.ts",
   "apps/web/src/components/MomentPalette/MomentPalette.test.tsx",
+
+  // Neutral domain-config fallback's face-exposure tag constant - the tool-wide vision marker
+  // (issue #31 item 1), same functional-matching rationale as the entries above.
+  "apps/web/src/lib/domainConfig.ts",
+
+  // Test fixture mirroring domains/knitting/categories.json's memo-pattern regexes + face tag,
+  // shared across web tests that assert config-threaded knitting behavior (issue #31 item 1) -
+  // functional matching data, not prose.
+  "apps/web/test/lib/knittingDomainConfig.ts",
 
   // Non-ASCII filename encoding test - needs a real Korean filename literal to exercise the
   // UTF-8 Content-Disposition header it's testing.

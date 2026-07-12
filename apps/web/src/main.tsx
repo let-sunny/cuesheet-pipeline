@@ -17,6 +17,7 @@ import "@astryxdesign/theme-neutral/theme.css";
 // (TitlePreview) actually renders in Pretendard rather than falling back to the platform sans.
 import "pretendard/dist/web/variable/pretendardvariable.css";
 import { App } from "./App.js";
+import { DomainConfigProvider } from "./hooks/useDomainConfig.js";
 import type { ThemeName } from "./lib/theme.js";
 import { loadTheme, loadThemeMode, saveTheme, saveThemeMode } from "./lib/theme.js";
 import "./styles.css";
@@ -55,12 +56,14 @@ function Root() {
   return (
     <Theme theme={THEME_OBJECTS[themeName]} mode={themeMode}>
       <ToastViewport position="bottomEnd" maxVisible={3}>
-        <App
-          themeMode={themeMode}
-          onThemeModeChange={handleThemeModeChange}
-          themeName={themeName}
-          onThemeNameChange={handleThemeNameChange}
-        />
+        <DomainConfigProvider>
+          <App
+            themeMode={themeMode}
+            onThemeModeChange={handleThemeModeChange}
+            themeName={themeName}
+            onThemeNameChange={handleThemeNameChange}
+          />
+        </DomainConfigProvider>
       </ToastViewport>
     </Theme>
   );
