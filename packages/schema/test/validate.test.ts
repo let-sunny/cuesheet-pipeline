@@ -279,6 +279,26 @@ describe("validateCueSheet - pass cases", () => {
     }
   });
 
+  it("coerces an unknown/removed title.preset to 'typing' instead of failing (stale-cuesheet guard)", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      segments: [
+        {
+          clip: "a.mp4",
+          in: 0,
+          out: 1,
+          subtitle: "",
+          title: { text: "Cast on", preset: "melt", durationS: 2 },
+        },
+      ],
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.segments[0]?.title?.preset).toBe("typing");
+    }
+  });
+
   it("defaults title.durationS/color/size when unspecified", () => {
     const input = {
       ...(sample as Record<string, unknown>),
@@ -317,15 +337,15 @@ describe("validateCueSheet - pass cases", () => {
     }
   });
 
-  it("fails when title.preset is not one of the four closed presets", () => {
+  it("coerces a title.preset outside the four closed presets to 'typing' (stale-cuesheet guard)", () => {
     const input = {
       ...(sample as Record<string, unknown>),
       segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", title: { text: "Hi", preset: "retro" } }],
     };
     const result = validateCueSheet(input);
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.errors.some((e) => e.startsWith("segments[0].title.preset:"))).toBe(true);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.segments[0]?.title?.preset).toBe("typing");
     }
   });
 

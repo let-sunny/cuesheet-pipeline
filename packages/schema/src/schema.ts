@@ -237,7 +237,10 @@ export const titleSchema = z.object({
     .min(1, "title.text must not be empty")
     .max(80, "title.text must be <= 80 characters")
     .describe("Text shown on the title card; typing renders it as a karaoke-style reveal."),
-  preset: titlePresetSchema,
+  // `.catch` coerces an unknown/removed preset (e.g. an old "melt"/"gooey" from a pre-rename
+  // cuesheet, or a bridge typo) to a valid default instead of failing validation - otherwise a
+  // single stale preset anywhere in the cuesheet blocks every save with no easy in-app fix.
+  preset: titlePresetSchema.catch("typing"),
   durationS: z
     .number()
     .min(0.5, "durationS must be >= 0.5")
