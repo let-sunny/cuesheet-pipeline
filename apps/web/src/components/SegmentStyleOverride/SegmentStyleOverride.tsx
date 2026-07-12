@@ -52,6 +52,19 @@ export function SegmentStyleOverride({
     onCommit: (next) => onChangeOverride({ size: next }),
   });
 
+  // Background box padding for this cut - mirrors the global panel's padding field. Runs
+  // unconditionally (hooks rule); its onCommit only fires from the field, which renders only while
+  // this override has a background, so `override.background` is present then.
+  const bgPaddingField = useNumericField({
+    value: override?.background?.padding ?? DEFAULT_OVERRIDE_BACKGROUND.padding,
+    coerce: (n) => Math.min(120, Math.max(0, Math.round(n))),
+    onCommit: (next) => {
+      if (override?.background) {
+        onChangeOverride({ background: { ...override.background, padding: next } });
+      }
+    },
+  });
+
   return (
     <div {...stylex.props(styles.override)}>
       <div {...stylex.props(styles.toggle)}>
@@ -117,6 +130,7 @@ export function SegmentStyleOverride({
                     }
                   />
                 </Field>
+                <NumericInput field={bgPaddingField} label="Background padding (px)" width={140} />
               </>
             ) : null}
 
@@ -143,4 +157,5 @@ export function SegmentStyleOverride({
   );
 }
 
-const DEFAULT_OVERRIDE_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75, padding: 8 };
+// padding 4 (matches the global default, tightened toward YouTube's caption box, 2026-07-12).
+const DEFAULT_OVERRIDE_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75, padding: 4 };

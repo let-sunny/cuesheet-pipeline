@@ -75,6 +75,8 @@ describe("SegmentStyleOverride", () => {
     // The slider's value is folded into its own label (2026-07-09 diagnosed fix), not a bare
     // group name - see SubtitleStyleSettings.test.tsx's matching case for the full rationale.
     expect(screen.getByText("Background opacity (75%)")).not.toBeNull();
+    // Padding is editable per-cut too now (2026-07-12), same as the global panel.
+    expect(screen.getByDisplayValue("8")).not.toBeNull();
   });
 
   it("calls onPromote/onClear from the detail actions", () => {
