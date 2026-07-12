@@ -1,6 +1,6 @@
 import { readFile, writeFile } from "node:fs/promises";
 import type { ViteDevServer } from "vite";
-import { findLostFieldPaths, validateCueSheet } from "@cuesheet/schema";
+import { ensureSegmentIds, findLostFieldPaths, validateCueSheet } from "@cuesheet/schema";
 import { readRequestBody, sendJson } from "../shared.js";
 import type { CuesheetWatcher } from "../watch.js";
 
@@ -56,10 +56,14 @@ export function registerCuesheetRoute(server: ViteDevServer, filePath: string, w
         return;
       }
 
-      const content = `${JSON.stringify(result.data, null, 2)}\n`;
+      // Stamp a stable id onto any segment that lacks one (new segments from the palette; the
+      // seed cuesheet). Returned in the response so the client holds the ids too, keeping them
+      // stable across subsequent saves.
+      const stamped = ensureSegmentIds(result.data);
+      const content = `${JSON.stringify(stamped, null, 2)}\n`;
       watcher.markOwnWrite(content);
       await writeFile(filePath, content, "utf8");
-      sendJson(res, 200, { ok: true, data: result.data });
+      sendJson(res, 200, { ok: true, data: stamped });
       return;
     }
 

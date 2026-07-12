@@ -1,3 +1,4 @@
+import { newSegmentId } from "@cuesheet/schema";
 import type { CueSheet, Segment } from "@cuesheet/schema";
 
 /** Sets patch onto segment i, leaving every other segment untouched. */
@@ -21,7 +22,7 @@ export function duplicateSegmentAfter(
   }
   const insertAt = selectedIndex + 1;
   const segments = [...cue.segments];
-  segments.splice(insertAt, 0, { ...source, subtitle: "" });
+  segments.splice(insertAt, 0, { ...source, id: newSegmentId(), subtitle: "" });
   return { cue: { ...cue, segments }, insertAt };
 }
 
@@ -75,7 +76,7 @@ export function splitSegmentAt(cue: CueSheet, i: number, at: number): CueSheet |
     return null;
   }
   const first: Segment = { ...s, out: at };
-  const second: Segment = { ...s, in: at, subtitle: "" };
+  const second: Segment = { ...s, id: newSegmentId(), in: at, subtitle: "" };
   const segments = [...cue.segments];
   segments.splice(i, 1, first, second);
   return { ...cue, segments };

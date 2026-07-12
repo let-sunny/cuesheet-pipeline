@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { CueSheet } from "@cuesheet/schema";
-import { formatIssue, validateCueSheet } from "@cuesheet/schema";
+import { ensureSegmentIds, formatIssue, validateCueSheet } from "@cuesheet/schema";
 import { assembleDraft } from "./assemble.js";
 import type { AssembleGrammarConfigOverride } from "./assemble.js";
 import { scanFolder } from "./scan.js";
@@ -166,11 +166,15 @@ function runAssemble(rest: string[]): void {
     process.exit(1);
   }
 
-  writeFileSync(outPath, JSON.stringify(validated.data, null, 2));
-  console.error(`Assembly complete: ${validated.data.segments.length} segments -> ${outPath}`);
+  // Stamp a stable id onto each segment so the draft starts with ids (assembleDraft itself stays
+  // a pure/deterministic function; id assignment - which is non-deterministic - lives here on the
+  // write path).
+  const stamped = ensureSegmentIds(validated.data);
+  writeFileSync(outPath, JSON.stringify(stamped, null, 2));
+  console.error(`Assembly complete: ${stamped.segments.length} segments -> ${outPath}`);
 
   if (flags.json === "true") {
-    console.log(JSON.stringify(buildAssembleJsonResult(validated.data, outPath)));
+    console.log(JSON.stringify(buildAssembleJsonResult(stamped, outPath)));
   }
 }
 

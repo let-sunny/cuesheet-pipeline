@@ -296,6 +296,13 @@ export const transitionSchema = z.object({
 
 export const segmentSchema = z
   .object({
+    id: z
+      .string()
+      .min(1, "id must not be empty")
+      .optional()
+      .describe(
+        "Stable per-segment identifier for id-addressed edits (e.g. bridge segment patches). Optional at the schema level so ensureSegmentIds can fill it; every write path (web save, assemble, bridge) stamps it, so a persisted cuesheet always has one. Must be unique within the cuesheet.",
+      ),
     clip: z
       .string()
       .min(1, "clip filename must not be empty")
@@ -561,6 +568,22 @@ export const cueSheetSchema = z
           message: `stylePreset "${segment.stylePreset}" does not reference an existing preset name`,
           path: ["segments", i, "stylePreset"],
         });
+      }
+    });
+    // Optional segment ids must be unique within the cuesheet - id-addressed edits (bridge
+    // patches) rely on an id resolving to exactly one segment.
+    const seenIds = new Map<string, number>();
+    cue.segments.forEach((segment, i) => {
+      if (segment.id === undefined) return;
+      const first = seenIds.get(segment.id);
+      if (first !== undefined) {
+        ctx.addIssue({
+          code: "custom",
+          message: `duplicate segment id "${segment.id}" (also on segments[${first}])`,
+          path: ["segments", i, "id"],
+        });
+      } else {
+        seenIds.set(segment.id, i);
       }
     });
   })

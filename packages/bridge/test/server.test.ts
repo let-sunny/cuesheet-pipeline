@@ -91,6 +91,23 @@ describe("bridge MCP round-trip", () => {
     await close();
   });
 
+  it("update_cuesheet stamps a stable id onto id-less segments (choke point)", async () => {
+    const { client, close } = await connect();
+
+    await client.callTool({ name: "update_cuesheet", arguments: { cuesheet: sample() } });
+    const first = JSON.parse(textOf(await client.callTool({ name: "get_cuesheet", arguments: {} })));
+    const id = first.data.segments[0].id;
+    expect(typeof id).toBe("string");
+    expect(id.length).toBeGreaterThan(0);
+
+    // A subsequent save that carries the id back keeps it stable (ids don't churn per save).
+    await client.callTool({ name: "update_cuesheet", arguments: { cuesheet: first.data } });
+    const second = JSON.parse(textOf(await client.callTool({ name: "get_cuesheet", arguments: {} })));
+    expect(second.data.segments[0].id).toBe(id);
+
+    await close();
+  });
+
   it("validate_cuesheet is a dry run — never writes to disk", async () => {
     const { client, close } = await connect();
 

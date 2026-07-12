@@ -39,6 +39,14 @@ describe("duplicateSegmentAfter", () => {
     expect(result?.cue.segments[2]?.subtitle).toBe("two");
   });
 
+  it("gives the duplicate a fresh id, not the source's", () => {
+    const cue = updateSegmentInSheet(threeSegmentSheet(), 0, { id: "src" });
+    const result = duplicateSegmentAfter(cue, 0);
+    expect(result?.cue.segments[0]?.id).toBe("src");
+    expect(result?.cue.segments[1]?.id).toBeDefined();
+    expect(result?.cue.segments[1]?.id).not.toBe("src");
+  });
+
   it("returns null when selectedIndex doesn't reference a segment", () => {
     const cue = threeSegmentSheet();
     expect(duplicateSegmentAfter(cue, 99)).toBeNull();
@@ -91,6 +99,14 @@ describe("splitSegmentAt", () => {
     expect(result?.segments.length).toBe(4);
     expect(result?.segments[0]).toMatchObject({ in: 0, out: 2, subtitle: "one" });
     expect(result?.segments[1]).toMatchObject({ in: 2, out: 5, subtitle: "" });
+  });
+
+  it("keeps the first half's id and gives the second half a fresh one", () => {
+    const cue = updateSegmentInSheet(threeSegmentSheet(), 0, { id: "orig" });
+    const result = splitSegmentAt(cue, 0, 2);
+    expect(result?.segments[0]?.id).toBe("orig");
+    expect(result?.segments[1]?.id).toBeDefined();
+    expect(result?.segments[1]?.id).not.toBe("orig");
   });
 
   it("returns null when the split point leaves the first half too short", () => {
