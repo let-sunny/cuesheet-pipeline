@@ -269,7 +269,11 @@ function SubtitleStylePreviewStage({
   );
 }
 
-const DEFAULT_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75, padding: 8 };
+// padding 4 (was 8): tighter box that hugs the text more, closer to YouTube's caption background
+// (2026-07-12 user feedback - 8 read as too much top/bottom). Applied uniformly (the render's
+// drawtext boxborderw is a single value), so preview and export stay in sync. Editable per project
+// via the "Background padding (px)" field.
+const DEFAULT_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75, padding: 4 };
 
 /**
  * Matches the schema's subtitleStyle.margin default (40) — GET /api/cuesheet serves the file

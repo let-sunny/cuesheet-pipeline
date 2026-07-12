@@ -59,6 +59,10 @@ export const styles = stylex.create({
   stepBody: {
     marginTop: spacingVars["--spacing-4"],
   },
+  // Gap below the restore banner so it doesn't sit flush against the step tabs beneath it.
+  restoreBanner: {
+    marginBottom: spacingVars["--spacing-3"],
+  },
   // Full-page loading/error/not-found placeholder shown before the app shell mounts (no draft
   // loaded yet) - ported from the old `.status`(+`.empty-state`) classes in styles.css, now a
   // centered wrapper around a stock Astryx `EmptyState` instead (2026-07-11 stock-audit completion
