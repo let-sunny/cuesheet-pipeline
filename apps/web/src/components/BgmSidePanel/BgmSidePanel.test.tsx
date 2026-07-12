@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useState } from "react";
 import type { ComponentProps } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -33,8 +34,19 @@ function baseProps(overrides: Partial<ComponentProps<typeof BgmSidePanel>> = {})
       { top: 740, height: 120 },
     ],
     onDragHighlightChange: vi.fn(),
+    collapsed: true,
+    setCollapsed: vi.fn(),
     ...overrides,
   };
+}
+
+/** `collapsed` is now a controlled prop (lifted to EditStep - see BgmSidePanel's own doc comment
+ * on why), so a test that needs to click the toggle and see the panel actually expand/collapse
+ * needs a small stateful wrapper standing in for EditStep, exactly like a real caller would hold
+ * the state. */
+function ControlledHarness(overrides: Partial<ComponentProps<typeof BgmSidePanel>> = {}) {
+  const [collapsed, setCollapsed] = useState(overrides.collapsed ?? true);
+  return <BgmSidePanel {...baseProps({ ...overrides, collapsed, setCollapsed })} />;
 }
 
 describe("BgmSidePanel", () => {
@@ -46,11 +58,21 @@ describe("BgmSidePanel", () => {
   });
 
   it("expands on toggle click, revealing the gutter and the add-track button", () => {
-    render(<BgmSidePanel {...baseProps()} />);
+    render(<ControlledHarness />);
     fireEvent.click(screen.getByTestId("bgm-panel-toggle"));
     expect(screen.getByTestId("bgm-gutter")).not.toBeNull();
     expect(screen.getByRole("button", { name: "Add background music track" })).not.toBeNull();
     expect(screen.getByRole("button", { name: "Collapse background music panel" })).not.toBeNull();
+  });
+
+  it("calls the controlled setCollapsed prop (not local state) on toggle click", () => {
+    const setCollapsed = vi.fn();
+    render(<BgmSidePanel {...baseProps({ setCollapsed })} />);
+    fireEvent.click(screen.getByTestId("bgm-panel-toggle"));
+    expect(setCollapsed).toHaveBeenCalledTimes(1);
+    // Passed an updater function (matches EditStep's setBgmPanelCollapsed((c) => !c) usage), not a
+    // literal boolean - this is what a caller must support for the fix to work.
+    expect(typeof setCollapsed.mock.calls[0]?.[0]).toBe("function");
   });
 
   it("shows the track count on the rail even while collapsed", () => {
@@ -61,7 +83,7 @@ describe("BgmSidePanel", () => {
 
   it("calls onAddBgmTrack when the add-track button is clicked", () => {
     const onAddBgmTrack = vi.fn();
-    render(<BgmSidePanel {...baseProps({ onAddBgmTrack })} />);
+    render(<ControlledHarness onAddBgmTrack={onAddBgmTrack} />);
     fireEvent.click(screen.getByTestId("bgm-panel-toggle"));
     fireEvent.click(screen.getByTestId("bgm-add-track"));
     expect(onAddBgmTrack).toHaveBeenCalledTimes(1);
@@ -80,8 +102,7 @@ describe("BgmSidePanel", () => {
       // 3 segments of 5s each (cumulative cut starts 0/5/10/15) - a bgm cue spanning seconds 0-10
       // covers cuts 0-1 (rows 0-1).
       const bgm: BgmCue[] = [{ file: "bgm.mp3", start: 0, end: 10, volume: 1 }];
-      render(<BgmSidePanel {...baseProps({ bgm })} />);
-      fireEvent.click(screen.getByTestId("bgm-panel-toggle"));
+      render(<BgmSidePanel {...baseProps({ bgm, collapsed: false })} />);
 
       const bar = screen.getByTestId("bgm-bar-0");
       // row0.top (500) - gutter.top (500) = 0.
@@ -95,8 +116,7 @@ describe("BgmSidePanel", () => {
 
   it("prevents default on a bar/handle pointerdown (E2E regression guard, see CompactSegmentList's textarea drag-over-focus fix)", () => {
     const bgm: BgmCue[] = [{ file: "bgm.mp3", start: 0, end: 5, volume: 1 }];
-    render(<BgmSidePanel {...baseProps({ bgm })} />);
-    fireEvent.click(screen.getByTestId("bgm-panel-toggle"));
+    render(<BgmSidePanel {...baseProps({ bgm, collapsed: false })} />);
     const handle = screen.getByTestId("bgm-bar-0-handle-start");
     const event = fireEvent.pointerDown(handle, { bubbles: true, cancelable: true });
     // jsdom's fireEvent returns false if preventDefault was called.
@@ -110,10 +130,9 @@ describe("BgmSidePanel", () => {
     const bgm: BgmCue[] = [{ file: "bgm.mp3", start: 0, end: 5, volume: 1 }];
     render(
       <BgmSidePanel
-        {...baseProps({ bgm, onSelectBgm, onChangeBgmRange, onDragHighlightChange })}
+        {...baseProps({ bgm, onSelectBgm, onChangeBgmRange, onDragHighlightChange, collapsed: false })}
       />,
     );
-    fireEvent.click(screen.getByTestId("bgm-panel-toggle"));
 
     const bar = screen.getByTestId("bgm-bar-0");
     fireEvent.pointerDown(bar, { clientY: 500 });

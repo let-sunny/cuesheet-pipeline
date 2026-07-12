@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Icon } from "@astryxdesign/core/Icon";
@@ -28,6 +29,13 @@ interface Props {
   /** While a bar drag is in progress, reports the cut-row range it currently spans so
    * CompactSegmentList can highlight those rows — null once the drag ends. */
   onDragHighlightChange: (range: { start: number; end: number } | null) => void;
+  /** Whether the rail is collapsed to a narrow icon strip. Lifted up to EditStep (2026-07-12 Y-
+   * misalignment fix) rather than kept as this component's own local state - toggling it must
+   * re-render CompactSegmentList too (see this file's header comment), which only happens if the
+   * state lives in their shared parent; a sibling's local state change never re-renders the other
+   * sibling. */
+  collapsed: boolean;
+  setCollapsed: Dispatch<SetStateAction<boolean>>;
 }
 
 /**
@@ -45,6 +53,22 @@ interface Props {
  * its cut row: bars anchor to `rowRects`, which CompactSegmentList measures with no header above
  * its own rows, so the gutter column here must also start with nothing above it — the rail sits
  * *beside* the gutter, never above it.
+ *
+ * `collapsed` is a controlled prop, not local state (2026-07-12 Y-misalignment fix - QA report:
+ * add a track, collapse the rail, expand it again, and the bar's Y drifted off its cut row).
+ * Root cause: `rowRects` is measured by CompactSegmentList (a flex sibling, not a parent/child of
+ * this panel - see the prop's own comment) and only gets re-measured when CompactSegmentList
+ * itself re-renders. `gutterTop` below is measured by this component on every one of ITS OWN
+ * renders. As long as `collapsed` lived here as this component's own `useState`, toggling it only
+ * ever re-rendered THIS component - CompactSegmentList never re-rendered in response, so its
+ * `rowRects` snapshot could go stale relative to this panel's freshly-remeasured `gutterTop` the
+ * moment anything shifted the cut rows without also changing one of CompactSegmentList's own
+ * props (this repo's current CSS happens to keep the cut list a fixed width immune to this panel's
+ * own width changes, which is why the drift wasn't pixel-visible in every layout - but that's a
+ * CSS coincidence, not a guarantee). Lifting `collapsed` to EditStep (the actual shared parent -
+ * already how `rowRects`/`bgmDragHighlight` cross this same boundary) means every collapse/expand
+ * re-renders EditStep, which re-renders CompactSegmentList too, so it re-measures and reports
+ * current rowRects in lockstep with this panel's own gutterTop remeasurement, every time.
  */
 export function BgmSidePanel({
   bgm,
@@ -55,8 +79,9 @@ export function BgmSidePanel({
   onChangeBgmRange,
   rowRects,
   onDragHighlightChange,
+  collapsed,
+  setCollapsed,
 }: Props) {
-  const [collapsed, setCollapsed] = useState(true);
   const gutterRef = useRef<HTMLDivElement | null>(null);
   const [gutterTop, setGutterTop] = useState(0);
   const dragRef = useRef<BgmDragState | null>(null);

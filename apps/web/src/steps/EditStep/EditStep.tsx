@@ -40,8 +40,8 @@ export interface EditStepProps {
  * whichever is selected) on the right (screen-spec section 3). Thin: every field's actual behavior
  * lives in the composed components/hooks (SegmentQuickFields, BgmSettingsPanel, BgmSidePanel,
  * useEditStepActions) - this component only wires the currently-selected cut/track's data and
- * callbacks into them, plus the row-rect/drag-highlight state that crosses the CompactSegmentList/
- * BgmSidePanel sibling boundary (see their own doc comments).
+ * callbacks into them, plus the row-rect/drag-highlight/collapsed state that crosses the
+ * CompactSegmentList/BgmSidePanel sibling boundary (see their own doc comments).
  */
 export function EditStep({
   draft,
@@ -70,6 +70,12 @@ export function EditStep({
   // flex siblings rather than parent/child - see both components' doc comments for why.
   const [rowRects, setRowRects] = useState<RowRect[]>([]);
   const [bgmDragHighlight, setBgmDragHighlight] = useState<{ start: number; end: number } | null>(null);
+  // Also lifted here, not left as BgmSidePanel's own local state (2026-07-12 Y-misalignment fix -
+  // see BgmSidePanel's doc comment): toggling collapse must re-render CompactSegmentList too, so it
+  // re-measures rowRects in lockstep with BgmSidePanel's own gutterTop remeasurement. A sibling's
+  // local state change never re-renders the other sibling, which is exactly what let the two
+  // measurements go stale relative to each other.
+  const [bgmPanelCollapsed, setBgmPanelCollapsed] = useState(true);
 
   return (
     <div {...stylex.props(styles.editLayout)}>
@@ -97,6 +103,8 @@ export function EditStep({
           onChangeBgmRange={actions.changeBgmRange}
           rowRects={rowRects}
           onDragHighlightChange={setBgmDragHighlight}
+          collapsed={bgmPanelCollapsed}
+          setCollapsed={setBgmPanelCollapsed}
         />
         <div {...stylex.props(styles.trimWorkspace)} data-testid="edit-trim-workspace">
           <div {...stylex.props(styles.trimVideoCol)}>
