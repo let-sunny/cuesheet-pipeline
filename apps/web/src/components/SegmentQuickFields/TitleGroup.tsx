@@ -65,8 +65,7 @@ export function TitleGroup({ title, onToggle, onChangeTitle, titleDurationField,
             {/* "Dur." (not "Duration") - the row's compact width budget (screen-spec section 4's
                 measured G1/G2 width tokens) was tuned for short labels like Speed/Volume;
                 "Duration" overflowed it and visually collided with the input. */}
-            <NumericInput field={titleDurationField} label="Dur." width={80} />
-            <Text type="supporting">s</Text>
+            <NumericInput field={titleDurationField} label="Dur." width={80} units="s" />
           </HStack>
           {/* Color/Size mirror subtitle style's own color/size fields (SegmentStyleOverride.tsx) -
               ColorField doesn't self-wrap in FormLayoutContext the way ui/NumericInput does, so

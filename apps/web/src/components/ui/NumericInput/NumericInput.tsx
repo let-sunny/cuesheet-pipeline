@@ -1,4 +1,5 @@
 import { FormLayoutContext } from "@astryxdesign/core/FormLayout";
+import { InputGroup, InputGroupText } from "@astryxdesign/core/InputGroup";
 import { TextInput, type TextInputStatus } from "@astryxdesign/core/TextInput";
 import type { NumericFieldBindings } from "../../../hooks/useNumericField.js";
 import { styles } from "./NumericInput.styles.js";
@@ -30,6 +31,10 @@ export interface NumericInputProps {
   /** Help text shown between the label and the input (e.g. ProjectMetaFields' Fade in/Fade out
    * explanations). */
   description?: string;
+  /** A unit suffix (e.g. "x", "%", "s") rendered as a proper Astryx InputGroup addon attached to
+   * the input, not a floating `<Text>` beside it - the established pattern for input units
+   * (InputGroup docs: "text addons to show units"). Omit for no unit. */
+  units?: string;
 }
 
 /**
@@ -67,23 +72,38 @@ export function NumericInput({
   status,
   onFocus,
   description,
+  units,
 }: NumericInputProps) {
+  const input = (
+    <TextInput
+      // With a unit addon the InputGroup below carries the label/tooltip/status/description for the
+      // whole group, so the inner input hides its own label (docs: grouped inputs combine the group
+      // label with their own) to avoid a doubled label.
+      label={label}
+      isLabelHidden={units != null}
+      value={field.value}
+      onChange={(_value, e) => field.onChange(e)}
+      onBlur={field.onBlur}
+      onKeyDown={field.onKeyDown}
+      onFocus={onFocus}
+      type="text"
+      labelTooltip={units == null ? labelTooltip : undefined}
+      status={units == null ? status : undefined}
+      description={units == null ? description : undefined}
+      data-testid={testId}
+      xstyle={width != null ? styles.width(width) : undefined}
+    />
+  );
   return (
     <FormLayoutContext value={{ direction: "horizontal-labels" }}>
-      <TextInput
-        label={label}
-        value={field.value}
-        onChange={(_value, e) => field.onChange(e)}
-        onBlur={field.onBlur}
-        onKeyDown={field.onKeyDown}
-        onFocus={onFocus}
-        type="text"
-        labelTooltip={labelTooltip}
-        status={status}
-        description={description}
-        data-testid={testId}
-        xstyle={width != null ? styles.width(width) : undefined}
-      />
+      {units != null ? (
+        <InputGroup label={label} labelTooltip={labelTooltip} status={status} description={description}>
+          {input}
+          <InputGroupText>{units}</InputGroupText>
+        </InputGroup>
+      ) : (
+        input
+      )}
     </FormLayoutContext>
   );
 }

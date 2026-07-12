@@ -1,8 +1,6 @@
 import { HStack } from "@astryxdesign/core/HStack";
-import { Icon } from "@astryxdesign/core/Icon";
 import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
-import { Percent } from "lucide-react";
 import type { NumericFieldBindings } from "../../hooks/useNumericField.js";
 import { NumericInput } from "../ui/NumericInput/index.js";
 import { styles } from "./PlaybackGroup.styles.js";
@@ -37,11 +35,8 @@ export function PlaybackGroup({ speedField, volumeField, speedAtCap }: PlaybackG
             that shows it only once the cut is actually at the cap. The conditional note is the
             one meaningful surface for this; a passive always-on hover hint isn't worth that
             conflict. */}
-        <NumericInput field={speedField} label="Speed" testId="cut-field-speed" width={60} />
-        <NumericInput field={volumeField} label="Volume" testId="cut-field-volume" width={60} />
-        {/* Volume unit - the Percent icon (the field's "Volume" label already carries the meaning,
-            so the icon is a decorative unit marker). */}
-        <Icon icon={Percent} size="sm" color="secondary" />
+        <NumericInput field={speedField} label="Speed" testId="cut-field-speed" width={60} units="x" />
+        <NumericInput field={volumeField} label="Volume" testId="cut-field-volume" width={60} units="%" />
       </HStack>
       {speedAtCap ? (
         <Text type="supporting" xstyle={styles.note}>
