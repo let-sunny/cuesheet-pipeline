@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BgmCue } from "@cuesheet/schema";
 import { BgmSettingsPanel } from "./BgmSettingsPanel.js";
 
@@ -8,6 +8,17 @@ import { BgmSettingsPanel } from "./BgmSettingsPanel.js";
 beforeAll(() => {
   HTMLMediaElement.prototype.play = () => Promise.resolve();
   HTMLMediaElement.prototype.pause = () => {};
+});
+
+// The File dropdown (Astryx Selector) opens its option list via the Popover API, which jsdom
+// doesn't implement - mocked the same minimal way SelectField.test.tsx does.
+beforeEach(() => {
+  HTMLElement.prototype.showPopover = vi.fn(function (this: HTMLElement) {
+    this.setAttribute("popover-open", "");
+  });
+  HTMLElement.prototype.hidePopover = vi.fn(function (this: HTMLElement) {
+    this.removeAttribute("popover-open");
+  });
 });
 
 afterEach(cleanup);
@@ -34,6 +45,7 @@ function baseProps() {
     onChangeRange: vi.fn(),
     onChangeVolume: vi.fn(),
     onRemove: vi.fn(),
+    onClose: vi.fn(),
   };
 }
 
@@ -43,18 +55,16 @@ describe("BgmSettingsPanel", () => {
     expect(screen.getByText("Background music track 1")).not.toBeNull();
   });
 
-  it("marks the currently assigned file's row as selected", () => {
+  it("shows the currently assigned file in the File dropdown", () => {
     render(<BgmSettingsPanel {...baseProps()} />);
-    const row = screen.getByText(/track1\.mp3/).closest("div")!;
-    expect(row.className).toContain("selected");
-    const otherRow = screen.getByText(/track2\.mp3/).closest("div")!;
-    expect(otherRow.className).not.toContain("selected");
+    expect(screen.getByTestId("bgm-field-file").textContent).toContain("track1.mp3");
   });
 
-  it("calls onChangeFile when a candidate file's name is clicked", () => {
+  it("calls onChangeFile when another file is picked from the dropdown", () => {
     const onChangeFile = vi.fn();
     render(<BgmSettingsPanel {...baseProps()} onChangeFile={onChangeFile} />);
-    fireEvent.click(screen.getByText(/track2\.mp3/));
+    fireEvent.click(screen.getByTestId("bgm-field-file"));
+    fireEvent.click(screen.getByRole("option", { name: /track2\.mp3/, hidden: true }));
     expect(onChangeFile).toHaveBeenCalledWith("media/bgm/track2.mp3");
   });
 
@@ -63,9 +73,9 @@ describe("BgmSettingsPanel", () => {
     expect(screen.getByText("No audio files found")).not.toBeNull();
   });
 
-  it("shows the cuts/seconds summary for the current range", () => {
+  it("shows the seconds summary for the current range", () => {
     render(<BgmSettingsPanel {...baseProps()} />);
-    expect(screen.getByText("Cuts 1-3 · 0.0s-10.0s")).not.toBeNull();
+    expect(screen.getByText("0.0s-10.0s")).not.toBeNull();
   });
 
   it("calls onRemove when Remove track is clicked", () => {
@@ -73,5 +83,12 @@ describe("BgmSettingsPanel", () => {
     render(<BgmSettingsPanel {...baseProps()} onRemove={onRemove} />);
     fireEvent.click(screen.getByRole("button", { name: "Remove track" }));
     expect(onRemove).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls onClose when the close button is clicked", () => {
+    const onClose = vi.fn();
+    render(<BgmSettingsPanel {...baseProps()} onClose={onClose} />);
+    fireEvent.click(screen.getByRole("button", { name: "Close background music settings" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

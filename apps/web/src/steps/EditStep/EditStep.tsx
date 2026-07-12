@@ -79,6 +79,30 @@ export function EditStep({
 
   return (
     <div {...stylex.props(styles.editLayout)}>
+      {/* BGM track editing is a SEPARATE top layer (2026-07-12): selecting a BGM track opens this
+          property bar above the workspace instead of swapping the right-hand Cut settings column,
+          which now always stays SegmentQuickFields. Close (X) deselects the track. */}
+      {selectedBgmIndex != null && selectedBgmCue && selectedBgmRange ? (
+        <BgmSettingsPanel
+          cue={selectedBgmCue}
+          bgmIndex={selectedBgmIndex}
+          startCutIdx={selectedBgmRange.startCutIdx}
+          endCutIdx={selectedBgmRange.endCutIdx}
+          startSeconds={selectedBgmCue.start}
+          endSeconds={selectedBgmCue.end}
+          cutCount={draft.segments.length}
+          files={bgmFiles}
+          filesNote={bgmFilesNote}
+          onChangeFile={(path) => actions.updateBgm(selectedBgmIndex, { file: path })}
+          onChangeRange={(startCutIdx, endCutIdx) => actions.changeBgmRange(selectedBgmIndex, startCutIdx, endCutIdx)}
+          onChangeVolume={(volume) => actions.updateBgm(selectedBgmIndex, { volume })}
+          onRemove={() => {
+            actions.removeBgmTrack(selectedBgmIndex);
+            setSelectedBgmIndex(null);
+          }}
+          onClose={() => setSelectedBgmIndex(null)}
+        />
+      ) : null}
       <div {...stylex.props(styles.trimLayout)}>
         <CompactSegmentList
           segments={draft.segments}
@@ -124,24 +148,9 @@ export function EditStep({
             />
           </div>
           <div {...stylex.props(styles.trimFieldsCol)} data-testid="edit-trim-fields-col">
-            {selectedBgmIndex != null && selectedBgmCue && selectedBgmRange ? (
-              <BgmSettingsPanel
-                cue={selectedBgmCue}
-                bgmIndex={selectedBgmIndex}
-                startCutIdx={selectedBgmRange.startCutIdx}
-                endCutIdx={selectedBgmRange.endCutIdx}
-                startSeconds={selectedBgmCue.start}
-                endSeconds={selectedBgmCue.end}
-                cutCount={draft.segments.length}
-                files={bgmFiles}
-                filesNote={bgmFilesNote}
-                onChangeFile={(path) => actions.updateBgm(selectedBgmIndex, { file: path })}
-                onChangeRange={(startCutIdx, endCutIdx) => actions.changeBgmRange(selectedBgmIndex, startCutIdx, endCutIdx)}
-                onChangeVolume={(volume) => actions.updateBgm(selectedBgmIndex, { volume })}
-                onRemove={() => actions.removeBgmTrack(selectedBgmIndex)}
-              />
-            ) : (
-              <SegmentQuickFields
+            {/* Always Cut settings now - BGM track editing moved to the top BgmSettingsPanel bar
+                above, so this column never gets swapped out from under a cut selection. */}
+            <SegmentQuickFields
                 segment={selectedSegment}
                 narrationEnabled={draft.narration?.enabled ?? false}
                 narrationFiles={narrationFiles}
@@ -174,8 +183,7 @@ export function EditStep({
                 onChangeTitle={(patch) => actions.updateSegmentTitle(selectedIndex, patch)}
                 onToggleTransition={(side, enabled) => actions.toggleSegmentTransition(selectedIndex, side, enabled)}
                 onChangeTransition={(side, patch) => actions.updateSegmentTransition(selectedIndex, side, patch)}
-              />
-            )}
+            />
           </div>
         </div>
       </div>
