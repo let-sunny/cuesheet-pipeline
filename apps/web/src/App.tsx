@@ -316,20 +316,26 @@ export function App({ themeMode, onThemeModeChange, themeName, onThemeNameChange
         subtitleTotal={draft.segments.length}
       />
 
-      <div {...stylex.props(styles.miniStripRow)}>
-        <MiniTimelineStrip
-          segments={draft.segments}
-          selectedIndex={selectedIndex}
-          onSelect={setSelectedIndex}
-          onGoToEdit={goToEdit}
-        />
-        <Button
-          label="Play all"
-          variant="secondary"
-          isDisabled={draft.segments.length === 0}
-          onClick={() => setSequenceMode(true)}
-        />
-      </div>
+      {/* The mini-timeline scrubber + Play-all are a "review your cuts" affordance for the Scenes
+          and Edit steps; on the Export step the strip is non-interactive/decorative (2026-07-12
+          usability pass, issue #20 #5), so the whole row is hidden there and Export leads with its
+          own output settings. */}
+      {step !== "finish" ? (
+        <div {...stylex.props(styles.miniStripRow)}>
+          <MiniTimelineStrip
+            segments={draft.segments}
+            selectedIndex={selectedIndex}
+            onSelect={setSelectedIndex}
+            onGoToEdit={goToEdit}
+          />
+          <Button
+            label="Play all"
+            variant="secondary"
+            isDisabled={draft.segments.length === 0}
+            onClick={() => setSequenceMode(true)}
+          />
+        </div>
+      ) : null}
 
       {sequenceMode ? (
         <div {...stylex.props(styles.sequencePlayerSticky)}>
