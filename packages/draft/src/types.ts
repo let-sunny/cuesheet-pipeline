@@ -5,19 +5,12 @@ import { z } from "zod";
  * from the scan stage's output (manifest.json) — the only vision-judgment step in this
  * project.
  *
- * Units are in seconds. The shotType vocabulary comes from observing the user's editing
- * grammar (hand closeup / object / cat / change / reveal / wearing shot).
+ * Units are in seconds. `shotType` is an open string at the engine level - the actual vocabulary
+ * is domain data (domains/<name>/shot-types.json), applied by `momentsFileSchemaFor` in domain.ts.
+ * Knitting's vocabulary: hand-closeup / object / cat / change / reveal / wearing / other.
  */
 
-export const shotTypeSchema = z.enum([
-  "hand-closeup",
-  "object",
-  "cat",
-  "change",
-  "reveal",
-  "wearing",
-  "other",
-]);
+export const shotTypeSchema = z.string().min(1, "shotType must not be empty");
 
 export const momentSchema = z.object({
   inS: z.number(),

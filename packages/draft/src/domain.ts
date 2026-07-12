@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { formatIssue } from "@cuesheet/schema";
 import { z } from "zod";
 import type { AssembleGrammarConfig } from "./assemble.js";
+import { clipMomentsSchema, momentSchema } from "./types.js";
 
 /**
  * Loads a domain "theme" bundle (domains/<name>/) - the genre-specific knowledge lifted out of
@@ -68,6 +69,18 @@ export function loadDomainBundle(dir: string): DomainBundle {
  */
 export function resolveDomainAssembleConfig(bundle: DomainBundle): AssembleGrammarConfig {
   return { ...bundle.grammar, faceHeuristic: bundle.facePolicy.heuristic };
+}
+
+/**
+ * A moments.json schema narrowed to this domain's shot vocabulary. The engine's `momentsFileSchema`
+ * accepts any `shotType` string (open at the engine level); this restricts it to `shotTypeIds`, so
+ * a domain-aware caller (the assemble CLI with `--domain`) rejects out-of-vocabulary shot types.
+ */
+export function momentsFileSchemaFor(bundle: DomainBundle) {
+  const shotType = z.enum(bundle.shotTypeIds as [string, ...string[]]);
+  const moment = momentSchema.extend({ shotType });
+  const clip = clipMomentsSchema.extend({ moments: z.array(moment) });
+  return z.array(clip);
 }
 
 function parseBundleFile<T>(path: string, schema: z.ZodType<T>): T {

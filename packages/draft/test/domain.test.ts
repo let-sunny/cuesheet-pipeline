@@ -1,8 +1,12 @@
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_ASSEMBLE_CONFIG } from "../src/assemble.js";
-import { loadDomainBundle, resolveDomainAssembleConfig } from "../src/domain.js";
-import { shotTypeSchema } from "../src/types.js";
+import { loadDomainBundle, momentsFileSchemaFor, resolveDomainAssembleConfig } from "../src/domain.js";
+import { momentsFileSchema } from "../src/types.js";
+
+// The knitting vocabulary, as a literal - the engine's shotType is now an open string, so the pin
+// asserts the bundle still names exactly these ids.
+const KNITTING_SHOT_IDS = ["hand-closeup", "object", "cat", "change", "reveal", "wearing", "other"];
 
 // Repo-root/domains/knitting, resolved from this file (works regardless of the cwd vitest runs in).
 const KNITTING = fileURLToPath(new URL("../../../domains/knitting", import.meta.url));
@@ -22,8 +26,8 @@ describe("loadDomainBundle (knitting)", () => {
 });
 
 describe("no-drift pins (the knitting bundle must equal the engine defaults it was lifted from)", () => {
-  it("knitting shot-type ids equal the engine's current shotType vocabulary", () => {
-    expect(loadDomainBundle(KNITTING).shotTypeIds).toEqual([...shotTypeSchema.options]);
+  it("knitting shot-type ids equal the expected vocabulary", () => {
+    expect(loadDomainBundle(KNITTING).shotTypeIds).toEqual(KNITTING_SHOT_IDS);
   });
 
   it("knitting grammar + face policy resolve to DEFAULT_ASSEMBLE_CONFIG", () => {
@@ -34,5 +38,30 @@ describe("no-drift pins (the knitting bundle must equal the engine defaults it w
 
   it("knitting face heuristic equals the engine's default face heuristic", () => {
     expect(loadDomainBundle(KNITTING).facePolicy.heuristic).toEqual(DEFAULT_ASSEMBLE_CONFIG.faceHeuristic);
+  });
+});
+
+describe("momentsFileSchemaFor (domain-narrowed shot vocabulary)", () => {
+  const clipWith = (shotType: string) => [
+    {
+      clip: "a.mp4",
+      clipSummary: "",
+      monotonousRanges: [],
+      moments: [{ inS: 0, outS: 1, shotType, memo: "", quality: 3 }],
+    },
+  ];
+
+  it("the bare engine schema accepts an unknown shotType (open-string)", () => {
+    expect(momentsFileSchema.safeParse(clipWith("plating")).success).toBe(true);
+  });
+
+  it("the domain schema accepts a known shotType", () => {
+    const schema = momentsFileSchemaFor(loadDomainBundle(KNITTING));
+    expect(schema.safeParse(clipWith("cat")).success).toBe(true);
+  });
+
+  it("the domain schema rejects an out-of-vocabulary shotType", () => {
+    const schema = momentsFileSchemaFor(loadDomainBundle(KNITTING));
+    expect(schema.safeParse(clipWith("plating")).success).toBe(false);
   });
 });

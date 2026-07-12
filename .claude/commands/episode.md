@@ -44,7 +44,8 @@ judges based only on its own clip's `frames` list (path + timestamp), and return
 a single `ClipMoments` object matching the schema below. Once all are back, merge
 them into an array and write it to the file.
 
-**Schema** (must match the zod definitions in `packages/draft/src/types.ts`):
+**Schema** (must match the zod definitions in `packages/draft/src/types.ts`; the `shotType`
+vocabulary is domain data - the knitting ids below come from `domains/knitting/shot-types.json`):
 
 ```ts
 type ShotType = "hand-closeup" | "object" | "cat" | "change" | "reveal" | "wearing" | "other";
