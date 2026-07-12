@@ -6,6 +6,7 @@ import type { CueSheet } from "@cuesheet/schema";
 import { ensureSegmentIds, formatIssue, validateCueSheet } from "@cuesheet/schema";
 import { assembleDraft } from "./assemble.js";
 import type { AssembleGrammarConfigOverride } from "./assemble.js";
+import { loadDomainBundle, momentsFileSchemaFor, resolveDomainAssembleConfig } from "./domain.js";
 import { scanFolder } from "./scan.js";
 import type { Manifest } from "./scan.js";
 import { momentsFileSchema } from "./types.js";
@@ -127,7 +128,7 @@ function runAssemble(rest: string[]): void {
 
   if (!manifestPath || !momentsPath || !clipDir || !projectName || !outPath) {
     console.error(
-      "Usage: cuesheet-draft assemble --manifest <path> --moments <path> --clip-dir <source-folder> --project-name <name> --out <cuesheet-path> [--json]",
+      "Usage: cuesheet-draft assemble --manifest <path> --moments <path> --clip-dir <source-folder> --project-name <name> --out <cuesheet-path> [--domain <dir>] [--json]",
     );
     process.exit(1);
   }
@@ -138,8 +139,20 @@ function runAssemble(rest: string[]): void {
   const manifest = JSON.parse(readFileSync(manifestPath, "utf-8")) as Manifest;
   const clipDurations = Object.fromEntries(manifest.clips.map((c) => [c.name, c.durS]));
 
+  // --domain <dir>: load the theme bundle so moments are validated against the domain's shot
+  // vocabulary and its grammar/face policy drive assembly. Omit for the engine defaults.
+  let bundle: ReturnType<typeof loadDomainBundle> | undefined;
+  if (flags.domain) {
+    try {
+      bundle = loadDomainBundle(flags.domain);
+    } catch (e) {
+      console.error(`domain bundle load failed:\n${e instanceof Error ? e.message : String(e)}`);
+      process.exit(1);
+    }
+  }
+
   const momentsRaw = JSON.parse(readFileSync(momentsPath, "utf-8"));
-  const momentsResult = momentsFileSchema.safeParse(momentsRaw);
+  const momentsResult = (bundle ? momentsFileSchemaFor(bundle) : momentsFileSchema).safeParse(momentsRaw);
   if (!momentsResult.success) {
     console.error(`moments.json validation failed:\n${momentsResult.error.issues.map(formatIssue).join("\n")}`);
     process.exit(1);
@@ -158,6 +171,8 @@ function runAssemble(rest: string[]): void {
     boundaryPadS: flags["boundary-pad"] ? Number(flags["boundary-pad"]) : undefined,
     clipDurations,
     config,
+    configBase: bundle ? resolveDomainAssembleConfig(bundle) : undefined,
+    facePolicyEnabled: bundle ? bundle.facePolicy.enabled : undefined,
   });
 
   const validated = validateCueSheet(cueInput);

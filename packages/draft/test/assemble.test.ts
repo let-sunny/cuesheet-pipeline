@@ -1,7 +1,11 @@
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { validateCueSheet } from "@cuesheet/schema";
 import { assembleDraft } from "../src/assemble.js";
+import { loadDomainBundle, resolveDomainAssembleConfig } from "../src/domain.js";
 import type { ClipMoments } from "../src/types.js";
+
+const KNITTING = fileURLToPath(new URL("../../../domains/knitting", import.meta.url));
 
 function opts(overrides: Partial<{ clipDir: string; projectName: string }> = {}) {
   return { clipDir: "/src", projectName: "테스트 프로젝트", ...overrides };
@@ -194,6 +198,41 @@ describe("assembleDraft", () => {
     ];
     const cue = assembleDraft(moments, opts());
     expect(cue.segments).toHaveLength(1);
+  });
+
+  it("facePolicyEnabled:false lets a face-exposure-risk range become a timelapse connector", () => {
+    const moments: ClipMoments[] = [
+      {
+        clip: "a.mp4",
+        clipSummary: "",
+        moments: [],
+        monotonousRanges: [{ startS: 0, endS: 42, desc: "x", faceExposed: true }],
+      },
+    ];
+    expect(assembleDraft(moments, opts()).segments).toHaveLength(0); // default: face policy on -> excluded
+    expect(assembleDraft(moments, { ...opts(), facePolicyEnabled: false }).segments).toHaveLength(1);
+  });
+
+  it("the knitting domain grammar produces byte-identical output to bare assemble", () => {
+    const moments: ClipMoments[] = [
+      {
+        clip: "a.mp4",
+        clipSummary: "",
+        moments: [
+          { inS: 10, outS: 13, shotType: "hand-closeup", memo: "뜨는 중", quality: 4 },
+          { inS: 20, outS: 23, shotType: "cat", memo: "고앵이", quality: 5 },
+        ],
+        monotonousRanges: [{ startS: 100, endS: 140, desc: "단조", faceExposed: false }],
+      },
+    ];
+    const bare = assembleDraft(moments, opts());
+    const bundle = loadDomainBundle(KNITTING);
+    const domained = assembleDraft(moments, {
+      ...opts(),
+      configBase: resolveDomainAssembleConfig(bundle),
+      facePolicyEnabled: bundle.facePolicy.enabled,
+    });
+    expect(domained).toEqual(bare);
   });
 
   it("when faceExposed is omitted and desc contains both '얼굴'(face) and '노출'(exposure), the heuristic judges it risky and skips it", () => {
