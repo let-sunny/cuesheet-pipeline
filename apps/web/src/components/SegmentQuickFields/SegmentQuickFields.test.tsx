@@ -52,8 +52,6 @@ function baseProps(overrides: Partial<ComponentProps<typeof SegmentQuickFields>>
     onChangeStylePreset: vi.fn(),
     onToggleTitle: vi.fn(),
     onChangeTitle: vi.fn(),
-    onToggleTransition: vi.fn(),
-    onChangeTransition: vi.fn(),
     ...overrides,
   };
 }
@@ -145,33 +143,6 @@ describe("SegmentQuickFields", () => {
     expect(onToggleTitle.mock.calls[0]?.[0]).toBe(true);
   });
 
-  it("renders transition fields only once transitionIn/transitionOut are set, and shows Dip amount only for type dip", () => {
-    render(
-      <SegmentQuickFields
-        {...baseProps({
-          segment: segment({
-            transitionIn: { type: "dip", durationS: 0.5, dim: 0.5 } as never,
-          }),
-        })}
-      />,
-    );
-    switchToEffectsTab();
-    // The slider's value is folded into its own label (2026-07-09 diagnosed fix), not a bare
-    // group name.
-    expect(screen.getByText("Dip amount (50%)")).not.toBeNull();
-  });
-
-  it("does not show Dip amount for a fade transition", () => {
-    render(
-      <SegmentQuickFields
-        {...baseProps({
-          segment: segment({ transitionIn: { type: "fade", durationS: 0.5 } as never }),
-        })}
-      />,
-    );
-    switchToEffectsTab();
-    expect(screen.queryByText(/Dip amount/)).toBeNull();
-  });
 
   it("hides the Narration group when narrationEnabled is false", () => {
     render(<SegmentQuickFields {...baseProps({ narrationEnabled: false })} />);

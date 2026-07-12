@@ -196,8 +196,6 @@ export function EditStep({
                 onChangeStylePreset={(name) => actions.changeSegmentStylePreset(selectedIndex, name)}
                 onToggleTitle={(enabled) => actions.toggleSegmentTitle(selectedIndex, enabled)}
                 onChangeTitle={(patch) => actions.updateSegmentTitle(selectedIndex, patch)}
-                onToggleTransition={(side, enabled) => actions.toggleSegmentTransition(selectedIndex, side, enabled)}
-                onChangeTransition={(side, patch) => actions.updateSegmentTransition(selectedIndex, side, patch)}
             />
           </div>
         </div>

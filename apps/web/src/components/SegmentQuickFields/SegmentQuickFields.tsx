@@ -12,7 +12,6 @@ import type {
   SubtitleStyleOverride,
   SubtitleStylePresets,
   Title,
-  Transition,
 } from "@cuesheet/schema";
 import { INTRO_OUTRO_MAX_DURATION_S } from "../../clipPaths.js";
 import { narrationFileUrl, type NarrationFile } from "../../api.js";
@@ -25,13 +24,12 @@ import { RangeGroup } from "./RangeGroup.js";
 import { PlaybackGroup } from "./PlaybackGroup.js";
 import { SubtitleGroup } from "./SubtitleGroup.js";
 import { TitleGroup } from "./TitleGroup.js";
-import { TransitionsGroup } from "./TransitionsGroup.js";
 import { ActionsGroup } from "./ActionsGroup.js";
 import { styles } from "./SegmentQuickFields.styles.js";
 
 /** The panel's two tabs (2026-07-11, 13-inch density pass) - "Cut" groups the edits made while
  * actually trimming/arranging a cut (Range/Playback/Narration/Actions); "Effects" groups the
- * cosmetic overlay edits (Subtitle/Title/Transitions). Splitting cuts the panel's vertical length
+ * cosmetic overlay edits (Subtitle/Title). Splitting cuts the panel's vertical length
  * roughly in half so it fits a 13-inch viewport without scrolling. */
 type QuickFieldsTab = "cut" | "effects";
 
@@ -77,18 +75,16 @@ interface Props {
   /** Turning a title card on/off for this cut (starts as a default typing title when enabled). */
   onToggleTitle: (enabled: boolean) => void;
   onChangeTitle: (patch: Partial<Title>) => void;
-  /** Turning a transitionIn/transitionOut fade or dip on/off for this cut (starts as a default
-   * fade, 0.5s, when enabled). */
-  onToggleTransition: (side: "in" | "out", enabled: boolean) => void;
-  onChangeTransition: (side: "in" | "out", patch: Partial<Transition>) => void;
 }
 
 /**
  * Cut settings (right-hand field panel in the touch-up step, canonical name from PRD section 4 —
  * formerly the "Inspector") - two tabs (2026-07-11, 13-inch density pass): "Cut" (Range ->
  * Playback -> Narration, shown only when in use -> Cut actions) and "Effects" (Subtitle, incl. the
- * per-cut subtitle style preset select/override -> Title, PRD backlog #2 -> Transitions, PRD
- * backlog #3). Reframe (crop) is no longer a group here at all - it moved onto VideoPreview's own
+ * per-cut subtitle style preset select/override -> Title, PRD backlog #2). Per-cut Transitions
+ * were removed from this panel (see issue - unnecessary for the current editing workflow; schema/
+ * render/TransitionsGroup are kept for a future re-add). Reframe (crop) is no longer a group here
+ * at all - it moved onto VideoPreview's own
  * toolbar (2026-07-11, "structure matches flow": reframe edits happen ON the video via an
  * overlay, so its entry point belongs there, next to Capture frame). The clip filename field's
  * group membership was ambiguous - the spec doesn't specify it, making it the one element in this
@@ -96,7 +92,7 @@ interface Props {
  * it's placed at the top of the Range group.
  *
  * Composition rule (CLAUDE.md, "groups are components, panels are arrangements"): each functional
- * group is its own component with its own tests (Range/Playback/Subtitle/Title/Transitions/
+ * group is its own component with its own tests (Range/Playback/Subtitle/Title/
  * ActionsGroup) - this panel only owns the numeric-field hooks (a single source of truth per
  * field, shared with nothing else), cross-group derived values (warnings, disabled states), and
  * the active-tab arrangement. Narration (small and conditionally shown) and the destructive-zone
@@ -128,13 +124,10 @@ export function SegmentQuickFields({
   onChangeStylePreset,
   onToggleTitle,
   onChangeTitle,
-  onToggleTransition,
-  onChangeTransition,
 }: Props) {
   const [activeTab, setActiveTab] = useState<QuickFieldsTab>("cut");
 
-  // This cut's actual output length (after speed applied) - used both for the narration-overlap
-  // warning below and to cross-validate the two transition durations against it.
+  // This cut's actual output length (after speed applied) - used for the narration-overlap warning.
   const outputDurationS = segment ? (segment.out - segment.in) / segment.speed : 0;
 
   // These hooks must run unconditionally (before the `!segment` early return below) - they fall
@@ -181,29 +174,6 @@ export function SegmentQuickFields({
     coerce: (n) => Math.max(1, Math.round(n)),
     onCommit: (next) => onChangeTitle({ size: next }),
   });
-  // Transition durations are cross-validated against each other (their sum can't exceed this
-  // cut's own output length, e.g. a 1s cut can't fit a 0.5s transition on both ends) - each
-  // field's coerce clamps against the *other* side's current duration, not just its own 0.2-2s
-  // range, so the combined total never exceeds outputDurationS.
-  const transitionInDurationField = useNumericField({
-    value: segment?.transitionIn?.durationS ?? DEFAULT_TRANSITION_DURATION_S,
-    coerce: (n) => {
-      const otherDurationS = segment?.transitionOut?.durationS ?? 0;
-      const maxAllowed = Math.max(MIN_TRANSITION_DURATION_S, outputDurationS - otherDurationS);
-      return Math.min(MAX_TRANSITION_DURATION_S, Math.max(MIN_TRANSITION_DURATION_S, n), maxAllowed);
-    },
-    onCommit: (next) => onChangeTransition("in", { durationS: next }),
-  });
-  const transitionOutDurationField = useNumericField({
-    value: segment?.transitionOut?.durationS ?? DEFAULT_TRANSITION_DURATION_S,
-    coerce: (n) => {
-      const otherDurationS = segment?.transitionIn?.durationS ?? 0;
-      const maxAllowed = Math.max(MIN_TRANSITION_DURATION_S, outputDurationS - otherDurationS);
-      return Math.min(MAX_TRANSITION_DURATION_S, Math.max(MIN_TRANSITION_DURATION_S, n), maxAllowed);
-    },
-    onCommit: (next) => onChangeTransition("out", { durationS: next }),
-  });
-
   if (!segment) {
     return null;
   }
@@ -224,12 +194,6 @@ export function SegmentQuickFields({
       ? `${(selectedNarrationFile.durationS - outputDurationS).toFixed(1)}s longer than the cut - overlaps the next cut`
       : null;
 
-  const combinedTransitionDurationS =
-    (segment.transitionIn?.durationS ?? 0) + (segment.transitionOut?.durationS ?? 0);
-  const transitionsCrossValidationNote =
-    segment.transitionIn && segment.transitionOut && combinedTransitionDurationS > outputDurationS
-      ? `Transition durations clamped to fit this cut's length (${outputDurationS.toFixed(1)}s)`
-      : null;
 
   const tooLongForIntroOutro =
     clipDurationS === undefined || clipDurationS > INTRO_OUTRO_MAX_DURATION_S;
@@ -360,16 +324,6 @@ export function SegmentQuickFields({
             titleDurationField={titleDurationField}
             titleSizeField={titleSizeField}
           />
-
-          <TransitionsGroup
-            transitionIn={segment.transitionIn}
-            transitionOut={segment.transitionOut}
-            onToggle={onToggleTransition}
-            onChangeTransition={onChangeTransition}
-            transitionInDurationField={transitionInDurationField}
-            transitionOutDurationField={transitionOutDurationField}
-            crossValidationNote={transitionsCrossValidationNote}
-          />
         </>
       )}
     </VStack>
@@ -381,12 +335,3 @@ const DEFAULT_TITLE_DURATION_S = 3;
 
 /** Matches the schema's title.size default (72) - see packages/render/src/remotion/titleCardStyle.ts's TITLE_FONT_SIZE_PX. */
 const DEFAULT_TITLE_SIZE_PX = 72;
-
-/** Matches the schema's transition.durationS default (0.5) - the value shown right after a
- * transition toggle is turned on, before onChangeTransition's first patch lands. */
-const DEFAULT_TRANSITION_DURATION_S = 0.5;
-
-/** Transition duration's own range (screen-spec section 4, G5) - each field's cross-validation
- * clamp (above) additionally caps this against the cut's output length and the other side's duration. */
-const MIN_TRANSITION_DURATION_S = 0.2;
-const MAX_TRANSITION_DURATION_S = 2;
