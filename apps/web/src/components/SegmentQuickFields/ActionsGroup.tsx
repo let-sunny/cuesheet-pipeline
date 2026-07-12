@@ -8,7 +8,6 @@ import { styles } from "./ActionsGroup.styles.js";
 export interface ActionsGroupProps {
   mergeEligibility: MergeEligibility;
   onMergeNext: () => void;
-  onSplit: () => void;
   onDuplicate: () => void;
   onSetIntro: () => void;
   onSetOutro: () => void;
@@ -17,16 +16,18 @@ export interface ActionsGroupProps {
 }
 
 /**
- * G8. Cut actions - two rows: [Split] [Merge with next cut] [Duplicate] on the first, and the
+ * G8. Cut actions - two rows: [Merge with next cut] [Duplicate] on the first, and the
  * intro/outro assignments [Set as intro] [Set as outro] on their own second row (2026-07-11 user
  * feedback - they're a distinct kind of action from the edit-this-cut buttons, so they read more
  * clearly on their own line). No primary in this group - none of these is a dominant/default action
  * (screen-spec section 4). Delete lives separately in the panel's own danger zone, not here.
+ * Split is deliberately NOT here (2026-07-12, #22): it lives solely on the video transport, which
+ * owns the correct edge-aware disabled state - a second Split button here stayed enabled at cut
+ * edges and silently no-oped.
  */
 export function ActionsGroup({
   mergeEligibility,
   onMergeNext,
-  onSplit,
   onDuplicate,
   onSetIntro,
   onSetOutro,
@@ -39,14 +40,6 @@ export function ActionsGroup({
         Cut actions
       </Text>
       <HStack gap={2} wrap="wrap">
-        <Button
-          label="Split"
-          variant="secondary"
-          size="sm"
-          tooltip="Cmd/Ctrl + B"
-          onClick={onSplit}
-          data-testid="cut-action-split"
-        />
         <Button
           label="Merge with next cut"
           variant="secondary"

@@ -9,7 +9,6 @@ function baseProps(overrides: Partial<Parameters<typeof ActionsGroup>[0]> = {}) 
   return {
     mergeEligibility: { eligible: true } as const,
     onMergeNext: vi.fn(),
-    onSplit: vi.fn(),
     onDuplicate: vi.fn(),
     onSetIntro: vi.fn(),
     onSetOutro: vi.fn(),
@@ -32,21 +31,24 @@ describe("ActionsGroup", () => {
     expect(screen.getByText("Set as outro").closest("button")!.getAttribute("aria-disabled")).toBe("true");
   });
 
+  it("does not render a Split button - Split lives only on the video transport (#22)", () => {
+    render(<ActionsGroup {...baseProps()} />);
+    expect(screen.queryByTestId("cut-action-split")).toBeNull();
+    expect(screen.queryByText("Split")).toBeNull();
+  });
+
   it("calls each action's handler", () => {
-    const onSplit = vi.fn();
     const onMergeNext = vi.fn();
     const onDuplicate = vi.fn();
     const onSetIntro = vi.fn();
     const onSetOutro = vi.fn();
     render(
-      <ActionsGroup {...baseProps({ onSplit, onMergeNext, onDuplicate, onSetIntro, onSetOutro })} />,
+      <ActionsGroup {...baseProps({ onMergeNext, onDuplicate, onSetIntro, onSetOutro })} />,
     );
-    fireEvent.click(screen.getByTestId("cut-action-split"));
     fireEvent.click(screen.getByTestId("cut-action-merge"));
     fireEvent.click(screen.getByTestId("cut-action-duplicate"));
     fireEvent.click(screen.getByTestId("cut-action-set-intro"));
     fireEvent.click(screen.getByTestId("cut-action-set-outro"));
-    expect(onSplit).toHaveBeenCalledOnce();
     expect(onMergeNext).toHaveBeenCalledOnce();
     expect(onDuplicate).toHaveBeenCalledOnce();
     expect(onSetIntro).toHaveBeenCalledOnce();

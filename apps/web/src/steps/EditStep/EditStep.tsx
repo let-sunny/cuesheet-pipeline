@@ -182,7 +182,6 @@ export function EditStep({
                 }
                 mergeEligibility={computeMergeEligibility(draft, selectedIndex)}
                 onMergeNext={() => actions.mergeSegmentWithNext(selectedIndex)}
-                onSplit={() => videoPreviewRef.current?.splitAtCurrent()}
                 onDuplicate={actions.addSegment}
                 onDelete={() => actions.removeSegment(selectedIndex)}
                 canDelete={draft.segments.length > 1}

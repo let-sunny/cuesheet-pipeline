@@ -38,7 +38,6 @@ function baseProps(overrides: Partial<ComponentProps<typeof SegmentQuickFields>>
     onSetOutro: vi.fn(),
     mergeEligibility: { eligible: true } as const,
     onMergeNext: vi.fn(),
-    onSplit: vi.fn(),
     onDuplicate: vi.fn(),
     onDelete: vi.fn(),
     canDelete: true,

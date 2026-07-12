@@ -54,8 +54,6 @@ interface Props {
   mergeEligibility: MergeEligibility;
   /** Merges with the next cut (same action as Cmd+J). */
   onMergeNext: () => void;
-  /** Splits at the current playback position (same action as Cmd+B). */
-  onSplit: () => void;
   /** Duplicates the selected cut right after itself. */
   onDuplicate: () => void;
   /** Deletes this cut (disabled if it's the last remaining cut). */
@@ -116,7 +114,6 @@ export function SegmentQuickFields({
   onSetOutro,
   mergeEligibility,
   onMergeNext,
-  onSplit,
   onDuplicate,
   onDelete,
   canDelete,
@@ -318,7 +315,6 @@ export function SegmentQuickFields({
           <ActionsGroup
             mergeEligibility={mergeEligibility}
             onMergeNext={onMergeNext}
-            onSplit={onSplit}
             onDuplicate={onDuplicate}
             onSetIntro={onSetIntro}
             onSetOutro={onSetOutro}
