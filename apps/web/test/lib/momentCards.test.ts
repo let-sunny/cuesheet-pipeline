@@ -9,6 +9,7 @@ import {
   filterCards,
   hasFaceTag,
   nearestFrame,
+  shotTypeBadgeVariant,
   stripFaceTag,
 } from "../../src/lib/momentCards.js";
 
@@ -83,6 +84,12 @@ describe("buildCards", () => {
     const [card] = buildCards(shortRangeFixture);
     expect(card?.inS).toBe(10); // midpoint(10.5)-1.5=9 clamped up to startS=10
     expect(card?.outS).toBe(11); // midpoint(10.5)+1.5=12 clamped down to endS=11
+  });
+});
+
+describe("shotTypeBadgeVariant", () => {
+  it("falls back to the 'other' category variant for an unknown (non-knitting-domain) shot type", () => {
+    expect(shotTypeBadgeVariant("plating")).toBe(shotTypeBadgeVariant("other"));
   });
 });
 

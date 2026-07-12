@@ -85,4 +85,8 @@ describe("shotTypeLabel", () => {
     expect(shotTypeLabel("wearing")).toBe("Wearing");
     expect(shotTypeLabel("other")).toBe("Other");
   });
+
+  it("falls back to the capitalized id for an unknown (non-knitting-domain) shot type", () => {
+    expect(shotTypeLabel("plating")).toBe("Plating");
+  });
 });
