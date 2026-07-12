@@ -3,11 +3,19 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Segment } from "@cuesheet/schema";
 import type { ClipMoments } from "../../api.js";
+import { KNITTING_DOMAIN_CONFIG } from "../../../test/lib/knittingDomainConfig.js";
 import { MomentPalette } from "./MomentPalette.js";
 
 vi.mock("../../api.js", () => ({
   fetchMoments: vi.fn(),
   fetchDraftFrames: vi.fn(async () => [] as string[]),
+}));
+
+// The domain config (labels/categories/badge colors) is fetched once via context (issue #31 item
+// 1) - stubbed here to the knitting fixture so this test keeps asserting the exact same knitting
+// category labels/filtering behavior the old hardcoded maps produced.
+vi.mock("../../hooks/useDomainConfig.js", () => ({
+  useDomainConfig: () => ({ config: KNITTING_DOMAIN_CONFIG, loaded: true }),
 }));
 
 import { fetchMoments } from "../../api.js";

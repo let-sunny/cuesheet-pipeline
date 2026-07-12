@@ -16,8 +16,8 @@ import {
  * `.scene-shot-badge` (+ `.shot-*` variants) is gone from styles.css (2026-07-11 stock-audit
  * completion pass) - replaced by a stock Astryx `Badge` (`sceneBadge` below trims its default size,
  * same override as VideoPreview.styles.ts's own `sceneBadge`), colored via
- * `shotTypeBadgeVariant`/`TIMELAPSE_BADGE_VARIANT` (lib/momentCards.ts) - the same category-color
- * mapping the Scenes palette already uses, not a second color system. `.compact-list-subtitle-
+ * `shotTypeBadgeVariant` (lib/momentCards.ts) / `categoryBadgeVariant` (lib/domainConfig.ts) - the
+ * same category-color mapping the Scenes palette already uses, not a second color system. `.compact-list-subtitle-
  * input` (+ `:focus`) is gone too - ported 1:1 into `subtitleInput` below (StyleX's own cascade
  * layer no longer needs to out-order a global plain-input marker class, since it's gone from this
  * component's markup).

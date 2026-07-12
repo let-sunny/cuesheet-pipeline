@@ -13,9 +13,11 @@ import { captureFrame, fetchProxyStatus, type ClipMoments, type ProxyStatus } fr
 import { clamp } from "../../lib/clamp.js";
 import { cropPreviewStyle } from "../../lib/cropPreview.js";
 import { useCropEditor } from "../../hooks/useCropEditor.js";
+import { useDomainConfig } from "../../hooks/useDomainConfig.js";
 import { MAX_PLAYBACK_RATE, useShuttle } from "../../hooks/useShuttle.js";
+import { categoryBadgeVariant } from "../../lib/domainConfig.js";
 import { matchSceneInfo, shotTypeLabel } from "../../lib/sceneInfo.js";
-import { shotTypeBadgeVariant, TIMELAPSE_BADGE_VARIANT } from "../../lib/momentCards.js";
+import { shotTypeBadgeVariant } from "../../lib/momentCards.js";
 import { classifyVideoSourceError, videoSourceErrorMessage } from "../../lib/videoSourceError.js";
 import {
   mergeSubtitleStyle,
@@ -93,6 +95,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
   },
   ref,
 ) {
+  const { config } = useDomainConfig();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cropFrameRef = useRef<HTMLDivElement | null>(null);
   // null = no error. Distinguishes a missing source (fetch 404) from a file that exists but
@@ -451,13 +454,17 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
           </span>
           {sceneInfo.kind === "moment" ? (
             <Badge
-              variant={shotTypeBadgeVariant(sceneInfo.shotType)}
-              label={shotTypeLabel(sceneInfo.shotType)}
+              variant={shotTypeBadgeVariant(sceneInfo.shotType, config)}
+              label={shotTypeLabel(sceneInfo.shotType, config)}
               xstyle={styles.sceneBadge}
             />
           ) : null}
           {sceneInfo.kind === "monotonous" ? (
-            <Badge variant={TIMELAPSE_BADGE_VARIANT} label="Timelapse cut" xstyle={styles.sceneBadge} />
+            <Badge
+              variant={categoryBadgeVariant(config, config.rangeCategory)}
+              label="Timelapse cut"
+              xstyle={styles.sceneBadge}
+            />
           ) : null}
           <span {...stylex.props(styles.contextSceneText)}>{sceneText}</span>
         </div>

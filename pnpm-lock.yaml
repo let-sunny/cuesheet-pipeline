@@ -44,6 +44,9 @@ importers:
       '@cuesheet/active-episode':
         specifier: workspace:*
         version: link:../../packages/active-episode
+      '@cuesheet/draft':
+        specifier: workspace:*
+        version: link:../../packages/draft
       '@cuesheet/render':
         specifier: workspace:*
         version: link:../../packages/render

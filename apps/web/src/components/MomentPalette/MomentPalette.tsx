@@ -13,11 +13,11 @@ import { FilterChip } from "../ui/FilterChip/index.js";
 import { SceneCardButton } from "../ui/SceneCardButton/index.js";
 import { fetchDraftFrames, fetchMoments } from "../../api.js";
 import type { ClipMoments } from "../../api.js";
+import { useDomainConfig } from "../../hooks/useDomainConfig.js";
+import { categoryBadgeVariant, categoryLabel } from "../../lib/domainConfig.js";
 import type { Category, MomentCard, StatusFilter } from "../../lib/momentCards.js";
 import {
   buildCards,
-  CATEGORY_META,
-  CATEGORY_ORDER,
   computeCategoryCounts,
   computeInUseCutNumbers,
   filterByStatus,
@@ -43,6 +43,7 @@ interface Props {
  * regardless of where they're added (the caller, App.tsx, guarantees that ordering).
  */
 export function MomentPalette({ segments, onAddSegment, onRemoveSegment, onGoToEdit }: Props) {
+  const { config } = useDomainConfig();
   const [moments, setMoments] = useState<ClipMoments[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [frameMap, setFrameMap] = useState<Record<string, string[]>>({});
@@ -61,7 +62,7 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment, onGoToE
     })();
   }, []);
 
-  const cards = useMemo(() => (moments ? buildCards(moments) : []), [moments]);
+  const cards = useMemo(() => (moments ? buildCards(moments, config) : []), [moments, config]);
 
   useEffect(() => {
     if (!moments) {
@@ -87,8 +88,8 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment, onGoToE
   // "Excluded only" shows 0 (no wearing card is excluded), which reads as a broken filter - the
   // count must always match what clicking the chip actually reveals (faceted-filter convention).
   const statusFilteredCards = useMemo(
-    () => filterByStatus(cards, statusFilter, inUseCutNumber),
-    [cards, statusFilter, inUseCutNumber],
+    () => filterByStatus(cards, statusFilter, inUseCutNumber, config),
+    [cards, statusFilter, inUseCutNumber, config],
   );
   const counts = useMemo(() => computeCategoryCounts(statusFilteredCards), [statusFilteredCards]);
   // Which category chips exist at all is decided by the FULL set (not the status-filtered one), so
@@ -97,14 +98,14 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment, onGoToE
   // blinking out of the row is disorienting; 0 should read as 0).
   const fullCounts = useMemo(() => computeCategoryCounts(cards), [cards]);
 
-  const filtered = filterCards(cards, selectedCategory, statusFilter, inUseCutNumber);
+  const filtered = filterCards(cards, selectedCategory, statusFilter, inUseCutNumber, config);
   // Whether either filter axis narrows the grid - drives the header count (below), which
   // otherwise reads as a static total that never changes and makes filtering look like it does
   // nothing (user feedback 2026-07-11).
   const isFiltered = selectedCategory !== "all" || statusFilter !== "all";
 
   const handleAdd = (card: MomentCard) => {
-    if (hasFaceTag(card.memo)) {
+    if (hasFaceTag(card.memo, config)) {
       const proceed = window.confirm("May violate the face policy - reframing might be needed");
       if (!proceed) {
         return;
@@ -116,7 +117,7 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment, onGoToE
       out: card.outS,
       speed: 1,
       volume: 1,
-      subtitle: stripFaceTag(card.memo),
+      subtitle: stripFaceTag(card.memo, config),
     };
     onAddSegment(seg);
   };
@@ -203,34 +204,38 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment, onGoToE
               isPressed={selectedCategory === "all"}
               onPressedChange={() => setSelectedCategory("all")}
             />
-            {CATEGORY_ORDER.filter((cat) => (fullCounts.get(cat) ?? 0) > 0).map((cat) => {
-              const count = counts.get(cat) ?? 0;
-              return (
-                <FilterChip
-                  key={cat}
-                  size="sm"
-                  label={`${CATEGORY_META[cat].label} (${count})`}
-                  isPressed={selectedCategory === cat}
-                  isDisabled={count === 0}
-                  onPressedChange={() => setSelectedCategory(selectedCategory === cat ? "all" : cat)}
-                />
-              );
-            })}
+            {config.categories
+              .map((c) => c.id)
+              .filter((cat) => (fullCounts.get(cat) ?? 0) > 0)
+              .map((cat) => {
+                const count = counts.get(cat) ?? 0;
+                return (
+                  <FilterChip
+                    key={cat}
+                    size="sm"
+                    label={`${categoryLabel(config, cat)} (${count})`}
+                    isPressed={selectedCategory === cat}
+                    isDisabled={count === 0}
+                    onPressedChange={() => setSelectedCategory(selectedCategory === cat ? "all" : cat)}
+                  />
+                );
+              })}
           </div>
 
           <div {...stylex.props(styles.grid)}>
             {filtered.map((card) => {
-              const meta = CATEGORY_META[card.category];
+              const label = categoryLabel(config, card.category);
+              const badgeVariant = categoryBadgeVariant(config, card.category);
               const frames = frameMap[card.clipFolder] ?? [];
               const frame = nearestFrame(frames, card.inS);
               const cutNumber = inUseCutNumber.get(card.key);
               const inUse = cutNumber !== undefined;
-              const faceRejected = !inUse && hasFaceTag(card.memo);
+              const faceRejected = !inUse && hasFaceTag(card.memo, config);
               const qualityRejected = !inUse && !faceRejected && card.quality !== null && card.quality < 3;
-              const displayMemo = hasFaceTag(card.memo) ? stripFaceTag(card.memo) : card.memo;
+              const displayMemo = hasFaceTag(card.memo, config) ? stripFaceTag(card.memo, config) : card.memo;
               // The card itself only shows an abbreviated clip name and timestamp; the full
               // information needed for judgment (original filename, range, category, memo) is conveyed via the title tooltip.
-              const fullInfo = `${card.clipFileName} · ${card.inS.toFixed(1)}s~${card.outS.toFixed(1)}s · ${meta.label} · ${displayMemo}`;
+              const fullInfo = `${card.clipFileName} · ${card.inS.toFixed(1)}s~${card.outS.toFixed(1)}s · ${label} · ${displayMemo}`;
 
               const rejectedLabel = faceRejected
                 ? "Auto-excluded: face exposure"
@@ -352,7 +357,7 @@ export function MomentPalette({ segments, onAddSegment, onRemoveSegment, onGoToE
                             {card.clipFileName} · {card.inS.toFixed(1)}s~{card.outS.toFixed(1)}s
                           </span>
                           <div {...stylex.props(styles.metaRow)}>
-                            <Badge variant={meta.badgeVariant} label={meta.label} xstyle={styles.categoryBadge} />
+                            <Badge variant={badgeVariant} label={label} xstyle={styles.categoryBadge} />
                             {card.quality != null ? (
                               <span
                                 {...stylex.props(styles.quality)}

@@ -4,7 +4,15 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { Segment } from "@cuesheet/schema";
 import type { ClipMoments } from "../../api.js";
+import { KNITTING_DOMAIN_CONFIG } from "../../../test/lib/knittingDomainConfig.js";
 import { CompactSegmentList } from "./CompactSegmentList.js";
+
+// The domain config (shot labels/badge colors) is fetched once via context (issue #31 item 1) -
+// stubbed here to the knitting fixture so this test keeps asserting the exact same knitting
+// shot-type labels the old hardcoded maps produced.
+vi.mock("../../hooks/useDomainConfig.js", () => ({
+  useDomainConfig: () => ({ config: KNITTING_DOMAIN_CONFIG, loaded: true }),
+}));
 
 // jsdom doesn't implement scrollIntoView (the selected-row-scroll effect) - stub it so
 // rendering doesn't throw.

@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { Segment } from "@cuesheet/schema";
 import type { ClipMoments } from "../../src/api.js";
 import { matchSceneInfo, shotTypeLabel } from "../../src/lib/sceneInfo.js";
+import { KNITTING_DOMAIN_CONFIG } from "./knittingDomainConfig.js";
+
+const config = KNITTING_DOMAIN_CONFIG;
 
 function seg(clip: string, inS: number, speed = 1): Segment {
   return { clip, in: inS, out: inS + 5, speed, volume: 1, subtitle: "" };
@@ -77,16 +80,16 @@ describe("matchSceneInfo", () => {
 
 describe("shotTypeLabel", () => {
   it("maps every ShotType to a distinct human-readable label", () => {
-    expect(shotTypeLabel("hand-closeup")).toBe("Hand");
-    expect(shotTypeLabel("object")).toBe("Object");
-    expect(shotTypeLabel("cat")).toBe("Cat");
-    expect(shotTypeLabel("change")).toBe("Change");
-    expect(shotTypeLabel("reveal")).toBe("Reveal");
-    expect(shotTypeLabel("wearing")).toBe("Wearing");
-    expect(shotTypeLabel("other")).toBe("Other");
+    expect(shotTypeLabel("hand-closeup", config)).toBe("Hand");
+    expect(shotTypeLabel("object", config)).toBe("Object");
+    expect(shotTypeLabel("cat", config)).toBe("Cat");
+    expect(shotTypeLabel("change", config)).toBe("Change");
+    expect(shotTypeLabel("reveal", config)).toBe("Reveal");
+    expect(shotTypeLabel("wearing", config)).toBe("Wearing");
+    expect(shotTypeLabel("other", config)).toBe("Other");
   });
 
   it("falls back to the capitalized id for an unknown (non-knitting-domain) shot type", () => {
-    expect(shotTypeLabel("plating")).toBe("Plating");
+    expect(shotTypeLabel("plating", config)).toBe("Plating");
   });
 });

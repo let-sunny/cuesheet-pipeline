@@ -7,6 +7,7 @@ import { buildClipPath } from "./clipPaths.js";
 import { useBlockingOverlay } from "./lib/modalStack.js";
 import { useCueSheetServer } from "./hooks/useCueSheetServer.js";
 import { useCueSheetHistory } from "./hooks/useCueSheetHistory.js";
+import { useDomainConfig } from "./hooks/useDomainConfig.js";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts.js";
 import { useEditStepActions } from "./hooks/useEditStepActions.js";
 import { useComposeStepActions } from "./hooks/useComposeStepActions.js";
@@ -40,6 +41,7 @@ interface AppProps {
 
 export function App({ themeMode, onThemeModeChange, themeName, onThemeNameChange }: AppProps) {
   const toast = useToast();
+  const { config: domainConfig } = useDomainConfig();
   const {
     draft,
     setDraft,
@@ -229,7 +231,7 @@ export function App({ themeMode, onThemeModeChange, themeName, onThemeNameChange
   const subtitleFilled = draft.segments.filter((s) => s.subtitle.trim() !== "").length;
   // Scenes badge = how many scene candidates are selected (in use) out of all candidates —
   // not the final-cut count. Reuses the same helpers MomentPalette shows ("Scene candidates (N)").
-  const sceneCards = buildCards(moments);
+  const sceneCards = buildCards(moments, domainConfig);
   const sceneInUse = computeInUseCutNumbers(sceneCards, draft.segments).size;
 
   return (

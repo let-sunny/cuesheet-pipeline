@@ -22,6 +22,7 @@ export {
   grammarFileSchema,
   facePolicyFileSchema,
   narrativeFileSchema,
+  categoriesFileSchema,
   loadDomainBundle,
   resolveDomainAssembleConfig,
   resolveNarrativeConfig,

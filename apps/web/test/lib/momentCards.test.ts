@@ -12,6 +12,9 @@ import {
   shotTypeBadgeVariant,
   stripFaceTag,
 } from "../../src/lib/momentCards.js";
+import { KNITTING_DOMAIN_CONFIG } from "./knittingDomainConfig.js";
+
+const config = KNITTING_DOMAIN_CONFIG;
 
 function seg(overrides: Partial<Segment> = {}): Segment {
   return { clip: "a.mp4", in: 0, out: 5, speed: 1, volume: 1, subtitle: "", ...overrides };
@@ -38,7 +41,7 @@ const fixtures: ClipMoments[] = [
 ];
 
 describe("buildCards", () => {
-  const cards = buildCards(fixtures);
+  const cards = buildCards(fixtures, config);
 
   it("flattens moments and monotonousRanges into one sorted list", () => {
     expect(cards).toHaveLength(7);
@@ -81,7 +84,7 @@ describe("buildCards", () => {
         monotonousRanges: [{ startS: 10, endS: 11, desc: "short" }],
       },
     ];
-    const [card] = buildCards(shortRangeFixture);
+    const [card] = buildCards(shortRangeFixture, config);
     expect(card?.inS).toBe(10); // midpoint(10.5)-1.5=9 clamped up to startS=10
     expect(card?.outS).toBe(11); // midpoint(10.5)+1.5=12 clamped down to endS=11
   });
@@ -89,15 +92,15 @@ describe("buildCards", () => {
 
 describe("shotTypeBadgeVariant", () => {
   it("falls back to the 'other' category variant for an unknown (non-knitting-domain) shot type", () => {
-    expect(shotTypeBadgeVariant("plating")).toBe(shotTypeBadgeVariant("other"));
+    expect(shotTypeBadgeVariant("plating", config)).toBe(shotTypeBadgeVariant("other", config));
   });
 });
 
 describe("hasFaceTag / stripFaceTag", () => {
   it("detects the face-exposure tag and strips it (trimming the leftover space)", () => {
-    expect(hasFaceTag("trying it on [얼굴노출]")).toBe(true);
-    expect(hasFaceTag("no risk here")).toBe(false);
-    expect(stripFaceTag("trying it on [얼굴노출]")).toBe("trying it on");
+    expect(hasFaceTag("trying it on [얼굴노출]", config)).toBe(true);
+    expect(hasFaceTag("no risk here", config)).toBe(false);
+    expect(stripFaceTag("trying it on [얼굴노출]", config)).toBe("trying it on");
   });
 });
 
@@ -116,7 +119,7 @@ describe("nearestFrame", () => {
 
 describe("computeCategoryCounts", () => {
   it("counts cards per category", () => {
-    const cards = buildCards(fixtures);
+    const cards = buildCards(fixtures, config);
     const counts = computeCategoryCounts(cards);
     expect(counts.get("knitting")).toBe(1);
     expect(counts.get("cat")).toBe(1);
@@ -128,7 +131,7 @@ describe("computeCategoryCounts", () => {
 
 describe("computeInUseCutNumbers", () => {
   it("maps a card to its 1-based cut number when an added segment overlaps its range", () => {
-    const cards = buildCards(fixtures);
+    const cards = buildCards(fixtures, config);
     const catCard = cards.find((c) => c.inS === 20)!;
     const segments = [seg({ in: 0, out: 5 }), seg({ in: 20, out: 22 })];
     const map = computeInUseCutNumbers(cards, segments);
@@ -136,13 +139,13 @@ describe("computeInUseCutNumbers", () => {
   });
 
   it("does not mark a card in-use when no segment overlaps it", () => {
-    const cards = buildCards(fixtures);
+    const cards = buildCards(fixtures, config);
     const map = computeInUseCutNumbers(cards, []);
     expect(map.size).toBe(0);
   });
 
   it("gives each cut number to exactly one card - no duplicate numbers when several candidates overlap one cut", () => {
-    const cards = buildCards(fixtures);
+    const cards = buildCards(fixtures, config);
     const sameClip = cards.filter((c) => c.clipFileName === cards[0]!.clipFileName);
     // One wide cut spanning at least two candidate cards on the same clip.
     const lo = Math.min(...sameClip.map((c) => c.inS));
@@ -157,26 +160,26 @@ describe("computeInUseCutNumbers", () => {
 });
 
 describe("filterCards", () => {
-  const cards = buildCards(fixtures);
+  const cards = buildCards(fixtures, config);
 
   it("'all' category and 'all' status returns every card", () => {
-    expect(filterCards(cards, "all", "all", new Map())).toHaveLength(cards.length);
+    expect(filterCards(cards, "all", "all", new Map(), config)).toHaveLength(cards.length);
   });
 
   it("filters down to a single category", () => {
-    expect(filterCards(cards, "cat", "all", new Map())).toHaveLength(1);
+    expect(filterCards(cards, "cat", "all", new Map(), config)).toHaveLength(1);
   });
 
   it("'in-use' keeps only cards present in the inUseCutNumber map", () => {
     const catCard = cards.find((c) => c.inS === 20)!;
     const inUse = new Map([[catCard.key, 1]]);
-    const result = filterCards(cards, "all", "in-use", inUse);
+    const result = filterCards(cards, "all", "in-use", inUse, config);
     expect(result).toHaveLength(1);
     expect(result[0]?.key).toBe(catCard.key);
   });
 
   it("'excluded' keeps only not-in-use cards with a face tag or quality < 3", () => {
-    const result = filterCards(cards, "all", "excluded", new Map());
+    const result = filterCards(cards, "all", "excluded", new Map(), config);
     // face-tagged (inS=30, quality 4) + low-quality (inS=40, quality 2) qualify;
     // the mistake card (quality 3, no face tag) does not (3 is not < 3).
     expect(result.map((c) => c.inS).sort((a, b) => a - b)).toEqual([30, 40]);
@@ -185,13 +188,13 @@ describe("filterCards", () => {
   it("'excluded' never includes a card that is in use, even if it'd otherwise qualify", () => {
     const faceCard = cards.find((c) => c.inS === 30)!;
     const inUse = new Map([[faceCard.key, 1]]);
-    const result = filterCards(cards, "all", "excluded", inUse);
+    const result = filterCards(cards, "all", "excluded", inUse, config);
     expect(result.some((c) => c.key === faceCard.key)).toBe(false);
   });
 });
 
 describe("filterByStatus + faceted category counts", () => {
-  const cards = buildCards(fixtures);
+  const cards = buildCards(fixtures, config);
   const noneInUse = new Map<string, number>();
 
   it("counts categories over the status-filtered set, so a category with no matches reads 0", () => {
@@ -199,14 +202,14 @@ describe("filterByStatus + faceted category counts", () => {
     // qualify. A category with no excluded card (e.g. cat, quality 5, no face) must NOT appear in
     // the counts - this is the fix for the user-facing bug where "Wearing (4)" showed nothing once
     // "Excluded only" was active: the chip count has to reflect the active status filter.
-    const excludedOnly = filterByStatus(cards, "excluded", noneInUse);
+    const excludedOnly = filterByStatus(cards, "excluded", noneInUse, config);
     const counts = computeCategoryCounts(excludedOnly);
     expect(counts.get("wearing")).toBe(1); // the [얼굴노출] card
     expect(counts.get("materials")).toBe(1); // the quality-2 object card
     expect(counts.get("cat")).toBeUndefined(); // quality 5, no face - not excluded, so 0
     expect(counts.get("knitting")).toBeUndefined();
     // And the count matches what filterCards actually renders for that category.
-    expect(filterCards(cards, "cat", "excluded", noneInUse).length).toBe(0);
-    expect(filterCards(cards, "wearing", "excluded", noneInUse).length).toBe(1);
+    expect(filterCards(cards, "cat", "excluded", noneInUse, config).length).toBe(0);
+    expect(filterCards(cards, "wearing", "excluded", noneInUse, config).length).toBe(1);
   });
 });

@@ -5,6 +5,7 @@ import type { CuesheetWatcher } from "./watch.js";
 import { registerBgmFilesRoute } from "./routes/bgmFilesRoute.js";
 import { registerClipFilesRoute } from "./routes/clipFilesRoute.js";
 import { registerCuesheetRoute } from "./routes/cuesheetRoute.js";
+import { registerDomainRoute } from "./routes/domainRoute.js";
 import { registerFrameCaptureRoute } from "./routes/frameCaptureRoute.js";
 import { registerNarrationFilesRoute } from "./routes/narrationFilesRoute.js";
 import { registerRenderRoutes } from "./routes/renderRoute.js";
@@ -35,6 +36,7 @@ export function registerRoutes(
   const mediaRoot = options.mediaRoot ?? resolve(repoRoot, "media");
 
   registerCuesheetRoute(server, filePath, watcher);
+  registerDomainRoute(server);
   registerNarrationFilesRoute(server, filePath);
   registerClipFilesRoute(server, filePath);
   registerBgmFilesRoute(server, filePath, mediaRoot);

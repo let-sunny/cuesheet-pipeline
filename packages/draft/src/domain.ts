@@ -68,12 +68,30 @@ export const narrativeFileSchema = z.object({
   qualityBoosts: z.record(z.string(), z.number()),
 });
 
+/**
+ * categories.json - the palette/scene presentation model for the web editor (issue #31 item 1):
+ * the category vocabulary (id/label/color), which shot type maps to which category, memo-text
+ * patterns that promote a moment to a derived category (e.g. knitting's mistake/outing), and the
+ * category used for timelapse (monotonous) ranges. Optional: a domain that doesn't drive the web
+ * palette can omit it, and the web falls back to a neutral rendering. Owning this here (not in the
+ * web) is what makes a 2nd domain a pure drop-in - no web code changes to add a genre.
+ */
+export const categoriesFileSchema = z.object({
+  categories: z
+    .array(z.object({ id: z.string().min(1), label: z.string().min(1), color: z.string().min(1) }))
+    .min(1),
+  shotTypeCategory: z.record(z.string(), z.string()),
+  memoPatterns: z.array(z.object({ category: z.string().min(1), pattern: z.string().min(1) })),
+  rangeCategory: z.string().min(1),
+});
+
 export interface DomainBundle {
   shotTypeIds: string[];
   shotTypeLabels: Record<string, string>;
   grammar: z.infer<typeof grammarFileSchema>;
   facePolicy: z.infer<typeof facePolicyFileSchema>;
   narrative?: z.infer<typeof narrativeFileSchema>;
+  categories?: z.infer<typeof categoriesFileSchema>;
 }
 
 /** Reads and validates the theme bundle at `dir` (throws `path: field-path: reason` on failure). */
@@ -85,12 +103,17 @@ export function loadDomainBundle(dir: string): DomainBundle {
   const narrative = existsSync(narrativePath)
     ? parseBundleFile(narrativePath, narrativeFileSchema)
     : undefined;
+  const categoriesPath = join(dir, "categories.json");
+  const categories = existsSync(categoriesPath)
+    ? parseBundleFile(categoriesPath, categoriesFileSchema)
+    : undefined;
   return {
     shotTypeIds: shotTypes.map((s) => s.id),
     shotTypeLabels: Object.fromEntries(shotTypes.map((s) => [s.id, s.label])),
     grammar,
     facePolicy,
     narrative,
+    categories,
   };
 }
 

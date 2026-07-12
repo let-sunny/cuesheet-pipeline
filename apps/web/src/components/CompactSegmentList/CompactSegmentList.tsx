@@ -6,7 +6,9 @@ import { Icon } from "@astryxdesign/core/Icon";
 import { IconButton } from "@astryxdesign/core/IconButton";
 import type { Segment } from "@cuesheet/schema";
 import type { ClipMoments } from "../../api.js";
-import { shotTypeBadgeVariant, TIMELAPSE_BADGE_VARIANT } from "../../lib/momentCards.js";
+import { useDomainConfig } from "../../hooks/useDomainConfig.js";
+import { categoryBadgeVariant } from "../../lib/domainConfig.js";
+import { shotTypeBadgeVariant } from "../../lib/momentCards.js";
 import type { RowRect } from "../../lib/rowRect.js";
 import { matchSceneInfo, shotTypeLabel } from "../../lib/sceneInfo.js";
 import { styles } from "./CompactSegmentList.styles.js";
@@ -59,6 +61,7 @@ export function CompactSegmentList({
   bgmDragHighlight,
   onRowRectsChange,
 }: Props) {
+  const { config } = useDomainConfig();
   const rowRefs = useRef<Array<HTMLTextAreaElement | null>>([]);
   const rowDivRefs = useRef<Array<HTMLDivElement | null>>([]);
   const prevRowRectsRef = useRef<RowRect[]>([]);
@@ -148,7 +151,7 @@ export function CompactSegmentList({
         const sceneText = sceneInfo.kind === "none" ? "No scene info" : sceneInfo.memo;
         const sceneTooltip =
           sceneInfo.kind === "moment"
-            ? `${shotTypeLabel(sceneInfo.shotType)} · ${sceneInfo.memo}`
+            ? `${shotTypeLabel(sceneInfo.shotType, config)} · ${sceneInfo.memo}`
             : sceneText;
         const bgmHighlighted =
           bgmDragHighlight != null && i >= bgmDragHighlight.start && i <= bgmDragHighlight.end;
@@ -193,13 +196,17 @@ export function CompactSegmentList({
               >
                 {sceneInfo.kind === "moment" ? (
                   <Badge
-                    variant={shotTypeBadgeVariant(sceneInfo.shotType)}
-                    label={shotTypeLabel(sceneInfo.shotType)}
+                    variant={shotTypeBadgeVariant(sceneInfo.shotType, config)}
+                    label={shotTypeLabel(sceneInfo.shotType, config)}
                     xstyle={styles.sceneBadge}
                   />
                 ) : null}
                 {sceneInfo.kind === "monotonous" ? (
-                  <Badge variant={TIMELAPSE_BADGE_VARIANT} label="Timelapse cut" xstyle={styles.sceneBadge} />
+                  <Badge
+                    variant={categoryBadgeVariant(config, config.rangeCategory)}
+                    label="Timelapse cut"
+                    xstyle={styles.sceneBadge}
+                  />
                 ) : null}
                 {sceneText}
               </span>
