@@ -2,7 +2,7 @@
   "name": "@cuesheet/active-episode",
   "version": "0.0.0",
   "license": "MIT",
-  "description": "Resolves and persists the active episode's cuesheet path (.active-episode), shared by the web server, MCP bridge, and pnpm episode",
+  "description": "Resolves and persists the active episode's cuesheet path (.active-episode) and the active domain bundle (.active-domain), shared by the web server, MCP bridge, and pnpm episode",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

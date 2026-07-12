@@ -43,6 +43,9 @@ archive/
 # active-episode pointer - points at a personal episode path, machine-local
 .active-episode
 
+# active-domain pointer - selects the active domain bundle, machine-local
+.active-domain
+
 # domain personal layer - a person's own transcripts and the voice profile distilled from them
 # (the theme files in domains/<name>/ are committed; the personal voice is not)
 domains/*/transcripts/

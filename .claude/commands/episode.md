@@ -12,6 +12,18 @@ in CLAUDE.md.
 
 Input: `$ARGUMENTS` = raw footage folder path (absolute or relative).
 
+**Active domain**: this run uses the *active domain bundle*, not a hardcoded one. Resolve it once
+at the start and call it `$DOMAIN`:
+
+```bash
+DOMAIN="$(cat .active-domain 2>/dev/null || echo domains/knitting)"
+```
+
+Everywhere below that names `domains/knitting/...` (the vision prompt, narrative rules, face
+policy, voice profile) means `$DOMAIN/...` - read the file from the active domain so a different
+genre is a pure drop-in (a `domains/<name>/` folder selected via `pnpm episode --domain=<dir>`).
+The shot-type/category examples shown below are the knitting default, for illustration.
+
 ## Forbidden
 
 - **Never auto-run render.** This command's scope ends at producing the rough-cut
@@ -130,13 +142,14 @@ node packages/draft/dist/cli.js assemble \
   --moments media/drafts/<slug>/moments.json \
   --clip-dir "$ARGUMENTS" \
   --project-name "<slug>" \
-  --domain domains/knitting \
+  --domain "$DOMAIN" \
   --width 1920 --height 1080 --fps 30 \
   --out episodes/<slug>.cuesheet.json
 ```
 
-`--domain domains/knitting` drives assembly from the knitting theme bundle (its grammar, shot
-vocabulary, and face policy). For a different genre, point `--domain` at that domain's folder.
+`--domain "$DOMAIN"` drives assembly from the active domain's theme bundle (its grammar, shot
+vocabulary, and face policy). For a different genre, select that domain's folder up front with
+`pnpm episode --domain=<dir>` (persisted in `.active-domain`).
 
 Use the default for `--boundary-pad` (0.4s). Internally, assemble adopts
 quality>=3, converges on cut rhythm (average 2.8-3.0s), applies timelapse
