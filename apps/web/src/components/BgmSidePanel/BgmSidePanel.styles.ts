@@ -47,14 +47,16 @@ export const styles = stylex.create({
     backgroundColor: colorVars["--color-background-green"],
     color: colorVars["--color-text-green"],
   },
-  // Rotated label filling the rail's remaining height — the discoverability affordance that
-  // replaces the old horizontal "Background music" header text (dropped since a header row above
-  // the gutter column would misalign its bars from the cut rows, see BgmSidePanel.tsx).
+  // Rotated vertical label — the discoverability affordance that replaces the old horizontal
+  // "Background music" header text (dropped since a header row above the gutter column would
+  // misalign its bars from the cut rows, see BgmSidePanel.tsx). Content-sized (no flexGrow): it
+  // must NOT stretch to fill the rail, or the add-track "+" that follows it gets pushed to the
+  // far bottom of a tall rail and becomes unreachable (2026-07-12 fix). Label + "+" stay clustered
+  // near the top instead.
   railLabel: {
-    flexGrow: 1,
-    flexShrink: 1,
+    flexGrow: 0,
+    flexShrink: 0,
     flexBasis: "auto",
-    minHeight: 0,
     writingMode: "vertical-rl",
     textOrientation: "mixed",
     fontSize: textSizeVars["--font-size-xs"],

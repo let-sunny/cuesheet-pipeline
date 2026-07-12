@@ -174,7 +174,9 @@ export function BgmSidePanel({
           onClick={() => setCollapsed((c) => !c)}
           data-testid="bgm-panel-toggle"
         />
-        {bgm.length > 0 ? <span {...stylex.props(styles.railCountBadge)}>{bgm.length}</span> : null}
+        {/* Always rendered (even at 0) so adding the first track doesn't shift the rail layout
+            (2026-07-12 user feedback: no judder). */}
+        <span {...stylex.props(styles.railCountBadge)}>{bgm.length}</span>
         {/* Label leads (section identity); the add-track "+" sits at the rail's bottom via the
             label's flexGrow, matching editors' "add at the end of the list" convention rather than
             prefixing the section name with a "+" (2026-07-12 user feedback). */}
