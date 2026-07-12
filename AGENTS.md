@@ -38,6 +38,13 @@ downstream ever reads anything else.
 Assumes `pnpm install` and a build (`pnpm -r build`, or `pnpm --filter @cuesheet/draft build` /
 `--filter @cuesheet/render build` individually).
 
+The package bins (`cuesheet-draft`, `cuesheet-render`) are not on `PATH` from a plain checkout.
+Run them via `pnpm --filter @cuesheet/draft exec cuesheet-draft <args>` /
+`pnpm --filter @cuesheet/render exec cuesheet-render <args>`, or invoke the built entry directly
+— `node packages/draft/dist/cli.js <args>` and `node packages/render/dist/index.js <args>`. The
+two entry filenames deliberately differ (`cli.js` vs `index.js`), so don't infer one from the
+other; a missing file usually means "not built yet", not "wrong path".
+
 ### End-to-end for one raw footage folder
 
 ```bash
@@ -83,6 +90,8 @@ cuesheet-render [cuesheet.json] [output.mp4] [--no-subtitles] [--srt <path>] [--
 `--no-subtitles`: clean video, no burned-in drawtext (pair with `--srt` for a separate CC
 track). Requires ffmpeg on `PATH`; for cuesheets with subtitles, macOS's Homebrew default
 `ffmpeg` is missing `drawtext` — install `ffmpeg-full` instead (see `packages/render/README.md`).
+Renders run synchronously and can take minutes; macOS ships no `timeout(1)`, so bound a long
+render with `gtimeout` (coreutils) or run it in the background rather than assuming it hung.
 
 ## MCP bridge (Claude Code editing the cuesheet by natural language)
 
@@ -150,7 +159,9 @@ build "<idea>"` / `astryx template --list`) before hand-building any structure, 
   committed.
 - `clipDir` (a field inside the cuesheet, e.g. `media/clips`) — the folder actual video clips
   live in. Keep it repo-relative (or otherwise resolvable from wherever the cuesheet is being
-  read) rather than an absolute path tied to one machine.
+  read) rather than an absolute path tied to one machine. It (and `cuesheet-draft --clip-dir`)
+  may be a symlink — e.g. `media/dotmix_src` pointing into an iCloud folder — which scan and
+  render resolve through transparently.
 - Rendered/generated outputs (`out.mp4`, `out/*.mp4`, `*.srt`, `proto_*.mp4`, proxies,
   thumbnails) are **never committed** — see `.gitignore`.
 
