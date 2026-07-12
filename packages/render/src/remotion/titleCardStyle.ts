@@ -47,3 +47,8 @@ export const TITLE_FONT_SIZE_PX = 500;
  * this single constant, so there's no hand-synced duplicate left to drift.
  */
 export const TITLE_TEXT_COLOR = "#ffffff";
+
+/** Default marker sweep color behind the "highlight" preset's last word. Kept in sync with the
+ * schema's title.highlightColor default; HighlightTitleView falls back to this when no color is
+ * passed. */
+export const TITLE_HIGHLIGHT_COLOR = "#a7c7e7";

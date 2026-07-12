@@ -274,6 +274,7 @@ describe("validateCueSheet - pass cases", () => {
         backdrop: { dim: 0.4 },
         color: "#ffffff",
         size: 90,
+        highlightColor: "#a7c7e7",
       });
     }
   });

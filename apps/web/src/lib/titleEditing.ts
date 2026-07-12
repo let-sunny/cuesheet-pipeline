@@ -17,6 +17,12 @@ export const DEFAULT_TITLE_COLOR = "#ffffff";
  * packages/render/src/remotion/titleCardStyle.ts's TITLE_FONT_SIZE_PX. */
 export const DEFAULT_TITLE_SIZE = 500;
 
+/** Matches the schema's title.highlightColor default - see
+ * packages/render/src/remotion/titleCardStyle.ts's TITLE_HIGHLIGHT_COLOR. Only the "highlight"
+ * preset uses it, but it's set on every default title so a freshly-toggled title round-trips
+ * through validation identically (the schema fills the same default otherwise). */
+export const DEFAULT_TITLE_HIGHLIGHT_COLOR = "#a7c7e7";
+
 /**
  * "Title card for this cut" toggle - turning it on starts from a sane default (typing, 3s, white,
  * size 500, no dim) so the preview shows something immediately, same pattern as the subtitle style
@@ -35,6 +41,7 @@ export function toggleSegmentTitleAt(cue: CueSheet, i: number, enabled: boolean)
               durationS: DEFAULT_TITLE_DURATION_S,
               color: DEFAULT_TITLE_COLOR,
               size: DEFAULT_TITLE_SIZE,
+              highlightColor: DEFAULT_TITLE_HIGHLIGHT_COLOR,
             },
           }
         : withoutTitle(s)

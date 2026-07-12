@@ -12,6 +12,7 @@ describe("toggleSegmentTitleAt", () => {
       durationS: 3,
       color: "#ffffff",
       size: 500,
+      highlightColor: "#a7c7e7",
     });
   });
 

@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 import type { Title } from "@cuesheet/schema";
-import { TITLE_FONT_SIZE_PX, TITLE_TEXT_COLOR } from "@cuesheet/render/remotion";
+import { TITLE_FONT_SIZE_PX, TITLE_HIGHLIGHT_COLOR, TITLE_TEXT_COLOR } from "@cuesheet/render/remotion";
 import { TitlePreview } from "../TitlePreview/index.js";
 import { styles } from "./TitleOverlay.styles.js";
 
@@ -46,6 +46,7 @@ export function TitleOverlay({ title, projectWidth, projectHeight, projectFps }:
           // validation).
           color={title.color ?? TITLE_TEXT_COLOR}
           fontSize={title.size ?? TITLE_FONT_SIZE_PX}
+          highlightColor={title.highlightColor ?? TITLE_HIGHLIGHT_COLOR}
           durationInFrames={durationInFrames}
           fps={projectFps}
           projectWidth={projectWidth}

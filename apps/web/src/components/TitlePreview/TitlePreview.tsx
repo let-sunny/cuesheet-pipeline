@@ -11,6 +11,8 @@ export interface TitlePreviewProps {
   preset: TitlePreset;
   color: string;
   fontSize: number;
+  /** Marker sweep color for the "highlight" preset; ignored by the other presets. */
+  highlightColor?: string;
   durationInFrames: number;
   fps: number;
   /** Project output dimensions - the composition renders at this native pixel size (the same
@@ -43,6 +45,7 @@ export function TitlePreview({
   preset,
   color,
   fontSize,
+  highlightColor,
   durationInFrames,
   fps,
   projectWidth,
@@ -86,7 +89,16 @@ export function TitlePreview({
         }}
         data-testid="title-preview-canvas"
       >
-        <TitleCardView frame={frame} fps={fps} durationInFrames={durationInFrames} text={text} preset={preset} color={color} fontSize={fontSize} />
+        <TitleCardView
+          frame={frame}
+          fps={fps}
+          durationInFrames={durationInFrames}
+          text={text}
+          preset={preset}
+          color={color}
+          fontSize={fontSize}
+          highlightColor={highlightColor}
+        />
       </div>
     </div>
   );

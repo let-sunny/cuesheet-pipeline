@@ -257,6 +257,10 @@ export const titleSchema = z.object({
     .positive("size must be positive")
     .default(500)
     .describe("Title font size in pixels, relative to the project's output resolution (like subtitleStyle.size)."),
+  // Default kept in sync with packages/render/src/remotion/titleCardStyle.ts's TITLE_HIGHLIGHT_COLOR.
+  highlightColor: hexColor
+    .default("#a7c7e7")
+    .describe("Marker sweep color behind the last word of the \"highlight\" preset; ignored by the other presets."),
 });
 
 /**

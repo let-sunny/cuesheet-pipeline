@@ -37,7 +37,7 @@ export type TitleAsset = TitleFramesAsset;
  * key would otherwise serve stale (wrong color/size) frames.
  */
 export function titleCacheKey(
-  title: Pick<Title, "text" | "preset" | "durationS" | "color" | "size">,
+  title: Pick<Title, "text" | "preset" | "durationS" | "color" | "size" | "highlightColor">,
   project: Pick<CueSheet["project"], "width" | "height" | "fps">,
 ): string {
   const payload = JSON.stringify({
@@ -46,6 +46,7 @@ export function titleCacheKey(
     durationS: title.durationS,
     color: title.color,
     size: title.size,
+    highlightColor: title.highlightColor,
     width: project.width,
     height: project.height,
     fps: project.fps,
@@ -163,6 +164,7 @@ async function renderTitleFrames(args: {
     fps: project.fps,
     color: title.color,
     fontSize: title.size,
+    highlightColor: title.highlightColor,
     width: project.width,
     height: project.height,
   };

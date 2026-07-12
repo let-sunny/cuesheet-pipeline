@@ -15,7 +15,7 @@ import type { TitleViewFrameProps } from "./titleCardStyle.js";
 // exports map) is the single entry point browser code (apps/web's TitlePreview) needs to run the
 // real composition's animation: the color/size fallback constants (used when a cuesheet predates
 // the title.color/title.size schema fields), plus TitleCardView below.
-export { TITLE_FONT_SIZE_PX, TITLE_TEXT_COLOR } from "./titleCardStyle.js";
+export { TITLE_FONT_SIZE_PX, TITLE_HIGHLIGHT_COLOR, TITLE_TEXT_COLOR } from "./titleCardStyle.js";
 
 /**
  * Props for the "TitleCard" Remotion composition (registered in index.tsx) - this is the
@@ -33,6 +33,9 @@ export interface TitleCardProps extends Record<string, unknown> {
   color: string;
   /** Title font size in pixels (schema's title.size); passed through to whichever preset renders. */
   fontSize: number;
+  /** Marker sweep color for the "highlight" preset (schema's title.highlightColor); ignored by the
+   * other presets. */
+  highlightColor?: string;
   /** Project output dimensions (cue.project.width/height) - not read by TitleCard itself (the
    * AbsoluteFill layout fills whatever canvas size the composition resolves to), but threaded
    * through so index.tsx's calculateMetadata can override the composition's width/height per
@@ -54,6 +57,8 @@ export interface TitleCardViewProps extends TitleViewFrameProps {
   preset: TitlePreset;
   color: string;
   fontSize: number;
+  /** Marker sweep color for the "highlight" preset; ignored by the other presets. */
+  highlightColor?: string;
 }
 
 /**
@@ -63,7 +68,7 @@ export interface TitleCardViewProps extends TitleViewFrameProps {
  * frame capture (title.ts's prepareTitleAssets) omits the background automatically for png output,
  * so the card composites onto the underlying footage via alpha, not a solid color.
  */
-export function TitleCard({ text, preset, color, fontSize }: TitleCardProps) {
+export function TitleCard({ text, preset, color, fontSize, highlightColor }: TitleCardProps) {
   usePretendardReady();
   switch (preset) {
     case "fade":
@@ -73,7 +78,7 @@ export function TitleCard({ text, preset, color, fontSize }: TitleCardProps) {
     case "typing":
       return <TypewriterTitle text={text} color={color} fontSize={fontSize} />;
     case "highlight":
-      return <HighlightTitle text={text} color={color} fontSize={fontSize} />;
+      return <HighlightTitle text={text} color={color} fontSize={fontSize} highlightColor={highlightColor} />;
   }
 }
 
@@ -106,7 +111,7 @@ function usePretendardReady() {
  * Remotion-context-reading wrapper. This is what apps/web's TitlePreview renders, driven by its
  * own requestAnimationFrame loop rather than a Remotion composition.
  */
-export function TitleCardView({ frame, fps, durationInFrames, text, preset, color, fontSize }: TitleCardViewProps) {
+export function TitleCardView({ frame, fps, durationInFrames, text, preset, color, fontSize, highlightColor }: TitleCardViewProps) {
   switch (preset) {
     case "fade":
       return <FadeTitleView frame={frame} fps={fps} durationInFrames={durationInFrames} text={text} color={color} fontSize={fontSize} />;
@@ -141,6 +146,7 @@ export function TitleCardView({ frame, fps, durationInFrames, text, preset, colo
           text={text}
           color={color}
           fontSize={fontSize}
+          highlightColor={highlightColor}
         />
       );
   }

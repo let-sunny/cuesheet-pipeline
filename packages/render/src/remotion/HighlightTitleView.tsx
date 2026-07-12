@@ -1,10 +1,12 @@
 import { spring } from "remotion";
-import { ABSOLUTE_FILL_CENTERED_STYLE, TITLE_FONT_FAMILY, type TitleViewFrameProps } from "./titleCardStyle.js";
+import { ABSOLUTE_FILL_CENTERED_STYLE, TITLE_FONT_FAMILY, TITLE_HIGHLIGHT_COLOR, type TitleViewFrameProps } from "./titleCardStyle.js";
 
 export interface HighlightTitleViewProps extends TitleViewFrameProps {
   text: string;
   color: string;
   fontSize: number;
+  /** Marker sweep color behind the last word. Falls back to TITLE_HIGHLIGHT_COLOR when omitted. */
+  highlightColor?: string;
 }
 
 export interface HighlightFrameValues {
@@ -34,7 +36,7 @@ export function computeHighlightFrame(frame: number, fps: number, text: string):
  * shared-View rationale (plain props instead of Remotion context, plain `<div>` instead of
  * `<AbsoluteFill>`).
  */
-export function HighlightTitleView({ frame, fps, text, color, fontSize }: HighlightTitleViewProps) {
+export function HighlightTitleView({ frame, fps, text, color, fontSize, highlightColor }: HighlightTitleViewProps) {
   const { lead, keyword, markerScaleX } = computeHighlightFrame(frame, fps, text);
 
   return (
@@ -58,7 +60,7 @@ export function HighlightTitleView({ frame, fps, text, color, fontSize }: Highli
               right: 0,
               bottom: "0.08em",
               height: "0.35em",
-              backgroundColor: MARKER_COLOR,
+              backgroundColor: highlightColor ?? TITLE_HIGHLIGHT_COLOR,
               transform: `scaleX(${markerScaleX})`,
               transformOrigin: "left",
             }}
@@ -69,6 +71,3 @@ export function HighlightTitleView({ frame, fps, text, color, fontSize }: Highli
     </div>
   );
 }
-
-/** Pastel marker color behind the highlighted keyword. */
-const MARKER_COLOR = "#A7C7E7";

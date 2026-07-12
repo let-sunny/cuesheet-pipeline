@@ -94,6 +94,7 @@ describe("useEditStepActions", () => {
       durationS: 3,
       color: "#ffffff",
       size: 500,
+      highlightColor: "#a7c7e7",
     });
 
     act(() => result.current.toggleSegmentTitle(0, false));

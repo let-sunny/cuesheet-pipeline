@@ -79,6 +79,16 @@ export function TitleGroup({ title, onToggle, onChangeTitle, titleDurationField,
                 onChange={(value) => onChangeTitle({ color: value })}
               />
               <NumericInput field={titleSizeField} label="Size" width={80} testId="cut-field-title-size" />
+              {/* Highlight-preset marker color - only this preset draws a marker sweep, so the
+                  field is meaningless (and hidden) for the others. */}
+              {title.preset === "highlight" ? (
+                <ColorField
+                  label="Highlight"
+                  inputID="cut-field-title-highlight-color"
+                  value={title.highlightColor ?? "#a7c7e7"}
+                  onChange={(value) => onChangeTitle({ highlightColor: value })}
+                />
+              ) : null}
             </HStack>
           </FormLayoutContext>
           <Slider

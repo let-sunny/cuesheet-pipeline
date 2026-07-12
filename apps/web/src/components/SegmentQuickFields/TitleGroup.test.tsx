@@ -41,7 +41,7 @@ describe("TitleGroup", () => {
   });
 
   it("renders the detail fields once a title is set, with its current values", () => {
-    const title: Title = { text: "hi", preset: "typing", durationS: 3, color: "#3a3128", size: 72 };
+    const title: Title = { text: "hi", preset: "typing", durationS: 3, color: "#3a3128", size: 72, highlightColor: "#a7c7e7" };
     render(
       <TitleGroup
         title={title}
@@ -62,9 +62,38 @@ describe("TitleGroup", () => {
     expect(screen.getByDisplayValue("72")).not.toBeNull();
   });
 
+  it("shows the Highlight color field only for the highlight preset, and edits it", () => {
+    const onChangeTitle = vi.fn();
+    const { rerender } = render(
+      <TitleGroup
+        title={{ text: "hi", preset: "typing", durationS: 3, color: "#3a3128", size: 72, highlightColor: "#a7c7e7" }}
+        onToggle={vi.fn()}
+        onChangeTitle={onChangeTitle}
+        titleDurationField={numericField("3")}
+        titleSizeField={numericField("72")}
+      />,
+    );
+    // Not the highlight preset -> no Highlight color field.
+    expect(screen.queryByLabelText("Highlight (hex)")).toBeNull();
+
+    rerender(
+      <TitleGroup
+        title={{ text: "hi", preset: "highlight", durationS: 3, color: "#3a3128", size: 72, highlightColor: "#a7c7e7" }}
+        onToggle={vi.fn()}
+        onChangeTitle={onChangeTitle}
+        titleDurationField={numericField("3")}
+        titleSizeField={numericField("72")}
+      />,
+    );
+    const hex = screen.getByLabelText("Highlight (hex)") as HTMLInputElement;
+    expect(hex.value).toBe("#a7c7e7");
+    fireEvent.change(hex, { target: { value: "#ff0000" } });
+    expect(onChangeTitle).toHaveBeenCalledWith({ highlightColor: "#ff0000" });
+  });
+
   it("calls onChangeTitle when the text field changes", () => {
     const onChangeTitle = vi.fn();
-    const title: Title = { text: "hi", preset: "typing", durationS: 3, color: "#3a3128", size: 72 };
+    const title: Title = { text: "hi", preset: "typing", durationS: 3, color: "#3a3128", size: 72, highlightColor: "#a7c7e7" };
     render(
       <TitleGroup
         title={title}
@@ -80,7 +109,7 @@ describe("TitleGroup", () => {
 
   it("calls onChangeTitle when the color field changes", () => {
     const onChangeTitle = vi.fn();
-    const title: Title = { text: "hi", preset: "typing", durationS: 3, color: "#3a3128", size: 72 };
+    const title: Title = { text: "hi", preset: "typing", durationS: 3, color: "#3a3128", size: 72, highlightColor: "#a7c7e7" };
     render(
       <TitleGroup
         title={title}
@@ -96,7 +125,7 @@ describe("TitleGroup", () => {
 
   it("calls onChangeTitle when the size field changes", () => {
     const onChangeTitle = vi.fn();
-    const title: Title = { text: "hi", preset: "typing", durationS: 3, color: "#3a3128", size: 72 };
+    const title: Title = { text: "hi", preset: "typing", durationS: 3, color: "#3a3128", size: 72, highlightColor: "#a7c7e7" };
     const titleSizeField = numericField("72");
     render(
       <TitleGroup

@@ -37,7 +37,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-const baseTitle: Title = { text: "Cast on", preset: "typing", durationS: 2, color: "#3a3128", size: 72 };
+const baseTitle: Title = { text: "Cast on", preset: "typing", durationS: 2, color: "#3a3128", size: 72, highlightColor: "#a7c7e7" };
 
 function renderOverlay(overrides: Partial<ComponentProps<typeof TitleOverlay>> = {}) {
   return render(
@@ -53,7 +53,7 @@ describe("TitleOverlay", () => {
 
   it("renders TitlePreview with the title's text/preset/duration and the project's dimensions/fps", () => {
     const { getByTestId } = renderOverlay({
-      title: { text: "Cast on today", preset: "wordStagger", durationS: 3, color: TITLE_TEXT_COLOR, size: TITLE_FONT_SIZE_PX },
+      title: { text: "Cast on today", preset: "wordStagger", durationS: 3, color: TITLE_TEXT_COLOR, size: TITLE_FONT_SIZE_PX, highlightColor: "#a7c7e7" },
       projectWidth: 1080,
       projectHeight: 1920,
       projectFps: 24,
@@ -70,7 +70,7 @@ describe("TitleOverlay", () => {
 
   it("passes the title's own color/size through when set", () => {
     const { getByTestId } = renderOverlay({
-      title: { text: "Cast on today", preset: "wordStagger", durationS: 3, color: "#ffffff", size: 90 },
+      title: { text: "Cast on today", preset: "wordStagger", durationS: 3, color: "#ffffff", size: 90, highlightColor: "#a7c7e7" },
     });
     const preview = getByTestId("mock-title-preview");
     expect(preview.getAttribute("data-color")).toBe("#ffffff");
