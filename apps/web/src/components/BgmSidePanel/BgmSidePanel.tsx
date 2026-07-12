@@ -175,6 +175,10 @@ export function BgmSidePanel({
           data-testid="bgm-panel-toggle"
         />
         {bgm.length > 0 ? <span {...stylex.props(styles.railCountBadge)}>{bgm.length}</span> : null}
+        {/* Label leads (section identity); the add-track "+" sits at the rail's bottom via the
+            label's flexGrow, matching editors' "add at the end of the list" convention rather than
+            prefixing the section name with a "+" (2026-07-12 user feedback). */}
+        <span {...stylex.props(styles.railLabel)}>Background music</span>
         {!collapsed ? (
           <IconButton
             icon={<span aria-hidden="true">+</span>}
@@ -186,7 +190,6 @@ export function BgmSidePanel({
             data-testid="bgm-add-track"
           />
         ) : null}
-        <span {...stylex.props(styles.railLabel)}>Background music</span>
       </div>
 
       {!collapsed ? (
