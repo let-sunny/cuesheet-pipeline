@@ -1,7 +1,14 @@
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_ASSEMBLE_CONFIG } from "../src/assemble.js";
-import { loadDomainBundle, momentsFileSchemaFor, resolveDomainAssembleConfig } from "../src/domain.js";
+import {
+  loadDomainBundle,
+  momentsFileSchemaFor,
+  progressFileSchemaFor,
+  resolveDomainAssembleConfig,
+  resolveNarrativeConfig,
+} from "../src/domain.js";
+import { KNITTING_NARRATIVE_CONFIG } from "../src/progress.js";
 import { momentsFileSchema } from "../src/types.js";
 
 // The knitting vocabulary, as a literal - the engine's shotType is now an open string, so the pin
@@ -38,6 +45,26 @@ describe("no-drift pins (the knitting bundle must equal the engine defaults it w
 
   it("knitting face heuristic equals the engine's default face heuristic", () => {
     expect(loadDomainBundle(KNITTING).facePolicy.heuristic).toEqual(DEFAULT_ASSEMBLE_CONFIG.faceHeuristic);
+  });
+
+  it("knitting narrative.json resolves to KNITTING_NARRATIVE_CONFIG (the engine default)", () => {
+    expect(resolveNarrativeConfig(loadDomainBundle(KNITTING))).toEqual(KNITTING_NARRATIVE_CONFIG);
+  });
+});
+
+describe("narrative bundle (frogging as a domain hook)", () => {
+  it("loads the knitting narrative rules (verdicts + quality boosts)", () => {
+    const bundle = loadDomainBundle(KNITTING);
+    expect(bundle.narrative?.verdicts).toEqual(["grew", "shrank", "same", "unclear"]);
+    expect(bundle.narrative?.minDurS).toBe(300);
+    expect(bundle.narrative?.qualityBoosts).toEqual({ mistake_discovered: 5, resumed: 4 });
+  });
+
+  it("progressFileSchemaFor narrows verdicts to the domain vocabulary", () => {
+    const schema = progressFileSchemaFor(loadDomainBundle(KNITTING));
+    const judgment = (verdict: string) => [{ clip: "a.mp4", tA: 0, tB: 60, verdict, confidence: 4, note: "" }];
+    expect(schema.safeParse(judgment("shrank")).success).toBe(true);
+    expect(schema.safeParse(judgment("melted")).success).toBe(false);
   });
 });
 
