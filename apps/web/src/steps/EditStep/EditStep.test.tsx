@@ -167,15 +167,29 @@ describe("EditStep", () => {
     },
   );
 
-  it("deselects the BGM track (closes the top settings bar) when Escape is pressed", () => {
+  it("deletes the selected BGM track when Escape is pressed", () => {
     render(<Harness />);
     // Adding a track auto-selects it (useEditStepActions.addBgmTrack), so the top property bar
-    // opens without needing to drive the pointer-drag selection on the gutter bar.
+    // opens and its gutter bar appears without driving the pointer-drag selection.
     fireEvent.click(screen.getByTestId("bgm-panel-toggle")); // expand the rail
     fireEvent.click(screen.getByTestId("bgm-add-track"));
     expect(screen.queryByTestId("bgm-settings-panel")).not.toBeNull();
+    expect(screen.queryByTestId("bgm-bar-0")).not.toBeNull();
 
     fireEvent.keyDown(window, { key: "Escape" });
+    // The track is removed: its gutter bar is gone and the property bar (which needs a selected
+    // track) closes with it.
+    expect(screen.queryByTestId("bgm-bar-0")).toBeNull();
     expect(screen.queryByTestId("bgm-settings-panel")).toBeNull();
+  });
+
+  it("does not delete the track on Escape while typing in a property-bar field", () => {
+    render(<Harness />);
+    fireEvent.click(screen.getByTestId("bgm-panel-toggle"));
+    fireEvent.click(screen.getByTestId("bgm-add-track"));
+    // Esc originating from an input (e.g. the volume field) must not nuke the track.
+    const volume = screen.getByTestId("bgm-field-volume");
+    fireEvent.keyDown(volume, { key: "Escape" });
+    expect(screen.queryByTestId("bgm-bar-0")).not.toBeNull();
   });
 });

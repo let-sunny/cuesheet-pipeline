@@ -77,21 +77,27 @@ export function EditStep({
   // measurements go stale relative to each other.
   const [bgmPanelCollapsed, setBgmPanelCollapsed] = useState(true);
 
-  // Esc deselects the BGM track (closes the top property bar), the same as its Close (X) button -
-  // the convention for dismissing a selected element (2026-07-12). Only listens while a track is
-  // selected, so it never swallows Esc elsewhere.
+  // Esc deletes the selected BGM track (2026-07-12 user request). Only listens while a track is
+  // selected, and is skipped while typing in one of the property bar's fields (there Esc should
+  // just blur, not nuke the track). removeBgmTrack also clears the selection, closing the bar.
   useEffect(() => {
     if (selectedBgmIndex == null) {
       return;
     }
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setSelectedBgmIndex(null);
+      if (e.key !== "Escape") {
+        return;
       }
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable)) {
+        return;
+      }
+      actions.removeBgmTrack(selectedBgmIndex);
+      setSelectedBgmIndex(null);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedBgmIndex, setSelectedBgmIndex]);
+  }, [selectedBgmIndex, setSelectedBgmIndex, actions]);
 
   return (
     <div {...stylex.props(styles.editLayout)}>
