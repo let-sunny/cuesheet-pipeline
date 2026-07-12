@@ -2,13 +2,19 @@ import { spawn } from "node:child_process";
 import { dirname, isAbsolute, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { resolveCuesheetPath } from "@cuesheet/active-episode";
 
 const here = dirname(fileURLToPath(import.meta.url));
 // src/server -> src -> web -> packages -> repo root
 export const repoRoot = resolve(here, "../../../..");
 
+/**
+ * The cuesheet this editor session edits, resolved at startup from the active-episode source of
+ * truth: explicit CUESHEET_PATH env > .active-episode file > project.cuesheet.json. (Following
+ * .active-episode changes live, without a restart, is a separate follow-up - see #25.)
+ */
 export function cuesheetPath(): string {
-  return process.env.CUESHEET_PATH ?? resolve(repoRoot, "project.cuesheet.json");
+  return resolveCuesheetPath({ repoRoot, env: process.env });
 }
 
 /** Checks whether target is inside root (including root itself) — prevents path escape. */

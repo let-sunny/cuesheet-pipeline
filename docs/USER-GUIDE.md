@@ -6,8 +6,8 @@
 > automatically) — see section 1 below.
 > Reopening just the editor: from the repo root, `pnpm --filter @cuesheet/web dev`, then open
 > `localhost:5173`
-> (the file being edited is set via `CUESHEET_PATH` when starting the server — defaults to
-> `project.cuesheet.json`).
+> (it edits the active episode — the one `pnpm episode` last wrote to `.active-episode`; set
+> `CUESHEET_PATH` to override, otherwise it falls back to `project.cuesheet.json`).
 
 ---
 

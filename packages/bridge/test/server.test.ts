@@ -30,8 +30,9 @@ function sample() {
 /** Connects a fresh Client<->Server pair over an in-memory transport (full initialize handshake). */
 async function connect(
   options: { readOnly?: boolean } = {},
+  resolvePath: () => string = () => TMP,
 ): Promise<{ client: Client; close: () => Promise<void> }> {
-  const server = createServer(TMP, options);
+  const server = createServer(resolvePath, options);
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test-client", version: "0.0.0" });
   await Promise.all([client.connect(clientTransport), server.connect(serverTransport)]);
@@ -66,6 +67,31 @@ describe("bridge MCP round-trip", () => {
     await close();
   });
 
+  it("re-resolves the cuesheet path per tool call (follows the active episode without a restart)", async () => {
+    const pathA = join(tmpdir(), "cuesheet-bridge-A.json");
+    const pathB = join(tmpdir(), "cuesheet-bridge-B.json");
+    let active = pathA;
+    const { client, close } = await connect({}, () => active);
+    try {
+      await client.callTool({ name: "update_cuesheet", arguments: { cuesheet: sample() } });
+      expect(existsSync(pathA)).toBe(true);
+
+      // Switch the active episode mid-session; the next call must act on B, not A.
+      active = pathB;
+      const sheetB = sample();
+      sheetB.project.name = "episode-B";
+      await client.callTool({ name: "update_cuesheet", arguments: { cuesheet: sheetB } });
+      expect(existsSync(pathB)).toBe(true);
+
+      const got = JSON.parse(textOf(await client.callTool({ name: "get_cuesheet", arguments: {} })));
+      expect(got.data.project.name).toBe("episode-B");
+    } finally {
+      rmSync(pathA, { force: true });
+      rmSync(pathB, { force: true });
+      await close();
+    }
+  });
+
   it("get_cuesheet -> update_cuesheet -> get_cuesheet round-trips a value", async () => {
     const { client, close } = await connect();
 
@@ -87,6 +113,23 @@ describe("bridge MCP round-trip", () => {
     const parsed = JSON.parse(textOf(after));
     expect(parsed.ok).toBe(true);
     expect(parsed.data.segments[0].clip).toBe("a.mp4");
+
+    await close();
+  });
+
+  it("update_cuesheet stamps a stable id onto id-less segments (choke point)", async () => {
+    const { client, close } = await connect();
+
+    await client.callTool({ name: "update_cuesheet", arguments: { cuesheet: sample() } });
+    const first = JSON.parse(textOf(await client.callTool({ name: "get_cuesheet", arguments: {} })));
+    const id = first.data.segments[0].id;
+    expect(typeof id).toBe("string");
+    expect(id.length).toBeGreaterThan(0);
+
+    // A subsequent save that carries the id back keeps it stable (ids don't churn per save).
+    await client.callTool({ name: "update_cuesheet", arguments: { cuesheet: first.data } });
+    const second = JSON.parse(textOf(await client.callTool({ name: "get_cuesheet", arguments: {} })));
+    expect(second.data.segments[0].id).toBe(id);
 
     await close();
   });

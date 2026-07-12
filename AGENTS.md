@@ -114,21 +114,20 @@ this table:
 | `get_capabilities` | Once per session, or whenever exploring what this system can do. Returns `{tools, clis, schemaFeatures}` generated live from the schema and the tool/CLI registrations themselves — nothing here to go stale. |
 
 Every edit is "read the whole cuesheet, compute the whole new cuesheet, send it back" —
-`update_cuesheet`/`validate_cuesheet` never take a partial patch. `CUESHEET_PATH` (env var,
-defaults to `./project.cuesheet.json`) selects which file is being edited; the web editor
-watches the same file and refreshes automatically when the bridge writes to it.
+`update_cuesheet`/`validate_cuesheet` never take a partial patch. Which cuesheet is edited is the
+**active episode**, resolved fresh on every tool call: explicit `CUESHEET_PATH` env > the repo-root
+`.active-episode` file > `./project.cuesheet.json`. The web editor edits the same active cuesheet.
+Switching episode (via `pnpm episode`, or the editor) rewrites `.active-episode`; because the
+bridge re-resolves per call, it follows the switch without a restart. `.active-episode` is
+gitignored (it points at a personal episode path).
 
-**After a rebuild, restart the session/bridge — and point `CUESHEET_PATH` at the episode you
-actually mean.** MCP servers do not hot-reload: a Claude Code session that attached before a
-`pnpm -r build` keeps running the previous `dist` (old tool set/behavior) until it is restarted.
-To make this visible, the bridge prints a startup banner to stderr on boot — resolved
-`CUESHEET_PATH`, package version, and the live tool names — so you can confirm what you attached
-to instead of guessing. Separately, the root `.mcp.json` pins `CUESHEET_PATH=project.cuesheet.json`
-(the seed cuesheet), so out of the box the bridge edits *that*, not an episode. To edit an episode
-via the bridge, launch it with `CUESHEET_PATH=episodes/<slug>.cuesheet.json` and restart — the same
-env-var handoff `.claude/commands/episode.md` step 6 uses for the web editor — rather than editing
-the tracked `.mcp.json` with a personal episode path. Unifying "the active episode" across the web
-editor, `pnpm episode`, and the bridge is tracked in #25.
+**After a rebuild, still restart the session/bridge.** MCP servers do not hot-reload: a Claude
+Code session that attached before a `pnpm -r build` keeps running the previous `dist` (old tool
+set/behavior) until it is restarted. The bridge prints a startup banner to stderr on boot — the
+resolved active-episode path, package version, and the live tool names — so you can confirm what
+you attached to; the banner also notes that the path re-resolves per call. To force a specific
+file regardless of `.active-episode`, set `CUESHEET_PATH` explicitly (it wins) — e.g. the e2e
+suite pins it for hermeticity.
 
 Setting `CUESHEET_BRIDGE_READONLY=1` runs the bridge read-only: every `update_cuesheet` call is
 refused with a structured `{ok:false, errors:[...]}` naming the variable to unset, and nothing
@@ -164,8 +163,12 @@ build "<idea>"` / `astryx template --list`) before hand-building any structure, 
 
 - `episodes/<slug>.cuesheet.json` — per-episode cuesheet naming used by `pnpm episode` (`<slug>`
   = the source folder's basename, slugified).
-- `project.cuesheet.json` (repo root) — the default single-project cuesheet the MCP bridge and
-  ad hoc CLI runs use unless `CUESHEET_PATH` says otherwise.
+- `.active-episode` (repo root) — a one-line pointer to the active episode's cuesheet, read by
+  the web editor, the bridge (per tool call), and `pnpm episode` (which writes it). **Gitignored**
+  — points at a personal episode path. `CUESHEET_PATH` overrides it; absent both, the default is
+  `project.cuesheet.json`.
+- `project.cuesheet.json` (repo root) — the default single-project cuesheet used when neither
+  `.active-episode` nor `CUESHEET_PATH` selects another.
 - `media/drafts/<slug>/` — scan/assemble working artifacts (`manifest.json`, extracted frames,
   `moments.json`, `progress.json`). **Gitignored** — personal raw-footage-derived data, never
   committed.

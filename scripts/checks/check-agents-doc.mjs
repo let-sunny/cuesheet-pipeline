@@ -49,6 +49,7 @@ const RENDER_INDEX_SRC = join(repoRoot, "packages/render/src/index.ts");
 const EPISODE_MJS_SRC = join(repoRoot, "scripts/episode.mjs");
 const BRIDGE_SERVER_SRC = join(repoRoot, "packages/bridge/src/server.ts");
 const BRIDGE_INDEX_SRC = join(repoRoot, "packages/bridge/src/index.ts");
+const ACTIVE_EPISODE_SRC = join(repoRoot, "packages/active-episode/src/index.ts");
 const WEB_SERVER_SRC_DIR = join(repoRoot, "apps/web/src/server");
 
 const violations = [];
@@ -176,12 +177,16 @@ function readServerSrcTree(dir) {
   return combined;
 }
 
-/** Every documented CUESHEET_* env var must actually be read (process.env.NAME) in bridge/src/index.ts. */
+/**
+ * Every documented CUESHEET_* env var must actually be read (process.env.NAME) in the bridge's
+ * env-reading surface: bridge/src/index.ts, plus @cuesheet/active-episode's resolver, which the
+ * bridge delegates CUESHEET_PATH resolution to (active-episode > .active-episode file > default).
+ */
 function checkEnvVarsReferenced(agentsMd) {
-  const indexSrc = readFileSync(BRIDGE_INDEX_SRC, "utf-8");
+  const src = [BRIDGE_INDEX_SRC, ACTIVE_EPISODE_SRC].map((p) => readFileSync(p, "utf-8")).join("\n");
   for (const name of extractEnvVarNames(agentsMd)) {
-    if (!indexSrc.includes(`process.env.${name}`)) {
-      violations.push(`AGENTS.md documents env var ${name}, but bridge/src/index.ts no longer reads process.env.${name}.`);
+    if (!src.includes(`process.env.${name}`) && !src.includes(`env.${name}`)) {
+      violations.push(`AGENTS.md documents env var ${name}, but neither bridge/src/index.ts nor active-episode reads it.`);
     }
   }
 }
