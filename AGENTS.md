@@ -168,8 +168,10 @@ build "<idea>"` / `astryx template --list`) before hand-building any structure, 
 
 ## Typical workflows
 
-**New episode, end to end**: `pnpm episode "<folder>"` (scans, boots the editor) -> in Claude
-Code, `/episode <folder>` (vision judgment -> assemble -> subtitle voice pass) -> open
+**New episode, end to end** (step-by-step walkthrough with failure symptoms:
+[docs/FIRST-EPISODE.md](docs/FIRST-EPISODE.md)): `pnpm episode "<folder>"` (scans, boots the
+editor — no draft yet) -> in Claude Code, `/episode <folder>` (vision judgment -> assemble ->
+subtitle voice pass; this is what actually produces the draft) -> open
 `http://localhost:5173`, review the rough cut, hand-edit anything -> press render in the editor
 (lands at `out/<project-name> <timestamp>.mp4`, downloadable via the stable `GET /out.mp4`
 alias) (or run `cuesheet-render episodes/<slug>.cuesheet.json out.mp4`).
