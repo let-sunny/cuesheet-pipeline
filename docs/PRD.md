@@ -77,17 +77,25 @@ subtitled/total-cut-count badge; Export has no badge.
   video never letterboxes and the subtitle sizes correctly), go-to-start/previous/play-pause/next
   cut as icons, speed 1x/1.5x/2x, progress-bar jump, subtitle + scene-hint overlay, editing
   allowed during playback
-- **Cut settings** (two tabs, grouping and order per screen-spec section 4): **Cut** tab —
-  Range (In/Out/length), Playback (speed/volume), Narration (file picker, preview, length
-  warning, shown only when in use), Cut actions (Split Cmd+B / Merge with next cut Cmd+J /
+- **Cut settings** (a **Cut**/**Effects** segmented toggle, not tabs — the two are views of the
+  same cut's settings, not separate destinations; grouping and order per screen-spec section 4):
+  **Cut** view — Range (In/Out/length), Playback (speed/volume), Narration (file picker, preview,
+  length warning, shown only when in use), Cut actions (Split Cmd+B / Merge with next cut Cmd+J /
   Duplicate on one row, Set as intro / Set as outro — disabled + reason if the clip is longer
-  than 15s — on their own row), Delete (destructive, separated). **Effects** tab — Subtitle
+  than 15s — on their own row), Delete (destructive, separated). **Effects** view — Subtitle
   (+ Subtitle style for this cut: size/color/outline/background/margin, promote to/release from
   global, optional named style preset), Title (text/preset/duration/color/size/backdrop dim),
   Transitions (fade/dip in and out). Reframe is not a Cut settings group — its entry point lives
   on the video toolbar itself (see Video column, above).
+- **Background music**: a collapsible side rail beside the cut list holds a per-cut gutter lane —
+  add a track (+, below the rail's vertical label), then drag/resize its bar to span the cuts it
+  plays under; a count badge (shown from 0 so adding the first track doesn't shift the rail)
+  reports how many tracks exist. Selecting a track opens a **property bar at the top of the step**
+  (File dropdown + preview, Volume, Range in cut numbers alongside the seconds they resolve to,
+  Remove) — a separate layer that never displaces the Cut settings column; Close (X) or Esc
+  deselects it.
 - **Keyboard shortcuts**: Space, J/K/L (reverse/pause/play, repeat to speed up), I/O, arrow
-  keys, Cmd+B/J/Z/Shift+Z, Tab, ?
+  keys, Cmd+B/J/Z/Shift+Z, Tab, Esc (deselect BGM track), ?
 - Undo/Redo (icon buttons), 50-deep stack, batches consecutive edits, localStorage
   snapshot-restore banner
 
@@ -99,8 +107,9 @@ subtitled/total-cut-count badge; Export has no badge.
   into — preview updates live in the (2) Edit video column
 - Intro/outro: file picker (shows length, disabled above 15s) + collapsible manual entry +
   clear button
-- Background music: one-line summary only in this step; editing itself is moving to a
-  collapsible side panel (in progress, separate work)
+- Background music: one-line summary only in this step; editing itself lives in the (2) Edit step
+  (a collapsible side rail for placing/dragging tracks against cuts + a top property bar for the
+  selected track)
 - Narration: on/off toggle, folder, overall volume, Ducking (duck-under-narration amount + fade
   duration), help text — the settings component (`NarrationSettings`) is built and tested but
   not currently wired into any step, so project-level narration settings aren't reachable from
@@ -153,10 +162,85 @@ translated as UI copy would be.
 | **Undo / Redo** | 실행 취소 / 다시 실행 | Cmd+Z / Cmd+Shift+Z |
 | **Unsaved edits** | 저장하지 않은 편집 | snapshot, temp copy — surfaced only in the restore banner |
 | **Background music** | 배경음악 | BGM abbreviation is fine alongside |
+| **Cut / Effects** (the two Cut settings views) | 컷 / 효과 | tabs — it is a segmented toggle, not a tab bar |
+| **Background music rail** | 배경음악 레일 | sidebar — the collapsible strip beside the cut list |
+| **Background music track** | 배경음악 트랙 | — |
 | Keep as-is: Narration, Intro/Outro, Subtitle, Thumbnail | | already natural |
 
 Principle: name a new feature after what the user is doing, register it in this table, then
 implement it.
+
+### Concept definitions (canonical reference — use this to answer "what is X" about the service)
+
+One-line definitions of every domain and editor term, grounded in this PRD and screen-spec. This
+is the source an AI should cite when asked about the product; the table above governs the exact
+on-screen wording, this list explains what each thing *is*.
+
+**What the product is** — a browser video editor specialized for script-driven vlog editing (the
+running example is a knitting vlog with no spoken dialogue): drop in raw footage, get an
+auto-generated rough cut, refine it in the browser with editor-grade UX, and render immediately.
+It deliberately does NOT chase general-purpose editor features (multitrack, effects, generic
+templates) — the whole front line is "draft automation + a touch-up editor," tailored to one
+person's editing grammar.
+
+**Product / data terms**
+- **Cuesheet** — the JSON document that is the single source of truth for an edit: a schema-
+  validated contract (`@cuesheet/schema`) linking editing to rendering. Hand-editing (web) and
+  natural-language commands (Claude Code via the bridge) mutate the same cuesheet.
+- **Draft (rough cut)** — a cuesheet auto-generated from a raw-footage folder, the starting point
+  the user refines. Produced by the `@cuesheet/draft` pipeline.
+- **Scan / Assemble** — the two draft stages: `scan` extracts frames from raw clips at length-based
+  intervals into a manifest; `assemble` turns Claude's vision judgments (`moments.json`) into a
+  validated cuesheet.
+- **Moment / highlight** — a usable point in raw footage (a scene worth cutting). Extracting these
+  positions from long, low-motion takes is the core automation deliverable.
+- **Render** — turning a cuesheet into the final video via ffmpeg (`@cuesheet/render`); also emits
+  subtitles as `.srt`.
+- **Bridge (MCP)** — the MCP server (`@cuesheet/bridge`) the user's own Claude Code attaches to,
+  editing the cuesheet by natural language (so the app embeds no paid AI of its own).
+
+**Editing workflow (three steps)**
+- **Scenes** — pick which candidate moments to use.
+- **Edit** — polish the picked cuts (trim, subtitle, style, title, transitions, background music).
+- **Export** — set output options (resolution, subtitle burn-in) and render.
+
+**Editor concepts**
+- **Scene / Scene candidate** — a moment in the footage / the palette of candidates shown in Scenes.
+- **Cut** — one segment of the final assembly: a clip plus its In/Out range, speed, volume,
+  subtitle, and optional title/transitions (schema `segment`).
+- **Range (In/Out)** — the trimmed portion of a clip a cut uses; expressed in seconds (frames exist
+  only inside render, via `project.fps`).
+- **Timelapse cut** — a sped-up connector segment (`segment.speed`), typically inserted for a long
+  monotonous take.
+- **Reframe** — aspect-ratio-preserving zoom/crop of a cut; its entry point lives on the video
+  toolbar, not in Cut settings.
+- **Subtitle / Subtitle style / Style preset** — on-screen caption text / its look (size, color,
+  outline, background, position, margin) / a named, reusable style a cut can opt into.
+- **Title card** — an animated title overlay on a cut (text, preset, duration, color, size,
+  backdrop dim); rendered via Remotion.
+- **Transitions** — fade/dip in and out at a cut's edges.
+- **Cut settings (Cut / Effects views)** — the right-hand panel that edits the selected cut, split
+  into a **Cut** view (Range, Playback, Narration, Cut actions, Delete) and an **Effects** view
+  (Subtitle, Title, Transitions), switched by a segmented toggle (not tabs).
+- **Background music** — its own layer in the Edit step: a collapsible **rail** beside the cut list
+  whose **gutter lane** holds **track** bars aligned to the cuts they play under; selecting a track
+  opens a **property bar** at the top of the step (file, volume, cut range, remove) that never
+  displaces Cut settings.
+- **Narration** — a separately-recorded voice track overlaid on the video (per-cut file selection
+  today; project-level volume/ducking exists in schema/render).
+- **Intro / Outro** — clips prepended/appended to the episode.
+- **Play all** — plays the assembled cuts back-to-back in a strict 16:9 stage for review.
+
+**Service-defining policies (needed for accurate answers)**
+- **Visual-based, not transcript-based** — the raw footage has no dialogue, so matching a script
+  (subtitle) line to footage is judged by visual content (Claude Vision on extracted frames), never
+  by audio transcription.
+- **Order-preserving alignment** — script order equals footage time order (a vlog trait), so
+  matching is a monotonic scan for boundary points, not a global search/reorder.
+- **Face-disclosure policy (chin-only)** — faces are shown only down to the chin; any part above the
+  lower lip being visible is a violation. The scan (vision) stage always judges and records face
+  exposure, and auto-crop suggestions are the default. The same standard applies to other people's
+  faces (e.g. family).
 
 ## 5. Non-functional requirements
 
@@ -243,7 +327,7 @@ deleted outright. The **remaining backlog** (still open) is the second, unnumber
 further down.
 
 1. ~~Named subtitle style presets~~ — **shipped**: reusable presets are assignable per cut via
-   the Style preset select in Subtitle (Effects tab), and are created/edited in the Export
+   the Style preset select in Subtitle (Effects view), and are created/edited in the Export
    step's single, folded "Subtitle style" section (global look + every preset together — see
    section 3 and screen-spec section 5).
 2. ~~Title cards with presets~~ — **shipped**, with the preset lineup changed from the
@@ -262,7 +346,7 @@ further down.
    play/pause/restart controls of its own (a floating control chip used to overlap the burned-in
    subtitle).
 3. ~~Fades~~ — **shipped** as designed: `segment.transitionIn?`/`transitionOut?` (Transitions
-   group, Effects tab) and project-level `fadeInS`/`fadeOutS` (Export's Project section).
+   group, Effects view) and project-level `fadeInS`/`fadeOutS` (Export's Project section).
 4. **Audio ducking** — schema/render shipped as designed (`narration.ducking?: {amount, fadeS}`,
    volume-automation over the narration windows) and a settings component exists
    (`NarrationSettings`: a Ducking row — toggle + amount slider + fade-duration field — inside

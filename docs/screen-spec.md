@@ -146,12 +146,16 @@ always bring it back.
 |  |                        | |   split, capture frame, reframe)   |
 |  |                        | |   playback-mode toggle (secondary, |
 |  |                        | |   smaller than Play — Loop/Full)   |
-|  |                        | +- Cut settings (two tabs) ----------+
+|  |                        | +- Cut settings (Cut/Effects seg) ---+
 +--+------------------------+
 ```
-Background music editing is moving out of this arrangement into a collapsible side panel (in
-progress, separate work) — not pinned to a specific column/layout here while that move is
-underway.
+**Background music** is a separate layer, not part of the cut/video/settings row above. A
+collapsible side rail sits between the cut list and the workspace, holding a per-cut gutter lane:
+add a track (+) and drag/resize its bar to span the cuts it plays under. Selecting a track opens a
+**horizontal property bar at the top of the Edit step** (above the whole row) — File dropdown +
+preview, Volume, Range in cut numbers, Remove — so BGM editing never displaces the Cut settings
+column (which always stays SegmentQuickFields). Close (X) or Esc deselects the track and closes the
+bar. See section 4's BGM subsection.
 
 **No thumbnail in the cut list row (2026-07-11 QA fix)**: the row's subtitle text + scene
 description already identify the cut, and clicking a row shows it in the right-side VideoPreview,
@@ -257,14 +261,18 @@ the video column via its own `flexGrow`.
 panel's context is already obvious while scrolling vertically through it (`data-testid="cut-
 settings-panel"` stays as the stable test hook, just with no visible title).
 
-**Two tabs (2026-07-11, 13-inch density pass)**: the panel splits into a **Cut** tab (the edits
-made while actually trimming/arranging a cut) and an **Effects** tab (the cosmetic overlay
-edits), roughly halving the panel's vertical length so it fits a 13-inch viewport without
-scrolling — this superseded the earlier single-column G1-G8 layout described in older revisions
-of this section. Group numbering below (G1, G2, ...) now numbers within each tab, not across the
-whole panel.
+**Cut / Effects segmented toggle (2026-07-11 split; 2026-07-12 tabs -> SegmentedControl)**: the
+panel splits into a **Cut** view (the edits made while actually trimming/arranging a cut) and an
+**Effects** view (the cosmetic overlay edits), roughly halving the panel's vertical length so it
+fits a 13-inch viewport without scrolling — this superseded the earlier single-column G1-G8 layout
+described in older revisions of this section. The switch is an Astryx `SegmentedControl` (radio
+group), not a `TabList` — the two are views of the same cut's settings, not separate destinations,
+so a segmented toggle reads truer. @astryxdesign/core 0.1.3's SegmentedControl doesn't forward
+`data-testid` (upstream fix facebook/astryx#3852, unreleased), so tests select the two by
+`role="radio"` + name ("Cut"/"Effects"). Group numbering below (G1, G2, ...) numbers within each
+view, not across the whole panel.
 
-**Cut tab** — Range -> Playback -> Narration (conditional) -> Cut actions -> Delete (destructive,
+**Cut view** — Range -> Playback -> Narration (conditional) -> Cut actions -> Delete (destructive,
 separated):
 - **G1. Range** — one row: `In [narrow] Out [narrow] Length 12.3s (read-only)`
 - **G2. Playback** — one row: `Speed [narrow] Volume [narrow]` plus a decorative Percent icon
@@ -286,12 +294,12 @@ separated):
   assignment lives now; the (1) Scenes card no longer has these buttons, see section 2). No
   primary in either row — none of these five is a dominant/default action, so all are
   `secondary`/`ghost`.
-- **Destructive zone** (separate, panel bottom of this tab) — [Delete], alone, separated by a
+- **Destructive zone** (separate, panel bottom of this view) — [Delete], alone, separated by a
   divider + extra spacing and rendered `variant="destructive"`. Deliberately isolated so it can
   never be mistaken for a routine action (section 0-5 "destructive/rare actions ... last" taken
   literally — last and set apart, not just last in reading order).
 
-**Effects tab** — Subtitle -> Title -> Transitions:
+**Effects view** — Subtitle -> Title -> Transitions:
 - **Subtitle** — textarea (full) + a **Style preset** select (medium, shown only once at least
   one preset exists — see section 5's "Subtitle style" section) sitting above the collapsible
   sub-section **"Subtitle style for this cut"** (indented/bordered to make clear it belongs under
@@ -325,7 +333,7 @@ the video via an overlay, so its entry point belongs there ("structure matches f
 this panel.
 
 Rationale: Range/Playback/Subtitle cover most of the edit loop; Narration/Title/Transitions/Cut
-actions are occasional — splitting them across Cut/Effects tabs is what keeps either tab short
+actions are occasional — splitting them across the Cut/Effects views is what keeps either view short
 enough for a 13-inch viewport. "Subtitle style for this cut" is a sub-property of subtitle, so it
 lives inside the Subtitle group — never its own section. The clip filename in Range is read-only
 plain text (not an input) — the only legitimate way to change which source clip a cut points to
@@ -353,8 +361,9 @@ every named, reusable preset into ONE section — `SubtitleStylePresetsSettings`
 global vs. which preset" target select, so what used to be a separate "Subtitle style presets"
 section, one Collapsible field-set stacked per preset, is gone; that layout became unwieldy past
 a couple of presets) -> **Intro/outro** (select + release, collapsible manual entry) ->
-**Background music** (one-line summary only in this step; editing itself is moving to a
-collapsible side panel — see section 3 — in progress, separate work) -> **Output** ([Download
+**Background music** (one-line summary only in this step; editing itself lives in the (2) Edit
+step — a collapsible side rail for placing/dragging tracks + a top property bar for the selected
+track, see section 3) -> **Output** ([Download
 subtitles .srt] [Export...] — Export dialog: resolution presets / burn-in subtitles / summary /
 start).
 
@@ -432,6 +441,15 @@ Buttons that belong to one group render inside one container (not spread across 
 stay visually together, and action groups in banners/dialog footers are right-aligned.
 
 ## Changelog
+- 2026-07-12 (later, BGM + Cut/Effects overhaul): (1) the Cut/Effects switch moved from an Astryx
+  `TabList` to a `SegmentedControl` (radio group) — the two are views of the same cut's settings,
+  not separate destinations; 0.1.3 doesn't forward `data-testid`, so tests select by `role="radio"`
+  + name (upstream fix facebook/astryx#3852). (2) BGM track editing moved OUT of the right Cut-
+  settings column into a **horizontal property bar at the top of the Edit step** (File dropdown +
+  preview, Volume, cut Range, Remove, Close/Esc) — the right column now always stays
+  SegmentQuickFields. (3) BGM side rail: the add-track "+" moved below the vertical label so it
+  stays clickable on tall rails, and the track-count badge always renders (from 0) so adding the
+  first track no longer shifts the rail layout.
 - 2026-07-12 — reconciliation pass: audited this document against the running implementation
   after a long editing session and corrected the parts that had drifted. Biggest fix: the
   Scenes-card cut number (section 2) is the cut's 1-based **timeline** position, 1:1 with cuts
