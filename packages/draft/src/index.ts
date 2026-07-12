@@ -21,9 +21,12 @@ export {
   shotTypesFileSchema,
   grammarFileSchema,
   facePolicyFileSchema,
+  narrativeFileSchema,
   loadDomainBundle,
   resolveDomainAssembleConfig,
+  resolveNarrativeConfig,
   momentsFileSchemaFor,
+  progressFileSchemaFor,
 } from "./domain.js";
 export type { DomainBundle } from "./domain.js";
 
@@ -33,11 +36,14 @@ export {
   progressJudgmentSchema,
   progressFileSchema,
   extractNarrativeEvents,
+  KNITTING_NARRATIVE_CONFIG,
 } from "./progress.js";
 export type {
   FramePair,
   ProgressVerdict,
   ProgressJudgment,
+  NarrativeConfig,
+  NarrativeTransition,
   NarrativeEvent,
   NarrativeEventType,
 } from "./progress.js";

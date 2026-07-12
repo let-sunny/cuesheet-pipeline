@@ -1,0 +1,11 @@
+{
+  "verdicts": ["grew", "shrank", "same", "unclear"],
+  "significantVerdicts": ["grew", "shrank"],
+  "minDurS": 300,
+  "minConfidence": 3,
+  "transitions": [
+    { "from": [null, "grew"], "to": "shrank", "event": "mistake_discovered" },
+    { "from": ["shrank"], "to": "grew", "event": "resumed" }
+  ],
+  "qualityBoosts": { "mistake_discovered": 5, "resumed": 4 }
+}

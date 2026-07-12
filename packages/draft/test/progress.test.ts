@@ -3,6 +3,8 @@ import type { Manifest } from "../src/scan.js";
 import {
   buildPairSchedule,
   extractNarrativeEvents,
+  KNITTING_NARRATIVE_CONFIG,
+  type NarrativeConfig,
   progressFileSchema,
   type ProgressJudgment,
 } from "../src/progress.js";
@@ -196,6 +198,36 @@ describe("extractNarrativeEvents", () => {
     ];
     expect(extractNarrativeEvents(judgments)).toEqual([]);
   });
+
+  it("is driven by a domain config: a different vocabulary + transition table fires its own events", () => {
+    // A hypothetical cooking domain: raw -> plated is the story beat, not shrinking.
+    const cooking: NarrativeConfig = {
+      significantVerdicts: ["raw", "plated"],
+      minConfidence: 3,
+      transitions: [{ from: [null, "raw"], to: "plated", event: "dish_finished" }],
+    };
+    const events = extractNarrativeEvents(
+      [
+        judgment({ tA: 0, tB: 60, verdict: "raw" }),
+        judgment({ tA: 60, tB: 120, verdict: "plated", confidence: 5, note: "접시에 담음" }),
+      ],
+      cooking,
+    );
+    expect(events).toEqual([
+      { clip: "a.mp4", type: "dish_finished", atS: 60, note: "접시에 담음" },
+    ]);
+  });
+
+  it("the default config equals the knitting rules (grew/shrank frogging table)", () => {
+    expect(KNITTING_NARRATIVE_CONFIG).toEqual({
+      significantVerdicts: ["grew", "shrank"],
+      minConfidence: 3,
+      transitions: [
+        { from: [null, "grew"], to: "shrank", event: "mistake_discovered" },
+        { from: ["shrank"], to: "grew", event: "resumed" },
+      ],
+    });
+  });
 });
 
 describe("progressFileSchema", () => {
@@ -206,8 +238,13 @@ describe("progressFileSchema", () => {
     expect(progressFileSchema.safeParse(data).success).toBe(true);
   });
 
-  it("rejects an invalid verdict value", () => {
+  it("accepts an unknown verdict value (open-string at the engine level; a domain narrows it)", () => {
     const data = [{ clip: "a.mp4", tA: 0, tB: 60, verdict: "bigger", confidence: 4, note: "" }];
+    expect(progressFileSchema.safeParse(data).success).toBe(true);
+  });
+
+  it("rejects an empty verdict string", () => {
+    const data = [{ clip: "a.mp4", tA: 0, tB: 60, verdict: "", confidence: 4, note: "" }];
     expect(progressFileSchema.safeParse(data).success).toBe(false);
   });
 
