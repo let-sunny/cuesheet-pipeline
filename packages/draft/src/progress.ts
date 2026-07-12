@@ -18,10 +18,12 @@ export interface FramePair {
 
 /**
  * progress.json schema (zod). The judgment Claude writes for each frame pair after
- * looking at both frames. shrank = the knitted piece got smaller (came off the needles,
- * reverted to yarn, etc.) = a frogging signal.
+ * looking at both frames. The verdict vocabulary is domain data (the knitting
+ * grew/shrank/same/unclear lives in `domains/knitting/narrative.json`), so the engine
+ * schema keeps `verdict` an open string - mirroring `shotType` - and a domain-aware
+ * caller narrows it via `progressFileSchemaFor(bundle)`.
  */
-export const progressVerdictSchema = z.enum(["grew", "shrank", "same", "unclear"]);
+export const progressVerdictSchema = z.string().min(1);
 
 export const progressJudgmentSchema = z.object({
   clip: z.string(),
@@ -37,7 +39,26 @@ export const progressFileSchema = z.array(progressJudgmentSchema);
 export type ProgressVerdict = z.infer<typeof progressVerdictSchema>;
 export type ProgressJudgment = z.infer<typeof progressJudgmentSchema>;
 
-export type NarrativeEventType = "mistake_discovered" | "resumed";
+/**
+ * The domain-provided narrative rule set (decision B: frogging detection is a domain hook,
+ * not baked into the engine). A declarative state-transition table - the documented ceiling
+ * of expressiveness. `significantVerdicts` are the verdicts that update the "last valid state"
+ * (transient ones like same/unclear are skipped); a transition fires an event when the current
+ * verdict equals `to` and the prior state is one of `from` (`null` = no prior state yet).
+ */
+export interface NarrativeTransition {
+  from: (string | null)[];
+  to: string;
+  event: string;
+}
+
+export interface NarrativeConfig {
+  significantVerdicts: string[];
+  minConfidence: number;
+  transitions: NarrativeTransition[];
+}
+
+export type NarrativeEventType = string;
 
 export interface NarrativeEvent {
   clip: string;
@@ -66,18 +87,19 @@ export function buildPairSchedule(manifest: Manifest, minDurS = LONGTAKE_MIN_DUR
 }
 
 /**
- * Extracts mistake/frogging narrative events from an array of judgments. Sorts by tA
- * ascending per clip, then looks at transitions in the "last valid state" (the most recent
- * grew|shrank, skipping over same/unclear/low-confidence) — in long takes, most adjacent
- * pairs are "same", so looking only at adjacent transitions under-fires events (observed
- * in practice).
- * - mistake_discovered: the boundary where the valid state was not shrank and becomes shrank.
- * - resumed: the boundary where the valid state was shrank and returns to grew (knitting resumes).
+ * Extracts narrative events from an array of judgments, driven by a domain's declarative
+ * transition table (defaults to the knitting rules). Sorts by tA ascending per clip, then
+ * tracks the "last valid state" (the most recent significant verdict, skipping over
+ * transient/low-confidence pairs) — in long takes, most adjacent pairs are "same", so looking
+ * only at adjacent transitions under-fires events (observed in practice). A transition fires
+ * when the current verdict matches its `to` and the prior state is one of its `from`.
  */
 export function extractNarrativeEvents(
   judgments: ProgressJudgment[],
-  minConfidence = 3,
+  config: NarrativeConfig = KNITTING_NARRATIVE_CONFIG,
 ): NarrativeEvent[] {
+  const significant = new Set(config.significantVerdicts);
+
   const byClip = new Map<string, ProgressJudgment[]>();
   for (const j of judgments) {
     const list = byClip.get(j.clip) ?? [];
@@ -88,14 +110,15 @@ export function extractNarrativeEvents(
   const events: NarrativeEvent[] = [];
   for (const [clip, list] of byClip) {
     const sorted = [...list].sort((a, b) => a.tA - b.tA);
-    let state: "grew" | "shrank" | undefined;
+    let state: string | null = null;
     for (const cur of sorted) {
-      if (cur.confidence < minConfidence) continue;
-      if (cur.verdict !== "grew" && cur.verdict !== "shrank") continue;
-      if (cur.verdict === "shrank" && state !== "shrank") {
-        events.push({ clip, type: "mistake_discovered", atS: cur.tA, note: cur.note });
-      } else if (cur.verdict === "grew" && state === "shrank") {
-        events.push({ clip, type: "resumed", atS: cur.tA, note: cur.note });
+      if (cur.confidence < config.minConfidence) continue;
+      if (!significant.has(cur.verdict)) continue;
+      const transition = config.transitions.find(
+        (t) => t.to === cur.verdict && t.from.includes(state),
+      );
+      if (transition) {
+        events.push({ clip, type: transition.event, atS: cur.tA, note: cur.note });
       }
       state = cur.verdict;
     }
@@ -105,3 +128,19 @@ export function extractNarrativeEvents(
 }
 
 const LONGTAKE_MIN_DUR_S = 300;
+
+/**
+ * The knitting narrative rules, kept in-engine as the default so `extractNarrativeEvents` and the
+ * existing fixtures behave identically. `domains/knitting/narrative.json` mirrors this (a no-drift
+ * pin in domain.test.ts guards the two against divergence); a different genre supplies its own.
+ * - mistake_discovered: the valid state was not shrank (grew, or nothing yet) and becomes shrank.
+ * - resumed: the valid state was shrank and returns to grew (knitting resumes).
+ */
+export const KNITTING_NARRATIVE_CONFIG: NarrativeConfig = {
+  significantVerdicts: ["grew", "shrank"],
+  minConfidence: 3,
+  transitions: [
+    { from: [null, "grew"], to: "shrank", event: "mistake_discovered" },
+    { from: ["shrank"], to: "grew", event: "resumed" },
+  ],
+};

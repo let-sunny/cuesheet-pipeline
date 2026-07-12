@@ -90,27 +90,28 @@ content in each vision subagent's prompt.** Plus these pipeline rules (domain-in
 - Script order = footage time order (a property of vlogs) - keep the premise that
   this is order-preserving search, not global rearrangement matching.
 
-### (2.5) Frogging narrative pass (only when there's a long take)
+### (2.5) Narrative pass (only when the domain defines one, and there's a long take)
 
-Long takes of 5+ minutes lose the "mistake/frogging" narrative if judged frame by
-frame - the moment the knitted piece **shrinks** as it's being worked on is only
-visible by comparing adjacent frame pairs (v4 measurement: successfully bracketed
-the ground-truth frogging point, zero false positives in the control group).
+Runs only if the domain bundle has a `narrative.json` (knitting does - frogging; a genre
+without one skips this step). Long takes lose the mistake/frogging narrative if judged frame
+by frame - it's only visible by comparing adjacent frame pairs (v4 measurement: successfully
+bracketed the ground-truth frogging point, zero false positives in the control group).
 
-1. Generate a pair schedule: call `buildPairSchedule(manifest)` from
-   `@cuesheet/draft` via `node -e` -> a list of adjacent frame pairs per clip.
-2. For each pair, compare the two frames by reading them (no need for parallel
-   subagents - this is on the order of dozens of pairs):
-   record `{clip, tA, tB, verdict: grew|shrank|same|unclear, confidence 1-5, note}`
-   into `media/drafts/<slug>/progress.json` (zod: `progressFileSchema`).
-   shrank = stitch count decreased / came off the needle / reverted back to a ball
-   of yarn.
-3. Run `extractNarrativeEvents(judgments)` to extract events -> **add
-   mistake_discovered points to moments.json as quality-5 moments** (state
-   "frogging discovered" explicitly in desc - the mistake narrative is a key story
-   beat in the user's editing grammar), and add resumed points as quality 4.
-   Refine the timestamp by re-checking frames near the event's atS (since the grid
-   is +-60s, re-extract at 15-second intervals in just that range if needed).
+**Apply `domains/knitting/narrative-prompt.md` in full** - the verdict vocabulary, the
+transition table (which events fire), and the moments.json quality boosts are all defined
+there for the knitting domain. Include that file's content in the judging prompt. The
+mechanism (domain-independent):
+
+1. Generate a pair schedule: `buildPairSchedule(manifest, minDurS)` from `@cuesheet/draft`
+   via `node -e` (`minDurS` from `narrative.json`) -> adjacent frame pairs per long-take clip.
+2. For each pair, compare the two frames by reading them (no parallel subagents needed - dozens
+   of pairs). Record `{clip, tA, tB, verdict, confidence 1-5, note}` into
+   `media/drafts/<slug>/progress.json`, validated against the domain-narrowed
+   `progressFileSchemaFor(bundle)` (verdicts restricted to the domain's vocabulary).
+3. Run `extractNarrativeEvents(judgments, resolveNarrativeConfig(bundle))` to extract events,
+   then promote each to a moments.json moment at the quality in `narrative.json`'s
+   `qualityBoosts` (per narrative-prompt.md). Refine each event's timestamp by re-checking
+   frames near its `atS` (grid is +-60s; re-extract at 15s intervals in just that range).
 
 ### (3) Assemble
 
