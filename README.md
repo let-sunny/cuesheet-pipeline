@@ -5,6 +5,8 @@ ffmpeg render, and natural-language editing via MCP.
 
 ## What it does
 
+![The web editor's Scenes step: vision-proposed moment candidates from a knitting-vlog episode, filtered by category (Knit range, Knitting, Cat, Reveal, ...), each with a frame thumbnail, description, and quality score.](docs/assets/editor-screenshot.png)
+
 Point it at a folder of raw footage and it takes you through three steps:
 
 1. **Scenes** — a vision model (Claude) looks at extracted frames and proposes moment
