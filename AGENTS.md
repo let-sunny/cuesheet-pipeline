@@ -70,8 +70,12 @@ cuesheet-draft assemble \
   --clip-dir <source-folder> \
   --project-name "<name>" \
   --out <cuesheet-path>.json \
-  [--fps 30] [--width 1280] [--height 720] [--boundary-pad 0.4] [--config <path.json>] [--json]
+  [--fps 30] [--width 1280] [--height 720] [--boundary-pad 0.4] [--config <path.json>] [--domain <dir>] [--json]
 ```
+
+`--domain <dir>` points at a domain theme bundle (e.g. `domains/knitting`): moments are validated
+against that domain's shot vocabulary and its grammar + face policy drive assembly (`--config`
+still overrides on top). Omit for the engine defaults.
 
 `moments.json` is the one vision-judgment artifact in the pipeline — an agent writes it by
 looking at the frames scan just extracted (schema: `momentsFileSchema` from `@cuesheet/draft`,
