@@ -105,16 +105,19 @@ rough cut from this folder," and Claude Code will run the same procedure on its 
 
 ## 3. Voice (when you don't like the subtitles)
 
-Subtitles are auto-written based on `docs/voice-guide.md` (voice rules distilled from 8 of my
-own past subtitle sets). Principle: **content comes from the screen, only the tone comes from
-the guide.** A subtitle saying something not on screen is a bug.
+Subtitles are auto-written based on your voice profile
+`domains/knitting/voice.generated.md` — distilled from your own past subtitle sets, which you drop
+into `domains/knitting/transcripts/` (both are private to your machine, not shared). Principle:
+**content comes from the screen, only the tone comes from the profile.** A subtitle saying
+something not on screen is a bug.
 
 - **Fixing one or two**: editing directly in the editor is fastest (Cmd+Z works).
 - **Several / an overall tone pass**: ask Claude Code — e.g. "tone down the ~ across all the
-  subtitles," "rewrite these cuts' subtitles based on what's on screen." It follows voice-guide
-  automatically.
-- **Changing the voice itself**: edit `docs/voice-guide.md` directly, or tell me "add a ~ rule
-  to the guide." Every subtitle written after that follows it.
+  subtitles," "rewrite these cuts' subtitles based on what's on screen." It follows your voice
+  profile automatically.
+- **Changing the voice itself**: drop more (or updated) transcripts into
+  `domains/knitting/transcripts/` and ask me to re-distill, or edit
+  `domains/knitting/voice.generated.md` directly. Every subtitle written after that follows it.
 - Rule summary: only half the sentence-endings get the softened variant (~여/~져), "고앵이"
   (never "고양이"), aim for 25 characters (matches the 3-second rhythm), no line breaks, no
   emoji, finished-object cuts get "짜잔," the last cut gets "안녕~~."

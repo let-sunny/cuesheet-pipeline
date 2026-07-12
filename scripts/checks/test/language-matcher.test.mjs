@@ -17,9 +17,9 @@ describe("findLanguageViolations", () => {
   });
 
   it("skips files in the allowlist even when they contain prose script", () => {
-    const files = [{ path: "docs/voice-guide.md", content: "안녕하세요\n" }];
+    const files = [{ path: "domains/knitting/vision-prompt.md", content: "안녕하세요\n" }];
 
-    expect(findLanguageViolations(files, new Set(["docs/voice-guide.md"]))).toEqual([]);
+    expect(findLanguageViolations(files, new Set(["domains/knitting/vision-prompt.md"]))).toEqual([]);
   });
 
   it("skips binary files (content === null)", () => {

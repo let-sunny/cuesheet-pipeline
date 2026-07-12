@@ -195,7 +195,8 @@ subtitle voice pass; this is what actually produces the draft) -> open
 alias) (or run `cuesheet-render episodes/<slug>.cuesheet.json out.mp4`).
 
 **Bulk subtitle edit via MCP**: connect to `cuesheet-bridge`, call `get_cuesheet`, compute a new
-`segments` array with every `subtitle` rewritten (e.g. tone pass per `docs/voice-guide.md`),
+`segments` array with every `subtitle` rewritten (e.g. tone pass per the domain voice profile,
+`domains/knitting/voice.generated.md`),
 call `update_cuesheet` with the whole object. If unsure a rewrite will validate, call
 `validate_cuesheet` first.
 

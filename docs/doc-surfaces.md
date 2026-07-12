@@ -17,7 +17,8 @@ free to change; only the code-ish tokens are pinned to source.
 | `docs/STATUS.md` | **prose-only** | living status narrative |
 | `packages/*/README.md` | **prose-only** | package-level prose; promote a fact here to guarded-mechanical if it starts drifting |
 | `domains/<name>/` theme files (shot-types/grammar/face-policy) | **guarded-mechanical** | `packages/draft/test/domain.test.ts` no-drift pins the knitting bundle to the engine defaults it was lifted from |
-| `docs/voice-guide.md` | **prose-only (corpus data)** | Korean voice corpus/examples — data, not a claim about code (see `check-language.mjs`'s exception) |
+| `domains/<name>/voice-distill-prompt.md` | **prose-only (theme scaffold)** | committed; describes how the personal voice is distilled from transcripts (quotes a few Korean literals — allowlisted in `check-language.mjs`) |
+| `domains/<name>/voice.generated.md` | **not a git surface** | the personal voice profile — gitignored, generated from `transcripts/`; Korean corpus data that never enters git |
 
 ## Guards, and how to extend them
 
