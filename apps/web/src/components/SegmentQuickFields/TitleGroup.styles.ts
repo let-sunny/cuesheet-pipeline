@@ -10,7 +10,7 @@ import { colorVars, spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
  * ui/NumericInput's file comment). */
 export const styles = stylex.create({
   groupBorder: {
-    paddingTop: spacingVars["--spacing-2"],
+    paddingTop: spacingVars["--spacing-1-5"],
     borderTopWidth: 1,
     borderTopStyle: "dashed",
     borderTopColor: colorVars["--color-border-emphasized"],

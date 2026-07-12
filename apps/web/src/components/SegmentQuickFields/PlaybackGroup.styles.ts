@@ -7,7 +7,7 @@ import { colorVars, spacingVars, textSizeVars } from "@astryxdesign/core/theme/t
  * they're now a stock Astryx `TextInput` via the shared `ui/NumericInput` adapter. */
 export const styles = stylex.create({
   groupBorder: {
-    paddingTop: spacingVars["--spacing-2"],
+    paddingTop: spacingVars["--spacing-1-5"],
     borderTopWidth: 1,
     borderTopStyle: "dashed",
     borderTopColor: colorVars["--color-border-emphasized"],

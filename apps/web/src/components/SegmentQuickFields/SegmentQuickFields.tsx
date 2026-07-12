@@ -245,7 +245,7 @@ export function SegmentQuickFields({
         : null;
 
   return (
-    <VStack gap={1} paddingBlock={3} paddingInline={4} xstyle={styles.panel} data-testid="cut-settings-panel">
+    <VStack gap={1} paddingBlock={2} paddingInline={3} xstyle={styles.panel} data-testid="cut-settings-panel">
       <TabList value={activeTab} onChange={(v) => setActiveTab(v as QuickFieldsTab)} size="sm">
         <NavTab value="cut" label="Cut" data-testid="cut-settings-tab-cut" />
         <NavTab value="effects" label="Effects" data-testid="cut-settings-tab-effects" />

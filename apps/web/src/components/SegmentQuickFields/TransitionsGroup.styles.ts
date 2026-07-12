@@ -8,7 +8,7 @@ import { colorVars, spacingVars, textSizeVars } from "@astryxdesign/core/theme/t
  * `ui/SelectField`/`ui/NumericInput` adapters. */
 export const styles = stylex.create({
   groupBorder: {
-    paddingTop: spacingVars["--spacing-2"],
+    paddingTop: spacingVars["--spacing-1-5"],
     borderTopWidth: 1,
     borderTopStyle: "dashed",
     borderTopColor: colorVars["--color-border-emphasized"],

@@ -37,7 +37,7 @@ export const styles = stylex.create({
     overflowX: "hidden",
   },
   groupBorder: {
-    paddingTop: spacingVars["--spacing-2"],
+    paddingTop: spacingVars["--spacing-1-5"],
     borderTopWidth: 1,
     borderTopStyle: "dashed",
     borderTopColor: colorVars["--color-border-emphasized"],
@@ -57,7 +57,7 @@ export const styles = stylex.create({
     color: colorVars["--color-warning"],
   },
   narrationPreview: {
-    paddingTop: spacingVars["--spacing-2"],
+    paddingTop: spacingVars["--spacing-1-5"],
     borderTopWidth: 1,
     borderTopStyle: "dashed",
     borderTopColor: colorVars["--color-border-emphasized"],
@@ -70,7 +70,7 @@ export const styles = stylex.create({
   // left as-is per the semantic-token pass (see HeaderBar.styles.ts's raw-vs-semantic comment).
   dangerZone: {
     marginTop: spacingVars["--spacing-3"],
-    paddingTop: spacingVars["--spacing-2"],
+    paddingTop: spacingVars["--spacing-1-5"],
     borderTopWidth: 1,
     borderTopStyle: "dashed",
     borderTopColor: colorVars["--color-border-red"],

@@ -5,7 +5,7 @@ import { colorVars, spacingVars } from "@astryxdesign/core/theme/tokens.stylex";
  * `groupLabel` are duplicated per group component rather than shared globally. */
 export const styles = stylex.create({
   groupBorder: {
-    paddingTop: spacingVars["--spacing-2"],
+    paddingTop: spacingVars["--spacing-1-5"],
     borderTopWidth: 1,
     borderTopStyle: "dashed",
     borderTopColor: colorVars["--color-border-emphasized"],

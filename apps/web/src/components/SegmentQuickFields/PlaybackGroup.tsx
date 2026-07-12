@@ -28,15 +28,16 @@ export function PlaybackGroup({ speedField, volumeField, speedAtCap }: PlaybackG
           13-inch width the pair overflowed and the "Volume" label orphaned onto a second line from
           its input (QA 2026-07-11). A narrower field width (numbers here are 1-3 chars: speed
           0.1-16, volume 0-100) plus nowrap fits both on one line without regressing In/Out. */}
-      <HStack gap={3} vAlign="center" wrap="nowrap">
+      <HStack gap={2} vAlign="center" wrap="nowrap">
         {/* No labelTooltip here (unlike some other NumericInput call sites) - Astryx's tooltip
             content mounts in the DOM unconditionally (shown/hidden only via CSS), which would
             make the "capped at 16x" text always findable and defeat the conditional `note` below
             that shows it only once the cut is actually at the cap. The conditional note is the
             one meaningful surface for this; a passive always-on hover hint isn't worth that
-            conflict. */}
-        <NumericInput field={speedField} label="Speed" testId="cut-field-speed" width={60} units="x" />
-        <NumericInput field={volumeField} label="Volume" testId="cut-field-volume" width={60} units="%" />
+            conflict. Narrow inputs (numbers are 1-3 chars) so each input + its InputGroup unit
+            suffix still fits the panel width without overflowing (2026-07-12). */}
+        <NumericInput field={speedField} label="Speed" testId="cut-field-speed" width={44} units="x" />
+        <NumericInput field={volumeField} label="Volume" testId="cut-field-volume" width={52} units="%" />
       </HStack>
       {speedAtCap ? (
         <Text type="supporting" xstyle={styles.note}>

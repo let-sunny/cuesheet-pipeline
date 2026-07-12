@@ -10,11 +10,11 @@ export const styles = stylex.create({
   editLayout: {
     display: "flex",
     flexDirection: "column",
-    gap: spacingVars["--spacing-3"],
+    gap: spacingVars["--spacing-2"],
   },
   trimLayout: {
     display: "flex",
-    gap: spacingVars["--spacing-4"],
+    gap: spacingVars["--spacing-2"],
     alignItems: "flex-start",
   },
   // Two-column workspace wrapping everything to the right of the cut list (video + field panel).
@@ -34,7 +34,7 @@ export const styles = stylex.create({
     minWidth: 0,
     display: "flex",
     flexWrap: "wrap",
-    gap: spacingVars["--spacing-4"],
+    gap: spacingVars["--spacing-2"],
     // `stretch` (was flex-start) makes the fields column match the video column's height so the
     // cut-settings card is the same height as the scene/video beside it, instead of ending short
     // at its own content height (2026-07-11 user feedback). The video column opts back out via its
