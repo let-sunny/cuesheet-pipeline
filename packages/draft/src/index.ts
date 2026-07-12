@@ -18,6 +18,15 @@ export {
 export type { ShotType, Moment, MonotonousRange, ClipMoments } from "./types.js";
 
 export {
+  shotTypesFileSchema,
+  grammarFileSchema,
+  facePolicyFileSchema,
+  loadDomainBundle,
+  resolveDomainAssembleConfig,
+} from "./domain.js";
+export type { DomainBundle } from "./domain.js";
+
+export {
   buildPairSchedule,
   progressVerdictSchema,
   progressJudgmentSchema,

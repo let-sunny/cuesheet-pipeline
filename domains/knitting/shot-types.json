@@ -1,0 +1,9 @@
+[
+  { "id": "hand-closeup", "label": "Hand" },
+  { "id": "object", "label": "Object" },
+  { "id": "cat", "label": "Cat" },
+  { "id": "change", "label": "Change" },
+  { "id": "reveal", "label": "Reveal" },
+  { "id": "wearing", "label": "Wearing" },
+  { "id": "other", "label": "Other" }
+]
