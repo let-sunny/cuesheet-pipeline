@@ -62,7 +62,9 @@ function baseProps(overrides: Partial<ComponentProps<typeof SegmentQuickFields>>
 /** Title/Subtitle/Transitions live on the Effects tab (2026-07-11 Cut/Effects split) - switches
  * there before asserting on their fields, same as a real user would click the tab first. */
 function switchToEffectsTab() {
-  fireEvent.click(screen.getByRole("button", { name: "Effects" }));
+  // SegmentedControl renders its items as role="radio" (not "button"); @astryxdesign/core 0.1.3
+  // doesn't forward data-testid, so we select by accessible name (see SegmentQuickFields.tsx).
+  fireEvent.click(screen.getByRole("radio", { name: "Effects" }));
 }
 
 describe("SegmentQuickFields", () => {

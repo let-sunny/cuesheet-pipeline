@@ -2,10 +2,9 @@ import { useState } from "react";
 import * as stylex from "@stylexjs/stylex";
 import { Button } from "@astryxdesign/core/Button";
 import { HStack } from "@astryxdesign/core/HStack";
-import { TabList } from "@astryxdesign/core/TabList";
+import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
-import { NavTab } from "../ui/NavTab/index.js";
 import { SelectField } from "../ui/SelectField/index.js";
 import type {
   Segment,
@@ -246,10 +245,20 @@ export function SegmentQuickFields({
 
   return (
     <VStack gap={1} paddingBlock={2} paddingInline={3} xstyle={styles.panel} data-testid="cut-settings-panel">
-      <TabList value={activeTab} onChange={(v) => setActiveTab(v as QuickFieldsTab)} size="sm">
-        <NavTab value="cut" label="Cut" data-testid="cut-settings-tab-cut" />
-        <NavTab value="effects" label="Effects" data-testid="cut-settings-tab-effects" />
-      </TabList>
+      {/* SegmentedControl (not tabs) for the Cut/Effects switch - these are two views of the same
+          cut's settings, not separate destinations, so a segmented toggle reads truer than a tab
+          bar (2026-07-12 user decision). @astryxdesign/core 0.1.3's SegmentedControl doesn't forward
+          data-testid to the DOM (upstream fix in facebook/astryx#3852, unreleased), so tests select
+          these by role="radio" + name ("Cut"/"Effects"), not by data-testid. */}
+      <SegmentedControl
+        value={activeTab}
+        onChange={(v) => setActiveTab(v as QuickFieldsTab)}
+        label="Cut settings section"
+        size="sm"
+      >
+        <SegmentedControlItem value="cut" label="Cut" />
+        <SegmentedControlItem value="effects" label="Effects" />
+      </SegmentedControl>
 
       {activeTab === "cut" ? (
         <>
