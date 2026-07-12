@@ -149,6 +149,13 @@ in `field-path: reason` format and exits 1 - fix moments.json and retry. To
 override any of these editing-grammar defaults, pass `--config <path.json>`
 (a partial AssembleGrammarConfig, deep-merged onto the defaults above).
 
+**A frontal-face long take yields no timelapse connectors, and that is correct.**
+When a long take is a stationary frontal-face shot, every `monotonousRange` is
+`faceExposed:true`, so the connector step (which excludes face-exposure risk)
+suppresses all of them - a 20-30 min take can contribute a few cuts and zero
+connectors. That is not a bug; keep the footage usable via the vertical-crop
+proposal in step (5) rather than expecting a connector there.
+
 ### (4) Subtitle voice pass
 
 Read `docs/voice-guide.md` in full and follow its rules to rewrite
