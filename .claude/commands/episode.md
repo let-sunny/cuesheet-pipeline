@@ -77,19 +77,11 @@ interface ClipMoments {
 assemble falls back to a desc-text heuristic, which is a safety net that can be
 inaccurate, not the default path).
 
-**Judgment rules**:
+**Judgment rules**: apply `domains/knitting/vision-prompt.md` in full - the shot vocabulary, the
+face policy (chin-line, `[얼굴노출]` tag + quality 1), long-take coarse-to-fine, and
+order-preserving matching are all defined there for the knitting domain. **Include that file's
+content in each vision subagent's prompt.** Plus these pipeline rules (domain-independent):
 
-- **Face policy (absolute rule)**: faces may be exposed only up to the chin
-  (anything above that, including the lips, is a violation). The same standard
-  applies to the user as well as to other people such as family. If a moment has
-  a violating frame, tag its `memo` with `[얼굴노출]` and lower quality to 1 so it's
-  deprioritized for adoption (not excluded entirely - it can still be salvaged
-  with a vertical crop in the editor, so it must stay in the palette).
-- **Long takes (clips 300s or longer), coarse-to-fine**: first sweep at 60-second
-  intervals to find ranges with visible change, then recursively narrow those
-  ranges down to 1-2 second intervals. Don't scrutinize the whole thing densely
-  (that's wasteful) - ranges with no change are only recorded in
-  `monotonousRanges`.
 - **iCloud not-downloaded clips**: clips in manifest.json's `evicted` list have no
   frames, so skip them (never trigger a download).
 - **Seeks always put `-ss` before `-i`** (already done at the scan stage for these
@@ -137,9 +129,13 @@ node packages/draft/dist/cli.js assemble \
   --moments media/drafts/<slug>/moments.json \
   --clip-dir "$ARGUMENTS" \
   --project-name "<slug>" \
+  --domain domains/knitting \
   --width 1920 --height 1080 --fps 30 \
   --out episodes/<slug>.cuesheet.json
 ```
+
+`--domain domains/knitting` drives assembly from the knitting theme bundle (its grammar, shot
+vocabulary, and face policy). For a different genre, point `--domain` at that domain's folder.
 
 Use the default for `--boundary-pad` (0.4s). Internally, assemble adopts
 quality>=3, converges on cut rhythm (average 2.8-3.0s), applies timelapse
@@ -174,11 +170,12 @@ copy). Principles:
 
 ### (5) Face crop proposal
 
-If a moment tagged `[얼굴노출]` was adopted, or a timelapse connector's source
-`desc` carries face-exposure risk, propose a vertical crop for that segment.
+If a moment tagged with the domain's face tag (`memoTag` in
+`domains/knitting/face-policy.json`, i.e. `[얼굴노출]`) was adopted, or a timelapse connector's
+source `desc` carries face-exposure risk, propose a vertical crop for that segment.
 **Lock the aspect ratio (crop width == height, square or an equivalently narrow
 ratio)** and set the crop coordinates so only the area below the chin line
-remains, then re-check the frame at that timestamp to verify the area above the
+(the policy's `standard`) remains, then re-check the frame at that timestamp to verify the area above the
 chin still isn't exposed after cropping. This is a proposal that can be turned off
 anytime in the editor, so err on the aggressive side - missing one is worse.
 
