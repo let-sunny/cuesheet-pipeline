@@ -86,20 +86,25 @@ export type AssembleGrammarConfigOverride = {
     : AssembleGrammarConfig[K];
 };
 
-/** Deep-merges a partial override onto DEFAULT_ASSEMBLE_CONFIG (shallow merge within each group). */
+/**
+ * Deep-merges a partial override onto a base config (shallow merge within each group). The base
+ * defaults to DEFAULT_ASSEMBLE_CONFIG (the knitting grammar); a domain passes its own grammar as
+ * the base, so precedence reads base < `--config` override.
+ */
 export function resolveAssembleConfig(
   overrides?: AssembleGrammarConfigOverride,
+  base: AssembleGrammarConfig = DEFAULT_ASSEMBLE_CONFIG,
 ): AssembleGrammarConfig {
-  if (!overrides) return DEFAULT_ASSEMBLE_CONFIG;
+  if (!overrides) return base;
   return {
-    qualityThreshold: overrides.qualityThreshold ?? DEFAULT_ASSEMBLE_CONFIG.qualityThreshold,
-    cutRhythm: { ...DEFAULT_ASSEMBLE_CONFIG.cutRhythm, ...overrides.cutRhythm },
+    qualityThreshold: overrides.qualityThreshold ?? base.qualityThreshold,
+    cutRhythm: { ...base.cutRhythm, ...overrides.cutRhythm },
     timelapseConnector: {
-      ...DEFAULT_ASSEMBLE_CONFIG.timelapseConnector,
+      ...base.timelapseConnector,
       ...overrides.timelapseConnector,
     },
-    faceHeuristic: { ...DEFAULT_ASSEMBLE_CONFIG.faceHeuristic, ...overrides.faceHeuristic },
-    boundaryPadS: overrides.boundaryPadS ?? DEFAULT_ASSEMBLE_CONFIG.boundaryPadS,
+    faceHeuristic: { ...base.faceHeuristic, ...overrides.faceHeuristic },
+    boundaryPadS: overrides.boundaryPadS ?? base.boundaryPadS,
   };
 }
 
@@ -115,6 +120,10 @@ export interface AssembleOptions {
   clipDurations?: Record<string, number>;
   /** Editing-grammar overrides (cut rhythm/quality/timelapse-connector/face-heuristic/boundary-pad). Omit to use DEFAULT_ASSEMBLE_CONFIG (the user's grammar). */
   config?: AssembleGrammarConfigOverride;
+  /** Base grammar the `config` override merges onto. Default DEFAULT_ASSEMBLE_CONFIG; a domain passes its own grammar (resolveDomainAssembleConfig) so precedence is domain < `--config`. */
+  configBase?: AssembleGrammarConfig;
+  /** Whether the face policy is active (decision C: the engine keeps the face-exclusion mechanism, the domain owns the on/off). Default true; false lets face-exposure-risk ranges still become timelapse connectors. */
+  facePolicyEnabled?: boolean;
 }
 
 /**
@@ -123,7 +132,8 @@ export interface AssembleOptions {
  * yet validated (CueSheetInput) — the caller validates it with validateCueSheet.
  */
 export function assembleDraft(clipsMoments: ClipMoments[], options: AssembleOptions): CueSheetInput {
-  const config = resolveAssembleConfig(options.config);
+  const config = resolveAssembleConfig(options.config, options.configBase);
+  const facePolicyEnabled = options.facePolicyEnabled ?? true;
   const sortedClips = [...clipsMoments].sort((a, b) => a.clip.localeCompare(b.clip));
   const padS = options.boundaryPadS ?? config.boundaryPadS;
 
@@ -168,7 +178,7 @@ export function assembleDraft(clipsMoments: ClipMoments[], options: AssembleOpti
 
     for (const r of cm.monotonousRanges) {
       if (speedupCount >= config.timelapseConnector.capPerEpisode) break;
-      if (isMonotonousRangeRisky(r, config.faceHeuristic)) {
+      if (facePolicyEnabled && isMonotonousRangeRisky(r, config.faceHeuristic)) {
         console.log(`[assemble] ${cm.clip} ${r.startS}-${r.endS}s: skipping timelapse connector, face-exposure risk`);
         continue;
       }

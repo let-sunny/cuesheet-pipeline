@@ -29,7 +29,7 @@ cuesheet-draft assemble \
   --clip-dir <source-folder> \
   --project-name "<project name>" \
   --out <cuesheet-path>.json \
-  [--fps 30] [--width 1280] [--height 720] [--boundary-pad 0.4] [--config <path.json>] [--json]
+  [--fps 30] [--width 1280] [--height 720] [--boundary-pad 0.4] [--config <path.json>] [--domain <dir>] [--json]
 ```
 
 `--json` (both subcommands): emits a single structured result object to stdout on success
