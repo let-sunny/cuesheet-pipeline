@@ -75,9 +75,9 @@ set intro/outro) → **② Edit** (per-cut range, subtitle, speed/volume, title,
 **③ Export** (subtitle style, BGM, resolution). See [USER-GUIDE.md](./USER-GUIDE.md) for the
 full editor reference — this page does not duplicate it.
 
-If the editor is showing a different episode than the one you just built, it was started with a
-different `CUESHEET_PATH`; restart it pointed at `episodes/<slug>.cuesheet.json` (the `/episode`
-hand-off tells you the command).
+If the editor is showing a different episode than the one you just built, it was started before
+this episode became active; just restart it (`pnpm --filter @cuesheet/web dev`) — it reads the
+active episode from `.active-episode`, which `pnpm episode` wrote.
 
 ## 4. Export
 

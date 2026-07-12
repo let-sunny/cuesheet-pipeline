@@ -35,7 +35,7 @@ export const BRIDGE_TOOL_NAMES = [
  * surface). Split out from index.ts so tests can drive it over an in-memory transport instead
  * of spawning a stdio subprocess.
  */
-export function createServer(cuesheetPath: string, options: CreateServerOptions = {}): McpServer {
+export function createServer(resolvePath: () => string, options: CreateServerOptions = {}): McpServer {
   const readOnly = options.readOnly ?? false;
   const server = new McpServer({ name: "cuesheet-bridge", version: "0.0.0" });
 
@@ -49,7 +49,7 @@ export function createServer(cuesheetPath: string, options: CreateServerOptions 
       inputSchema: {},
     },
     async () => {
-      const r = getCuesheet(cuesheetPath);
+      const r = getCuesheet(resolvePath());
       return {
         content: [{ type: "text" as const, text: JSON.stringify(r, null, 2) }],
         isError: !r.ok,
@@ -100,7 +100,7 @@ export function createServer(cuesheetPath: string, options: CreateServerOptions 
           isError: true,
         };
       }
-      const r = updateCuesheet(cuesheetPath, cuesheet);
+      const r = updateCuesheet(resolvePath(), cuesheet);
       return {
         content: [
           {
@@ -145,7 +145,7 @@ export function createServer(cuesheetPath: string, options: CreateServerOptions 
           isError: true,
         };
       }
-      const current = getCuesheet(cuesheetPath);
+      const current = getCuesheet(resolvePath());
       const diff = current.ok ? buildCuesheetDiff(current.data, r.data) : undefined;
       return {
         content: [
