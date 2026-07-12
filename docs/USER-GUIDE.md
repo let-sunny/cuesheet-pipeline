@@ -56,9 +56,11 @@ rough cut from this folder," and Claude Code will run the same procedure on its 
   - **Range**: drag the In/Out handles or type numbers (updates the preview instantly)
   - **Subtitle**: edit the text (see the "Voice" section below) — a **style preset** select
     appears here too, once you've created any presets in ③ Export (see below)
-  - **Speed/Volume/Narration/Reframe**
+  - **Speed/Volume/Reframe**
   - **Title**: turns on a title card at this cut's start — text, one of 4 presets
-    (typing/gooey/melt/particle), duration, backdrop dim (darkens behind the card)
+    (fade/wordStagger/typing/highlight) — a calm scale entrance, a per-word staggered ease-in, a
+    typewriter reveal with a cursor, or a pastel marker sweep behind the last word — plus
+    duration and backdrop dim (darkens behind the card)
   - **Transitions**: independent fade/dip at this cut's start (transition in) and end
     (transition out) — dip lets you set how dark it goes (less than fully black), fade always
     goes fully black
@@ -83,9 +85,8 @@ rough cut from this folder," and Claude Code will run the same procedure on its 
 - **Subtitle style presets**: save a named variant of the subtitle style (e.g. a bigger yellow
   "shout" look) once here, then assign it to individual cuts from the style preset select in
   ② Edit's Cut settings — no need to hand-set the same override on every cut that wants that look.
-- Review/clear **intro/outro**, **BGM**, **narration** (see section 4 below), including
-  **ducking** (dip the BGM automatically while narration plays — amount/fade-in-out shape are
-  both adjustable, and audible in-editor via Play all, not just in the final export).
+- Review/clear **intro/outro** and **BGM**. (Narration is a special case right now — see
+  section 4 below.)
 - **Export**: save, then hit the export button -> pick resolution (720p/1080p/4K) and whether
   to burn in subtitles (shows progress %, downloads when done). The rendered file is saved on
   the server under `out/<project name> <timestamp>.mp4` (timestamped so re-exporting never
@@ -120,17 +121,22 @@ the guide.** A subtitle saying something not on screen is a bug.
 
 ## 4. Using narration
 
-Structure: **drop an audio file in the folder -> link it to a cut -> render mixes it in at that
-cut's start time.**
+Narration is **fully implemented in the schema and the renderer** — per-cut audio is mixed in at
+each cut's start, including ducking (the BGM dips under narration). What it does not have yet is a
+UI entry point: the `NarrationSettings` control that turns narration on (`narration.enabled`, the
+folder, volume, ducking) is built and tested but **not mounted in any step** (#21). While
+`narration.enabled` is off, the per-cut narration picker stays hidden too. So today you cannot
+enable narration from the running app.
 
-1. In ③ Export, turn on **"Use narration"** and point it at a folder (default suggestion:
-   `media/narration`)
-2. Drop audio files (mp3/m4a/wav) into that folder — the list refreshes automatically
-3. In ② Edit, select a cut -> pick a file from the **"Narration" select** in cut settings
-   (shows its length)
-4. **Preview** it right there. If the file is longer than the cut, you get a "N seconds long —
-   overlaps the next cut" warning
-5. Mixed in automatically at render time (adjust overall narration volume in Export)
+Until #21 mounts that control, enable and attach narration through **Claude Code** (or a
+hand-edited/seeded cuesheet):
+
+1. Drop audio files (mp3/m4a/wav) into a folder (default suggestion: `media/narration`).
+2. Ask Claude Code to turn narration on and attach files — it edits the cuesheet through the
+   bridge (`update_cuesheet`), setting `narration.enabled`/`dir`/`volume` and each cut's
+   `segment.narration`. Validated on save, so only a valid cuesheet is written.
+3. Render as usual — narration is mixed in automatically (overall volume and ducking come from
+   the `narration`/`ducking` fields you just set).
 
 ### How to make the audio files (ElevenLabs voice cloning)
 1. Sign up at elevenlabs.io -> **Starter plan ($5/month)** — the free tier bans commercial use,
@@ -139,7 +145,8 @@ cut's start time.**
    normal speaking voice)
 3. In Text to Speech, pick your voice -> type the subtitle sentence -> generate -> download the
    mp3
-4. Drop the file into the narration folder and continue from step 3 above
+4. Drop the file into the narration folder and continue from step 2 above (ask Claude Code to
+   attach it)
 - For bulk generation (a whole episode), ask me — I can run an SRT-based per-sentence
   generation script (needs an API key).
 

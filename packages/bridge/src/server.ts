@@ -18,6 +18,19 @@ export interface CreateServerOptions {
 }
 
 /**
+ * The tools this bridge registers, in registration order. Exported so the startup banner
+ * (index.ts) can report the live tool surface without re-deriving it; a test asserts this stays
+ * in lockstep with what {@link createServer} actually registers.
+ */
+export const BRIDGE_TOOL_NAMES = [
+  "get_cuesheet",
+  "update_cuesheet",
+  "validate_cuesheet",
+  "get_schema",
+  "get_capabilities",
+] as const;
+
+/**
  * Builds the MCP server Claude Code connects to (see package README/AGENTS.md for the tool
  * surface). Split out from index.ts so tests can drive it over an in-memory transport instead
  * of spawning a stdio subprocess.

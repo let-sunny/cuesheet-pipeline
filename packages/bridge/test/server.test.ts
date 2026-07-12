@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { afterEach, describe, expect, it } from "vitest";
-import { createServer } from "../src/server.js";
+import { BRIDGE_TOOL_NAMES, createServer } from "../src/server.js";
 
 const TMP = join(tmpdir(), "cuesheet-bridge-server-test.json");
 
@@ -57,16 +57,12 @@ afterEach(() => {
 });
 
 describe("bridge MCP round-trip", () => {
-  it("tools/list exposes all five tools", async () => {
+  it("tools/list exposes exactly the tools named by BRIDGE_TOOL_NAMES", async () => {
     const { client, close } = await connect();
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name).sort()).toEqual([
-      "get_capabilities",
-      "get_cuesheet",
-      "get_schema",
-      "update_cuesheet",
-      "validate_cuesheet",
-    ]);
+    // Guards the exported const (used by the startup banner) against drifting from what the
+    // server actually registers.
+    expect(tools.map((t) => t.name).sort()).toEqual([...BRIDGE_TOOL_NAMES].sort());
     await close();
   });
 

@@ -109,6 +109,18 @@ Every edit is "read the whole cuesheet, compute the whole new cuesheet, send it 
 defaults to `./project.cuesheet.json`) selects which file is being edited; the web editor
 watches the same file and refreshes automatically when the bridge writes to it.
 
+**After a rebuild, restart the session/bridge — and point `CUESHEET_PATH` at the episode you
+actually mean.** MCP servers do not hot-reload: a Claude Code session that attached before a
+`pnpm -r build` keeps running the previous `dist` (old tool set/behavior) until it is restarted.
+To make this visible, the bridge prints a startup banner to stderr on boot — resolved
+`CUESHEET_PATH`, package version, and the live tool names — so you can confirm what you attached
+to instead of guessing. Separately, the root `.mcp.json` pins `CUESHEET_PATH=project.cuesheet.json`
+(the seed cuesheet), so out of the box the bridge edits *that*, not an episode. To edit an episode
+via the bridge, launch it with `CUESHEET_PATH=episodes/<slug>.cuesheet.json` and restart — the same
+env-var handoff `.claude/commands/episode.md` step 6 uses for the web editor — rather than editing
+the tracked `.mcp.json` with a personal episode path. Unifying "the active episode" across the web
+editor, `pnpm episode`, and the bridge is tracked in #25.
+
 Setting `CUESHEET_BRIDGE_READONLY=1` runs the bridge read-only: every `update_cuesheet` call is
 refused with a structured `{ok:false, errors:[...]}` naming the variable to unset, and nothing
 is written. `get_cuesheet`, `validate_cuesheet`, and `get_schema` are unaffected — exactly what a
