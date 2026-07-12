@@ -196,7 +196,7 @@ function categoryFor(shotType: ShotType, memo: string): Category {
   if (OUTING_PATTERN.test(memo)) {
     return "outing";
   }
-  return SHOT_TYPE_CATEGORY[shotType];
+  return SHOT_TYPE_CATEGORY[shotType] ?? "other";
 }
 
 /** The face-exposure risk tag the vision reader leaves in memo/desc. Replaced with a badge in
@@ -266,7 +266,7 @@ const SHOT_TYPE_CATEGORY: Record<ShotType, Category> = {
  * knitting range" category.
  */
 export function shotTypeBadgeVariant(shotType: ShotType): BadgeVariant {
-  return CATEGORY_META[SHOT_TYPE_CATEGORY[shotType]].badgeVariant;
+  return CATEGORY_META[SHOT_TYPE_CATEGORY[shotType] ?? "other"].badgeVariant;
 }
 
 export const TIMELAPSE_BADGE_VARIANT: BadgeVariant = CATEGORY_META["knit-range"].badgeVariant;

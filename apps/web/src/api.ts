@@ -84,7 +84,10 @@ export async function fetchProxyStatus(): Promise<ProxyStatus> {
   return (await res.json()) as ProxyStatus;
 }
 
-export type ShotType = "hand-closeup" | "object" | "cat" | "change" | "reveal" | "wearing" | "other";
+// Open string: the shot vocabulary is domain data (domains/<name>/shot-types.json), so the web
+// tolerates any shotType and falls back gracefully for ids it has no label/category mapping for.
+// Knitting's vocabulary: hand-closeup / object / cat / change / reveal / wearing / other.
+export type ShotType = string;
 
 export interface Moment {
   inS: number;

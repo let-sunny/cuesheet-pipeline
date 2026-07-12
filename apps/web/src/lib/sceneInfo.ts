@@ -52,7 +52,8 @@ export function matchSceneInfo(
 }
 
 export function shotTypeLabel(shotType: ShotType): string {
-  return SHOT_TYPE_LABEL[shotType];
+  // Unknown (non-knitting-domain) shot type: fall back to its capitalized id rather than "".
+  return SHOT_TYPE_LABEL[shotType] ?? shotType.charAt(0).toUpperCase() + shotType.slice(1);
 }
 
 function withinTolerance(t: number, startS: number, endS: number): boolean {
