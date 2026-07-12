@@ -1,5 +1,5 @@
 import * as stylex from "@stylexjs/stylex";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import type { CueSheet } from "@cuesheet/schema";
 import type { BgmFile, ClipMoments, NarrationFile } from "../../api.js";
@@ -76,6 +76,22 @@ export function EditStep({
   // local state change never re-renders the other sibling, which is exactly what let the two
   // measurements go stale relative to each other.
   const [bgmPanelCollapsed, setBgmPanelCollapsed] = useState(true);
+
+  // Esc deselects the BGM track (closes the top property bar), the same as its Close (X) button -
+  // the convention for dismissing a selected element (2026-07-12). Only listens while a track is
+  // selected, so it never swallows Esc elsewhere.
+  useEffect(() => {
+    if (selectedBgmIndex == null) {
+      return;
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectedBgmIndex(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedBgmIndex, setSelectedBgmIndex]);
 
   return (
     <div {...stylex.props(styles.editLayout)}>

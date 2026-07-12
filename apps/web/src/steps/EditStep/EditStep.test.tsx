@@ -166,4 +166,16 @@ describe("EditStep", () => {
       }
     },
   );
+
+  it("deselects the BGM track (closes the top settings bar) when Escape is pressed", () => {
+    render(<Harness />);
+    // Adding a track auto-selects it (useEditStepActions.addBgmTrack), so the top property bar
+    // opens without needing to drive the pointer-drag selection on the gutter bar.
+    fireEvent.click(screen.getByTestId("bgm-panel-toggle")); // expand the rail
+    fireEvent.click(screen.getByTestId("bgm-add-track"));
+    expect(screen.queryByTestId("bgm-settings-panel")).not.toBeNull();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByTestId("bgm-settings-panel")).toBeNull();
+  });
 });
