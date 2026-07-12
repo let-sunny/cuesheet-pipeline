@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * pnpm episode <source-folder> [--scan-only] [--no-open] [--rescan]
+ * pnpm episode <source-folder> [--scan-only] [--no-open] [--rescan] [--domain <dir>]
  *
  * Handles the "mechanical part" of starting an episode in one shot:
  *   1) validate the raw footage folder (existence/video files/report iCloud not-downloaded count)
@@ -22,12 +22,23 @@ const repoRoot = resolve(fileURLToPath(new URL(".", import.meta.url)), "..");
 const WEB_PORT = 5173;
 const VIDEO_EXTS = new Set([".mp4", ".mov", ".mkv", ".m4v", ".webm"]);
 
+/**
+ * Parses `--flag` (boolean) and `--key=value` (valued, e.g. `--domain=domains/cooking`) plus
+ * positionals. Valued flags use the `=` form so no lookahead is needed and a value can't be
+ * mistaken for the source-folder positional.
+ */
 function parseArgs(argv) {
   const positional = [];
   const flags = {};
   for (const a of argv) {
     if (a.startsWith("--")) {
-      flags[a.slice(2)] = true;
+      const body = a.slice(2);
+      const eq = body.indexOf("=");
+      if (eq === -1) {
+        flags[body] = true;
+      } else {
+        flags[body.slice(0, eq)] = body.slice(eq + 1);
+      }
     } else {
       positional.push(a);
     }
@@ -146,9 +157,24 @@ async function main() {
   // Record this as the active episode so the web editor and the MCP bridge both edit it
   // (they resolve the active cuesheet from .active-episode). Stored repo-relative.
   const relCuesheetPath = relative(repoRoot, cuesheetPath);
-  const { writeActiveEpisode } = await import(pathToFileURL(ensureActiveEpisodeBuilt()).href);
+  const { writeActiveEpisode, writeActiveDomain, resolveDomainDir } = await import(
+    pathToFileURL(ensureActiveEpisodeBuilt()).href
+  );
   writeActiveEpisode(repoRoot, relCuesheetPath);
   console.log(`Active episode -> ${relCuesheetPath} (written to .active-episode)`);
+
+  // Domain selection (issue #31): --domain=<dir> persists a new active domain; otherwise the
+  // previously-active one (default domains/knitting) is kept. Assemble + the web editor both
+  // resolve the active domain the same way (.active-domain / DOMAIN_DIR).
+  if (typeof flags.domain === "string") {
+    const domainDir = resolve(flags.domain);
+    if (!existsSync(resolve(domainDir, "shot-types.json"))) {
+      console.error(`Not a domain bundle (no shot-types.json): ${domainDir}`);
+      process.exit(1);
+    }
+    writeActiveDomain(repoRoot, relative(repoRoot, domainDir));
+  }
+  console.log(`Active domain  -> ${relative(repoRoot, resolveDomainDir({ repoRoot, env: process.env }))}`);
 
   const manifestPath = resolve(draftDir, "manifest.json");
   if (existsSync(manifestPath) && !flags.rescan) {

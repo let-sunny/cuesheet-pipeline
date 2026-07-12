@@ -2,7 +2,17 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ACTIVE_EPISODE_FILENAME, readActiveEpisode, resolveCuesheetPath, writeActiveEpisode } from "../src/index.js";
+import {
+  ACTIVE_DOMAIN_FILENAME,
+  ACTIVE_EPISODE_FILENAME,
+  DEFAULT_DOMAIN_DIR,
+  readActiveDomain,
+  readActiveEpisode,
+  resolveCuesheetPath,
+  resolveDomainDir,
+  writeActiveDomain,
+  writeActiveEpisode,
+} from "../src/index.js";
 
 let repoRoot: string;
 
@@ -113,5 +123,55 @@ describe("resolveCuesheetPath precedence", () => {
     writeActiveEpisode(repoRoot, absolute);
     const result = resolveCuesheetPath({ repoRoot, env: {} });
     expect(result).toBe(absolute);
+  });
+});
+
+describe("active domain", () => {
+  it("ACTIVE_DOMAIN_FILENAME is .active-domain", () => {
+    expect(ACTIVE_DOMAIN_FILENAME).toBe(".active-domain");
+  });
+
+  it("DEFAULT_DOMAIN_DIR is domains/knitting", () => {
+    expect(DEFAULT_DOMAIN_DIR).toBe("domains/knitting");
+  });
+
+  it("readActiveDomain returns null when the file is missing / blank", () => {
+    expect(readActiveDomain(repoRoot)).toBeNull();
+    writeActiveDomain(repoRoot, "  \n ");
+    expect(readActiveDomain(repoRoot)).toBeNull();
+  });
+
+  it("readActiveDomain returns the trimmed stored dir (newline stripped)", () => {
+    writeActiveDomain(repoRoot, "domains/cooking");
+    expect(readActiveDomain(repoRoot)).toBe("domains/cooking");
+  });
+});
+
+describe("resolveDomainDir precedence", () => {
+  it("falls back to domains/knitting when neither env nor file is set", () => {
+    expect(resolveDomainDir({ repoRoot, env: {} })).toBe(join(repoRoot, "domains/knitting"));
+  });
+
+  it("uses the .active-domain file when set", () => {
+    writeActiveDomain(repoRoot, "domains/cooking");
+    expect(resolveDomainDir({ repoRoot, env: {} })).toBe(join(repoRoot, "domains/cooking"));
+  });
+
+  it("DOMAIN_DIR env wins over the file", () => {
+    writeActiveDomain(repoRoot, "domains/cooking");
+    expect(resolveDomainDir({ repoRoot, env: { DOMAIN_DIR: "domains/knitting" } })).toBe(
+      join(repoRoot, "domains/knitting"),
+    );
+  });
+
+  it("treats an empty/whitespace DOMAIN_DIR env as unset (falls through to the file)", () => {
+    writeActiveDomain(repoRoot, "domains/cooking");
+    expect(resolveDomainDir({ repoRoot, env: { DOMAIN_DIR: "   " } })).toBe(join(repoRoot, "domains/cooking"));
+  });
+
+  it("resolves a relative env dir against repoRoot, returns an absolute one unchanged", () => {
+    expect(resolveDomainDir({ repoRoot, env: { DOMAIN_DIR: "domains/x" } })).toBe(join(repoRoot, "domains/x"));
+    const absolute = join(tmpdir(), "abs-domain");
+    expect(resolveDomainDir({ repoRoot, env: { DOMAIN_DIR: absolute } })).toBe(absolute);
   });
 });
