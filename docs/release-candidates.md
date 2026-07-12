@@ -11,7 +11,7 @@
 | **schema+render+bridge** (as a set) | Release candidate #2 | editly (5.4k stars) has been dormant for 14 months — there's an open slot for a modern successor to "zod contract + local ffmpeg + MCP editing" | Natural to bundle with draft in the same repo for release (no need to split distribution) |
 | bridge alone | Write-up only | "Steer a document, not an app" — worth a blog/wiki post on its own; the code alone is too small a release | One write-up |
 | **web** | **Keep private** | OpenCut (61.7k stars) already owns the general-purpose slot. Our web app's value is "bakes in the user's personal editing grammar," which has no meaning as a public release | — |
-| voice-guide, editing-grammar constants | **Keep private (personal data)** | This is literally the user's speech patterns and editing habits | If released at all, share only the "how it was derived" methodology (the reverse-engineering wiki page already serves this role) |
+| voice profile (personal layer), editing-grammar constants | **Keep private (personal data)** | This is literally the user's speech patterns and editing habits — the voice now lives in the gitignored personal layer (`domains/*/voice.generated.md`, `transcripts/`), so it is already out of git | If released at all, share only the "how it was derived" methodology (the reverse-engineering wiki page already serves this role) |
 | /episode, /goal commands | Gray area | The orchestration pattern is interesting, but it's tightly coupled to a personal environment | If released, as a pattern write-up |
 
 ## Proposed scenario (if release is decided on)
@@ -20,7 +20,9 @@
    public then becomes "a tool with an experiment report attached"
 2. **Phase 1**: make this repo itself public (draft as the headline, schema/render/bridge as
    the foundation, web explicitly labeled "a personal-specialization example." Personal data
-   like voice-guide must be split out/redacted beforehand)
+   like the voice profile is already in the gitignored personal layer
+   (`domains/*/voice.generated.md`, `transcripts/`); confirm none leaked into committed theme
+   files beforehand)
 3. **Phase 2**: a positioning write-up for draft — "editing the video that video-use can't
    see" (Show HN, Reddit, etc.)
 4. **Caution**: a privacy sweep is mandatory before release — media/ paths, family mentions,
@@ -42,8 +44,8 @@ Consumption models, staged:
 
 | Model | User experience | When |
 |---|---|---|
-| **A. Clone-and-own** (current) | Clone the repo, install, register MCP - live inside it. Fits the "fork a personal tool and make it yours" story (grammar config, voice guide as data) | Now - verified by the fresh-clone onboarding rehearsal |
-| **B. npm-installed CLI** | `npx` the tools as dependencies; user's own folder holds cuesheets/config/voice guide | If public demand appears. Groundwork done: grammar config split, repo-relative paths, --json |
+| **A. Clone-and-own** (current) | Clone the repo, install, register MCP - live inside it. Fits the "fork a personal tool and make it yours" story (grammar config, voice profile as data) | Now - verified by the fresh-clone onboarding rehearsal |
+| **B. npm-installed CLI** | `npx` the tools as dependencies; user's own folder holds cuesheets/config/voice profile | If public demand appears. Groundwork done: grammar config split, repo-relative paths, --json |
 | **C. MCP-only** | Add one MCP server to any AI client; whole pipeline exposed as tools (scan/assemble/render) | Derivative of B, for AI-only users who never touch a CLI |
 
 Decision: polish A now; hold B/C together with the npm-publish decision until there is

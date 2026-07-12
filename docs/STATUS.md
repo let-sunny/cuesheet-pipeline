@@ -621,8 +621,9 @@ built on:
 - **English everywhere in git (complete)**: history rewritten (106 commit messages
   translated, personal paths scrubbed incl. dash-encoded variants, judgment data purged),
   UI chrome, validation messages, code comments, docs, runtime strings across
-  bridge/CLI/server. Remaining Korean = content data, voice-guide examples, test titles
-  (pending decision).
+  bridge/CLI/server. Remaining Korean = content data, the domain theme files' matching
+  literals, test titles (pending decision); the voice corpus moved to the gitignored personal
+  layer (`domains/*/voice.generated.md`), so it is no longer in git at all.
 - **Privacy**: zero media blobs ever in history (verified); moments/progress/manifest
   untracked + history-purged; SRT outputs untracked (*.srt ignored); Vrew branding
   removed (one competitor-research doc retained as legitimate analysis).

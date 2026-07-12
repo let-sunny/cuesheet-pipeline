@@ -5,7 +5,7 @@
  *
  * `files` is `{ path, content }[]` (content may be null for binary files, which are skipped).
  * `allowlist` is a Set of exact file paths (relative to the repo root) that are permitted to
- * contain prose-script text — e.g. docs/voice-guide.md's Korean voice corpus, or a component
+ * contain prose-script text — e.g. a domain theme file's Korean matching literals, or a component
  * that legitimately generates/matches real Korean subtitle content rather than writing prose.
  */
 export function findLanguageViolations(files, allowlist) {

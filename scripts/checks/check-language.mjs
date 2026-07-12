@@ -14,25 +14,25 @@ const repoRoot = path.resolve(fileURLToPath(new URL(".", import.meta.url)), "../
 // CLAUDE.md's "Language policy" section for the two rules this ratchets from:
 // (1) content Claude Code generates as working output (subtitles, scene descriptions, matching
 //     against that content) follows the current working language rather than being translated;
-// (2) docs/voice-guide.md's Korean example sentences/vocabulary are the corpus data itself.
+// (2) the target Korean subtitle voice is corpus data itself - it now lives in the gitignored
+//     personal layer (domains/*/voice.generated.md), so no tracked file needs an exemption for it;
+//     the committed theme scaffold that quotes a few signature Korean literals is allowlisted below.
 const LANGUAGE_ALLOWLIST = new Set([
-  // Rule (2): defines the target Korean subtitle voice verbatim.
-  "docs/voice-guide.md",
-
   // Rule (1): cuesheet fixture whose subtitle field values are generated working content, not
   // translatable prose.
   "packages/schema/examples/sample.cuesheet.json",
 
-  // Pipeline instruction doc quoting the same Korean tag/vocabulary literals voice-guide.md
-  // defines (the face-exposure tag, and several signature sentence-ending/greeting cues) to
-  // specify real subtitle-generation behavior - same rationale as voice-guide.md itself.
+  // Pipeline instruction doc quoting Korean tag/vocabulary literals (the face-exposure tag, and
+  // several signature sentence-ending/greeting cues) to specify real subtitle-generation behavior.
   ".claude/commands/episode.md",
 
   // Knitting domain theme: the face policy carries the Korean face-exposure tag + heuristic
   // vocabulary (functional matching literals, not translatable prose); the vision prompt quotes
-  // the same tag - same rationale as episode.md, from which these were lifted.
+  // the same tag; the voice-distill prompt quotes a few signature Korean literals as the fixed
+  // conventions it must capture - same rationale as episode.md, from which these lift.
   "domains/knitting/face-policy.json",
   "domains/knitting/vision-prompt.md",
+  "domains/knitting/voice-distill-prompt.md",
 
   // Docs quoting Korean terms/examples as the artifact being discussed, inside otherwise-English
   // prose (a UI-term glossary table, a spelling-convention recap, a literal sample string also

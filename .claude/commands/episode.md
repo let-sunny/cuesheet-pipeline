@@ -156,7 +156,14 @@ proposal in step (5) rather than expecting a connector there.
 
 ### (4) Subtitle voice pass
 
-Read `docs/voice-guide.md` in full and follow its rules to rewrite
+First ensure the voice profile is current. The voice lives in the personal layer
+`domains/knitting/voice.generated.md` (gitignored), distilled from the person's own
+`domains/knitting/transcripts/*`. Per `domains/knitting/voice-distill-prompt.md`: compare the
+transcripts (filenames + content hashes) against `voice.generated.md`'s caching header and
+**re-distill only if they changed** (or if the file is missing and transcripts exist). If there
+are no transcripts, use the existing seed profile as-is.
+
+Then read `voice.generated.md` in full and follow its rules to rewrite
 `segments[].subtitle` in `episodes/<slug>.cuesheet.json` (right after assemble,
 `memo` is carried over as-is, so it reads as a screen description, not subtitle
 copy). Principles:
@@ -232,8 +239,8 @@ early, leaving one oversized final chapter — when that happens, ALSO treat
 completion-reveal cuts ("짜잔"-style subtitles) as section closers and insert a
 chapter at the next cut, keeping chapters 20s+ apart. The raw titles are just
 each section's first subtitle —
-rewrite them as short section names (2-4 words, voice-guide tone does NOT apply
-here; plain descriptive Korean like "도트얀 언박싱", "몸판 뜨기"), keeping the
+rewrite them as short section names (2-4 words, the subtitle voice tone does NOT
+apply here; plain descriptive Korean like "도트얀 언박싱", "몸판 뜨기"), keeping the
 timestamps. Include the final list in the report so the user can paste it into
 the YouTube description.
 

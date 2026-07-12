@@ -48,7 +48,8 @@ until phase 2.
 
 What it does, start to finish: **vision judgment** (parallel subagents read the extracted
 frames and write `moments.json`) → **assemble** (moments → a validated cuesheet at
-`episodes/<slug>.cuesheet.json`) → **subtitles in your voice** (per `docs/voice-guide.md`) →
+`episodes/<slug>.cuesheet.json`) → **subtitles in your voice** (per your distilled voice profile,
+`domains/knitting/voice.generated.md`) →
 **face-crop suggestions** → **validation**. It hands off with the editor pointed at the
 resulting cuesheet. It does **not** render — polishing is yours.
 

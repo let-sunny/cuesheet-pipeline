@@ -126,10 +126,13 @@ edits handled grows, schema expands along with it.
   subject/body), issues/PRs, the public README, the GitHub wiki — anything that leaves the
   repository, or lives inside it. Two exceptions: (1) **content that Claude Code generates as
   working output** (subtitles, scene descriptions, etc.) follows the current working language
-  (Korean, right now) rather than being translated — it isn't a translation target; (2)
-  **`docs/voice-guide.md`'s Korean example sentences, vocabulary lists, and corpus-derived
-  phrases** are data that define the target Korean voice and must stay in Korean verbatim even
-  though the file itself lives in git.
+  (Korean, right now) rather than being translated — it isn't a translation target; (2) **the
+  target Korean subtitle voice** — its example sentences, vocabulary lists, and corpus-derived
+  phrases — is data that must stay in Korean verbatim. It lives in the **gitignored personal
+  layer** (`domains/<name>/voice.generated.md`, distilled from `transcripts/`), so it no longer
+  ships in git; the committed theme scaffold that quotes a few signature Korean literals
+  (`domains/knitting/{vision,voice-distill}-prompt.md`, `face-policy.json`) is exempt for the same
+  reason and allowlisted in `check-language.mjs`.
 - **GitHub wiki** = a write-up of experiments — where someone curious "why did this project happen
   and what experiments did it go through" reads (reverse-engineering the editing grammar, scene-
   detection measurement and exclusion, rough-cut v1-v4 experiments, etc.).
