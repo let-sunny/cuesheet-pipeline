@@ -160,6 +160,29 @@ describe("useCueSheetServer", () => {
     expect(localStorage.getItem(key)).toBeNull();
   });
 
+  it("discard reverts an edit made while the banner was up, clearing the Unsaved (dirty) state", async () => {
+    const sheet = makeCueSheet();
+    const key = `cuesheet-draft-snapshot:${sheet.project.name}`;
+    localStorage.setItem(
+      key,
+      JSON.stringify({ cuesheet: { ...sheet, project: { ...sheet.project, name: "unsaved-edit" } }, savedAt: 123 }),
+    );
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(sheet)));
+
+    const { result } = renderHook(() => useCueSheetServer(noopToast()));
+    await waitFor(() => expect(result.current.restoreSnapshot).not.toBeNull());
+
+    // Edit while the banner is still up -> now dirty (the "Unsaved" tag shows).
+    act(() => result.current.setDraft({ ...sheet, project: { ...sheet.project, name: "edited-while-banner-up" } }));
+    expect(result.current.dirty).toBe(true);
+
+    // "Discard and use saved" must revert to the saved file, so dirty clears (regression: it used
+    // to only drop the snapshot, leaving the draft dirty and the Unsaved tag stuck on).
+    act(() => result.current.handleDiscardSnapshot());
+    expect(result.current.dirty).toBe(false);
+    expect(result.current.draft?.project.name).toBe(sheet.project.name);
+  });
+
   it("debounces a dirty draft into a localStorage snapshot after 1s of quiet", async () => {
     const sheet = makeCueSheet();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(sheet)));

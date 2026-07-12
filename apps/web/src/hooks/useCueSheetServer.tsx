@@ -156,8 +156,15 @@ export function useCueSheetServer(toast: ShowToastFn): UseCueSheetServerResult {
     if (draft) {
       clearDraftSnapshot(draft.project.name);
     }
+    // "Discard and use saved" must actually revert the on-screen draft to the saved file, not just
+    // drop the localStorage snapshot + banner. Otherwise any divergence from the saved cuesheet
+    // (e.g. an edit made while the banner was still up) keeps the Unsaved tag on, contradicting the
+    // button's own label (2026-07-12 bug: clicking it left "Unsaved" showing).
+    if (serverCuesheet) {
+      setDraft(serverCuesheet);
+    }
     setRestoreSnapshot(null);
-  }, [draft]);
+  }, [draft, serverCuesheet]);
 
   const handleSave = useCallback(async () => {
     if (!draft) {
