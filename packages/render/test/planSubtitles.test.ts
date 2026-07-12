@@ -90,7 +90,7 @@ describe("drawtextFilter", () => {
   it("adds a box clause when a background is set", () => {
     const style = { ...make().subtitleStyle, background: { color: "#000000", opacity: 0.5, padding: 10 } };
     const filter = drawtextFilter("hi", style);
-    expect(filter).toContain("box=1:boxcolor=#000000@0.5:boxborderw=10");
+    expect(filter).toContain("box=1:boxcolor=#000000@0.5:boxborderw=10|20|10|20");
   });
 
   it("positions y at the margin for 'top'", () => {

@@ -3,6 +3,7 @@ import type { SubtitleStyle, SubtitleStylePresets } from "@cuesheet/schema";
 import {
   mergeSubtitleStyle,
   subtitleBackgroundRgba,
+  subtitleBackgroundPadding,
   subtitleOutlineStyle,
   subtitlePositionStyle,
   toColorInputValue,
@@ -146,5 +147,12 @@ describe("toColorInputValue", () => {
 
   it("falls back to black for an unrecognized value", () => {
     expect(toColorInputValue("not-a-color")).toBe("#000000");
+  });
+});
+
+describe("subtitleBackgroundPadding", () => {
+  it("doubles the horizontal padding relative to the vertical (matches the render's boxborderw)", () => {
+    expect(subtitleBackgroundPadding(2)).toBe("2px 4px");
+    expect(subtitleBackgroundPadding(0)).toBe("0px 0px");
   });
 });

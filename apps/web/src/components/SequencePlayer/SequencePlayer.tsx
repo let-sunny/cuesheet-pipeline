@@ -24,6 +24,7 @@ import {
 import {
   mergeSubtitleStyle,
   subtitleBackgroundRgba,
+  subtitleBackgroundPadding,
   subtitleOutlineStyle,
   subtitlePositionStyle,
   toCqw,
@@ -495,7 +496,7 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
                         effectiveStyle.background.color,
                         effectiveStyle.background.opacity,
                       ),
-                      padding: `${effectiveStyle.background.padding}px`,
+                      padding: subtitleBackgroundPadding(effectiveStyle.background.padding),
                     }
                   : undefined
               }

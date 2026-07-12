@@ -57,7 +57,7 @@ describe("SubtitleStyleSettings", () => {
     const onChange = vi.fn();
     render(<SubtitleStyleSettings {...subtitleProps()} onChange={onChange} />);
     fireEvent.click(screen.getByLabelText("Background box"));
-    expect(onChange.mock.calls[0]?.[0]).toEqual({ background: { color: "#000000", opacity: 0.75, padding: 4 } });
+    expect(onChange.mock.calls[0]?.[0]).toEqual({ background: { color: "#000000", opacity: 0.75, padding: 2 } });
   });
 
   it("disables the edge margin slider when position is center", () => {

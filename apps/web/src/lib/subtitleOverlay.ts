@@ -50,6 +50,15 @@ export function subtitleOutlineStyle(widthPx: number, widthCss: string, color: s
   };
 }
 
+/** Subtitle background box padding as a CSS `padding` value. The schema's single `padding` is the
+ * VERTICAL amount; the horizontal is doubled so the box breathes on the sides more than top/bottom
+ * (YouTube caption style - a cut's text used to sit flush against the box's left/right edges).
+ * SYNC: packages/render/src/planSubtitles.ts derives its drawtext boxborderw the same way, so the
+ * preview and the exported video match. */
+export function subtitleBackgroundPadding(padding: number): string {
+  return `${padding}px ${padding * 2}px`;
+}
+
 /** #rgb or #rrggbb + 0-1 opacity -> a CSS rgba() string (for previewing the subtitle background box). */
 export function subtitleBackgroundRgba(hex: string, opacity: number): string {
   const m3 = /^#([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])$/.exec(hex);

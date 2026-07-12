@@ -291,7 +291,7 @@ describe("buildRenderPlan", () => {
       }),
       "out.mp4",
     );
-    expect(p.filterComplex).toContain("box=1:boxcolor=#000000@0.75:boxborderw=10");
+    expect(p.filterComplex).toContain("box=1:boxcolor=#000000@0.75:boxborderw=10|20|10|20");
   });
 
   it("produces an identical drawtext to the baseline when styleOverride is absent (omitted) (regression)", () => {
@@ -386,7 +386,7 @@ describe("buildRenderPlan", () => {
       "out.mp4",
     );
     // The global opacity(0.75)/padding(10) don't leak through; they're fully replaced by the override background.
-    expect(p.filterComplex).toContain("box=1:boxcolor=#ff0000@0.4:boxborderw=8");
+    expect(p.filterComplex).toContain("box=1:boxcolor=#ff0000@0.4:boxborderw=8|16|8|16");
     expect(p.filterComplex).not.toContain("@0.75");
   });
 

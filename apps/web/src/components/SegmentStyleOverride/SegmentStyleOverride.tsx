@@ -157,5 +157,5 @@ export function SegmentStyleOverride({
   );
 }
 
-// padding 4 (matches the global default, tightened toward YouTube's caption box, 2026-07-12).
-const DEFAULT_OVERRIDE_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75, padding: 4 };
+// padding 2 (matches the global default): vertical amount; horizontal doubled at render/preview.
+const DEFAULT_OVERRIDE_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75, padding: 2 };

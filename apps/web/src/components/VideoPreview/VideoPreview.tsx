@@ -20,6 +20,7 @@ import { classifyVideoSourceError, videoSourceErrorMessage } from "../../lib/vid
 import {
   mergeSubtitleStyle,
   subtitleBackgroundRgba,
+  subtitleBackgroundPadding,
   subtitleOutlineStyle,
   subtitlePositionStyle,
   toCqw,
@@ -568,7 +569,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
                             effectiveSubtitleStyle.background.color,
                             effectiveSubtitleStyle.background.opacity,
                           ),
-                          padding: `${effectiveSubtitleStyle.background.padding}px`,
+                          padding: subtitleBackgroundPadding(effectiveSubtitleStyle.background.padding),
                         }
                       : undefined
                   }

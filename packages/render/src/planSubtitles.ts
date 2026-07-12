@@ -30,7 +30,12 @@ export function drawtextFilter(text: string, style: CueSheet["subtitleStyle"]): 
     `:borderw=${style.outlineWidth}:bordercolor=${style.outlineColor}:font='${style.font}'`;
   if (style.background) {
     const { color, opacity, padding } = style.background;
-    base += `:box=1:boxcolor=${color}@${opacity}:boxborderw=${padding}`;
+    // Asymmetric box border: horizontal (right/left) is 2x the vertical (top/bottom), so the box
+    // breathes on the sides more than top/bottom (YouTube caption style). drawtext boxborderw takes
+    // top|right|bottom|left (a single value would pad all sides equally, leaving the text flush
+    // against the box's left/right edges). SYNC: apps/web's subtitleBackgroundPadding uses the same
+    // 2x-horizontal ratio so the preview matches. Needs a recent ffmpeg (multi-value boxborderw).
+    base += `:box=1:boxcolor=${color}@${opacity}:boxborderw=${padding}|${padding * 2}|${padding}|${padding * 2}`;
   }
   const x = "(w-text_w)/2";
   let y: string;

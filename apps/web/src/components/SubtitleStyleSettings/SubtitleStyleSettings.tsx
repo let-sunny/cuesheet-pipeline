@@ -10,6 +10,7 @@ import type { SubtitleBackground, SubtitleStyle } from "@cuesheet/schema";
 import { useNumericField } from "../../hooks/useNumericField.js";
 import {
   subtitleBackgroundRgba,
+  subtitleBackgroundPadding,
   subtitleOutlineStyle,
   subtitlePositionStyle,
   toCqw,
@@ -257,7 +258,7 @@ function SubtitleStylePreviewStage({
             subtitleStyle.background
               ? {
                   background: subtitleBackgroundRgba(subtitleStyle.background.color, subtitleStyle.background.opacity),
-                  padding: `${subtitleStyle.background.padding}px`,
+                  padding: subtitleBackgroundPadding(subtitleStyle.background.padding),
                 }
               : undefined
           }
@@ -269,11 +270,11 @@ function SubtitleStylePreviewStage({
   );
 }
 
-// padding 4 (was 8): tighter box that hugs the text more, closer to YouTube's caption background
-// (2026-07-12 user feedback - 8 read as too much top/bottom). Applied uniformly (the render's
-// drawtext boxborderw is a single value), so preview and export stay in sync. Editable per project
-// via the "Background padding (px)" field.
-const DEFAULT_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75, padding: 4 };
+// padding 2 (2026-07-12): the value is the VERTICAL padding; horizontal is doubled in both preview
+// and render (see subtitleBackgroundPadding / planSubtitles), so the box hugs the text tightly
+// top/bottom while giving the sides breathing room (YouTube caption style). Editable per project via
+// the "Background padding (px)" field.
+const DEFAULT_BACKGROUND: SubtitleBackground = { color: "#000000", opacity: 0.75, padding: 2 };
 
 /**
  * Matches the schema's subtitleStyle.margin default (40) — GET /api/cuesheet serves the file
