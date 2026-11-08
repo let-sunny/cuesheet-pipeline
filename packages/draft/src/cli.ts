@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { CueSheet } from "@cuesheet/schema";
 import { ensureSegmentIds, formatIssue, validateCueSheet } from "@cuesheet/schema";
-import { assembleDraft } from "./assemble.js";
-import type { AssembleGrammarConfigOverride } from "./assemble.js";
+import { assembleDraft, findThumbnailCandidates, resolveAssembleConfig } from "./assemble.js";
+import type { AssembleGrammarConfigOverride, ThumbnailCandidate } from "./assemble.js";
 import { loadDomainBundle, momentsFileSchemaFor, resolveDomainAssembleConfig } from "./domain.js";
 import { scanFolder } from "./scan.js";
 import type { Manifest } from "./scan.js";
@@ -66,6 +66,19 @@ export function buildAssembleJsonResult(cue: CueSheet, outPath: string): Assembl
     validationOk: true,
     outPath,
   };
+}
+
+/**
+ * Builds the human-readable thumbnail-candidate report lines (item 3) printed to stderr after
+ * assembly. Kept separate from the printing itself so the formatting is unit-testable without
+ * spawning the CLI.
+ */
+export function buildThumbnailReportLines(candidates: ThumbnailCandidate[]): string[] {
+  if (candidates.length === 0) return [];
+  return [
+    `Thumbnail candidates (${candidates.length}):`,
+    ...candidates.map((c) => `  ${c.clip} @${c.inS}s [${c.shotType}] ${c.memo}`),
+  ];
 }
 
 interface ParsedArgs {
@@ -161,6 +174,7 @@ function runAssemble(rest: string[]): void {
   const config: AssembleGrammarConfigOverride | undefined = flags.config
     ? (JSON.parse(readFileSync(flags.config, "utf-8")) as AssembleGrammarConfigOverride)
     : undefined;
+  const configBase = bundle ? resolveDomainAssembleConfig(bundle) : undefined;
 
   const cueInput = assembleDraft(momentsResult.data, {
     clipDir,
@@ -171,7 +185,7 @@ function runAssemble(rest: string[]): void {
     boundaryPadS: flags["boundary-pad"] ? Number(flags["boundary-pad"]) : undefined,
     clipDurations,
     config,
-    configBase: bundle ? resolveDomainAssembleConfig(bundle) : undefined,
+    configBase,
     facePolicyEnabled: bundle ? bundle.facePolicy.enabled : undefined,
   });
 
@@ -187,6 +201,12 @@ function runAssemble(rest: string[]): void {
   const stamped = ensureSegmentIds(validated.data);
   writeFileSync(outPath, JSON.stringify(stamped, null, 2));
   console.error(`Assembly complete: ${stamped.segments.length} segments -> ${outPath}`);
+
+  const resolvedConfig = resolveAssembleConfig(config, configBase);
+  const thumbnailCandidates = findThumbnailCandidates(momentsResult.data, resolvedConfig.faceHeuristic);
+  for (const line of buildThumbnailReportLines(thumbnailCandidates)) {
+    console.error(line);
+  }
 
   if (flags.json === "true") {
     console.log(JSON.stringify(buildAssembleJsonResult(stamped, outPath)));

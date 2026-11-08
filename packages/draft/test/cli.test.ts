@@ -5,7 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateCueSheet } from "@cuesheet/schema";
 import { beforeAll, describe, expect, it } from "vitest";
-import { buildAssembleJsonResult, buildScanJsonResult } from "../src/cli.js";
+import { buildAssembleJsonResult, buildScanJsonResult, buildThumbnailReportLines } from "../src/cli.js";
 import type { Manifest } from "../src/scan.js";
 import type { ClipMoments } from "../src/types.js";
 
@@ -58,6 +58,24 @@ describe("buildAssembleJsonResult", () => {
     expect(result.durationS).toBeCloseTo(3 + 30 / 14, 5);
     expect(result.validationOk).toBe(true);
     expect(result.outPath).toBe("/x/out.cuesheet.json");
+  });
+});
+
+describe("buildThumbnailReportLines", () => {
+  it("returns a header plus one line per candidate", () => {
+    const lines = buildThumbnailReportLines([
+      { clip: "a.mp4", inS: 5, shotType: "reveal", memo: "짜잔" },
+      { clip: "b.mp4", inS: 12, shotType: "cat", memo: "고앵이" },
+    ]);
+    expect(lines).toEqual([
+      "Thumbnail candidates (2):",
+      "  a.mp4 @5s [reveal] 짜잔",
+      "  b.mp4 @12s [cat] 고앵이",
+    ]);
+  });
+
+  it("returns an empty array when there are no candidates", () => {
+    expect(buildThumbnailReportLines([])).toEqual([]);
   });
 });
 
