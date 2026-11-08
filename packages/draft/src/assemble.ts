@@ -108,6 +108,14 @@ export function resolveAssembleConfig(
   };
 }
 
+/** Thumbnail candidate frame surfaced in the assemble report (see findThumbnailCandidates). */
+export interface ThumbnailCandidate {
+  clip: string;
+  inS: number;
+  shotType: string;
+  memo: string;
+}
+
 export interface AssembleOptions {
   clipDir: string;
   projectName: string;
@@ -139,6 +147,13 @@ export function assembleDraft(clipsMoments: ClipMoments[], options: AssembleOpti
 
   const segments: DraftSegment[] = [];
   let speedupCount = 0;
+  // Claims the single mid-episode hero-cut allowance (item 2): the first quality-5
+  // reveal/cat/wearing moment encountered (in clip/time order) gets to keep up to
+  // HERO_MAX_CUT_S instead of the standard cutRhythm.maxCutS, and is exempted from the
+  // average-convergence trim pass below. Capped at one so the "at most 3 hero cuts per
+  // episode" budget (this one + the opening teaser + the closing reveal, see
+  // applyHeroBeats) is never exceeded from this loop alone.
+  let heroMidClaimed = false;
 
   for (const cm of sortedClips) {
     const clipDur = options.clipDurations?.[cm.clip] ?? Number.POSITIVE_INFINITY;
@@ -146,18 +161,26 @@ export function assembleDraft(clipsMoments: ClipMoments[], options: AssembleOpti
     const steadyCandidates: Candidate[] = [];
     for (const m of cm.moments) {
       if (m.quality >= config.qualityThreshold) {
+        const isHeroMid =
+          !heroMidClaimed &&
+          m.quality === 5 &&
+          isHeroShotType(m.shotType) &&
+          !isTextRisky(m.memo, undefined, config.faceHeuristic);
+        const maxCutS = isHeroMid ? HERO_MAX_CUT_S : config.cutRhythm.maxCutS;
+
         let inS = Math.max(0, m.inS - padS);
         let outS = Math.min(clipDur, m.outS + padS);
         const len = outS - inS;
-        if (len > config.cutRhythm.maxCutS) {
+        if (len > maxCutS) {
           // If the padded length exceeds the cap, shrink both ends symmetrically (keep the
           // motion centered) — trimming only one side would just eat back the padding we
           // just added, making it pointless.
-          const excess = len - config.cutRhythm.maxCutS;
+          const excess = len - maxCutS;
           inS += excess / 2;
           outS -= excess / 2;
         }
-        steadyCandidates.push({ inS, outS, speed: 1, volume: 1, subtitle: m.memo });
+        if (isHeroMid) heroMidClaimed = true;
+        steadyCandidates.push({ inS, outS, speed: 1, volume: 1, subtitle: m.memo, shotType: m.shotType, isHero: isHeroMid });
       }
     }
     steadyCandidates.sort((a, b) => a.inS - b.inS);
@@ -197,11 +220,21 @@ export function assembleDraft(clipsMoments: ClipMoments[], options: AssembleOpti
 
     candidates.sort((a, b) => a.inS - b.inS);
     for (const c of candidates) {
-      segments.push({ clip: cm.clip, in: c.inS, out: c.outS, speed: c.speed, volume: c.volume, subtitle: c.subtitle });
+      segments.push({
+        clip: cm.clip,
+        in: c.inS,
+        out: c.outS,
+        speed: c.speed,
+        volume: c.volume,
+        subtitle: c.subtitle,
+        shotType: c.shotType,
+        isHero: c.isHero,
+      });
     }
   }
 
   convergeSteadyCutAverage(segments, config.cutRhythm);
+  applyHeroBeats(segments, sortedClips, config);
 
   return {
     project: {
@@ -213,7 +246,14 @@ export function assembleDraft(clipsMoments: ClipMoments[], options: AssembleOpti
     clipDir: options.clipDir,
     intro: null,
     outro: null,
-    segments,
+    segments: segments.map(({ clip, in: inS, out, speed, volume, subtitle }) => ({
+      clip,
+      in: inS,
+      out,
+      speed,
+      volume,
+      subtitle,
+    })),
     bgm: [],
     subtitleStyle: {
       font: "Pretendard",
@@ -227,20 +267,129 @@ export function assembleDraft(clipsMoments: ClipMoments[], options: AssembleOpti
 }
 
 /**
- * Whether a timelapse-connector candidate range carries face-exposure risk. If faceExposed
- * is explicitly set, follow it as-is; otherwise fall back to a desc-text heuristic (risky if
- * a face-part word and the risk word both appear — conservatively, treat ambiguous cases as
- * risky. Observed in practice: vision judgments sometimes phrase this using only a part name
- * without the word "face" itself, e.g. "lips are almost always exposed", so part-name
- * vocabulary is checked too).
+ * Finds up to `limit` thumbnail candidate frames for the assemble CLI report (item 3): quality-5
+ * moments whose shotType reads as thumbnail-worthy (reveal/wearing/cat/object), excluding any
+ * that carry face-exposure risk (same faceHeuristic signal used throughout this file — see
+ * isTextRisky). Pure/exported so the CLI report and tests share one implementation.
  */
+export function findThumbnailCandidates(
+  clipsMoments: ClipMoments[],
+  faceHeuristic: AssembleGrammarConfig["faceHeuristic"] = DEFAULT_ASSEMBLE_CONFIG.faceHeuristic,
+  limit = 5,
+): ThumbnailCandidate[] {
+  const candidates: ThumbnailCandidate[] = [];
+  for (const cm of clipsMoments) {
+    for (const m of cm.moments) {
+      if (m.quality !== 5) continue;
+      if (!THUMBNAIL_SHOT_TYPES.includes(m.shotType)) continue;
+      if (isTextRisky(m.memo, undefined, faceHeuristic)) continue;
+      candidates.push({ clip: cm.clip, inS: m.inS, shotType: m.shotType, memo: m.memo });
+    }
+  }
+  return candidates.slice(0, limit);
+}
+
+/**
+ * Whether a face-exposure heuristic text (a monotonousRange's desc, or a moment's memo) carries
+ * risk. If an explicit flag is given, follow it as-is; otherwise fall back to a desc/memo-text
+ * heuristic (risky if a face-part word and the risk word both appear — conservatively, treat
+ * ambiguous cases as risky. Observed in practice: vision judgments sometimes phrase this using
+ * only a part name without the word "face" itself, e.g. "lips are almost always exposed", so
+ * part-name vocabulary is checked too).
+ */
+function isTextRisky(
+  text: string,
+  explicit: boolean | undefined,
+  faceHeuristic: AssembleGrammarConfig["faceHeuristic"],
+): boolean {
+  if (typeof explicit === "boolean") return explicit;
+  const facePart = faceHeuristic.partWords.some((w) => text.includes(w));
+  return facePart && text.includes(faceHeuristic.riskWord);
+}
+
+/** Whether a timelapse-connector candidate range carries face-exposure risk — see isTextRisky. */
 function isMonotonousRangeRisky(
   r: MonotonousRange,
   faceHeuristic: AssembleGrammarConfig["faceHeuristic"],
 ): boolean {
-  if (typeof r.faceExposed === "boolean") return r.faceExposed;
-  const facePart = faceHeuristic.partWords.some((w) => r.desc.includes(w));
-  return facePart && r.desc.includes(faceHeuristic.riskWord);
+  return isTextRisky(r.desc, r.faceExposed, faceHeuristic);
+}
+
+function isHeroShotType(shotType: string): boolean {
+  return (HERO_SHOT_TYPES as readonly string[]).includes(shotType);
+}
+
+/**
+ * Item 1 (guaranteed opening/closing): picks the episode's single best reveal/cat/wearing
+ * moment (highest quality, quality-5 preferred, excluding face-exposure risk) and duplicates it
+ * as a short teaser at the very start of the timeline — an inserted duplicate, never a reorder
+ * (this project's matching is order-preserving/monotonic per CLAUDE.md, so the original
+ * occurrence stays exactly where it was). If the episode's natural last segment doesn't already
+ * read as a reveal, a strong-reveal candidate is duplicated onto the end too (preferring an
+ * actual shotType "reveal" candidate over the cat/wearing fallback used for the teaser). Mutates
+ * `segments` in place; no-ops gracefully when no qualifying candidate exists anywhere.
+ */
+function applyHeroBeats(
+  segments: DraftSegment[],
+  clipsMoments: ClipMoments[],
+  config: AssembleGrammarConfig,
+): void {
+  const pool = collectHeroCandidates(clipsMoments, config.qualityThreshold, config.faceHeuristic);
+  if (pool.length === 0) return;
+
+  const teaserSource = pickBestHeroCandidate(pool);
+  if (!teaserSource) return;
+  segments.unshift(buildHeroSegment(teaserSource, TEASER_MAX_CUT_S));
+
+  const lastSegment = segments[segments.length - 1];
+  const lastIsReveal = lastSegment?.shotType === "reveal";
+  if (!lastIsReveal) {
+    // Closing wants an actual shotType "reveal" (a "strong reveal") — unlike the teaser, which
+    // accepts cat/wearing as a fallback, there's no lesser-quality substitute here: if the
+    // episode has no reveal-type moment at all, skip the closing duplicate gracefully.
+    const closingSource = pickBestHeroCandidate(pool.filter((c) => c.shotType === "reveal"));
+    if (closingSource) segments.push(buildHeroSegment(closingSource, HERO_MAX_CUT_S));
+  }
+}
+
+/** Collects reveal/cat/wearing moments eligible as a hero (teaser/closing) candidate. */
+function collectHeroCandidates(
+  clipsMoments: ClipMoments[],
+  qualityThreshold: number,
+  faceHeuristic: AssembleGrammarConfig["faceHeuristic"],
+): HeroCandidate[] {
+  const candidates: HeroCandidate[] = [];
+  for (const cm of clipsMoments) {
+    for (const m of cm.moments) {
+      if (!isHeroShotType(m.shotType)) continue;
+      if (m.quality < qualityThreshold) continue;
+      if (isTextRisky(m.memo, undefined, faceHeuristic)) continue;
+      candidates.push({ clip: cm.clip, inS: m.inS, outS: m.outS, quality: m.quality, shotType: m.shotType, memo: m.memo });
+    }
+  }
+  return candidates;
+}
+
+/** Highest-quality candidate in the pool (quality 5 preferred; first-encountered wins ties). */
+function pickBestHeroCandidate(pool: HeroCandidate[]): HeroCandidate | undefined {
+  let best: HeroCandidate | undefined;
+  for (const c of pool) {
+    if (!best || c.quality > best.quality) best = c;
+  }
+  return best;
+}
+
+/** Builds a hero (teaser/closing) duplicate segment, clamped symmetrically to maxLenS. */
+function buildHeroSegment(c: HeroCandidate, maxLenS: number): DraftSegment {
+  let inS = c.inS;
+  let outS = c.outS;
+  const len = outS - inS;
+  if (len > maxLenS) {
+    const excess = len - maxLenS;
+    inS += excess / 2;
+    outS -= excess / 2;
+  }
+  return { clip: c.clip, in: Math.max(0, inS), out: outS, speed: 1, volume: 1, subtitle: c.memo, shotType: c.shotType, isHero: true };
 }
 
 interface Candidate {
@@ -249,23 +398,47 @@ interface Candidate {
   speed: number;
   volume: number;
   subtitle: string;
+  /** Vision-judged shotType (steady candidates only — a timelapse connector has none). */
+  shotType?: string;
+  /** Claims the single mid-episode hero-cut allowance (item 2) — see assembleDraft's heroMidClaimed. */
+  isHero?: boolean;
 }
 
-type DraftSegment = { clip: string; in: number; out: number; speed: number; volume: number; subtitle: string };
+/** A reveal/cat/wearing moment under consideration as a hero (teaser/closing) duplicate. */
+interface HeroCandidate {
+  clip: string;
+  inS: number;
+  outS: number;
+  quality: number;
+  shotType: string;
+  memo: string;
+}
+
+type DraftSegment = {
+  clip: string;
+  in: number;
+  out: number;
+  speed: number;
+  volume: number;
+  subtitle: string;
+  shotType?: string;
+  isHero?: boolean;
+};
 
 /**
  * If the overall average length of steady cuts (speed===1) exceeds AVG_TRIGGER_S (3.1s),
  * a simple greedy pass trims the longest cut by 0.25s at a time until the average converges
- * into the 2.8-3.0s range. Timelapse connectors (speed!==1) are left untouched. Mutates the
- * segment objects directly. Trimming shrinks symmetrically from both the in/out ends — so the
- * motion-centered framing gained from boundary padding isn't rendered meaningless by trimming
- * from only one side.
+ * into the 2.8-3.0s range. Timelapse connectors (speed!==1) are left untouched, and so is the
+ * mid-episode hero cut (isHero — item 2's single ~5s allowance; it must stay fixed, not get
+ * ground back down to the standard target by this very pass). Mutates the segment objects
+ * directly. Trimming shrinks symmetrically from both the in/out ends — so the motion-centered
+ * framing gained from boundary padding isn't rendered meaningless by trimming from only one side.
  */
 function convergeSteadyCutAverage(
   segments: DraftSegment[],
   cutRhythm: AssembleGrammarConfig["cutRhythm"],
 ): void {
-  const steady = segments.filter((s) => s.speed === 1);
+  const steady = segments.filter((s) => s.speed === 1 && !s.isHero);
   if (steady.length === 0) return;
 
   const average = () => steady.reduce((sum, s) => sum + (s.out - s.in), 0) / steady.length;
@@ -286,6 +459,15 @@ function convergeSteadyCutAverage(
     longest.out = center + newLen / 2;
   }
 }
+
+/** shotTypes treated as a hero (teaser/closing) candidate for the guaranteed opening/closing rule. */
+const HERO_SHOT_TYPES = ["reveal", "cat", "wearing"] as const;
+/** Duration cap (seconds) for a hero cut (closing reveal duplicate, or the mid-episode allowance) — item 2. */
+const HERO_MAX_CUT_S = 5;
+/** Duration cap (seconds) for the opening teaser duplicate — short per item 1, well under HERO_MAX_CUT_S. */
+const TEASER_MAX_CUT_S = 3;
+/** shotTypes eligible as a thumbnail candidate (item 3's CLI report). */
+const THUMBNAIL_SHOT_TYPES = ["reveal", "wearing", "cat", "object"];
 
 const DEFAULT_FPS = 30;
 const DEFAULT_WIDTH = 1280;
