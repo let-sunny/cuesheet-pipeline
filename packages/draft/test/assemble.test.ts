@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { validateCueSheet } from "@cuesheet/schema";
-import { assembleDraft } from "../src/assemble.js";
+import { assembleDraft, findThumbnailCandidates } from "../src/assemble.js";
 import { loadDomainBundle, resolveDomainAssembleConfig } from "../src/domain.js";
 import type { ClipMoments } from "../src/types.js";
 
@@ -400,5 +400,215 @@ describe("assembleDraft", () => {
     ];
     const cue = assembleDraft(moments, opts());
     expect(cue.segments?.[0]).toMatchObject({ speed: 1, volume: 1 });
+  });
+
+  describe("guaranteed opening/closing (item 1)", () => {
+    it("duplicates the best reveal/cat/wearing moment as a short teaser at the very start", () => {
+      const moments: ClipMoments[] = [
+        {
+          clip: "a.mp4",
+          clipSummary: "",
+          moments: [
+            { inS: 10, outS: 13, shotType: "hand-closeup", memo: "뜨는 중", quality: 4 },
+            { inS: 20, outS: 22, shotType: "cat", memo: "고앵이 등장", quality: 5 },
+          ],
+          monotonousRanges: [],
+        },
+      ];
+      const cue = assembleDraft(moments, opts());
+      // Original occurrence stays in place (order-preserving, not a reorder) and a duplicate
+      // is inserted at the very front.
+      expect(cue.segments).toHaveLength(3);
+      expect(cue.segments?.[0]?.subtitle).toBe("고앵이 등장");
+      expect(cue.segments?.[0]?.clip).toBe("a.mp4");
+      expect((cue.segments?.[0]?.out ?? 0) - (cue.segments?.[0]?.in ?? 0)).toBeLessThanOrEqual(3);
+      expect(cue.segments?.some((s, i) => i !== 0 && s.subtitle === "고앵이 등장")).toBe(true);
+    });
+
+    it("prefers a quality-5 candidate over a lower-quality one for the teaser", () => {
+      const moments: ClipMoments[] = [
+        {
+          clip: "a.mp4",
+          clipSummary: "",
+          moments: [
+            { inS: 0, outS: 2, shotType: "reveal", memo: "품질3 짜잔", quality: 3 },
+            { inS: 10, outS: 12, shotType: "reveal", memo: "품질5 짜잔", quality: 5 },
+          ],
+          monotonousRanges: [],
+        },
+      ];
+      const cue = assembleDraft(moments, opts());
+      expect(cue.segments?.[0]?.subtitle).toBe("품질5 짜잔");
+    });
+
+    it("falls back to the best available quality>=3 candidate when no quality-5 candidate exists", () => {
+      const moments: ClipMoments[] = [
+        {
+          clip: "a.mp4",
+          clipSummary: "",
+          moments: [{ inS: 0, outS: 2, shotType: "wearing", memo: "입어보기", quality: 3 }],
+          monotonousRanges: [],
+        },
+      ];
+      const cue = assembleDraft(moments, opts());
+      expect(cue.segments?.[0]?.subtitle).toBe("입어보기");
+    });
+
+    it("skips gracefully when no reveal/cat/wearing moment exists anywhere in the episode", () => {
+      const moments: ClipMoments[] = [
+        {
+          clip: "a.mp4",
+          clipSummary: "",
+          moments: [{ inS: 0, outS: 3, shotType: "object", memo: "그냥 사물", quality: 5 }],
+          monotonousRanges: [],
+        },
+      ];
+      const cue = assembleDraft(moments, opts());
+      expect(cue.segments).toHaveLength(1);
+      expect(cue.segments?.[0]?.subtitle).toBe("그냥 사물");
+    });
+
+    it("does not pick a face-exposure-risky moment as the teaser", () => {
+      const moments: ClipMoments[] = [
+        {
+          clip: "a.mp4",
+          clipSummary: "",
+          moments: [{ inS: 0, outS: 2, shotType: "reveal", memo: "얼굴이 노출되어 있음", quality: 5 }],
+          monotonousRanges: [],
+        },
+      ];
+      const cue = assembleDraft(moments, opts());
+      expect(cue.segments).toHaveLength(1);
+      expect(cue.segments?.[0]?.subtitle).toBe("얼굴이 노출되어 있음");
+    });
+
+    it("duplicates a strong reveal onto the end when the natural last segment is not a reveal", () => {
+      const moments: ClipMoments[] = [
+        {
+          clip: "a.mp4",
+          clipSummary: "",
+          moments: [
+            { inS: 0, outS: 2, shotType: "reveal", memo: "짜잔", quality: 5 },
+            { inS: 10, outS: 12, shotType: "hand-closeup", memo: "뜨는 중", quality: 5 },
+          ],
+          monotonousRanges: [],
+        },
+      ];
+      const cue = assembleDraft(moments, opts());
+      const segs = cue.segments ?? [];
+      // teaser (짜잔) + 짜잔 (natural) + 뜨는 중 (natural) + 짜잔 (closing duplicate)
+      expect(segs).toHaveLength(4);
+      expect(segs[segs.length - 1]?.subtitle).toBe("짜잔");
+      expect(segs[segs.length - 2]?.subtitle).toBe("뜨는 중");
+    });
+
+    it("does not duplicate a closing reveal when the natural last segment already reads as a reveal", () => {
+      const moments: ClipMoments[] = [
+        {
+          clip: "a.mp4",
+          clipSummary: "",
+          moments: [
+            { inS: 0, outS: 2, shotType: "hand-closeup", memo: "뜨는 중", quality: 5 },
+            { inS: 10, outS: 12, shotType: "reveal", memo: "짜잔", quality: 5 },
+          ],
+          monotonousRanges: [],
+        },
+      ];
+      const cue = assembleDraft(moments, opts());
+      const segs = cue.segments ?? [];
+      // teaser (짜잔) + 뜨는 중 (natural) + 짜잔 (natural, already a reveal ending) — no extra duplicate.
+      expect(segs).toHaveLength(3);
+      expect(segs[segs.length - 1]?.subtitle).toBe("짜잔");
+    });
+  });
+
+  describe("hero-cut duration allowance, capped (item 2)", () => {
+    it("lets one mid-episode quality-5 cat/reveal moment run up to ~5s without the standard 3.5s clamp", () => {
+      const moments: ClipMoments[] = [
+        {
+          clip: "a.mp4",
+          clipSummary: "",
+          moments: [{ inS: 0, outS: 5, shotType: "cat", memo: "고앵이 명장면", quality: 5 }],
+          monotonousRanges: [],
+        },
+      ];
+      // Default boundary padding (0.4s) would push the padded length past the standard 3.5s cap,
+      // but this quality-5 cat moment claims the mid-episode hero allowance (5s cap instead).
+      // (It also qualifies as the opening-teaser candidate from item 1, so segments[0] is the
+      // short 3s teaser duplicate — segments[1] is its natural, order-preserving occurrence.)
+      const cue = assembleDraft(moments, opts());
+      expect(cue.segments).toHaveLength(2);
+      const seg = cue.segments?.[1];
+      expect(seg?.subtitle).toBe("고앵이 명장면");
+      expect((seg?.out ?? 0) - (seg?.in ?? 0)).toBeCloseTo(5, 10);
+    });
+
+    it("does not exempt the average-convergence pass from trimming a hero cut back below 5s", () => {
+      // A long hero candidate plus enough short cuts to push the overall average over the
+      // trigger — the hero cut must still end up at its own 5s cap (from the initial clamp),
+      // not be further ground down by convergence.
+      const moments: ClipMoments[] = [
+        {
+          clip: "a.mp4",
+          clipSummary: "",
+          moments: [
+            { inS: 0, outS: 5, shotType: "cat", memo: "고앵이 명장면", quality: 5 },
+            { inS: 10, outS: 16, shotType: "object", memo: "컷1", quality: 5 },
+            { inS: 20, outS: 26, shotType: "object", memo: "컷2", quality: 5 },
+          ],
+          monotonousRanges: [],
+        },
+      ];
+      // Same teaser-duplication caveat as above: segments[1] is the natural occurrence.
+      const cue = assembleDraft(moments, opts());
+      const hero = cue.segments?.[1];
+      expect(hero?.subtitle).toBe("고앵이 명장면");
+      expect((hero?.out ?? 0) - (hero?.in ?? 0)).toBeCloseTo(5, 10);
+    });
+  });
+
+  describe("findThumbnailCandidates (item 3)", () => {
+    it("returns quality-5 reveal/wearing/cat/object moments, excluding face-exposure risk", () => {
+      const moments: ClipMoments[] = [
+        {
+          clip: "a.mp4",
+          clipSummary: "",
+          moments: [
+            { inS: 0, outS: 2, shotType: "reveal", memo: "짜잔", quality: 5 },
+            { inS: 5, outS: 7, shotType: "hand-closeup", memo: "뜨는 중", quality: 5 }, // wrong shotType
+            { inS: 10, outS: 12, shotType: "object", memo: "완성품", quality: 4 }, // quality < 5
+            { inS: 15, outS: 17, shotType: "object", memo: "얼굴이 노출되어 있음", quality: 5 }, // face risk
+          ],
+          monotonousRanges: [],
+        },
+      ];
+      const candidates = findThumbnailCandidates(moments);
+      expect(candidates).toEqual([{ clip: "a.mp4", inS: 0, shotType: "reveal", memo: "짜잔" }]);
+    });
+
+    it("caps the result at `limit` (default 5)", () => {
+      const momentsList = Array.from({ length: 7 }, (_, i) => ({
+        inS: i * 10,
+        outS: i * 10 + 2,
+        shotType: "object" as const,
+        memo: `후보${i}`,
+        quality: 5,
+      }));
+      const moments: ClipMoments[] = [{ clip: "a.mp4", clipSummary: "", moments: momentsList, monotonousRanges: [] }];
+      expect(findThumbnailCandidates(moments)).toHaveLength(5);
+      expect(findThumbnailCandidates(moments, undefined, 3)).toHaveLength(3);
+    });
+
+    it("returns an empty list when no moment qualifies", () => {
+      const moments: ClipMoments[] = [
+        {
+          clip: "a.mp4",
+          clipSummary: "",
+          moments: [{ inS: 0, outS: 2, shotType: "hand-closeup", memo: "뜨는 중", quality: 5 }],
+          monotonousRanges: [],
+        },
+      ];
+      expect(findThumbnailCandidates(moments)).toEqual([]);
+    });
   });
 });
