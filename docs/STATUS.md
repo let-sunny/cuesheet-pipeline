@@ -35,6 +35,7 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 - **Proxy playback**: original 4K HEVC can't play in-browser -> 720p H.264 proxy for preview, render uses the original
 - **iCloud rule**: must check `stat blocks=0` before reading source footage (reading a placeholder hangs forever), manage space with `brctl download/evict`
 - **AI-legibility as its own backlog**: a dedicated survey (wiki "AI-Legible System Design", covering astryx internals + shadcn/Stripe/GitHub/Cloudflare/Vercel/Storybook/v0) found the missing layer is turning CLAUDE.md's prose conventions into scripts that fail when broken, not more documentation — motivated `check:repo`, CI, `.describe()`-driven `get_schema`, `get_capabilities`, and the AGENTS.md smoke test (issues #5-#16)
+- **Vision judgment upgraded from Sonnet to Opus**: the scan stage's object/shot recognition proved unreliable on the weaker model (content-recognition errors — wrong objects, in-progress pieces read as finished, and some missed face-policy exposures — found during a full re-verification pass). `/episode`'s vision-judgment subagents now run on Opus; a one-off `--reverify` style pass (stronger model re-checks prior judgments against the real frames) is a cheap, high-value safeguard worth keeping.
 
 ## 2026-07-12: title-preview rework, design-system icons, theme/logic bug fixes, coverage + refactor
 
