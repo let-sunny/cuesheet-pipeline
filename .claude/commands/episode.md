@@ -51,8 +51,8 @@ target path you'll use in later steps.
 ### (2) Vision judgment (moments.json)
 
 For each clip in `manifest.json`, spin up **parallel subagents** (model: opus —
-upgraded from sonnet after a real misidentification was found on episode 01's
-opening clips, see `docs/STATUS.md`) to look at the frames and write
+vision object/shot recognition needs the stronger model; a weaker model produced
+unreliable judgments, see `docs/STATUS.md`) to look at the frames and write
 `media/drafts/<slug>/moments.json`. Each subagent
 judges based only on its own clip's `frames` list (path + timestamp), and returns
 a single `ClipMoments` object matching the schema below. Once all are back, merge
