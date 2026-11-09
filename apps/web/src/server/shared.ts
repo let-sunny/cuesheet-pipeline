@@ -75,7 +75,7 @@ export const clipMimeTypes: Record<string, string> = {
  * Lists video files under `dir`, recursing into subfolders - the raw-footage-sorting convention
  * groups clips into `NN_label_date/` event-subfolders rather than a flat folder, and
  * `segment.clip` is written as that relative path (e.g. "001_label_260609/VID_...mp4"). Mirrors
- * @cuesheet/draft's scanFolder() recursion. A leading "_"/"." directory name (e.g. "_미리보기") is
+ * @cuesheet/draft's scanFolder() recursion. A leading "_"/"." directory name (e.g. a preview folder) is
  * skipped - a non-source preview/scratch area, same convention as elsewhere in this pipeline.
  */
 export async function listVideoFilesRecursive(dir: string, relBase = ""): Promise<string[]> {
