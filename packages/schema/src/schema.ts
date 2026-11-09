@@ -109,6 +109,17 @@ export const cropSchema = z
   });
 
 /**
+ * Per-segment forced rotation, clockwise degrees. For a source clip that's genuinely
+ * portrait-oriented (e.g. a phone held upright, 2160x3840) in a landscape project — rotating it
+ * 90/270 turns the content on its side to fill the landscape frame, by the user's own explicit
+ * choice (2026-11-09) for this channel's raw footage, over letterboxing or a crop-to-fill. null/
+ * omitted = no rotation (source orientation as-is, existing behavior). Applied BEFORE crop/scale
+ * in the render filter chain (see packages/render/src/plan.ts) - any crop set alongside a
+ * rotation is relative to the already-rotated frame.
+ */
+export const rotateSchema = z.union([z.literal(90), z.literal(180), z.literal(270)]);
+
+/**
  * Semi-transparent background box behind the subtitle (YouTube's default subtitle
  * style). If omitted/null, there's no background (existing behavior).
  */
@@ -356,6 +367,13 @@ export const segmentSchema = z
       .optional()
       .describe(
         "Per-segment crop as a ratio (0-1) of the source clip's OWN resolution, not the project's - resolution-independent. null/omitted means no crop (source frame used as-is).",
+      ),
+    // Forced clockwise rotation in degrees, applied before crop/scale. null/omitted = no rotation.
+    rotate: rotateSchema
+      .nullable()
+      .optional()
+      .describe(
+        "Forces this segment's source frame to rotate 90/180/270 degrees clockwise before crop/scale - for a portrait-shot clip in a landscape project, turning the content on its side to fill the frame. null/omitted means no rotation (source orientation as-is).",
       ),
     // Partial subtitle style override for this cut only. null/omitted = use global subtitleStyle as-is.
     styleOverride: subtitleStyleOverrideSchema
