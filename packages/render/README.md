@@ -20,13 +20,48 @@ if (cue.ok) {
 CLI (requires ffmpeg):
 
 ```bash
-cuesheet-render project.cuesheet.json out.mp4 [--no-subtitles] [--srt <path>] [--json]
+cuesheet-render project.cuesheet.json out.mp4 [--no-subtitles] [--srt <path>] [--fcpxml <path>] [--json]
 ```
 
 `--json`: on success, emits a single structured result object to stdout —
 `{outputPath, durationS, srtPath}` (`durationS` is probed from the rendered file with ffprobe,
 `srtPath` is `null` unless `--srt` was passed). Human-readable progress/errors always go to
 stderr, `--json` or not, so stdout stays parseable by a script.
+
+## DaVinci Resolve hand-off (FCPXML)
+
+`--fcpxml <path>` writes an FCPXML 1.9 file seeding a Resolve timeline with the cuesheet's cuts
+(clip + in/out + timeline position), then **exits without rendering** (it's a hand-off artifact,
+not a render output — ffmpeg never runs):
+
+```bash
+cuesheet-render episodes/<slug>.cuesheet.json out.mp4 --fcpxml out.fcpxml --srt out.srt
+```
+
+Subtitles are **not** embedded in the FCPXML — import the `--srt` output as a separate subtitle
+track instead. FCPXML title-effect UIDs are fragile across Resolve versions; SRT import is
+universal.
+
+**Sped-up cuts** (`segment.speed !== 1`, e.g. timelapse connectors): FCPXML has no
+generator-portable speed-ramp primitive, so these are placed at their correct OUTPUT timeline
+duration (staying in lockstep with `--srt`'s cumulative timing) but at 1x source speed — the clip
+shows `in .. in + outputDuration` of real-time footage, not the full `in..out` range sped up. The
+CLI lists every affected segment on stderr (clip, speed, in/out) so they can be fixed by hand.
+
+### Importing into Resolve
+
+1. Open or create a Resolve project.
+2. `File > Import > Timeline...` → select the `.fcpxml` file. This creates a new timeline with
+   every cut already placed (clip, in/out, position) — not a blank timeline.
+3. If you also generated an `.srt`, import it separately: `File > Import > Subtitle...` (or drag
+   it onto the timeline). Its timestamps are on the same output timeline as the FCPXML, so it
+   lines up automatically.
+4. For each cut the CLI listed as a manual speed fix: select it on the timeline and apply
+   Resolve's own speed/retime (Inspector → Speed, or right-click → Change Clip Speed) at the
+   listed factor to restore the full sped-up range.
+
+Verified against a real 174-segment episode cuesheet: valid XML, every cut placed at its correct
+position/duration, 8 timelapse cuts correctly flagged for the manual speed-fix step.
 
 ## Behavior
 
