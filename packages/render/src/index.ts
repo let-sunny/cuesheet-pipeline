@@ -3,6 +3,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { validateCueSheet } from "@cuesheet/schema";
+import { buildFcpXml, resolveFcpXmlClipPath } from "./fcpxml.js";
 import { buildRenderPlan } from "./plan.js";
 import type { SourceDimensions } from "./plan.js";
 import { buildSrt } from "./srt.js";
@@ -18,19 +19,26 @@ export interface RenderJsonResult {
 
 /**
  * CLI: reads a cuesheet file, validates it, and renders the final video with ffmpeg.
- * Usage: cuesheet-render [cuesheet.json] [output.mp4] [--no-subtitles] [--srt <path>] [--json]
+ * Usage: cuesheet-render [cuesheet.json] [output.mp4] [--no-subtitles] [--srt <path>] [--fcpxml <path>] [--json]
  * Defaults: project.cuesheet.json -> out.mp4, subtitle burn-in on
  * --no-subtitles: produces a clean video without drawtext (for combining with a CC/SRT track).
  * --srt <path>: also writes an SRT file from the same cuesheet (same logic as web's /api/subtitles.srt).
+ * --fcpxml <path>: writes an FCPXML seeding a DaVinci Resolve timeline with this cuesheet's cuts
+ * (clip + in/out + position), then exits WITHOUT rendering - this is a hand-off format for
+ * finishing the edit in Resolve, not a render output, so it skips ffmpeg entirely. Combine with
+ * --srt to also get a subtitle track Resolve can import alongside it.
  * --json: on success, emits a single structured result object (RenderJsonResult) to stdout —
  * human-readable progress/errors always go to stderr, --json or not, so stdout stays parseable.
  */
 const args = process.argv.slice(2);
 const srtFlagIndex = args.indexOf("--srt");
 const srtOutPath = srtFlagIndex === -1 ? null : (args[srtFlagIndex + 1] ?? null);
-const positional = args.filter(
-  (a, i) => !a.startsWith("--") && (srtFlagIndex === -1 || i !== srtFlagIndex + 1),
+const fcpxmlFlagIndex = args.indexOf("--fcpxml");
+const fcpxmlOutPath = fcpxmlFlagIndex === -1 ? null : (args[fcpxmlFlagIndex + 1] ?? null);
+const flagValueIndices = new Set(
+  [srtFlagIndex, fcpxmlFlagIndex].filter((i) => i !== -1).map((i) => i + 1),
 );
+const positional = args.filter((a, i) => !a.startsWith("--") && !flagValueIndices.has(i));
 const burnSubtitles = !args.includes("--no-subtitles");
 const jsonMode = args.includes("--json");
 const cuePath = positional[0] ?? process.env.CUESHEET_PATH ?? "project.cuesheet.json";
@@ -53,6 +61,38 @@ if (!result.ok) {
 if (srtOutPath !== null) {
   writeFileSync(srtOutPath, buildSrt(result.data), "utf-8");
   console.error(`SRT saved: ${srtOutPath}`);
+}
+
+if (fcpxmlOutPath !== null) {
+  const clipPaths = new Set<string>();
+  if (result.data.intro) clipPaths.add(resolveFcpXmlClipPath(result.data, result.data.intro, "introOutro"));
+  if (result.data.outro) clipPaths.add(resolveFcpXmlClipPath(result.data, result.data.outro, "introOutro"));
+  for (const seg of result.data.segments) {
+    clipPaths.add(resolveFcpXmlClipPath(result.data, seg.clip, "segment"));
+  }
+  const durationsByAbsolutePath: Record<string, number> = {};
+  for (const path of clipPaths) {
+    const durationS = probeDurationS(path);
+    if (durationS === null) {
+      console.error(`Could not probe duration (is ffprobe installed, does the file exist?): ${path}`);
+      process.exit(1);
+    }
+    durationsByAbsolutePath[path] = durationS;
+  }
+  const { xml, manualSpeedFixes } = buildFcpXml(result.data, durationsByAbsolutePath);
+  writeFileSync(fcpxmlOutPath, xml, "utf-8");
+  console.error(`FCPXML saved: ${fcpxmlOutPath}`);
+  if (manualSpeedFixes.length > 0) {
+    console.error(
+      `Note: ${manualSpeedFixes.length} sped-up cut(s) were placed at the correct timeline duration but at 1x source speed (FCPXML has no portable speed-ramp here) - apply Resolve's speed/retime by hand to these:`,
+    );
+    for (const fix of manualSpeedFixes) {
+      console.error(
+        `  segment ${fix.segmentIndex}: ${fix.clip} (${fix.inS}s-${fix.outS}s, ${fix.speed}x)`,
+      );
+    }
+  }
+  process.exit(0);
 }
 
 /** Probes a video file's pixel width/height via ffprobe. Returns null on failure. */
