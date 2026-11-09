@@ -46,6 +46,26 @@ function parseArgs(argv) {
   return { positional, flags };
 }
 
+/**
+ * Lists video files under `dir`, recursing into subfolders - the raw-footage-sorting convention
+ * groups clips into `NN_label_date/` event-subfolders rather than a flat folder. Returns paths
+ * relative to `dir`. Mirrors @cuesheet/draft's scanFolder() recursion (same reasoning, kept
+ * separate here since this is only a pre-check before scanFolder runs for real).
+ */
+function listVideoFilesRecursive(dir, relBase = "") {
+  const out = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith("_") || entry.name.startsWith(".")) continue;
+    const relPath = relBase ? `${relBase}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      out.push(...listVideoFilesRecursive(resolve(dir, entry.name), relPath));
+    } else if (VIDEO_EXTS.has(extname(entry.name).toLowerCase())) {
+      out.push(relPath);
+    }
+  }
+  return out;
+}
+
 /** Converts a folder name into a filesystem/URL-safe slug (keeps Korean characters as-is). */
 function slugify(name) {
   const slug = name
@@ -136,8 +156,7 @@ async function main() {
     process.exit(1);
   }
 
-  const entries = readdirSync(srcDir);
-  const videoFiles = entries.filter((f) => VIDEO_EXTS.has(extname(f).toLowerCase()));
+  const videoFiles = listVideoFilesRecursive(srcDir);
   if (videoFiles.length === 0) {
     console.error(`No video files found: ${srcDir}`);
     process.exit(1);

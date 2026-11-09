@@ -40,9 +40,7 @@ export function intervalFor(durS: number): number {
  * only, probes duration with ffprobe and then extracts frames at a length-based interval.
  */
 export async function scanFolder(srcDir: string, workDir: string): Promise<Manifest> {
-  const names = readdirSync(srcDir)
-    .filter((n) => VIDEO_EXT.test(n))
-    .sort((a, b) => a.localeCompare(b));
+  const names = listVideoFilesRecursive(srcDir).sort((a, b) => a.localeCompare(b));
 
   const evicted: string[] = [];
   const clips: ClipManifest[] = [];
@@ -57,6 +55,8 @@ export async function scanFolder(srcDir: string, workDir: string): Promise<Manif
 
     const durS = await probeDuration(path);
     const interval = intervalFor(durS);
+    // name may contain subfolder segments (the raw-footage-sorting event-subfolder
+    // convention) - mkdirSync(recursive:true) mirrors that nesting under frames/.
     const clipFramesDir = join(framesRoot, name.replace(VIDEO_EXT, ""));
     mkdirSync(clipFramesDir, { recursive: true });
 
@@ -70,6 +70,27 @@ export async function scanFolder(srcDir: string, workDir: string): Promise<Manif
   }
 
   return { clips, evicted };
+}
+
+/**
+ * Lists video files under `dir`, recursing into subfolders (the raw-footage-sorting convention
+ * groups clips into `NN_label_date/` event-subfolders rather than a flat folder), and returns
+ * each as a path relative to `dir` using "/" separators (e.g. "001_label_260609/VID_...mp4").
+ * A leading "_" directory name (e.g. a preview/scratch folder) is skipped - a non-source area,
+ * same convention as elsewhere in this pipeline.
+ */
+function listVideoFilesRecursive(dir: string, relBase = ""): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith("_") || entry.name.startsWith(".")) continue;
+    const relPath = relBase ? `${relBase}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      out.push(...listVideoFilesRecursive(join(dir, entry.name), relPath));
+    } else if (VIDEO_EXT.test(entry.name)) {
+      out.push(relPath);
+    }
+  }
+  return out;
 }
 
 /**
