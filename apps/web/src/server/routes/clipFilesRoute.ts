@@ -1,7 +1,7 @@
-import { readFile, readdir, stat } from "node:fs/promises";
-import { extname, resolve } from "node:path";
+import { readFile, stat } from "node:fs/promises";
+import { resolve } from "node:path";
 import type { ViteDevServer } from "vite";
-import { clipMimeTypes, probeDurationSeconds, resolveRepoPath, sendJson } from "../shared.js";
+import { listVideoFilesRecursive, probeDurationSeconds, resolveRepoPath, sendJson } from "../shared.js";
 
 /**
  * Registers /api/clip-files: the list of video files inside clipDir (+ffprobe duration), for
@@ -27,9 +27,9 @@ export function registerClipFilesRoute(server: ViteDevServer, filePath: string):
       sendJson(res, 200, { files: [], note: "clipDir is not set" });
       return;
     }
-    let entries: string[];
+    let videoNames: string[];
     try {
-      entries = await readdir(clipDir);
+      videoNames = (await listVideoFilesRecursive(clipDir)).sort((a, b) => a.localeCompare(b));
     } catch {
       sendJson(res, 200, {
         files: [],
@@ -37,9 +37,6 @@ export function registerClipFilesRoute(server: ViteDevServer, filePath: string):
       });
       return;
     }
-    const videoNames = entries
-      .filter((name) => clipMimeTypes[extname(name).toLowerCase()] !== undefined)
-      .sort((a, b) => a.localeCompare(b));
     const files = await Promise.all(
       videoNames.map(async (name) => {
         const p = resolve(clipDir, name);

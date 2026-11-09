@@ -71,6 +71,29 @@ export const clipMimeTypes: Record<string, string> = {
   ".m4v": "video/x-m4v",
 };
 
+/**
+ * Lists video files under `dir`, recursing into subfolders - the raw-footage-sorting convention
+ * groups clips into `NN_label_date/` event-subfolders rather than a flat folder, and
+ * `segment.clip` is written as that relative path (e.g. "001_label_260609/VID_...mp4"). Mirrors
+ * @cuesheet/draft's scanFolder() recursion. A leading "_"/"." directory name (e.g. "_미리보기") is
+ * skipped - a non-source preview/scratch area, same convention as elsewhere in this pipeline.
+ */
+export async function listVideoFilesRecursive(dir: string, relBase = ""): Promise<string[]> {
+  const { readdir } = await import("node:fs/promises");
+  const out: string[] = [];
+  const entries = await readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    if (entry.name.startsWith("_") || entry.name.startsWith(".")) continue;
+    const relPath = relBase ? `${relBase}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      out.push(...(await listVideoFilesRecursive(resolve(dir, entry.name), relPath)));
+    } else if (clipMimeTypes[entry.name.slice(entry.name.lastIndexOf(".")).toLowerCase()] !== undefined) {
+      out.push(relPath);
+    }
+  }
+  return out;
+}
+
 export const narrationAudioMimeTypes: Record<string, string> = {
   ".mp3": "audio/mpeg",
   ".m4a": "audio/mp4",
