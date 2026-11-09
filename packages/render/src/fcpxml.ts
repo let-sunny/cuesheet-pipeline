@@ -47,11 +47,7 @@ export function buildFcpXml(cue: CueSheet, durationsByAbsolutePath: Record<strin
     const existing = assets.get(absolutePath);
     if (existing) return existing.id;
     const id = `r${assets.size + 2}`; // r1 is the format resource
-    // Images start at 0 regardless of any probed/placeholder value in durationsByAbsolutePath -
-    // ffprobe reports near-zero bogus "duration" for a still, and any caller-supplied stand-in
-    // would reintroduce the Media Offline bug this guards against (see pushClip below). Only
-    // actual usage grows an image's declared duration.
-    const durationS = isImagePath(absolutePath) ? 0 : (durationsByAbsolutePath[absolutePath] ?? 0);
+    const durationS = durationsByAbsolutePath[absolutePath] ?? 0;
     assets.set(absolutePath, { id, path: absolutePath, durationS });
     return id;
   };
@@ -62,15 +58,6 @@ export function buildFcpXml(cue: CueSheet, durationsByAbsolutePath: Record<strin
 
   const pushClip = (absolutePath: string, name: string, startS: number, outputDurationS: number) => {
     const id = assetIdFor(absolutePath);
-    // A still image has no real "frame count" - declaring a large nominal duration (the usual
-    // Final Cut convention for an infinitely-holdable photo) makes Resolve's FCPXML importer
-    // treat it as an image SEQUENCE spanning that many numbered frames, so everything past frame
-    // 1 shows Media Offline. Keep an image asset's declared duration pinned to exactly what's
-    // used (the furthest start+duration any asset-clip actually requests from it).
-    if (isImagePath(absolutePath)) {
-      const asset = assets.get(absolutePath)!;
-      asset.durationS = Math.max(asset.durationS, startS + outputDurationS);
-    }
     clipItems.push(
       `        <asset-clip ref="${id}" name="${escapeXml(name)}" offset="${toTime(cursorS)}" start="${toTime(startS)}" duration="${toTime(outputDurationS)}"/>`,
     );
@@ -103,21 +90,32 @@ export function buildFcpXml(cue: CueSheet, durationsByAbsolutePath: Record<strin
   }
 
   const totalDurationS = cursorS;
+  const hasImageAsset = [...assets.keys()].some(isImagePath);
+  // A still has no inherent frame rate. Final Cut (and Resolve reading its FCPXML) distinguishes
+  // "video with N real frames" from "photo, hold any duration" by whether the asset's format has
+  // a frameDuration at all - give one anyway and declare a frame-count duration on the asset, and
+  // Resolve's importer reads that as an IMAGE SEQUENCE spanning that many numbered source files
+  // (confirmed visually: it relabeled a photo "IMG_[4418-4492].jpg" - frame 4418 through
+  // 4418+75 - and showed everything past the first real file as Media Offline, independent of
+  // what duration value was declared). Photos get their own frameDuration-less format and
+  // duration="0s"; only the <asset-clip> on the timeline says how long to hold it.
   const assetResources = [...assets.values()]
     .map((a) => {
-      // Still images (jpg/png/heic/...) have no audio stream - declaring hasAudio="1" on one
-      // makes Resolve's FCPXML importer look for an audio component that doesn't exist, which
-      // shows the asset as Media Offline. Videos keep both flags.
-      const audioFlag = isImagePath(a.path) ? "" : ` hasAudio="1"`;
-      return `    <asset id="${a.id}" name="${escapeXml(basename(a.path))}" src="file://${encodeFilePath(a.path)}" start="0s" duration="${toTime(a.durationS)}" hasVideo="1"${audioFlag} format="r1"/>`;
+      if (isImagePath(a.path)) {
+        return `    <asset id="${a.id}" name="${escapeXml(basename(a.path))}" src="file://${encodeFilePath(a.path)}" start="0s" duration="0s" hasVideo="1" format="rimg"/>`;
+      }
+      return `    <asset id="${a.id}" name="${escapeXml(basename(a.path))}" src="file://${encodeFilePath(a.path)}" start="0s" duration="${toTime(a.durationS)}" hasVideo="1" hasAudio="1" format="r1"/>`;
     })
     .join("\n");
+  const imageFormatResource = hasImageAsset
+    ? `\n    <format id="rimg" name="FFVideoFormatRateUndefined" width="${cue.project.width}" height="${cue.project.height}"/>`
+    : "";
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE fcpxml>
 <fcpxml version="1.9">
   <resources>
-    <format id="r1" name="FFVideoFormat${cue.project.height}p${fps}" frameDuration="1/${fps}s" width="${cue.project.width}" height="${cue.project.height}"/>
+    <format id="r1" name="FFVideoFormat${cue.project.height}p${fps}" frameDuration="1/${fps}s" width="${cue.project.width}" height="${cue.project.height}"/>${imageFormatResource}
 ${assetResources}
   </resources>
   <library>
