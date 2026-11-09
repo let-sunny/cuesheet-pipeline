@@ -127,6 +127,31 @@ mechanism (domain-independent):
    `qualityBoosts` (per narrative-prompt.md). Refine each event's timestamp by re-checking
    frames near its `atS` (grid is +-60s; re-extract at 15s intervals in just that range).
 
+### (2.6) Paper edit (story structure, before assemble)
+
+Before assemble picks cuts mechanically from quality scores alone, draft the episode's story
+structure in writing and get the user's confirmation. There's no dialogue to work from, but
+step (2)'s `moments.json` memos already describe every screen in order - that's this step's
+transcript substitute (the same "paper edit" technique documentary editors use, applied to
+vision memos instead of a transcript).
+
+1. Read every clip's `clipSummary` + `moments[].memo` from `moments.json`, in manifest (script)
+   order.
+2. If a personal wiki is set up for this channel (e.g. a sibling repo with a shooting-plan
+   page defining the channel's structure), read it and follow its structure. Otherwise default
+   to: opening hook -> one beat per distinct project/subject -> closing.
+3. Draft `media/drafts/<slug>/paper-edit.md`: name each beat and list the approximate clip
+   range(s)/timestamps it covers, plus any beats that look over-long relative to the others
+   (with reasoning) as a trim candidate.
+4. **Show the draft to the user and get confirmation before continuing to assemble.** This is a
+   direction/judgment call (what story this episode tells), not a reversible mechanical step -
+   per CLAUDE.md's autonomy principle, this is a check-first point, not an autonomous one.
+
+**v1 scope note**: this step is advisory - assemble (step 3) isn't wired to consume the paper
+edit's beat boundaries mechanically yet, it still adopts quality>=3 moments the same way it
+always has. The paper edit catches structural problems (an over-long non-core beat, a missing
+project) before they reach the cuesheet, rather than reshaping assemble's own cut selection.
+
 ### (3) Assemble
 
 First confirm the build is current (if you touched draft source code just before
