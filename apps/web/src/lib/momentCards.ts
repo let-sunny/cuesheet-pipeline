@@ -1,7 +1,7 @@
 import type { Segment } from "@cuesheet/schema";
 import type { BadgeVariant } from "@astryxdesign/core/Badge";
 import type { ClipMoments, ShotType } from "../api.js";
-import { baseName, stem } from "../clipPaths.js";
+import { stem } from "../clipPaths.js";
 import { categoryBadgeVariant } from "./domainConfig.js";
 import type { DomainConfig } from "./domainConfig.js";
 
@@ -34,8 +34,16 @@ export type StatusFilter = "all" | "in-use" | "excluded";
 export function buildCards(entries: ClipMoments[], config: DomainConfig): MomentCard[] {
   const list: MomentCard[] = [];
   for (const entry of entries) {
-    const clipFileName = baseName(entry.clip);
-    const clipFolder = stem(clipFileName);
+    // clipFileName carries the FULL relative path (entry.clip), not just its basename - it's
+    // matched against segment.clip (computeInUseCutNumbers below) and assigned directly as a new
+    // segment's clip field (MomentPalette's handleAdd), both of which always include the
+    // raw-footage-sorting event-subfolder prefix now (e.g. "001_label_260609/VID_...mp4"). A
+    // basename-only identity silently matched nothing (every "in use" count read 0) and would
+    // have created unresolvable segments on Add. clipFolder mirrors scan.ts's own frame-folder
+    // naming (the full path with its extension stripped, nested subfolder included) so draft-
+    // frame thumbnail lookups (MomentPalette's /draft-frames/<clipFolder>/...) resolve correctly.
+    const clipFileName = entry.clip;
+    const clipFolder = stem(entry.clip);
     for (const m of entry.moments) {
       list.push({
         key: `${clipFileName}::m::${m.inS}::${m.outS}`,

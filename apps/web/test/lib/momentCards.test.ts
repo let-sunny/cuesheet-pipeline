@@ -22,7 +22,7 @@ function seg(overrides: Partial<Segment> = {}): Segment {
 
 const fixtures: ClipMoments[] = [
   {
-    clip: "/clips/a.mp4",
+    clip: "a.mp4",
     clipSummary: "a knitting long-take with a cat cameo",
     moments: [
       { inS: 10, outS: 13, shotType: "hand-closeup", memo: "knitting a sleeve", quality: 4 },
@@ -78,7 +78,7 @@ describe("buildCards", () => {
   it("clamps the representative window inside a monotonousRange shorter than 3s", () => {
     const shortRangeFixture: ClipMoments[] = [
       {
-        clip: "/clips/b.mp4",
+        clip: "b.mp4",
         clipSummary: "short clip",
         moments: [],
         monotonousRanges: [{ startS: 10, endS: 11, desc: "short" }],
@@ -87,6 +87,38 @@ describe("buildCards", () => {
     const [card] = buildCards(shortRangeFixture, config);
     expect(card?.inS).toBe(10); // midpoint(10.5)-1.5=9 clamped up to startS=10
     expect(card?.outS).toBe(11); // midpoint(10.5)+1.5=12 clamped down to endS=11
+  });
+});
+
+describe("buildCards with a raw-footage-sorting event-subfolder clip path", () => {
+  // Regression: entry.clip is now "001_label_260609/VID_...mp4" (the subfolder is part of the
+  // clip identity, not just a display detail) - clipFileName/clipFolder used to strip it down to
+  // the basename, which broke matching against segment.clip (always the full path too) and would
+  // have assigned a new segment an unresolvable clip on Add.
+  const subfolderFixtures: ClipMoments[] = [
+    {
+      clip: "001_label_260609/VID_20260609_224617_001.mp4",
+      clipSummary: "a clip inside an event-subfolder",
+      moments: [{ inS: 0, outS: 3, shotType: "hand-closeup", memo: "knitting", quality: 4 }],
+      monotonousRanges: [],
+    },
+  ];
+
+  it("keeps the full relative path (including the subfolder) as clipFileName, not just the basename", () => {
+    const [card] = buildCards(subfolderFixtures, config);
+    expect(card?.clipFileName).toBe("001_label_260609/VID_20260609_224617_001.mp4");
+  });
+
+  it("derives clipFolder as the full path with only the extension stripped (matches scan.ts's nested frame-folder naming)", () => {
+    const [card] = buildCards(subfolderFixtures, config);
+    expect(card?.clipFolder).toBe("001_label_260609/VID_20260609_224617_001");
+  });
+
+  it("computeInUseCutNumbers matches a segment whose clip is the same full subfolder-prefixed path", () => {
+    const cards = buildCards(subfolderFixtures, config);
+    const segments = [seg({ clip: "001_label_260609/VID_20260609_224617_001.mp4", in: 0, out: 3 })];
+    const map = computeInUseCutNumbers(cards, segments);
+    expect(map.get(cards[0]!.key)).toBe(1);
   });
 });
 
