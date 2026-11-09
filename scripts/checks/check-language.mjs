@@ -87,6 +87,7 @@ const LANGUAGE_ALLOWLIST = new Set([
   // generation.
   "packages/render/test/plan.test.ts",
   "packages/render/test/srt.test.ts",
+  "packages/render/test/fcpxml.test.ts",
 
   // Korean regex keywords used to categorize commit-log entries by pipeline stage.
   "scripts/token-usage-report.mjs",
