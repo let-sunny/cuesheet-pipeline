@@ -188,6 +188,60 @@ describe("buildRenderPlan", () => {
     );
   });
 
+  it("produces an identical filter chain when rotate is absent (no transpose/flip filter)", () => {
+    const withRotateField = buildRenderPlan(make(), "out.mp4");
+    const withoutRotateField = buildRenderPlan(make(), "out.mp4");
+    expect(withRotateField.filterComplex).toEqual(withoutRotateField.filterComplex);
+    expect(withRotateField.filterComplex).not.toMatch(/transpose=|hflip|vflip/);
+  });
+
+  it("inserts transpose=1 (90 CW) before crop/scale for rotate:90", () => {
+    const p = buildRenderPlan(
+      make({ segments: [{ clip: "a.mp4", in: 0, out: 5, speed: 1, volume: 1, subtitle: "", rotate: 90 }] }),
+      "out.mp4",
+    );
+    expect(p.filterComplex).toContain("setpts=PTS-STARTPTS,transpose=1,scale=1920:1080");
+  });
+
+  it("inserts transpose=2 (270 CW, i.e. 90 CCW) for rotate:270", () => {
+    const p = buildRenderPlan(
+      make({ segments: [{ clip: "a.mp4", in: 0, out: 5, speed: 1, volume: 1, subtitle: "", rotate: 270 }] }),
+      "out.mp4",
+    );
+    expect(p.filterComplex).toContain("setpts=PTS-STARTPTS,transpose=2,scale=1920:1080");
+  });
+
+  it("inserts hflip,vflip for rotate:180 (no single-pass transpose equivalent)", () => {
+    const p = buildRenderPlan(
+      make({ segments: [{ clip: "a.mp4", in: 0, out: 5, speed: 1, volume: 1, subtitle: "", rotate: 180 }] }),
+      "out.mp4",
+    );
+    expect(p.filterComplex).toContain("setpts=PTS-STARTPTS,hflip,vflip,scale=1920:1080");
+  });
+
+  it("applies rotate before crop, so crop coordinates are relative to the rotated frame", () => {
+    const p = buildRenderPlan(
+      make({
+        segments: [
+          {
+            clip: "a.mp4",
+            in: 0,
+            out: 5,
+            speed: 1,
+            volume: 1,
+            subtitle: "",
+            rotate: 90,
+            crop: { x: 0, y: 0.25, w: 0.75, h: 0.75 },
+          },
+        ],
+      }),
+      "out.mp4",
+    );
+    expect(p.filterComplex).toContain(
+      "setpts=PTS-STARTPTS,transpose=1,crop=w=iw*0.75:h=ih*0.75:x=iw*0:y=ih*0.25,scale=1920:1080",
+    );
+  });
+
   it("passes when sourceDimensions is given and the actual source ratio matches the project ratio", () => {
     const cue = make({
       segments: [

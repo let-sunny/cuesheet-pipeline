@@ -12,6 +12,7 @@ import { TitleOverlay } from "../TitleOverlay/index.js";
 import { captureFrame, fetchProxyStatus, type ClipMoments, type ProxyStatus } from "../../api.js";
 import { clamp } from "../../lib/clamp.js";
 import { cropPreviewStyle } from "../../lib/cropPreview.js";
+import { nextRotate, rotatePreviewStyle } from "../../lib/rotatePreview.js";
 import { useCropEditor } from "../../hooks/useCropEditor.js";
 import { useDomainConfig } from "../../hooks/useDomainConfig.js";
 import { MAX_PLAYBACK_RATE, useShuttle } from "../../hooks/useShuttle.js";
@@ -130,6 +131,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
 
   const { cropEditDraft, lockRatio, updateCropDraft, startCropEdit, applyCropEdit, cancelCropEdit, resetCropEditToFullFrame, clearCropEdit } =
     useCropEditor({ segment, projectWidth, projectHeight, naturalSize, onChange });
+  const rotatePreview = rotatePreviewStyle(segment?.rotate, projectWidth, projectHeight);
   const { shuttleForward, shuttleBackward, shuttleStop, resetShuttle } = useShuttle({
     getVideo: () => videoRef.current,
     bounds: segment,
@@ -500,7 +502,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
               </div>
             </div>
           ) : null}
-          <div {...stylex.props(styles.cropFrame)} ref={cropFrameRef}>
+          <div {...stylex.props(styles.cropFrame)} ref={cropFrameRef} style={rotatePreview.frame}>
             <video
               key={`${segment.clip}:${reloadToken}`}
               ref={videoRef}
@@ -521,6 +523,7 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
                   ? undefined
                   : {
                       ...cropPreviewStyle(segment.crop),
+                      ...rotatePreview.video,
                       // Preview approximation of transitionIn/transitionOut (PRD backlog #3) - see
                       // lib/transitionOverlay.ts's module doc for why this isn't pixel-exact with
                       // the real render.
@@ -672,6 +675,20 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, Props>(function Video
                 size="sm"
                 onClick={startCropEdit}
                 data-testid="video-control-reframe"
+              />
+            ) : null}
+            {/* Forces a portrait (or otherwise misoriented) source clip onto its side to fill the
+                landscape project frame (user decision, 2026-11-09 - see rotateSchema's doc comment)
+                - cycles null -> 90 -> 180 -> 270 -> null on each click, same low-friction toggle
+                pattern as a cut-settings cycling control elsewhere in this app. */}
+            {!cropEditDraft ? (
+              <Button
+                label={segment.rotate ? `Rotated ${segment.rotate}°` : "Rotate"}
+                variant="secondary"
+                size="sm"
+                onClick={() => onChange({ rotate: nextRotate(segment.rotate) })}
+                tooltip="Forces this clip onto its side (90/180/270) to fill the landscape frame - for a portrait-shot source"
+                data-testid="video-control-rotate"
               />
             ) : null}
           </div>

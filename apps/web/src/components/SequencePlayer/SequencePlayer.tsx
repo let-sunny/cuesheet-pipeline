@@ -8,6 +8,7 @@ import { IconButton } from "@astryxdesign/core/IconButton";
 import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import { ChevronFirst, Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { cropPreviewStyle } from "../../lib/cropPreview.js";
+import { rotatePreviewStyle } from "../../lib/rotatePreview.js";
 import { TitleOverlay } from "../TitleOverlay/index.js";
 import type { ClipMoments, NarrationFile } from "../../api.js";
 import { matchSceneInfo } from "../../lib/sceneInfo.js";
@@ -350,6 +351,11 @@ export const SequencePlayer = forwardRef<SequencePlayerHandle, Props>(function S
   const frontStyle = currentSegment
     ? {
         ...cropPreviewStyle(currentSegment.crop),
+        // `stage` (below) is always a fixed 16:9 box regardless of rotate, so only the `video`
+        // half of rotatePreviewStyle applies here - unlike VideoPreview's cropFrame, stage's box
+        // is already definite (fixed aspectRatio), never needing the `frame` (containerType)
+        // treatment.
+        ...rotatePreviewStyle(currentSegment.rotate, projectWidth, projectHeight).video,
         opacity: transitionOpacity(
           currentSegment.transitionIn,
           currentSegment.transitionOut,

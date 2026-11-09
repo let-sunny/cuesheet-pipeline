@@ -105,6 +105,40 @@ describe("validateCueSheet - pass cases", () => {
     }
   });
 
+  it("passes and echoes back a valid rotate value (90/180/270)", () => {
+    for (const rotate of [90, 180, 270] as const) {
+      const input = {
+        ...(sample as Record<string, unknown>),
+        segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", rotate }],
+      };
+      const result = validateCueSheet(input);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.data.segments[0]?.rotate).toBe(rotate);
+      }
+    }
+  });
+
+  it("fails on a rotate value other than 90/180/270", () => {
+    const input = {
+      ...(sample as Record<string, unknown>),
+      segments: [{ clip: "a.mp4", in: 0, out: 1, subtitle: "", rotate: 45 }],
+    };
+    const result = validateCueSheet(input);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.errors.some((e) => e.startsWith("segments[0].rotate"))).toBe(true);
+    }
+  });
+
+  it("an existing cuesheet without rotate (omitted) remains valid", () => {
+    const result = validateCueSheet(sample);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.segments[0]?.rotate).toBeUndefined();
+    }
+  });
+
   it("an existing cuesheet without segment.styleOverride (omitted) remains valid", () => {
     const result = validateCueSheet(sample);
     expect(result.ok).toBe(true);
