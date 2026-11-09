@@ -400,7 +400,7 @@ function runRenderCheck(workDir) {
     return;
   }
   const parsed = JSON.parse(result.stdout.trim().split("\n").filter(Boolean)[0] ?? "{}");
-  if (Object.keys(parsed).sort().join(",") !== ["outputPath", "durationS", "srtPath"].sort().join(",")) {
+  if (Object.keys(parsed).sort().join(",") !== ["outputPath", "durationS", "srtPath", "assPath"].sort().join(",")) {
     violations.push(`cuesheet-render --json envelope keys drifted: got ${JSON.stringify(Object.keys(parsed))}`);
   }
   if (!existsSync(outPath) || !existsSync(srtPath)) {

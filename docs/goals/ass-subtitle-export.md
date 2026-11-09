@@ -37,7 +37,7 @@ Out:
   hard-to-reverse action into a protected branch, and the standing draft-first rule has the
   user review before ready. Autonomy here means driving CI to green and fixing failures, not
   merging.
-- "카페인 다되면 잠자기모드해도됨" = keep-awake expiring is fine; no need to hold the machine
+- The user said it's fine for the machine's keep-awake/caffeinate to expire and let it sleep while this runs; no need to hold the machine
   awake indefinitely polling CI.
 
 ## Completion criteria

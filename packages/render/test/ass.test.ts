@@ -10,9 +10,9 @@ function make(overrides: Record<string, unknown> = {}): CueSheet {
     intro: null,
     outro: null,
     segments: [
-      { clip: "a.mp4", in: 0, out: 5, speed: 1, volume: 1, subtitle: "안녕하세요" },
+      { clip: "a.mp4", in: 0, out: 5, speed: 1, volume: 1, subtitle: "hello there" },
       { clip: "b.mp4", in: 2, out: 6, speed: 1.5, volume: 0.3, subtitle: "" },
-      { clip: "c.mp4", in: 0, out: 4, speed: 2, volume: 1, subtitle: "빠른 컷: 100%" },
+      { clip: "c.mp4", in: 0, out: 4, speed: 2, volume: 1, subtitle: "fast cut: 100%" },
     ],
     bgm: [],
     subtitleStyle: {
@@ -63,7 +63,7 @@ describe("buildAss", () => {
 
   it("preserves text as-is aside from brace-stripping (no colon escaping needed, unlike drawtext)", () => {
     const ass = buildAss(make());
-    expect(ass).toContain("빠른 컷: 100%");
+    expect(ass).toContain("fast cut: 100%");
   });
 
   it("dedupes identical resolved styles into a single named Style referenced by every matching Dialogue line", () => {
