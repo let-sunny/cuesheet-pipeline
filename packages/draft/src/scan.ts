@@ -75,8 +75,8 @@ export async function scanFolder(srcDir: string, workDir: string): Promise<Manif
 /**
  * Lists video files under `dir`, recursing into subfolders (the raw-footage-sorting convention
  * groups clips into `NN_label_date/` event-subfolders rather than a flat folder), and returns
- * each as a path relative to `dir` using "/" separators (e.g. "001_부클반팔_260609/VID_...mp4").
- * A leading "_" directory name (e.g. "_미리보기") is skipped - a non-source preview/scratch area,
+ * each as a path relative to `dir` using "/" separators (e.g. "001_label_260609/VID_...mp4").
+ * A leading "_" directory name (e.g. a preview/scratch folder) is skipped - a non-source area,
  * same convention as elsewhere in this pipeline.
  */
 function listVideoFilesRecursive(dir: string, relBase = ""): string[] {

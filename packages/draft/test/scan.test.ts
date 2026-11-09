@@ -56,7 +56,7 @@ describe("scanFolder with event-subfolders", () => {
     workDir = mkdtempSync(join(tmpdir(), "cuesheet-draft-scan-nested-work-"));
 
     mkdirSync(join(srcDir, "01_label_260609"), { recursive: true });
-    mkdirSync(join(srcDir, "_미리보기"), { recursive: true });
+    mkdirSync(join(srcDir, "_preview"), { recursive: true });
 
     execFileSync(
       "ffmpeg",
@@ -72,7 +72,7 @@ describe("scanFolder with event-subfolders", () => {
     );
     execFileSync(
       "ffmpeg",
-      ["-y", "-f", "lavfi", "-i", "testsrc=duration=3:size=64x36:rate=10", join(srcDir, "_미리보기", "preview.mp4")],
+      ["-y", "-f", "lavfi", "-i", "testsrc=duration=3:size=64x36:rate=10", join(srcDir, "_preview", "preview.mp4")],
       { stdio: "ignore" },
     );
   });
