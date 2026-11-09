@@ -91,10 +91,13 @@ export function buildFcpXml(cue: CueSheet, durationsByAbsolutePath: Record<strin
 
   const totalDurationS = cursorS;
   const assetResources = [...assets.values()]
-    .map(
-      (a) =>
-        `    <asset id="${a.id}" name="${escapeXml(basename(a.path))}" src="file://${encodeFilePath(a.path)}" start="0s" duration="${toTime(a.durationS)}" hasVideo="1" hasAudio="1" format="r1"/>`,
-    )
+    .map((a) => {
+      // Still images (jpg/png/heic/...) have no audio stream - declaring hasAudio="1" on one
+      // makes Resolve's FCPXML importer look for an audio component that doesn't exist, which
+      // shows the asset as Media Offline. Videos keep both flags.
+      const audioFlag = isImagePath(a.path) ? "" : ` hasAudio="1"`;
+      return `    <asset id="${a.id}" name="${escapeXml(basename(a.path))}" src="file://${encodeFilePath(a.path)}" start="0s" duration="${toTime(a.durationS)}" hasVideo="1"${audioFlag} format="r1"/>`;
+    })
     .join("\n");
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -126,6 +129,13 @@ ${clipItems.join("\n")}
 function secondsToFcpTime(seconds: number, fps: number): string {
   const frames = Math.max(0, Math.round(seconds * fps));
   return `${frames}/${fps}s`;
+}
+
+const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".heic", ".heif", ".bmp", ".gif", ".tiff", ".tif"]);
+
+function isImagePath(path: string): boolean {
+  const ext = path.slice(path.lastIndexOf(".")).toLowerCase();
+  return IMAGE_EXTENSIONS.has(ext);
 }
 
 function escapeXml(text: string): string {

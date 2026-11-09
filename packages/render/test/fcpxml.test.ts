@@ -76,6 +76,15 @@ describe("buildFcpXml", () => {
     expect(xml).toContain("file:///raw%20%ED%8F%B4%EB%8D%94/a.mp4");
   });
 
+  it("omits hasAudio on a still-image asset (jpg has no audio stream) but keeps it on video assets", () => {
+    const cue = make({ segments: [{ clip: "photo.jpg", in: 0, out: 2, speed: 1, volume: 1, subtitle: "" }] });
+    const { xml } = buildFcpXml(cue, { "/clips/photo.jpg": 2 });
+    expect(xml).toContain('name="photo.jpg" src="file:///clips/photo.jpg" start="0s" duration="60/30s" hasVideo="1" format="r1"');
+    expect(xml).not.toMatch(/photo\.jpg.*hasAudio/);
+    const { xml: videoXml } = buildFcpXml(make(), durations);
+    expect(videoXml).toContain('hasVideo="1" hasAudio="1" format="r1"');
+  });
+
   it("includes intro/outro as additional clips at the start/end when present", () => {
     const cue = make({ intro: "/media/intro.mp4", outro: "/media/outro.mp4" });
     const { xml } = buildFcpXml(cue, { ...durations, "/media/intro.mp4": 3, "/media/outro.mp4": 2 });
