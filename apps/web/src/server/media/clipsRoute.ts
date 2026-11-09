@@ -1,8 +1,8 @@
 import { readFile, stat } from "node:fs/promises";
 import { createReadStream, existsSync } from "node:fs";
-import { basename, extname, resolve } from "node:path";
+import { extname, resolve } from "node:path";
 import type { ViteDevServer } from "vite";
-import { clipMimeTypes, resolveRepoPath } from "../shared.js";
+import { clipMimeTypes, isWithin, resolveRepoPath } from "../shared.js";
 import { proxyDir, proxyFileName } from "./proxyGeneration.js";
 
 /**
@@ -17,8 +17,11 @@ export function registerClipsRoute(server: ViteDevServer, filePath: string): voi
     // corrupted video.
     res.setHeader("Cache-Control", "no-cache");
     const [rawPath = "", rawQuery = ""] = (req.url ?? "").split("?");
+    // decoded may contain the raw-footage-sorting event-subfolder segment (e.g.
+    // "001_label_260609/VID_...mp4"), not just a bare filename - only reject empty input here;
+    // the real traversal guard is the isWithin(clipDir, ...) check below, once clipDir is known.
     const decoded = decodeURIComponent(rawPath.replace(/^\/+/, ""));
-    if (!decoded || decoded !== basename(decoded)) {
+    if (!decoded) {
       res.statusCode = 400;
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.end("Invalid filename");
@@ -43,6 +46,12 @@ export function registerClipsRoute(server: ViteDevServer, filePath: string): voi
     }
 
     const originalPath = resolve(clipDir, decoded);
+    if (!isWithin(clipDir, originalPath)) {
+      res.statusCode = 400;
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.end("Invalid filename");
+      return;
+    }
     const proxyPath = resolve(proxyDir, proxyFileName(decoded));
 
     let clipPath: string;

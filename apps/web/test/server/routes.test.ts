@@ -192,19 +192,40 @@ describe("routes", () => {
       expect(res.status).toBe(400);
       const body = (await res.json()) as { ok: boolean; error: string };
       expect(body.ok).toBe(false);
-      expect(body.error).toMatch(/plain file name/);
+      expect(body.error).toMatch(/clip query parameter is required/);
     });
 
-    it("rejects a path-traversal clip filename", async () => {
+    it("rejects a path-traversal clip filename (resolves outside clipDir)", async () => {
+      const clipDir = mkdtempSync(join(tmpdir(), "cuesheet-web-clips-"));
+      writeFileSync(cuesheetPath, JSON.stringify(makeCueSheet({ clipDir })));
       const { baseUrl } = await start();
 
       const res = await fetch(
-        `${baseUrl}/api/frame-capture?clip=${encodeURIComponent("../evil.mp4")}&atS=1`,
+        `${baseUrl}/api/frame-capture?clip=${encodeURIComponent("../../etc/passwd")}&atS=1`,
       );
 
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(404);
       const body = (await res.json()) as { ok: boolean; error: string };
-      expect(body.error).toMatch(/plain file name/);
+      expect(body.error).toMatch(/Clip not found/);
+    });
+
+    it("accepts a clip path that includes a raw-footage-sorting event-subfolder segment", async () => {
+      const clipDir = mkdtempSync(join(tmpdir(), "cuesheet-web-clips-"));
+      mkdirSync(join(clipDir, "001_label_260609"), { recursive: true });
+      const clipPath = join(clipDir, "001_label_260609", "sample.mp4");
+      execFileSync(
+        "ffmpeg",
+        ["-y", "-f", "lavfi", "-i", "testsrc2=size=320x240:rate=10:duration=2", clipPath],
+        { stdio: "ignore" },
+      );
+      writeFileSync(cuesheetPath, JSON.stringify(makeCueSheet({ clipDir })));
+      const { baseUrl } = await start();
+
+      const res = await fetch(
+        `${baseUrl}/api/frame-capture?clip=${encodeURIComponent("001_label_260609/sample.mp4")}&atS=0.5`,
+      );
+
+      expect(res.status).toBe(200);
     });
 
     it("rejects a negative atS", async () => {

@@ -1,13 +1,19 @@
-import { stat, mkdir, rename, readdir, rm } from "node:fs/promises";
+import { stat, mkdir, rename, rm } from "node:fs/promises";
 import { basename, extname, resolve } from "node:path";
-import { clipMimeTypes, probeDurationSeconds, repoRoot, runFfmpeg } from "../shared.js";
+import { listVideoFilesRecursive, probeDurationSeconds, repoRoot, runFfmpeg } from "../shared.js";
 
 // Storage location for 720p H.264 preview proxies, for originals (e.g. 4K HEVC) the browser can't play.
 export const proxyDir = resolve(repoRoot, "media/proxies");
 
-// A proxy's file name is the original file name with only the extension unified to .mp4.
-export function proxyFileName(originalName: string): string {
-  return `${basename(originalName, extname(originalName))}.mp4`;
+/**
+ * A proxy's file name is the original's relative path (which may include a raw-footage-sorting
+ * event-subfolder segment, e.g. "001_label_260609/VID_...mp4") flattened into a single safe
+ * filename, extension unified to .mp4. Flattening on the full relative path (not just basename)
+ * avoids collisions between same-named files in different event-subfolders.
+ */
+export function proxyFileName(originalRelativePath: string): string {
+  const withoutExt = originalRelativePath.slice(0, originalRelativePath.length - extname(originalRelativePath).length);
+  return `${withoutExt.replace(/[/\\]/g, "__")}.mp4`;
 }
 
 export interface ProxyQueueState {
@@ -33,14 +39,12 @@ export function getProxyQueueState(): ProxyQueueState {
 export async function generateProxies(clipDir: string, log: (msg: string) => void): Promise<void> {
   await mkdir(proxyDir, { recursive: true });
 
-  let entries: string[];
+  let videoFiles: string[];
   try {
-    entries = await readdir(clipDir);
+    videoFiles = await listVideoFilesRecursive(clipDir);
   } catch {
     return;
   }
-
-  const videoFiles = entries.filter((name) => clipMimeTypes[extname(name).toLowerCase()] !== undefined);
 
   const targets: { src: string; proxyPath: string; tmpPath: string }[] = [];
   for (const name of videoFiles) {

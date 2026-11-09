@@ -2,7 +2,7 @@ import { readFile, rm } from "node:fs/promises";
 import { createReadStream, existsSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { tmpdir } from "node:os";
-import { basename, resolve } from "node:path";
+import { resolve } from "node:path";
 import type { ViteDevServer } from "vite";
 import { contentDispositionHeader, isWithin, resolveRepoPath, runFfmpeg, sendJson } from "../shared.js";
 import { formatMinSec } from "./fileNaming.js";
@@ -28,10 +28,13 @@ export function registerFrameCaptureRoute(server: ViteDevServer, filePath: strin
     const atSParam = params.get("atS");
     const atS = atSParam !== null ? Number(atSParam) : NaN;
 
-    if (!clipParam || clipParam !== basename(clipParam)) {
+    // clipParam may contain the raw-footage-sorting event-subfolder segment (e.g.
+    // "001_label_260609/VID_...mp4"), not just a bare filename - the isWithin(clipDir, ...) check
+    // below is the real traversal guard, once clipDir is known.
+    if (!clipParam) {
       sendJson(res, 400, {
         ok: false,
-        error: "clip query parameter is required and must be a plain file name (no path separators)",
+        error: "clip query parameter is required",
       });
       return;
     }
