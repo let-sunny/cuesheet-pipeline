@@ -1,6 +1,6 @@
 ---
 description: Review a raw footage folder, plan the episode's story flow with the wiki, then hand off to /episode
-argument-hint: <raw footage folder path under 브이로그_소스, or none to list candidates>
+argument-hint: <raw footage folder path under the raw-footage root, or none to list candidates>
 ---
 
 Given a raw footage folder already organized into event-subfolders (see the personal
@@ -18,10 +18,11 @@ during this command get written back. **Never hardcode a criterion here that the
 already owns** - query it instead (see "Querying the wiki" below), so this file stays
 correct even after the wiki's answer changes.
 
-Input: `$ARGUMENTS` = a raw folder path under `브이로그_소스` (e.g.
-`"02_가을뜨개 (09.23~11.07) 빨강스웨터·브라운숄"`). If omitted, list the folders directly
-under `브이로그_소스` (per the wiki's top-level naming convention, each folder name
-already summarizes what's in it) and ask the user which one.
+Input: `$ARGUMENTS` = a raw folder path under the raw-footage root (e.g.
+`"02_<theme> (<date range>) <garment list>"`, per the wiki's top-level naming
+convention). If omitted, list the folders directly under the raw-footage root (each
+folder name already summarizes what's in it, per that convention) and ask the user
+which one.
 
 ## Querying the wiki
 
@@ -38,7 +39,8 @@ The event-subfolders inside the target folder already have first-pass labels (pe
 `raw-footage-sorting`'s methodology: time-gap clustering, frame-sampled best guess).
 Before planning anything, walk through the ones that need a human:
 
-1. List every event-subfolder. Flag any labeled `미확인_...` or `확인필요_...`, and
+1. List every event-subfolder. Flag any labeled as unidentified or needing
+   confirmation (per `raw-footage-sorting`'s own placeholder-label convention), and
    spot-check a few confidently-labeled ones for sanity (a wrong guess can look
    confident).
 2. For each flagged folder, sample 1-3 representative frames (seek-based ffmpeg grab
@@ -50,10 +52,10 @@ Before planning anything, walk through the ones that need a human:
    frame.
 4. Apply each answer immediately: rename the folder (label only - never the files
    inside), or move it to a different top-level folder if the user says it belongs to
-   a different project/season (per `raw-footage-sorting`'s "same 대분류 -> merge into
-   that folder's sequence, don't make a new top-level folder" rule). Update that
-   folder's `_event-split-manifest.md` to record the correction, same pattern as past
-   corrections.
+   a different project/season (per `raw-footage-sorting`'s rule: same top-level
+   category means merging into that folder's event sequence, not making a new
+   top-level folder). Update that folder's `_event-split-manifest.md` to record the
+   correction, same pattern as past corrections.
 5. If an answer reveals an entirely new, previously-unknown project mixed into this
    folder, split it out as its own top-level folder per `raw-footage-sorting`'s naming
    convention, and ask the user what to call it before finalizing the folder name.
@@ -68,8 +70,8 @@ only the ones that matter for deciding structure):
    exactly 4 slots, re-read it).
 2. List the event-subfolders in chronological order with their labels - this is the
    material. Draft which beats this episode will actually use: which project(s) get a
-   full beat, which events are B-roll/곁가지, roughly how the episode opens and closes
-   (per `opening-closing`'s guaranteed-teaser convention).
+   full beat, which events are B-roll/side content, roughly how the episode opens and
+   closes (per `opening-closing`'s guaranteed-teaser convention).
 3. Present the draft plan to the user in plain language (not a cuesheet, not JSON) and
    get their confirmation or changes before continuing. This is a direction call, so
    it's a check-first point per CLAUDE.md's autonomy principle, not an autonomous one.
