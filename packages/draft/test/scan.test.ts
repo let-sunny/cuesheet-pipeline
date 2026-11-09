@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -44,5 +44,47 @@ describe("scanFolder", () => {
     for (const clip of manifest.clips) {
       expect(clip.frames.length).toBeGreaterThan(0);
     }
+  }, 30_000);
+});
+
+describe("scanFolder with event-subfolders", () => {
+  let srcDir: string;
+  let workDir: string;
+
+  beforeAll(() => {
+    srcDir = mkdtempSync(join(tmpdir(), "cuesheet-draft-scan-nested-src-"));
+    workDir = mkdtempSync(join(tmpdir(), "cuesheet-draft-scan-nested-work-"));
+
+    mkdirSync(join(srcDir, "01_label_260609"), { recursive: true });
+    mkdirSync(join(srcDir, "_미리보기"), { recursive: true });
+
+    execFileSync(
+      "ffmpeg",
+      [
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc=duration=3:size=64x36:rate=10",
+        join(srcDir, "01_label_260609", "clip.mp4"),
+      ],
+      { stdio: "ignore" },
+    );
+    execFileSync(
+      "ffmpeg",
+      ["-y", "-f", "lavfi", "-i", "testsrc=duration=3:size=64x36:rate=10", join(srcDir, "_미리보기", "preview.mp4")],
+      { stdio: "ignore" },
+    );
+  });
+
+  afterAll(() => {
+    rmSync(srcDir, { recursive: true, force: true });
+    rmSync(workDir, { recursive: true, force: true });
+  });
+
+  it("recurses into event-subfolders (raw-footage-sorting convention), keeping the relative path as the clip name, and skips _-prefixed folders", async () => {
+    const manifest = await scanFolder(srcDir, workDir);
+    const names = manifest.clips.map((c) => c.name);
+    expect(names).toEqual(["01_label_260609/clip.mp4"]);
   }, 30_000);
 });
