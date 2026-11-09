@@ -46,7 +46,8 @@ Out:
 - [x] CLI `--ass` flag + `--json` `assPath` (`packages/render/test/cli.test.ts`).
 - [x] Web route `GET /api/subtitles.ass` + Export button (`ExportOutputSection.test.tsx`).
 - [x] `pnpm --filter @cuesheet/render test` green; `apps/web` typecheck + test green (756/756).
-- [ ] CI on PR #65 green.
-- [ ] PR ready for user merge.
+- [x] CI on PR #65 green (after fixing a language-policy violation and a drifted
+      `check-agents-doc.mjs` envelope assertion caused by this feature's own `--json` change).
+- [x] PR mergeable (`mergeStateStatus: CLEAN`), left as draft for the user to mark ready and merge.
 
 Verify: `gh pr checks 65` reports the `build, typecheck, test` job passing.
