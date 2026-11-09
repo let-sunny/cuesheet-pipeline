@@ -204,6 +204,7 @@ function buildBasePassCommand(
       volume?: number;
       subtitle?: string;
       crop?: CueSheet["segments"][number]["crop"];
+      rotate?: CueSheet["segments"][number]["rotate"];
       /** Already-merged style (global < preset < per-cut override) - see resolveSubtitleStyle. */
       resolvedStyle?: CueSheet["subtitleStyle"];
       title?: CueSheet["segments"][number]["title"];
@@ -228,6 +229,13 @@ function buildBasePassCommand(
 
     const vParts = ["setpts=PTS-STARTPTS"];
     if (speed !== 1) vParts.push(`setpts=PTS/${speed}`);
+    // Forced rotation, before crop/scale - any crop set alongside it is relative to the
+    // already-rotated frame (see rotateSchema's doc comment in @cuesheet/schema).
+    // transpose=1 is 90 CW, transpose=2 is 90 CCW (=270 CW); 180 has no single-pass transpose
+    // equivalent, so it's hflip+vflip instead.
+    if (o.rotate === 90) vParts.push("transpose=1");
+    else if (o.rotate === 270) vParts.push("transpose=2");
+    else if (o.rotate === 180) vParts.push("hflip", "vflip");
     if (o.crop) {
       const { x, y, w, h } = o.crop;
       vParts.push(`crop=w=iw*${w}:h=ih*${h}:x=iw*${x}:y=ih*${y}`);
@@ -340,6 +348,7 @@ function buildBasePassCommand(
       volume: s.volume,
       subtitle: s.subtitle,
       crop: s.crop,
+      rotate: s.rotate,
       resolvedStyle: style,
       title: s.title ?? undefined,
       titleAsset: s.title ? opts?.titleAssets?.[i] : undefined,

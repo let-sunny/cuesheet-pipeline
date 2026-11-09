@@ -6,6 +6,7 @@ import type {
   duckingSchema,
   narrationConfigSchema,
   projectSchema,
+  rotateSchema,
   segmentSchema,
   subtitleBackgroundSchema,
   subtitleStyleOverrideSchema,
@@ -23,6 +24,7 @@ import type {
  */
 export type Project = z.infer<typeof projectSchema>;
 export type Crop = z.infer<typeof cropSchema>;
+export type Rotate = z.infer<typeof rotateSchema>;
 export type Segment = z.infer<typeof segmentSchema>;
 export type BgmCue = z.infer<typeof bgmCueSchema>;
 export type SubtitleBackground = z.infer<typeof subtitleBackgroundSchema>;

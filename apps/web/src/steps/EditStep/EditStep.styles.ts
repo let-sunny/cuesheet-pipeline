@@ -49,12 +49,23 @@ export const styles = stylex.create({
   // together inside a single VideoPreview block, so this just sets that column's width.
   // alignSelf flex-start: keep the video at its natural height rather than being stretched to the
   // fields column's height on the rare cut whose fields content is the taller of the two.
+  //
+  // Internal scroll (2026-11-09 diagnosed fix, same reasoning as trimFieldsCol below): a PORTRAIT
+  // source clip (phone video shot vertically, e.g. 2160x3840) renders at the column's full width
+  // but a much taller height (up to ~1280px at this column's ~720px width) than a landscape clip
+  // does - comfortably taller than most viewports. Since trimWorkspace (above) is `position:
+  // sticky`, it never scrolls away with the page, so with no cap/scroll of its own this column's
+  // overflow (the playback controls, below the tall video) landed off the bottom of the screen
+  // with no way to reach them - neither page scroll (sticky re-pins it) nor this column (no
+  // overflow). Capped to the viewport and scrolling *inside*, exactly like trimFieldsCol.
   trimVideoCol: {
     flexGrow: 2,
     flexShrink: 1,
     flexBasis: 480,
     minWidth: 480,
     alignSelf: "flex-start",
+    maxHeight: "calc(100vh - 24px)",
+    overflowY: "auto",
   },
   // Right column (narrow, next to the video): subtitle/speed/volume/narration/crop field panel.
   // 424/440 -> a fixed 344 (13-inch density pass, 2026-07-10, docs/screen-spec.md's baseline-
