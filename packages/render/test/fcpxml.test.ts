@@ -85,6 +85,24 @@ describe("buildFcpXml", () => {
     expect(videoXml).toContain('hasVideo="1" hasAudio="1" format="r1"');
   });
 
+  it("pins an image asset's declared duration to exactly what's used, never a large placeholder", () => {
+    // A still has no real frame count - a large declared duration makes Resolve's FCPXML
+    // importer read it as an image SEQUENCE spanning that many numbered frames, showing
+    // everything past frame 1 as Media Offline. Even with a large (wrong) probed/placeholder
+    // duration passed in, and the same photo reused twice, the asset's own duration must track
+    // only the furthest point any asset-clip actually requests.
+    const cue = make({
+      segments: [
+        { clip: "photo.jpg", in: 0, out: 2, speed: 1, volume: 1, subtitle: "" },
+        { clip: "a.mp4", in: 0, out: 1, speed: 1, volume: 1, subtitle: "" },
+        { clip: "photo.jpg", in: 5, out: 8, speed: 1, volume: 1, subtitle: "" },
+      ],
+    });
+    const { xml } = buildFcpXml(cue, { "/clips/photo.jpg": 3600, "/clips/a.mp4": 20 });
+    // furthest usage: second occurrence starts at 5s, 3s long -> asset duration must be 8s, not 3600s
+    expect(xml).toContain('name="photo.jpg" src="file:///clips/photo.jpg" start="0s" duration="240/30s" hasVideo="1" format="r1"');
+  });
+
   it("includes intro/outro as additional clips at the start/end when present", () => {
     const cue = make({ intro: "/media/intro.mp4", outro: "/media/outro.mp4" });
     const { xml } = buildFcpXml(cue, { ...durations, "/media/intro.mp4": 3, "/media/outro.mp4": 2 });

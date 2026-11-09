@@ -47,7 +47,11 @@ export function buildFcpXml(cue: CueSheet, durationsByAbsolutePath: Record<strin
     const existing = assets.get(absolutePath);
     if (existing) return existing.id;
     const id = `r${assets.size + 2}`; // r1 is the format resource
-    const durationS = durationsByAbsolutePath[absolutePath] ?? 0;
+    // Images start at 0 regardless of any probed/placeholder value in durationsByAbsolutePath -
+    // ffprobe reports near-zero bogus "duration" for a still, and any caller-supplied stand-in
+    // would reintroduce the Media Offline bug this guards against (see pushClip below). Only
+    // actual usage grows an image's declared duration.
+    const durationS = isImagePath(absolutePath) ? 0 : (durationsByAbsolutePath[absolutePath] ?? 0);
     assets.set(absolutePath, { id, path: absolutePath, durationS });
     return id;
   };
@@ -58,6 +62,15 @@ export function buildFcpXml(cue: CueSheet, durationsByAbsolutePath: Record<strin
 
   const pushClip = (absolutePath: string, name: string, startS: number, outputDurationS: number) => {
     const id = assetIdFor(absolutePath);
+    // A still image has no real "frame count" - declaring a large nominal duration (the usual
+    // Final Cut convention for an infinitely-holdable photo) makes Resolve's FCPXML importer
+    // treat it as an image SEQUENCE spanning that many numbered frames, so everything past frame
+    // 1 shows Media Offline. Keep an image asset's declared duration pinned to exactly what's
+    // used (the furthest start+duration any asset-clip actually requests from it).
+    if (isImagePath(absolutePath)) {
+      const asset = assets.get(absolutePath)!;
+      asset.durationS = Math.max(asset.durationS, startS + outputDurationS);
+    }
     clipItems.push(
       `        <asset-clip ref="${id}" name="${escapeXml(name)}" offset="${toTime(cursorS)}" start="${toTime(startS)}" duration="${toTime(outputDurationS)}"/>`,
     );
