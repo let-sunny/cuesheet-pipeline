@@ -43,7 +43,11 @@ export const styles = stylex.create({
     backgroundColor: "black",
     borderRadius: radiusVars["--radius-element"],
     overflow: "hidden",
-    containerType: "inline-size",
+    // "size" (not just "inline-size"): stage's box is already definite on both axes (fixed
+    // aspectRatio + width), so this is safe unconditionally, and a rotated (90/270) segment's
+    // <video> needs cqh (not just cqw) to size itself to exactly fill this box after rotating -
+    // see rotatePreviewStyle's `video` style (lib/rotatePreview.ts).
+    containerType: "size",
   },
   video: {
     position: "absolute",
