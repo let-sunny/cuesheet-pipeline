@@ -48,12 +48,15 @@ export function registerDraftFramesRoute(server: ViteDevServer): void {
       res.end("Method not allowed");
       return;
     }
+    // folder may include a raw-footage-sorting event-subfolder segment (e.g.
+    // "001_label_260609/VID_...mp4" with its extension stripped), not just a bare clip stem -
+    // isWithin(root, target) below is the real traversal guard, same fix as clipsRoute.ts.
     const folder = decodeURIComponent(
       (req.url ?? "").split("?")[0]?.replace(/^\/+/, "") ?? "",
     );
     const root = framesRoot();
     const target = resolve(root, folder);
-    if (!folder || folder.includes("/") || !isWithin(root, target)) {
+    if (!folder || !isWithin(root, target)) {
       res.statusCode = 400;
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.end("Invalid clip folder");

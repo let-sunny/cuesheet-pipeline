@@ -29,7 +29,11 @@ export function buildClipPath(clipDir: string, clipFileName: string): string {
 export function computeClipDurations(entries: ClipMoments[]): Record<string, number> {
   const map: Record<string, number> = {};
   for (const entry of entries) {
-    const name = baseName(entry.clip);
+    // Keyed by the full clip path (entry.clip), not just its basename - a raw-footage-sorting
+    // event-subfolder clip (e.g. "001_label_260609/VID_...mp4") is looked up by its full
+    // segment.clip value (EditStep.tsx's clipDurations[selectedSegment.clip]), which always
+    // includes that subfolder prefix; a basename-only key silently never matched.
+    const name = entry.clip;
     let max = 0;
     for (const m of entry.moments) {
       max = Math.max(max, m.outS);
