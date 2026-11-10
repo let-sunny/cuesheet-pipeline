@@ -98,12 +98,15 @@ it here.
 ### `cuesheet-render` (cuesheet -> final video/subtitles)
 
 ```bash
-cuesheet-render [cuesheet.json] [output.mp4] [--no-subtitles] [--srt <path>] [--json]
+cuesheet-render [cuesheet.json] [output.mp4] [--no-subtitles] [--srt <path>] [--ass <path>] [--json]
 # defaults: project.cuesheet.json -> out.mp4, subtitle burn-in on
 ```
 
-`--no-subtitles`: clean video, no burned-in drawtext (pair with `--srt` for a separate CC
-track). Requires ffmpeg on `PATH`; for cuesheets with subtitles, macOS's Homebrew default
+`--no-subtitles`: clean video, no burned-in drawtext (pair with `--srt`/`--ass` for a separate CC
+track). `--srt` is plain text + timing only; `--ass` (SubStation Alpha) also carries the
+resolved per-cut font/size/color/outline/position/background, so DaVinci Resolve (and most NLEs)
+import it already styled instead of resetting to their own default subtitle look. Requires
+ffmpeg on `PATH`; for cuesheets with subtitles, macOS's Homebrew default
 `ffmpeg` is missing `drawtext` — install `ffmpeg-full` instead (see `packages/render/README.md`).
 Renders run synchronously and can take minutes; macOS ships no `timeout(1)`, so bound a long
 render with `gtimeout` (coreutils) or run it in the background rather than assuming it hung.
@@ -163,6 +166,44 @@ exposes a few plain HTTP endpoints beyond the bridge's MCP tools:
   alias that always streams back whichever file the most recent render produced. Note that
   `out.mp4` is also, confusingly, the `cuesheet-render` CLI's own default output argument — the
   two are independent paths that happen to share a name.
+
+## When the web editor's dev server needs a restart
+
+The dev server (`pnpm --filter @cuesheet/web dev`) is a long-running Node process — it loads
+`@cuesheet/schema`/`@cuesheet/render`'s **compiled `dist/`** once at startup and keeps it in
+memory, and it builds its clip/proxy lookups from whatever the raw folder looked like when it
+booted. Several real incidents (2026-11-09) came from forgetting this. Restart it (`pkill` the
+`vite` process bound to port 5173, then `pnpm --filter @cuesheet/web dev` again) whenever any of
+these happen, **in this order relative to the restart**:
+
+1. **You changed `packages/schema/src` (e.g. added a field) or `packages/render/src`.** Rebuild
+   first (`pnpm --filter @cuesheet/schema build` / `pnpm --filter @cuesheet/render build`), *then*
+   restart the dev server — editing `src/` alone does nothing for a process that already loaded
+   the old `dist/`. Symptom if you forget: a save error like `"The save system needs an update -
+   restart the server and try again (lost fields: segments[0].<newField>)"`.
+2. **You renamed/moved a raw-footage event-subfolder** (e.g. a content-misidentification fix,
+   correcting which garment/subject an event-subfolder actually shows). Before restarting, also delete that
+   clip's now-orphaned proxy file(s) under `media/proxies/` (named `<old-folder>__<clip>.mp4` —
+   they won't be found again under the new name, and a stale one left behind is just dead weight,
+   not a bug by itself). Symptom if you skip the restart (or forget to delete the orphan first):
+   the renamed clip shows a **black screen** in the editor — the server can't find a proxy under
+   the new name, falls back to serving the original, and the original is usually 4K HEVC the
+   browser can't decode (see `clipsRoute.ts` / `generateProxies` in `apps/web/src/server/media/`).
+   After restarting, give it a bit — proxy regeneration runs in the background, sequentially, one
+   clip at a time, across the whole raw folder; `GET /api/proxy-status` shows the queue, or just
+   watch `media/proxies/` for the new file to appear (a `.tmp` file there means it's mid-convert).
+3. **You edited a cuesheet or raw folder directly on disk while the browser tab was already
+   open.** `fs.watch` normally pushes the server's view of cuesheet changes to the browser live,
+   but if the browser has its own unsaved/stale in-memory state (e.g. the user was mid-edit, or a
+   save just failed per case 1), a save from the browser can clobber your direct file edit right
+   back to the stale version. This isn't fixed by a server restart — it needs the browser tab
+   itself reloaded (or the user to avoid saving from the UI until your edits are confirmed
+   landed). When in doubt about which state is current, ask the user rather than assuming your
+   last write survived.
+
+A plain cuesheet content edit (subtitles, segment order, crop/rotate values) needs **no restart**
+— the dev server reads the cuesheet file fresh on each request and `fs.watch` pushes it to the
+browser live.
 
 ## UI / design system
 

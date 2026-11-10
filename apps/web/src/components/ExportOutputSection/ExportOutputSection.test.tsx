@@ -12,6 +12,7 @@ function baseProps(overrides: Partial<Parameters<typeof ExportOutputSection>[0]>
     renderState: { status: "idle" } as RenderState,
     onOpenRenderDialog: vi.fn(),
     onDownloadSrt: vi.fn(),
+    onDownloadAss: vi.fn(),
     ...overrides,
   };
 }
@@ -67,5 +68,16 @@ describe("ExportOutputSection", () => {
     render(<ExportOutputSection {...baseProps({ onDownloadSrt })} />);
     fireEvent.click(screen.getByTestId("export-download-srt"));
     expect(onDownloadSrt).toHaveBeenCalledOnce();
+  });
+
+  it("disables the ass download while dirty and calls onDownloadAss when clicked", () => {
+    const onDownloadAss = vi.fn();
+    const { rerender } = render(<ExportOutputSection {...baseProps({ dirty: true, onDownloadAss })} />);
+    const button = screen.getByTestId("export-download-ass") as HTMLButtonElement;
+    expect(button.getAttribute("aria-disabled") ?? button.disabled).toBeTruthy();
+
+    rerender(<ExportOutputSection {...baseProps({ onDownloadAss })} />);
+    fireEvent.click(screen.getByTestId("export-download-ass"));
+    expect(onDownloadAss).toHaveBeenCalledOnce();
   });
 });

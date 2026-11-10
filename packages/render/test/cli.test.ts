@@ -23,7 +23,7 @@ describe("cuesheet-render CLI --json", () => {
     }
   });
 
-  it("emits one JSON line (outputPath/durationS/srtPath) to stdout, human log to stderr", () => {
+  it("emits one JSON line (outputPath/durationS/srtPath/assPath) to stdout, human log to stderr", () => {
     const workDir = mkdtempSync(join(tmpdir(), "cuesheet-render-cli-"));
     try {
       // buildRenderPlan's filter graph always references an audio stream ([0:a]), so the
@@ -68,10 +68,11 @@ describe("cuesheet-render CLI --json", () => {
       writeFileSync(cuePath, JSON.stringify(validated.data));
       const outPath = join(workDir, "out.mp4");
       const srtPath = join(workDir, "out.srt");
+      const assPath = join(workDir, "out.ass");
 
       const result = spawnSync(
         "node",
-        [cliPath, cuePath, outPath, "--no-subtitles", "--srt", srtPath, "--json"],
+        [cliPath, cuePath, outPath, "--no-subtitles", "--srt", srtPath, "--ass", assPath, "--json"],
         { encoding: "utf-8" },
       );
 
@@ -80,14 +81,16 @@ describe("cuesheet-render CLI --json", () => {
       const stdoutLines = result.stdout.trim().split("\n").filter(Boolean);
       expect(stdoutLines).toHaveLength(1);
       const parsed = JSON.parse(stdoutLines[0] as string);
-      // Pins the exact documented envelope (AGENTS.md / README): exactly these 3 keys, no more.
-      expect(Object.keys(parsed).sort()).toEqual(["outputPath", "durationS", "srtPath"].sort());
+      // Pins the exact documented envelope (AGENTS.md / README): exactly these 4 keys, no more.
+      expect(Object.keys(parsed).sort()).toEqual(["outputPath", "durationS", "srtPath", "assPath"].sort());
       expect(parsed.outputPath).toBe(outPath);
       expect(parsed.srtPath).toBe(srtPath);
+      expect(parsed.assPath).toBe(assPath);
       expect(typeof parsed.durationS).toBe("number");
       expect(parsed.durationS).toBeGreaterThan(0);
       expect(existsSync(outPath)).toBe(true);
       expect(existsSync(srtPath)).toBe(true);
+      expect(existsSync(assPath)).toBe(true);
     } finally {
       rmSync(workDir, { recursive: true, force: true });
     }

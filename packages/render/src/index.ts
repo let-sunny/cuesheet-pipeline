@@ -3,6 +3,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { validateCueSheet } from "@cuesheet/schema";
+import { buildAss } from "./ass.js";
 import { buildFcpXml, resolveFcpXmlClipPath } from "./fcpxml.js";
 import { buildRenderPlan } from "./plan.js";
 import type { SourceDimensions } from "./plan.js";
@@ -15,28 +16,36 @@ export interface RenderJsonResult {
   /** Rendered output duration in seconds (ffprobe on the produced file), or null if it couldn't be probed. */
   durationS: number | null;
   srtPath: string | null;
+  assPath: string | null;
 }
 
 /**
  * CLI: reads a cuesheet file, validates it, and renders the final video with ffmpeg.
- * Usage: cuesheet-render [cuesheet.json] [output.mp4] [--no-subtitles] [--srt <path>] [--fcpxml <path>] [--json]
+ * Usage: cuesheet-render [cuesheet.json] [output.mp4] [--no-subtitles] [--srt <path>] [--ass <path>] [--fcpxml <path>] [--json]
  * Defaults: project.cuesheet.json -> out.mp4, subtitle burn-in on
- * --no-subtitles: produces a clean video without drawtext (for combining with a CC/SRT track).
- * --srt <path>: also writes an SRT file from the same cuesheet (same logic as web's /api/subtitles.srt).
+ * --no-subtitles: produces a clean video without drawtext (for combining with a CC/SRT/ASS track).
+ * --srt <path>: also writes an SRT file from the same cuesheet (same logic as web's /api/subtitles.srt)
+ * - plain text + timing only, no styling.
+ * --ass <path>: also writes a styled .ass (SubStation Alpha) subtitle file - carries font/size/
+ * color/outline/position/background (resolveSubtitleStyle's per-cut effective style), unlike SRT.
+ * DaVinci Resolve and most NLEs import .ass already styled instead of resetting to their own
+ * default subtitle look.
  * --fcpxml <path>: writes an FCPXML seeding a DaVinci Resolve timeline with this cuesheet's cuts
  * (clip + in/out + position), then exits WITHOUT rendering - this is a hand-off format for
  * finishing the edit in Resolve, not a render output, so it skips ffmpeg entirely. Combine with
- * --srt to also get a subtitle track Resolve can import alongside it.
+ * --srt/--ass to also get a subtitle track Resolve can import alongside it.
  * --json: on success, emits a single structured result object (RenderJsonResult) to stdout —
  * human-readable progress/errors always go to stderr, --json or not, so stdout stays parseable.
  */
 const args = process.argv.slice(2);
 const srtFlagIndex = args.indexOf("--srt");
 const srtOutPath = srtFlagIndex === -1 ? null : (args[srtFlagIndex + 1] ?? null);
+const assFlagIndex = args.indexOf("--ass");
+const assOutPath = assFlagIndex === -1 ? null : (args[assFlagIndex + 1] ?? null);
 const fcpxmlFlagIndex = args.indexOf("--fcpxml");
 const fcpxmlOutPath = fcpxmlFlagIndex === -1 ? null : (args[fcpxmlFlagIndex + 1] ?? null);
 const flagValueIndices = new Set(
-  [srtFlagIndex, fcpxmlFlagIndex].filter((i) => i !== -1).map((i) => i + 1),
+  [srtFlagIndex, assFlagIndex, fcpxmlFlagIndex].filter((i) => i !== -1).map((i) => i + 1),
 );
 const positional = args.filter((a, i) => !a.startsWith("--") && !flagValueIndices.has(i));
 const burnSubtitles = !args.includes("--no-subtitles");
@@ -61,6 +70,11 @@ if (!result.ok) {
 if (srtOutPath !== null) {
   writeFileSync(srtOutPath, buildSrt(result.data), "utf-8");
   console.error(`SRT saved: ${srtOutPath}`);
+}
+
+if (assOutPath !== null) {
+  writeFileSync(assOutPath, buildAss(result.data), "utf-8");
+  console.error(`ASS saved: ${assOutPath}`);
 }
 
 if (fcpxmlOutPath !== null) {
@@ -206,6 +220,7 @@ if (jsonMode) {
     outputPath: outPath,
     durationS: probeDurationS(outPath),
     srtPath: srtOutPath,
+    assPath: assOutPath,
   };
   console.log(JSON.stringify(jsonResult));
 }

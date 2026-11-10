@@ -16,14 +16,21 @@ export interface ExportOutputSectionProps {
   renderState: RenderState;
   onOpenRenderDialog: () => void;
   onDownloadSrt: () => void;
+  onDownloadAss: () => void;
 }
 
 /**
  * "Output" section of the Export step (③) - the step's one primary action ([Export], which opens
- * the render settings dialog - the actual gate/start lives there) plus [Download subtitles .srt]
- * (secondary) and the current render's result/error, screen-spec section 5.
+ * the render settings dialog - the actual gate/start lives there) plus [Download subtitles .srt]/
+ * [Download subtitles .ass] (secondary) and the current render's result/error, screen-spec section 5.
  */
-export function ExportOutputSection({ dirty, renderState, onOpenRenderDialog, onDownloadSrt }: ExportOutputSectionProps) {
+export function ExportOutputSection({
+  dirty,
+  renderState,
+  onOpenRenderDialog,
+  onDownloadSrt,
+  onDownloadAss,
+}: ExportOutputSectionProps) {
   return (
     <VStack gap={3} data-testid="export-section-cta">
       <Button
@@ -69,6 +76,15 @@ export function ExportOutputSection({ dirty, renderState, onOpenRenderDialog, on
         isDisabled={dirty}
         onClick={onDownloadSrt}
         data-testid="export-download-srt"
+      />
+      {/* .ass carries the editor's actual subtitle style (font/size/color/outline/position/
+          background) into DaVinci Resolve - .srt only carries text+timing. */}
+      <Button
+        label="Download subtitles (.ass)"
+        variant="ghost"
+        isDisabled={dirty}
+        onClick={onDownloadAss}
+        data-testid="export-download-ass"
       />
       {dirty ? (
         <Text type="supporting" color="secondary">

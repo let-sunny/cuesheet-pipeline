@@ -23,6 +23,7 @@ export { buildDuckingGainExpression, deriveDuckingWindows, mergeDuckingWindows }
 export type { DuckingWindow } from "./ducking.js";
 
 export { buildSrt, secondsToSrtTimestamp } from "./srt.js";
+export { buildAss, secondsToAssTimestamp } from "./ass.js";
 export { buildFcpXml, resolveFcpXmlClipPath } from "./fcpxml.js";
 export type { FcpXmlBuildResult, FcpXmlManualSpeedFix } from "./fcpxml.js";
 export { DEFAULT_TITLE_CACHE_DIR, prepareTitleAssets, titleCacheKey } from "./title.js";

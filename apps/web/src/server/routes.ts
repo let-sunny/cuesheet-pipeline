@@ -9,6 +9,7 @@ import { registerDomainRoute } from "./routes/domainRoute.js";
 import { registerFrameCaptureRoute } from "./routes/frameCaptureRoute.js";
 import { registerNarrationFilesRoute } from "./routes/narrationFilesRoute.js";
 import { registerRenderRoutes } from "./routes/renderRoute.js";
+import { registerSubtitlesAssRoute } from "./routes/subtitlesAssRoute.js";
 import { registerSubtitlesRoute } from "./routes/subtitlesRoute.js";
 import { DEFAULT_UPLOAD_CLIP_MAX_BYTES, registerUploadClipRoute } from "./routes/uploadClipRoute.js";
 
@@ -20,7 +21,7 @@ export interface RegisterRoutesOptions {
 
 /**
  * Registers the cuesheet API route handlers: cuesheet GET/POST, render + render-status,
- * subtitles.srt, upload-clip, clip-files, bgm-files, narration-files, and the render output
+ * subtitles.srt/subtitles.ass, upload-clip, clip-files, bgm-files, narration-files, and the render output
  * download route. Each route group lives in its own module under ./routes/ - this function is
  * just the composition point (registration order across groups doesn't matter since their mount
  * paths are disjoint prefixes; only render/status-before-render, preserved inside
@@ -43,5 +44,6 @@ export function registerRoutes(
   registerUploadClipRoute(server, filePath, uploadClipMaxBytes);
   registerFrameCaptureRoute(server, filePath);
   registerSubtitlesRoute(server, filePath);
+  registerSubtitlesAssRoute(server, filePath);
   registerRenderRoutes(server, filePath);
 }

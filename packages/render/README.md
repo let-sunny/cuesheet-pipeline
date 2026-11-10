@@ -20,13 +20,18 @@ if (cue.ok) {
 CLI (requires ffmpeg):
 
 ```bash
-cuesheet-render project.cuesheet.json out.mp4 [--no-subtitles] [--srt <path>] [--fcpxml <path>] [--json]
+cuesheet-render project.cuesheet.json out.mp4 [--no-subtitles] [--srt <path>] [--ass <path>] [--fcpxml <path>] [--json]
 ```
 
+`--srt` writes plain-text + timing only. `--ass` (SubStation Alpha) also carries each cut's
+resolved font/size/color/outline/position/background (`resolveSubtitleStyle`'s global < preset <
+per-cut merge) — DaVinci Resolve and most NLEs import `.ass` already styled instead of resetting
+to their own default subtitle look; see "DaVinci Resolve hand-off" below.
+
 `--json`: on success, emits a single structured result object to stdout —
-`{outputPath, durationS, srtPath}` (`durationS` is probed from the rendered file with ffprobe,
-`srtPath` is `null` unless `--srt` was passed). Human-readable progress/errors always go to
-stderr, `--json` or not, so stdout stays parseable by a script.
+`{outputPath, durationS, srtPath, assPath}` (`durationS` is probed from the rendered file with
+ffprobe, `srtPath`/`assPath` are `null` unless `--srt`/`--ass` was passed). Human-readable
+progress/errors always go to stderr, `--json` or not, so stdout stays parseable by a script.
 
 ## DaVinci Resolve hand-off (FCPXML)
 
@@ -35,12 +40,14 @@ stderr, `--json` or not, so stdout stays parseable by a script.
 not a render output — ffmpeg never runs):
 
 ```bash
-cuesheet-render episodes/<slug>.cuesheet.json out.mp4 --fcpxml out.fcpxml --srt out.srt
+cuesheet-render episodes/<slug>.cuesheet.json out.mp4 --fcpxml out.fcpxml --ass out.ass
 ```
 
-Subtitles are **not** embedded in the FCPXML — import the `--srt` output as a separate subtitle
-track instead. FCPXML title-effect UIDs are fragile across Resolve versions; SRT import is
-universal.
+Subtitles are **not** embedded in the FCPXML — import the `--srt`/`--ass` output as a separate
+subtitle track instead. FCPXML title-effect UIDs are fragile across Resolve versions; SRT/ASS
+import is universal. Prefer `--ass` over `--srt` when you want the editor's subtitle style (font/
+size/color/outline/position/background) to show up already applied in Resolve — SRT carries text
+and timing only, so Resolve falls back to its own default subtitle look.
 
 **Sped-up cuts** (`segment.speed !== 1`, e.g. timelapse connectors): FCPXML has no
 generator-portable speed-ramp primitive, so these are placed at their correct OUTPUT timeline
@@ -53,9 +60,10 @@ CLI lists every affected segment on stderr (clip, speed, in/out) so they can be 
 1. Open or create a Resolve project.
 2. `File > Import > Timeline...` → select the `.fcpxml` file. This creates a new timeline with
    every cut already placed (clip, in/out, position) — not a blank timeline.
-3. If you also generated an `.srt`, import it separately: `File > Import > Subtitle...` (or drag
-   it onto the timeline). Its timestamps are on the same output timeline as the FCPXML, so it
-   lines up automatically.
+3. If you also generated an `.srt`/`.ass`, import it separately: `File > Import > Subtitle...`
+   (or drag it onto the timeline). Its timestamps are on the same output timeline as the FCPXML,
+   so it lines up automatically. `.ass` brings the editor's subtitle style with it; `.srt` lands
+   with Resolve's own default style.
 4. For each cut the CLI listed as a manual speed fix: select it on the timeline and apply
    Resolve's own speed/retime (Inspector → Speed, or right-click → Change Clip Speed) at the
    listed factor to restore the full sped-up range.
@@ -100,6 +108,17 @@ not actually share the project's aspect ratio, which the schema-level `w === h` 
 (it only knows the ratios, not real pixel dimensions). The CLI (`cuesheet-render`) probes each
 cropped clip with ffprobe and passes the result in automatically; `buildRenderPlan` itself stays
 a pure function (no ffprobe call inside it) and skips the check for any clip missing from the map.
+
+### Segment rotate (optional)
+
+If `segment.rotate` is present (`90`, `180`, or `270`, clockwise degrees), that segment's filter
+chain applies a `transpose`/flip filter **before crop/scale** (`transpose=1` for 90, `transpose=2`
+for 270, `hflip,vflip` for 180 — ffmpeg has no single-pass transpose for 180). A crop on the same
+segment is relative to the already-rotated frame. This exists to force a portrait-shot source clip
+(e.g. a phone held upright, 2160x3840) onto its side to fill a landscape project, by explicit user
+choice over letterboxing or a crop-to-fill — see `rotateSchema`'s doc comment in
+`@cuesheet/schema` for the reasoning. If there's no `rotate` field, the ffmpeg command is 100%
+identical to before.
 
 ### Per-cut subtitle style override (optional)
 

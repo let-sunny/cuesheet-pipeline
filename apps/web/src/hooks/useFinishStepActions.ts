@@ -33,6 +33,7 @@ export interface UseFinishStepActionsResult {
   renameSubtitleStylePreset: (oldName: string, newName: string) => void;
   deleteSubtitleStylePreset: (name: string) => void;
   handleDownloadSrt: () => void;
+  handleDownloadAss: () => void;
 }
 
 /** The Project/Subtitle-style(global)/Presets/Narration/Output handlers backing the (3) Export step. */
@@ -195,6 +196,14 @@ export function useFinishStepActions({
     window.location.href = "/api/subtitles.srt";
   }, [dirty, toast]);
 
+  const handleDownloadAss = useCallback(() => {
+    if (dirty) {
+      toast({ type: "info", body: "Save first before downloading." });
+      return;
+    }
+    window.location.href = "/api/subtitles.ass";
+  }, [dirty, toast]);
+
   return {
     updateProject,
     updateClipDir,
@@ -206,5 +215,6 @@ export function useFinishStepActions({
     renameSubtitleStylePreset,
     deleteSubtitleStylePreset,
     handleDownloadSrt,
+    handleDownloadAss,
   };
 }

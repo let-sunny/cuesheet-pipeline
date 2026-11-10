@@ -107,6 +107,7 @@ export function FinishStep({
             renderState={renderState}
             onOpenRenderDialog={onOpenRenderDialog}
             onDownloadSrt={actions.handleDownloadSrt}
+            onDownloadAss={actions.handleDownloadAss}
           />
         </VStack>
       </Section>
