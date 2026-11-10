@@ -33,6 +33,7 @@ describe("useKeyboardShortcuts (wiring)", () => {
           selectRelative: vi.fn(),
           onUndo: vi.fn(),
           onRedo: vi.fn(),
+          onSave: vi.fn(),
           onToggleShortcuts: vi.fn(),
           onMerge: vi.fn(),
           videoPreviewRef: { current: videoHandle },
@@ -62,6 +63,7 @@ describe("useKeyboardShortcuts (wiring)", () => {
           selectRelative: vi.fn(),
           onUndo,
           onRedo: vi.fn(),
+          onSave: vi.fn(),
           onToggleShortcuts: vi.fn(),
           onMerge: vi.fn(),
           videoPreviewRef: { current: videoHandle },
@@ -92,6 +94,7 @@ describe("useKeyboardShortcuts (wiring)", () => {
         selectRelative: vi.fn(),
         onUndo: vi.fn(),
         onRedo: vi.fn(),
+        onSave: vi.fn(),
         onToggleShortcuts: vi.fn(),
         onMerge,
         videoPreviewRef: { current: makeVideoHandle() },
@@ -101,5 +104,32 @@ describe("useKeyboardShortcuts (wiring)", () => {
 
     fireEvent.keyDown(window, { key: "j", metaKey: true });
     expect(onMerge).toHaveBeenCalledWith(4);
+  });
+
+  it("Cmd+S calls onSave even while a subtitle textarea is focused", () => {
+    const onSave = vi.fn();
+    renderHook(() =>
+      useKeyboardShortcuts({
+        step: "edit",
+        sequenceMode: false,
+        selectedIndex: 0,
+        selectRelative: vi.fn(),
+        onUndo: vi.fn(),
+        onRedo: vi.fn(),
+        onSave,
+        onToggleShortcuts: vi.fn(),
+        onMerge: vi.fn(),
+        videoPreviewRef: { current: makeVideoHandle() },
+        sequencePlayerRef: { current: null },
+      }),
+    );
+    const textarea = document.createElement("textarea");
+    document.body.appendChild(textarea);
+    try {
+      fireEvent.keyDown(textarea, { key: "s", metaKey: true });
+      expect(onSave).toHaveBeenCalledOnce();
+    } finally {
+      textarea.remove();
+    }
   });
 });

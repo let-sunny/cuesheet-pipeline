@@ -23,6 +23,14 @@ describe("resolveShortcutAction", () => {
     expect(resolveShortcutAction(ctx({ isBlockingOverlay: true, isVideoStep: true, key: " " }))).toBeNull();
   });
 
+  it("Cmd/Ctrl+S saves, even while typing, but not behind a blocking overlay", () => {
+    expect(resolveShortcutAction(ctx({ key: "s", metaKey: true }))).toEqual({ type: "save" });
+    expect(resolveShortcutAction(ctx({ key: "S", ctrlKey: true }))).toEqual({ type: "save" });
+    expect(resolveShortcutAction(ctx({ key: "s", metaKey: true, isTyping: true }))).toEqual({ type: "save" });
+    expect(resolveShortcutAction(ctx({ key: "s", metaKey: true, isBlockingOverlay: true }))).toBeNull();
+    expect(resolveShortcutAction(ctx({ key: "s" }))).toBeNull();
+  });
+
   it("Cmd/Ctrl+Z undoes, Shift+Z redoes, even while typing", () => {
     expect(resolveShortcutAction(ctx({ key: "z", metaKey: true }))).toEqual({ type: "undo" });
     expect(resolveShortcutAction(ctx({ key: "z", ctrlKey: true }))).toEqual({ type: "undo" });

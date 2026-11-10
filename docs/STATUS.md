@@ -38,6 +38,16 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 - **AI-legibility as its own backlog**: a dedicated survey (wiki "AI-Legible System Design", covering astryx internals + shadcn/Stripe/GitHub/Cloudflare/Vercel/Storybook/v0) found the missing layer is turning CLAUDE.md's prose conventions into scripts that fail when broken, not more documentation — motivated `check:repo`, CI, `.describe()`-driven `get_schema`, `get_capabilities`, and the AGENTS.md smoke test (issues #5-#16)
 - **Vision judgment upgraded from Sonnet to Opus**: the scan stage's object/shot recognition proved unreliable on the weaker model (content-recognition errors — wrong objects, in-progress pieces read as finished, and some missed face-policy exposures — found during a full re-verification pass). `/episode`'s vision-judgment subagents now run on Opus; a one-off `--reverify` style pass (stronger model re-checks prior judgments against the real frames) is a cheap, high-value safeguard worth keeping.
 
+## 2026-11-10: web editor UX audit; Save always reachable
+
+Measured the editor against a 120-cut episode (`docs/research/web-editor-ux-audit.md`) after the
+user reported going back to Resolve because adjusting video and the overall layout were
+inconvenient. Nine findings; two fixed here: the header (Save/Undo/Export) is now pinned to the
+top of the viewport instead of scrolling ~18,000px away with the cut list, and Cmd/Ctrl+S saves
+(also while typing). The larger finding - the cut list is a stack of form cards rather than
+compact, keyboard-editable rows with a frame thumbnail - is written up as the next direction
+("video-based Vrew"), not implemented.
+
 ## 2026-11-10: Shorts by-product planner + episode retro
 
 Two tools for the publishing side of the loop, both driven by criteria in the personal wiki

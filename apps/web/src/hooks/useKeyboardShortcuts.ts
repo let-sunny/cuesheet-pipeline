@@ -7,6 +7,7 @@ import type { VideoPreviewHandle } from "../components/VideoPreview/index.js";
 export type ShortcutAction =
   | { type: "undo" }
   | { type: "redo" }
+  | { type: "save" }
   | { type: "toggleShortcuts" }
   | { type: "sequenceTogglePlay" }
   | { type: "sequenceShuttleForward" }
@@ -47,6 +48,7 @@ export interface UseKeyboardShortcutsOptions {
   selectRelative: (delta: number) => void;
   onUndo: () => void;
   onRedo: () => void;
+  onSave: () => void;
   onToggleShortcuts: () => void;
   onMerge: (selectedIndex: number) => void;
   videoPreviewRef: RefObject<VideoPreviewHandle | null>;
@@ -55,7 +57,7 @@ export interface UseKeyboardShortcutsOptions {
 
 /**
  * Registers the single global keydown handler backing every editor shortcut (Space/J/K/L,
- * I/O, arrows, Tab, Cmd+B/J, Cmd+Z/Shift+Z, ?). The actual key-to-action mapping lives in
+ * I/O, arrows, Tab, Cmd+B/J, Cmd+Z/Shift+Z, Cmd+S, ?). The actual key-to-action mapping lives in
  * `resolveShortcutAction` (a pure decision table, unit-tested on its own); this hook only wires
  * that decision to the real refs/callbacks and owns the window listener's lifecycle.
  */
@@ -66,6 +68,7 @@ export function useKeyboardShortcuts({
   selectRelative,
   onUndo,
   onRedo,
+  onSave,
   onToggleShortcuts,
   onMerge,
   videoPreviewRef,
@@ -95,6 +98,9 @@ export function useKeyboardShortcuts({
           break;
         case "redo":
           onRedo();
+          break;
+        case "save":
+          onSave();
           break;
         case "toggleShortcuts":
           onToggleShortcuts();
@@ -152,6 +158,7 @@ export function useKeyboardShortcuts({
     selectRelative,
     onUndo,
     onRedo,
+    onSave,
     onToggleShortcuts,
     onMerge,
     videoPreviewRef,
@@ -165,7 +172,9 @@ export function useKeyboardShortcuts({
  * inline handler exactly):
  *   1. A blocking overlay swallows everything, even undo/redo.
  *   2. Cmd/Ctrl+Z (and Shift+Z for redo) fire even while typing, so the app's unified undo/redo
- *      always wins over the browser's native per-field undo.
+ *      always wins over the browser's native per-field undo. Cmd/Ctrl+S saves under the same
+ *      rule - the universal editor convention, and it must work mid-subtitle since that is
+ *      where most edits happen (it also suppresses the browser's own "save page" dialog).
  *   3. Typing in an input/textarea swallows the rest.
  *   4. "?" toggles the shortcut help, regardless of step/mode.
  *   5. Sequence (Play all) mode has its own small set of keys and returns early.
@@ -178,6 +187,9 @@ export function resolveShortcutAction(ctx: ShortcutContext): ShortcutAction | nu
   }
   if ((ctx.metaKey || ctx.ctrlKey) && (ctx.key === "z" || ctx.key === "Z")) {
     return ctx.shiftKey ? { type: "redo" } : { type: "undo" };
+  }
+  if ((ctx.metaKey || ctx.ctrlKey) && (ctx.key === "s" || ctx.key === "S")) {
+    return { type: "save" };
   }
   if (ctx.isTyping) {
     return null;

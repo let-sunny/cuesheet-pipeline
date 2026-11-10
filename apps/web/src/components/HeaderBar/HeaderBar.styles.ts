@@ -24,11 +24,26 @@ import { colorVars, radiusVars, spacingVars, textSizeVars } from "@astryxdesign/
  * THEME (stone/y2k/neutral), not just light/dark mode, now actually recolors this header.
  */
 export const styles = stylex.create({
+  // Pinned to the top of the viewport (2026-11-10): the page itself scrolls with the cut list
+  // (tens to hundreds of cuts - a 120-cut episode measures ~18,800px tall at 1440x900), so a
+  // header that scrolled away put Save/Undo/Export thousands of pixels above wherever the user
+  // was editing. App chrome that stays put while content scrolls is the convention in every
+  // editor this app benchmarks against. The row is a fixed 72px (border-box) so the regions
+  // below can sit at a known offset in every theme.
+  // SYNC: that 72px is the offset the other sticky regions sit below - App.styles.ts
+  // `sequencePlayerSticky.top` and EditStep.styles.ts `trimWorkspace.top` / the two column
+  // `maxHeight`s. Change them together.
   row: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: spacingVars["--spacing-4"],
+    position: "sticky",
+    top: 0,
+    zIndex: 30,
+    boxSizing: "border-box",
+    height: 72,
+    backgroundColor: colorVars["--color-background-body"],
+    marginBottom: spacingVars["--spacing-1"],
   },
   // 20 -> lg (2026-07-11 typography pass, design-principles.md #6 "dense, 13-inch") - still the
   // single biggest text on the page (the app's only h1), just a denser top of the scale than the

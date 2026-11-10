@@ -153,6 +153,7 @@ export function App({ themeMode, onThemeModeChange, themeName, onThemeNameChange
     selectRelative,
     onUndo: handleUndo,
     onRedo: handleRedo,
+    onSave: () => void handleSave(),
     onToggleShortcuts: () => setShowShortcuts((v) => !v),
     onMerge: editActions.mergeSegmentWithNext,
     videoPreviewRef,
