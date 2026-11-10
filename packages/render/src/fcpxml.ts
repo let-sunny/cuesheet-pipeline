@@ -90,18 +90,32 @@ export function buildFcpXml(cue: CueSheet, durationsByAbsolutePath: Record<strin
   }
 
   const totalDurationS = cursorS;
+  const hasImageAsset = [...assets.keys()].some(isImagePath);
+  // A still has no inherent frame rate. Final Cut (and Resolve reading its FCPXML) distinguishes
+  // "video with N real frames" from "photo, hold any duration" by whether the asset's format has
+  // a frameDuration at all - give one anyway and declare a frame-count duration on the asset, and
+  // Resolve's importer reads that as an IMAGE SEQUENCE spanning that many numbered source files
+  // (confirmed visually: it relabeled a photo "IMG_[4418-4492].jpg" - frame 4418 through
+  // 4418+75 - and showed everything past the first real file as Media Offline, independent of
+  // what duration value was declared). Photos get their own frameDuration-less format and
+  // duration="0s"; only the <asset-clip> on the timeline says how long to hold it.
   const assetResources = [...assets.values()]
-    .map(
-      (a) =>
-        `    <asset id="${a.id}" name="${escapeXml(basename(a.path))}" src="file://${encodeFilePath(a.path)}" start="0s" duration="${toTime(a.durationS)}" hasVideo="1" hasAudio="1" format="r1"/>`,
-    )
+    .map((a) => {
+      if (isImagePath(a.path)) {
+        return `    <asset id="${a.id}" name="${escapeXml(basename(a.path))}" src="file://${encodeFilePath(a.path)}" start="0s" duration="0s" hasVideo="1" format="rimg"/>`;
+      }
+      return `    <asset id="${a.id}" name="${escapeXml(basename(a.path))}" src="file://${encodeFilePath(a.path)}" start="0s" duration="${toTime(a.durationS)}" hasVideo="1" hasAudio="1" format="r1"/>`;
+    })
     .join("\n");
+  const imageFormatResource = hasImageAsset
+    ? `\n    <format id="rimg" name="FFVideoFormatRateUndefined" width="${cue.project.width}" height="${cue.project.height}"/>`
+    : "";
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE fcpxml>
 <fcpxml version="1.9">
   <resources>
-    <format id="r1" name="FFVideoFormat${cue.project.height}p${fps}" frameDuration="1/${fps}s" width="${cue.project.width}" height="${cue.project.height}"/>
+    <format id="r1" name="FFVideoFormat${cue.project.height}p${fps}" frameDuration="1/${fps}s" width="${cue.project.width}" height="${cue.project.height}"/>${imageFormatResource}
 ${assetResources}
   </resources>
   <library>
@@ -126,6 +140,13 @@ ${clipItems.join("\n")}
 function secondsToFcpTime(seconds: number, fps: number): string {
   const frames = Math.max(0, Math.round(seconds * fps));
   return `${frames}/${fps}s`;
+}
+
+const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".heic", ".heif", ".bmp", ".gif", ".tiff", ".tif"]);
+
+function isImagePath(path: string): boolean {
+  const ext = path.slice(path.lastIndexOf(".")).toLowerCase();
+  return IMAGE_EXTENSIONS.has(ext);
 }
 
 function escapeXml(text: string): string {

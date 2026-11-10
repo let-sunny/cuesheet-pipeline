@@ -76,6 +76,23 @@ describe("buildFcpXml", () => {
     expect(xml).toContain("file:///raw%20%ED%8F%B4%EB%8D%94/a.mp4");
   });
 
+  it("gives a still-image asset its own frameDuration-less format, duration=0s, and no hasAudio", () => {
+    // A frame-count duration on the normal video format makes Resolve's FCPXML importer read a
+    // still as an IMAGE SEQUENCE spanning that many numbered source files (confirmed visually:
+    // it relabeled a single photo "IMG_[4418-4492].jpg" and showed everything past the first
+    // real file as Media Offline) - regardless of whether that count is large or small. Photos
+    // must reference a dedicated frameDuration-less format and declare duration="0s"; only the
+    // asset-clip on the timeline says how long to hold it.
+    const cue = make({ segments: [{ clip: "photo.jpg", in: 0, out: 2, speed: 1, volume: 1, subtitle: "" }] });
+    const { xml } = buildFcpXml(cue, { "/clips/photo.jpg": 2 });
+    expect(xml).toContain('name="photo.jpg" src="file:///clips/photo.jpg" start="0s" duration="0s" hasVideo="1" format="rimg"');
+    expect(xml).toContain('<format id="rimg" name="FFVideoFormatRateUndefined" width="1920" height="1080"/>');
+    expect(xml).not.toMatch(/photo\.jpg.*hasAudio/);
+    const { xml: videoXml } = buildFcpXml(make(), durations);
+    expect(videoXml).toContain('hasVideo="1" hasAudio="1" format="r1"');
+    expect(videoXml).not.toContain("rimg"); // no image assets -> no unused format resource
+  });
+
   it("includes intro/outro as additional clips at the start/end when present", () => {
     const cue = make({ intro: "/media/intro.mp4", outro: "/media/outro.mp4" });
     const { xml } = buildFcpXml(cue, { ...durations, "/media/intro.mp4": 3, "/media/outro.mp4": 2 });
