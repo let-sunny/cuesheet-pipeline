@@ -6,6 +6,10 @@ import { defineConfig } from "vitest/config";
 // package.
 export default defineConfig({
   test: {
-    include: ["scripts/checks/test/**/*.test.mjs", "scripts/new-component/test/**/*.test.mjs"],
+    include: [
+      "scripts/checks/test/**/*.test.mjs",
+      "scripts/new-component/test/**/*.test.mjs",
+      "scripts/analytics/test/**/*.test.mjs",
+    ],
   },
 });

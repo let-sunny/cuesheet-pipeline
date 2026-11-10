@@ -30,11 +30,19 @@ cuesheet-draft assemble \
   --project-name "<project name>" \
   --out <cuesheet-path>.json \
   [--fps 30] [--width 1280] [--height 720] [--boundary-pad 0.4] [--config <path.json>] [--domain <dir>] [--json]
+
+cuesheet-draft shorts \
+  --moments <work-folder>/moments.json \
+  --clip-dir <source-folder> \
+  --out-dir <folder> \
+  [--max 3] [--render] [--json]
+# -> <folder>/shorts-plan.json, and with --render <folder>/short-NN.mp4 (1080x1920)
 ```
 
-`--json` (both subcommands): emits a single structured result object to stdout on success
+`--json` (all subcommands): emits a single structured result object to stdout on success
 (scan: `{clips, evicted, frames, manifestPath}`; assemble:
-`{segments, durationS, connectors, validationOk, outPath}`) — human-readable progress/errors
+`{segments, durationS, connectors, validationOk, outPath}`; shorts:
+`{shorts: [{id, durationS, cuts, hook, outPath}], planPath}`) — human-readable progress/errors
 always go to stderr, `--json` or not, so stdout stays parseable by a script.
 
 Also usable as a library:
@@ -150,6 +158,23 @@ const result = validateCueSheet(cueInput); // assembleDraft itself doesn't valid
 - The result is returned pre-validation (`CueSheetInput`). `assembleDraft` itself is a pure
   function; validation (`validateCueSheet`) is the caller's job — the CLI prints
   `field-path: reason` on validation failure and exits with code 1.
+
+## Shorts (planShorts)
+
+A by-product of the long-form judgment, not a separate shoot: `shorts` reuses `moments.json`.
+
+- **Hero**: a `reveal` / `wearing` / `cat` moment, quality 5 preferred (quality 4 only when the
+  episode has no quality-5 hero). One hero per shot type before a type repeats; on equal quality
+  the last occurrence wins (the final reveal is the finished object). Up to 3 Shorts (`--max`).
+- **Lead-in**: the up-to-3 nearest preceding `hand-closeup` / `change` / `object` moments at
+  quality 4+, kept in footage order, each trimmed to its middle 2.5s. The hero keeps its first 5s.
+- **Face policy**: any moment the face heuristic flags is excluded outright. The long-form cut
+  can rescue such a moment with a crop; the vertical crop here only trims the sides, so it cannot.
+- **Render** (`--render`): each cut is scaled to cover 1080x1920 and center-cropped (landscape
+  sources lose their sides, portrait sources pass through), source audio kept, silence generated
+  for clips without an audio stream. No subtitles or BGM are added - finish those in the editor
+  or the YouTube app. A Short whose source clip is an iCloud placeholder is skipped, never
+  downloaded.
 
 ## Notes
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { CueSheet } from "@cuesheet/schema";
@@ -9,6 +10,8 @@ import type { AssembleGrammarConfigOverride, ThumbnailCandidate } from "./assemb
 import { loadDomainBundle, momentsFileSchemaFor, resolveDomainAssembleConfig } from "./domain.js";
 import { scanFolder } from "./scan.js";
 import type { Manifest } from "./scan.js";
+import { buildShortFfmpegArgs, planShorts } from "./shorts.js";
+import type { ShortPlan } from "./shorts.js";
 import { momentsFileSchema } from "./types.js";
 
 /**
@@ -17,6 +20,11 @@ import { momentsFileSchema } from "./types.js";
  *                               --project-name <name> --out <cuesheet-path>
  *                               [--fps N] [--width N] [--height N] [--boundary-pad N]
  *                               [--config <path>] [--json]
+ *      cuesheet-draft shorts --moments <path> --clip-dir <source-folder> --out-dir <folder>
+ *                             [--max N] [--render] [--json]
+ *
+ * shorts: plans vertical Shorts from the same moments.json (shorts-plan.json); --render also
+ * writes short-NN.mp4 per plan via ffmpeg. See shorts.ts.
  *
  * --config <path>: JSON file with a partial AssembleGrammarConfig override (cut rhythm,
  * quality threshold, timelapse-connector rules, face-heuristic word lists, boundary pad).
@@ -213,14 +221,108 @@ function runAssemble(rest: string[]): void {
   }
 }
 
+/** `shorts --json` payload: one entry per planned Short, `outPath` set only when it was rendered. */
+export interface ShortsJsonResult {
+  shorts: Array<{ id: string; durationS: number; cuts: number; hook: string; outPath: string | null }>;
+  planPath: string;
+}
+
+export function buildShortsJsonResult(
+  plans: ShortPlan[],
+  planPath: string,
+  outPaths: Record<string, string>,
+): ShortsJsonResult {
+  return {
+    shorts: plans.map((p) => ({
+      id: p.id,
+      durationS: p.durationS,
+      cuts: p.cuts.length,
+      hook: p.hook,
+      outPath: outPaths[p.id] ?? null,
+    })),
+    planPath,
+  };
+}
+
+/** Human-readable plan summary printed to stderr, kept pure so the formatting is unit-testable. */
+export function buildShortsReportLines(plans: ShortPlan[]): string[] {
+  if (plans.length === 0) return ["No Shorts planned: no face-safe reveal/wearing/cat moment at quality 4+."];
+  return plans.flatMap((p) => [
+    `Short ${p.id} (${p.durationS}s, ${p.cuts.length} cuts): ${p.hook}`,
+    ...p.cuts.map((c) => `  ${c.role === "hero" ? "hero   " : "lead-in"} ${c.clip} ${c.inS}-${c.outS}s [${c.shotType}]`),
+  ]);
+}
+
+function runShorts(rest: string[]): void {
+  const { flags } = parseArgs(rest);
+  const momentsPath = flags.moments;
+  const clipDir = flags["clip-dir"];
+  const outDir = flags["out-dir"];
+  if (!momentsPath || !clipDir || !outDir) {
+    console.error(
+      "Usage: cuesheet-draft shorts --moments <path> --clip-dir <source-folder> --out-dir <folder> [--max <n>] [--render] [--json]",
+    );
+    process.exit(1);
+  }
+
+  const momentsResult = momentsFileSchema.safeParse(JSON.parse(readFileSync(momentsPath, "utf-8")));
+  if (!momentsResult.success) {
+    console.error(`moments.json validation failed:\n${momentsResult.error.issues.map(formatIssue).join("\n")}`);
+    process.exit(1);
+  }
+
+  const plans = planShorts(momentsResult.data, flags.max ? { maxShorts: Number(flags.max) } : {});
+  mkdirSync(outDir, { recursive: true });
+  const planPath = join(outDir, "shorts-plan.json");
+  writeFileSync(planPath, JSON.stringify(plans, null, 2));
+  for (const line of buildShortsReportLines(plans)) console.error(line);
+
+  const outPaths: Record<string, string> = {};
+  if (flags.render === "true") {
+    for (const plan of plans) {
+      const paths = plan.cuts.map((c) => join(clipDir, c.clip));
+      // Same iCloud rule as scan: a not-downloaded placeholder (blocks===0) hangs on read, so
+      // skip the whole Short rather than trigger a download.
+      const missing = paths.filter((p) => !existsSync(p) || statSync(p).blocks === 0);
+      if (missing.length > 0) {
+        console.error(`Short ${plan.id} skipped: source not available locally (${missing.join(", ")})`);
+        continue;
+      }
+      const outPath = join(outDir, `short-${plan.id}.mp4`);
+      const cuts = plan.cuts.map((c, i) => {
+        const path = paths[i] as string;
+        return { path, inS: c.inS, outS: c.outS, hasAudio: hasAudioStream(path) };
+      });
+      execFileSync("ffmpeg", buildShortFfmpegArgs(cuts, outPath), { stdio: ["ignore", "ignore", "pipe"] });
+      outPaths[plan.id] = outPath;
+      console.error(`Short ${plan.id} rendered -> ${outPath}`);
+    }
+  }
+
+  if (flags.json === "true") {
+    console.log(JSON.stringify(buildShortsJsonResult(plans, planPath, outPaths)));
+  }
+}
+
+function hasAudioStream(path: string): boolean {
+  const out = execFileSync(
+    "ffprobe",
+    ["-v", "error", "-select_streams", "a", "-show_entries", "stream=index", "-of", "csv=p=0", path],
+    { encoding: "utf-8" },
+  );
+  return out.trim().length > 0;
+}
+
 async function main(): Promise<void> {
   const [sub, ...rest] = process.argv.slice(2);
   if (sub === "scan") {
     await runScan(rest);
   } else if (sub === "assemble") {
     runAssemble(rest);
+  } else if (sub === "shorts") {
+    runShorts(rest);
   } else {
-    console.error("Usage: cuesheet-draft <scan|assemble> ...");
+    console.error("Usage: cuesheet-draft <scan|assemble|shorts> ...");
     process.exit(1);
   }
 }

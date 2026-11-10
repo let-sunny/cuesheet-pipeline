@@ -297,7 +297,7 @@ export function findThumbnailCandidates(
  * only a part name without the word "face" itself, e.g. "lips are almost always exposed", so
  * part-name vocabulary is checked too).
  */
-function isTextRisky(
+export function isTextRisky(
   text: string,
   explicit: boolean | undefined,
   faceHeuristic: AssembleGrammarConfig["faceHeuristic"],

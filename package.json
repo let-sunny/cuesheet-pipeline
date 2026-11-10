@@ -18,6 +18,7 @@
     "check:repo": "node scripts/checks/check-language.mjs && node scripts/checks/check-no-emoji.mjs && node scripts/checks/check-component-anatomy.mjs && node scripts/checks/check-test-selectors.mjs && node scripts/checks/check-schema-examples.mjs && node scripts/checks/check-user-guide-presets.mjs && node scripts/checks/check-doc-facts.mjs && node scripts/checks/check-hardcoded-style-values.mjs && node scripts/checks/check-agents-doc.mjs",
     "new:component": "node scripts/new-component/new-component.mjs",
     "episode": "node scripts/episode.mjs",
+    "retro": "node scripts/analytics/youtube-retro.mjs",
     "token-usage": "node scripts/token-usage-report.mjs",
     "e2e": "playwright test --config tests/e2e/playwright.config.ts",
     "e2e:ui": "playwright test --config tests/e2e/playwright.config.ts --ui"
