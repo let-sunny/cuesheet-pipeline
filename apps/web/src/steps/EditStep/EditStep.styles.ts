@@ -42,7 +42,8 @@ export const styles = stylex.create({
     // column is instead the taller one.
     alignItems: "stretch",
     position: "sticky",
-    top: 12,
+    // 12px gap below the pinned header (SYNC: HeaderBar.styles.ts `row`, 72px tall).
+    top: 84,
     alignSelf: "flex-start",
   },
   // Left column (wide): scene header -> video -> playback/trim controls are already bundled
@@ -64,7 +65,7 @@ export const styles = stylex.create({
     flexBasis: 480,
     minWidth: 480,
     alignSelf: "flex-start",
-    maxHeight: "calc(100vh - 24px)",
+    maxHeight: "calc(100vh - 96px)",
     overflowY: "auto",
   },
   // Right column (narrow, next to the video): subtitle/speed/volume/narration/crop field panel.
@@ -104,7 +105,7 @@ export const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
     minHeight: 0,
-    maxHeight: "calc(100vh - 24px)",
+    maxHeight: "calc(100vh - 96px)",
     // The panel child is the scroll container (it owns the sticky tab bar); the column just bounds
     // its height and clips, so scrolling happens on the panel, not here.
     overflow: "hidden",

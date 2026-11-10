@@ -47,7 +47,8 @@ export const styles = stylex.create({
   // still visible as-is.
   sequencePlayerSticky: {
     position: "sticky",
-    top: 0,
+    // Sits directly below the pinned header (SYNC: HeaderBar.styles.ts `row`, 72px tall).
+    top: 72,
     zIndex: 20,
     backgroundColor: colorVars["--color-background-body"],
     padding: `${spacingVars["--spacing-3"]} 0`,

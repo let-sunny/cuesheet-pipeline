@@ -46,5 +46,6 @@ const SHORTCUTS: Array<[string, string]> = [
   ["Tab / Shift+Tab", "Next / previous cut (moves between fields in write mode)"],
   ["Cmd/Ctrl + B", "Split at current position"],
   ["Cmd/Ctrl + J", "Merge with next cut (only when adjacent and same clip)"],
+  ["Cmd/Ctrl + S", "Save (works while typing a subtitle)"],
   ["?", "Toggle this help panel"],
 ];
