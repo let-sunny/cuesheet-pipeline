@@ -32,15 +32,21 @@ const EPISODE: ClipMoments[] = [
       moment(0, 4, "object", 4, "yarn"),
       moment(20, 22, "hand-closeup", 3, "blurry"),
       moment(60, 61, "change", 5, "sleeve joined"),
-      moment(70, 80, "wearing", 5, "얼굴 노출 wearing"),
+      moment(70, 80, "wearing", 5, "face exposed wearing"),
     ],
     monotonousRanges: [],
   },
 ];
 
+// The engine's default face heuristic matches Korean vision memos; tests pass an English
+// equivalent so this file stays within the repo's English-only language policy.
+const FACE_HEURISTIC = { partWords: ["face"], riskWord: "exposed" };
+const plan = (clips: ClipMoments[], overrides = {}) =>
+  planShorts(clips, { faceHeuristic: FACE_HEURISTIC, ...overrides });
+
 describe("planShorts", () => {
   it("builds lead-in cuts in footage order followed by the hero", () => {
-    const [first] = planShorts(EPISODE);
+    const [first] = plan(EPISODE);
     expect(first?.hook).toBe("finished vest");
     expect(first?.cuts.map((c) => [c.clip, c.role, c.shotType])).toEqual([
       ["a_process.mp4", "lead-in", "object"],
@@ -51,7 +57,7 @@ describe("planShorts", () => {
   });
 
   it("caps cut lengths: lead-ins keep the middle, the hero keeps its start", () => {
-    const [first] = planShorts(EPISODE);
+    const [first] = plan(EPISODE);
     const ribbing = first?.cuts.find((c) => c.memo === "ribbing");
     expect([ribbing?.inS, ribbing?.outS]).toEqual([43.75, 46.25]);
     const short = first?.cuts.find((c) => c.memo === "sleeve joined");
@@ -62,7 +68,7 @@ describe("planShorts", () => {
   });
 
   it("picks one hero per shot type before repeating a type", () => {
-    const plans = planShorts(EPISODE);
+    const plans = plan(EPISODE);
     expect(plans.map((p) => [p.id, p.cuts.at(-1)?.shotType])).toEqual([
       ["01", "reveal"],
       ["02", "cat"],
@@ -70,8 +76,8 @@ describe("planShorts", () => {
   });
 
   it("excludes face-risky moments and below-threshold lead-ins", () => {
-    const memos = planShorts(EPISODE).flatMap((p) => p.cuts.map((c) => c.memo));
-    expect(memos).not.toContain("얼굴 노출 wearing");
+    const memos = plan(EPISODE).flatMap((p) => p.cuts.map((c) => c.memo));
+    expect(memos).not.toContain("face exposed wearing");
     expect(memos).not.toContain("blurry");
   });
 
@@ -84,11 +90,11 @@ describe("planShorts", () => {
         monotonousRanges: [],
       },
     ];
-    expect(planShorts(withTop).map((p) => p.hook)).toEqual(["best reveal"]);
+    expect(plan(withTop).map((p) => p.hook)).toEqual(["best reveal"]);
     const onlyFour: ClipMoments[] = [
       { clip: "c.mp4", clipSummary: "", moments: [moment(0, 3, "reveal", 4, "ok reveal")], monotonousRanges: [] },
     ];
-    expect(planShorts(onlyFour).map((p) => p.hook)).toEqual(["ok reveal"]);
+    expect(plan(onlyFour).map((p) => p.hook)).toEqual(["ok reveal"]);
   });
 
   it("on equal quality prefers the last occurrence, and honors maxShorts", () => {
@@ -100,15 +106,15 @@ describe("planShorts", () => {
         monotonousRanges: [],
       },
     ];
-    expect(planShorts(two).map((p) => p.hook)).toEqual(["final", "first"]);
-    expect(planShorts(two, { maxShorts: 1 }).map((p) => p.hook)).toEqual(["final"]);
+    expect(plan(two).map((p) => p.hook)).toEqual(["final", "first"]);
+    expect(plan(two, { maxShorts: 1 }).map((p) => p.hook)).toEqual(["final"]);
   });
 
   it("returns nothing when there is no hero moment", () => {
     const none: ClipMoments[] = [
       { clip: "c.mp4", clipSummary: "", moments: [moment(0, 3, "hand-closeup", 5)], monotonousRanges: [] },
     ];
-    expect(planShorts(none)).toEqual([]);
+    expect(plan(none)).toEqual([]);
   });
 });
 
@@ -138,7 +144,7 @@ describe("buildShortFfmpegArgs", () => {
 });
 
 describe("shorts CLI report builders", () => {
-  const plans: ShortPlan[] = planShorts(EPISODE);
+  const plans: ShortPlan[] = planShorts(EPISODE, { faceHeuristic: { partWords: ["face"], riskWord: "exposed" } });
 
   it("summarizes each plan, hero last", () => {
     const lines = buildShortsReportLines(plans);
