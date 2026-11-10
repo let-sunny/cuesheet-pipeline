@@ -58,7 +58,7 @@ Then, in Claude Code: `/episode <raw footage folder>` — runs the full vision-j
 assemble + subtitle-voice pass documented in `.claude/commands/episode.md`. That command owns
 the orchestration; nothing else needs to be run by hand for a first rough cut.
 
-### `cuesheet-draft` (scan / assemble — the rough-cut pipeline's deterministic half)
+### `cuesheet-draft` (scan / assemble / shorts — the rough-cut pipeline's deterministic half)
 
 ```bash
 cuesheet-draft scan <source-folder> --out <work-folder> [--json]
@@ -71,7 +71,18 @@ cuesheet-draft assemble \
   --project-name "<name>" \
   --out <cuesheet-path>.json \
   [--fps 30] [--width 1280] [--height 720] [--boundary-pad 0.4] [--config <path.json>] [--domain <dir>] [--json]
+
+cuesheet-draft shorts \
+  --moments <work-folder>/moments.json \
+  --clip-dir <source-folder> \
+  --out-dir <folder> \
+  [--max 3] [--render] [--json]
+# -> <folder>/shorts-plan.json, and with --render <folder>/short-NN.mp4 (1080x1920)
 ```
+
+`shorts` plans vertical Shorts from the same `moments.json` the rough cut used (no second vision
+pass): each is a few process cuts leading into one face-safe reveal / wearing / cat moment.
+Without `--render` it only writes the plan, so review it before spending an encode.
 
 `--domain <dir>` points at a domain theme bundle (e.g. `domains/knitting`): moments are validated
 against that domain's shot vocabulary and its grammar + face policy drive assembly (`--config`

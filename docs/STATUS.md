@@ -3,7 +3,7 @@
 > This document is the single entry point for "where things stand right now, and what exists
 > for what purpose." Rule: update this document at every milestone and commit it to git.
 > Detailed design rationale and decisions live in the linked documents; this one holds only
-> the map. (Last updated: 2026-07-12)
+> the map. (Last updated: 2026-11-10)
 
 ## North Star
 
@@ -21,6 +21,7 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 | `packages/render` | Cuesheet -> ffmpeg render (CLI + buildRenderPlan, split into `plan*.ts` helpers; incl. two-pass fallback for captured-frames titles + large HEVC concats); title cards render via Remotion (`packages/render/src/remotion/`) | Stable. 150 tests, verified with real renders (single-pass, two-pass, and a real Remotion title capture) |
 | `apps/web` | Touch-up editor: cut editing, single zoomable-filmstrip trim (TrimStrip), full timeline + BGM drag, proxy playback, export button. Title preview is plain-React/rAF (dropped @remotion/player). Playback/undo-redo controls use the design system's icons (Astryx `Icon` + lucide) | Actively evolving. 711 tests. Server routes + `useEditStepActions` split into small tested modules. Edit step's 3 columns fit a 13-inch laptop; recolors entirely from the active Astryx theme (stone/y2k/neutral switcher) |
 | `packages/draft` | **Core**: raw footage folder -> automatic rough-cut cuesheet generation (CLI `cuesheet-draft`: scan for inventory + frame extraction -> assemble for assembly; vision judgment handled by Claude) | Promoted to a proper package. 50 tests (incl. `--json` envelope contract tests), scan/assemble E2E verified against a real footage folder |
+| `scripts/analytics` | Episode retro: pulls each upload's own first N days (views, average view %, subscribers, views by traffic source) from the YouTube Analytics API and prints a same-age comparison as markdown (`pnpm retro`) | New. 15 tests on the report logic and request shapes; **not yet run against the live API** (needs OAuth credentials, see `scripts/analytics/README.md`) |
 | `media/proxies/` | 720p H.264 proxies for web preview (auto-generated, git-ignored) | Automatic |
 | `media/dotmix_src` | Symlink to the user's raw footage folder (git-ignored) | — |
 | `proto_dotmix.cuesheet.json` | v1 auto-generated rough-cut sample (based on 12 local dotmix clips) | Verified |
@@ -36,6 +37,23 @@ in the user's own editing grammar. See the "Project" section of CLAUDE.md for de
 - **iCloud rule**: must check `stat blocks=0` before reading source footage (reading a placeholder hangs forever), manage space with `brctl download/evict`
 - **AI-legibility as its own backlog**: a dedicated survey (wiki "AI-Legible System Design", covering astryx internals + shadcn/Stripe/GitHub/Cloudflare/Vercel/Storybook/v0) found the missing layer is turning CLAUDE.md's prose conventions into scripts that fail when broken, not more documentation — motivated `check:repo`, CI, `.describe()`-driven `get_schema`, `get_capabilities`, and the AGENTS.md smoke test (issues #5-#16)
 - **Vision judgment upgraded from Sonnet to Opus**: the scan stage's object/shot recognition proved unreliable on the weaker model (content-recognition errors — wrong objects, in-progress pieces read as finished, and some missed face-policy exposures — found during a full re-verification pass). `/episode`'s vision-judgment subagents now run on Opus; a one-off `--reverify` style pass (stronger model re-checks prior judgments against the real frames) is a cheap, high-value safeguard worth keeping.
+
+## 2026-11-10: Shorts by-product planner + episode retro
+
+Two tools for the publishing side of the loop, both driven by criteria in the personal wiki
+(Shorts as a by-product of each episode; reach is diagnosed by same-age comparison).
+
+- **`cuesheet-draft shorts`** (`packages/draft/src/shorts.ts`): plans up to 3 vertical Shorts
+  from the episode's existing `moments.json` - a few process cuts leading into one face-safe
+  reveal / wearing / cat hero - and with `--render` encodes each to 1080x1920 via ffmpeg
+  (center-crop, source audio, no subtitles/BGM). 13 new tests including a real-ffmpeg e2e over a
+  landscape clip with audio plus a portrait clip without. Not yet run on real footage.
+- **`pnpm retro`** (`scripts/analytics/`): same-age YouTube retro, see the component map.
+  Impressions and click-through rate are deliberately out of scope (read them in Studio); views
+  from the suggested feed stand in as the pickup signal.
+- **Bare-feet policy added to the knitting vision prompt** (`[맨발노출]` tag + quality 1, no crop
+  rescue) - the criterion already existed in the personal wiki but no pipeline stage enforced it.
+  Takes effect on the next vision pass; existing `moments.json` files are not re-judged.
 
 ## 2026-07-12: title-preview rework, design-system icons, theme/logic bug fixes, coverage + refactor
 

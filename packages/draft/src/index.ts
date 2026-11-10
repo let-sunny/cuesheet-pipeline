@@ -8,6 +8,9 @@ export type {
   AssembleGrammarConfigOverride,
 } from "./assemble.js";
 
+export { planShorts, buildShortFfmpegArgs, DEFAULT_SHORTS_CONFIG } from "./shorts.js";
+export type { ShortsConfig, ShortCut, ShortPlan, ShortRenderCut, ShortRenderOptions } from "./shorts.js";
+
 export {
   shotTypeSchema,
   momentSchema,

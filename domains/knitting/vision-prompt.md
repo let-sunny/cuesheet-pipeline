@@ -20,6 +20,13 @@ deprioritized for adoption (not excluded entirely — it can still be salvaged w
 crop in the editor, so it must stay in the palette). Always set
 `monotonousRanges[].faceExposed` explicitly.
 
+## Bare-feet policy (absolute rule, stricter than the face policy)
+
+Bare feet must never appear. If a moment has a frame with bare feet visible, tag its `memo` with
+`[맨발노출]` and lower quality to 1. Unlike a face violation there is no crop rescue: treat the
+moment as unusable rather than as a salvage candidate, and prefer a different range of the same
+clip where the feet are out of frame or covered.
+
 ## Long takes (clips 300s or longer), coarse-to-fine
 
 First sweep at 60-second intervals to find ranges with visible change, then recursively narrow
