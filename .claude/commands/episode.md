@@ -84,8 +84,14 @@ interface ClipMoments {
   clipSummary: string;
   moments: Moment[];
   monotonousRanges: MonotonousRange[];
+  rotate?: 90 | 270 | null;  // portrait clips only (manifest `portrait: true`) - see "landscape first" below
 }
 ```
+
+**Landscape first**: for every clip the manifest marks `portrait: true`, set `rotate` - 90 or 270
+(clockwise) when turning it fills the landscape frame the right way round (top-down shots), `null`
+when the shot is genuinely upright and would end up on its side. If you leave it out, assemble
+rotates the clip by its default (270).
 
 **Always** specify `monotonousRanges[].faceExposed` explicitly (if omitted,
 assemble falls back to a desc-text heuristic, which is a safety net that can be

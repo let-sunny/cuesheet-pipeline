@@ -109,6 +109,20 @@ export function resolveAssembleConfig(
 }
 
 /** Thumbnail candidate frame surfaced in the assemble report (see findThumbnailCandidates). */
+/** Rotation applied to a portrait clip the vision judge left undecided (landscape first). */
+export const DEFAULT_PORTRAIT_ROTATE = 270;
+
+/**
+ * The landscape-first rule for one clip. The vision judge's decision wins (a number rotates,
+ * null keeps a genuinely upright clip vertical); an undecided portrait clip gets
+ * DEFAULT_PORTRAIT_ROTATE; a landscape clip is never rotated on the default alone.
+ */
+export function resolveClipRotate(decision: 90 | 270 | null | undefined, isPortrait: boolean): 90 | 270 | undefined {
+  if (decision === null) return undefined;
+  if (decision !== undefined) return decision;
+  return isPortrait ? DEFAULT_PORTRAIT_ROTATE : undefined;
+}
+
 export interface ThumbnailCandidate {
   clip: string;
   inS: number;
@@ -130,6 +144,12 @@ export interface AssembleOptions {
   config?: AssembleGrammarConfigOverride;
   /** Base grammar the `config` override merges onto. Default DEFAULT_ASSEMBLE_CONFIG; a domain passes its own grammar (resolveDomainAssembleConfig) so precedence is domain < `--config`. */
   configBase?: AssembleGrammarConfig;
+  /**
+   * Clips that display as portrait (manifest `portrait: true`). Landscape first: each gets a
+   * `rotate` on its segments so it fills the landscape frame — the vision judge's per-clip
+   * `rotate` when given, DEFAULT_PORTRAIT_ROTATE when undecided, none when the judge said null.
+   */
+  portraitClips?: readonly string[];
   /** Whether the face policy is active (decision C: the engine keeps the face-exclusion mechanism, the domain owns the on/off). Default true; false lets face-exposure-risk ranges still become timelapse connectors. */
   facePolicyEnabled?: boolean;
 }
@@ -141,6 +161,12 @@ export interface AssembleOptions {
  */
 export function assembleDraft(clipsMoments: ClipMoments[], options: AssembleOptions): CueSheetInput {
   const config = resolveAssembleConfig(options.config, options.configBase);
+  const portraitClips = new Set(options.portraitClips ?? []);
+  const rotateByClip = new Map<string, 90 | 270>();
+  for (const cm of clipsMoments) {
+    const rotate = resolveClipRotate(cm.rotate, portraitClips.has(cm.clip));
+    if (rotate !== undefined) rotateByClip.set(cm.clip, rotate);
+  }
   const facePolicyEnabled = options.facePolicyEnabled ?? true;
   const sortedClips = [...clipsMoments].sort((a, b) => a.clip.localeCompare(b.clip));
   const padS = options.boundaryPadS ?? config.boundaryPadS;
@@ -246,14 +272,18 @@ export function assembleDraft(clipsMoments: ClipMoments[], options: AssembleOpti
     clipDir: options.clipDir,
     intro: null,
     outro: null,
-    segments: segments.map(({ clip, in: inS, out, speed, volume, subtitle }) => ({
-      clip,
-      in: inS,
-      out,
-      speed,
-      volume,
-      subtitle,
-    })),
+    segments: segments.map(({ clip, in: inS, out, speed, volume, subtitle }) => {
+      const rotate = rotateByClip.get(clip);
+      return {
+        clip,
+        in: inS,
+        out,
+        speed,
+        volume,
+        subtitle,
+        ...(rotate !== undefined ? { rotate } : {}),
+      };
+    }),
     bgm: [],
     subtitleStyle: {
       font: "Pretendard",

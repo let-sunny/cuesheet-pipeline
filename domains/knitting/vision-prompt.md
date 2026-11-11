@@ -27,6 +27,21 @@ Bare feet must never appear. If a moment has a frame with bare feet visible, tag
 moment as unusable rather than as a salvage candidate, and prefer a different range of the same
 clip where the feet are out of frame or covered.
 
+## Orientation: landscape first
+
+The episode is landscape. Most portrait clips (manifest `portrait: true`) were not shot
+vertically on purpose — the phone was pointing down at the work and recorded itself as upright.
+For every portrait clip, set the clip-level `rotate`:
+
+- `90` or `270` (clockwise degrees) when turning the frame makes it fill the landscape frame the
+  right way round. This is the usual case for a top-down shot (work on the floor or a lap, food,
+  plants, a table). Pick the direction that puts the knitter's own hands/body at the bottom of
+  the frame; if nothing in the shot has an "up", use `270`.
+- `null` only when the shot is genuinely upright and would end up lying on its side (stairs, a
+  cup held in a hand, a person standing, a framed picture on a wall).
+
+Leave `rotate` out for landscape clips.
+
 ## Long takes (clips 300s or longer), coarse-to-fine
 
 First sweep at 60-second intervals to find ranges with visible change, then recursively narrow
