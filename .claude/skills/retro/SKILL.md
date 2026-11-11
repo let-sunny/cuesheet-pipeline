@@ -1,4 +1,5 @@
 ---
+name: retro
 description: Pull the YouTube retro (first N days per upload) and file it into the personal wiki
 argument-hint: [days, default 8]
 ---

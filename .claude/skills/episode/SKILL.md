@@ -1,4 +1,5 @@
 ---
+name: episode
 description: Auto-generate a rough cut (cuesheet) from a single raw footage folder - full v4 pipeline instructions
 argument-hint: <raw footage folder path>
 ---

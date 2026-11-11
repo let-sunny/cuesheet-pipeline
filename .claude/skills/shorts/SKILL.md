@@ -1,4 +1,5 @@
 ---
+name: shorts
 description: Plan and render vertical Shorts from an episode's existing moments.json
 argument-hint: <episode slug under media/drafts/>
 ---

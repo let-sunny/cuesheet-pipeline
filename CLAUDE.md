@@ -368,7 +368,7 @@ separation:
   (design decisions escalate to Fable)
 ```
 
-- `.claude/commands/goal.md` — the brain. Default `model: claude-opus-4-8`. Only plans, decomposes,
+- `.claude/skills/goal/SKILL.md` — the brain. Default `model: claude-opus-4-8`. Only plans, decomposes,
   delegates, verifies, and reports.
   **Tiering convention (2026-07-06)**: day-to-day orchestration uses Opus; escalate to Fable for
   design decisions where direction is contested, conflicting research needs synthesizing, or a
