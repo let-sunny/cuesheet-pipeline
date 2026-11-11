@@ -24,7 +24,7 @@ const LANGUAGE_ALLOWLIST = new Set([
 
   // Pipeline instruction doc quoting Korean tag/vocabulary literals (the face-exposure tag, and
   // several signature sentence-ending/greeting cues) to specify real subtitle-generation behavior.
-  ".claude/commands/episode.md",
+  ".claude/skills/episode/SKILL.md",
 
   // Knitting domain theme: the face policy carries the Korean face-exposure tag + heuristic
   // vocabulary (functional matching literals, not translatable prose); the vision prompt quotes

@@ -1,4 +1,5 @@
 ---
+name: goal
 description: Take a single goal and see it through to completion autonomously. Brain = Opus (default), execution = subagents.
 argument-hint: <goal to accomplish>
 model: claude-opus-4-8

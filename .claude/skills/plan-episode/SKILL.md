@@ -1,4 +1,5 @@
 ---
+name: plan-episode
 description: Review a raw footage folder, plan the episode's story flow with the wiki, then hand off to /episode
 argument-hint: <raw footage folder path under the raw-footage root, or none to list candidates>
 ---

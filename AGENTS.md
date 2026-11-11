@@ -55,7 +55,7 @@ pnpm episode "<raw footage folder>" --rescan     # re-run scan even if manifest.
 ```
 
 Then, in Claude Code: `/episode <raw footage folder>` — runs the full vision-judgment +
-assemble + subtitle-voice pass documented in `.claude/commands/episode.md`. That command owns
+assemble + subtitle-voice pass documented in `.claude/skills/episode/SKILL.md`. That command owns
 the orchestration; nothing else needs to be run by hand for a first rough cut.
 
 ### `cuesheet-draft` (scan / assemble / shorts — the rough-cut pipeline's deterministic half)
@@ -90,7 +90,7 @@ still overrides on top). Omit for the engine defaults.
 
 `moments.json` is the one vision-judgment artifact in the pipeline — an agent writes it by
 looking at the frames scan just extracted (schema: `momentsFileSchema` from `@cuesheet/draft`,
-documented in `.claude/commands/episode.md` and `packages/draft/README.md`). On failure, both
+documented in `.claude/skills/episode/SKILL.md` and `packages/draft/README.md`). On failure, both
 subcommands print `fieldpath: reason` to stderr and exit 1. For the exact `--json` envelope
 shape, call `get_capabilities` (its `clis` entry points at the pinning test) rather than reading
 it here.
