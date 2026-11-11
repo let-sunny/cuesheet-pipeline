@@ -359,7 +359,7 @@ timing models (see `components/TitleOverlay/` in section 2 above).
   (`stat().blocks === 0`).
 - **`moments.json`** (validated by `momentsFileSchema`, `types.ts`): an array of
   `{ clip, clipSummary, moments: [{inS, outS, shotType, memo, quality}],
-  monotonousRanges: [{startS, endS, desc, faceExposed?}] }`, written by Claude after looking
+  monotonousRanges: [{startS, endS, desc, faceExposed?}], rotate?: 90 | 270 | null }`, written by Claude after looking
   at the manifest's frames — the one and only vision-judgment artifact in the pipeline.
   `shotType` is a closed enum (`hand-closeup | object | cat | change | reveal | wearing |
   other`) taken from the user's actual editing vocabulary.

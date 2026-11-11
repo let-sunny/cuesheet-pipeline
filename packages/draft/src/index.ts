@@ -1,7 +1,13 @@
-export { scanFolder, intervalFor } from "./scan.js";
+export { scanFolder, intervalFor, isPortraitDisplay } from "./scan.js";
 export type { FrameRef, ClipManifest, Manifest } from "./scan.js";
 
-export { assembleDraft, DEFAULT_ASSEMBLE_CONFIG, resolveAssembleConfig } from "./assemble.js";
+export {
+  assembleDraft,
+  DEFAULT_ASSEMBLE_CONFIG,
+  DEFAULT_PORTRAIT_ROTATE,
+  resolveAssembleConfig,
+  resolveClipRotate,
+} from "./assemble.js";
 export type {
   AssembleOptions,
   AssembleGrammarConfig,

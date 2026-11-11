@@ -159,6 +159,8 @@ function runAssemble(rest: string[]): void {
   // the clip's end.
   const manifest = JSON.parse(readFileSync(manifestPath, "utf-8")) as Manifest;
   const clipDurations = Object.fromEntries(manifest.clips.map((c) => [c.name, c.durS]));
+  // Landscape first: portrait clips (flagged by scan) get a rotate in assemble.
+  const portraitClips = manifest.clips.filter((c) => c.portrait).map((c) => c.name);
 
   // --domain <dir>: load the theme bundle so moments are validated against the domain's shot
   // vocabulary and its grammar/face policy drive assembly. Omit for the engine defaults.
@@ -192,6 +194,7 @@ function runAssemble(rest: string[]): void {
     height: flags.height ? Number(flags.height) : undefined,
     boundaryPadS: flags["boundary-pad"] ? Number(flags["boundary-pad"]) : undefined,
     clipDurations,
+    portraitClips,
     config,
     configBase,
     facePolicyEnabled: bundle ? bundle.facePolicy.enabled : undefined,

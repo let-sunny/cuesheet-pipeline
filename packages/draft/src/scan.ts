@@ -20,6 +20,13 @@ export interface ClipManifest {
   durS: number;
   interval: number;
   frames: FrameRef[];
+  /**
+   * True when the clip displays taller than wide once its rotation metadata is applied (a
+   * phone-recorded portrait clip). Omitted for landscape clips. assemble uses this for the
+   * landscape-first rule: a portrait clip gets a `rotate` so it fills the landscape frame,
+   * unless the vision judge marked it as genuinely upright.
+   */
+  portrait?: boolean;
 }
 
 export interface Manifest {
@@ -54,6 +61,7 @@ export async function scanFolder(srcDir: string, workDir: string): Promise<Manif
     }
 
     const durS = await probeDuration(path);
+    const portrait = await probePortrait(path);
     const interval = intervalFor(durS);
     // name may contain subfolder segments (the raw-footage-sorting event-subfolder
     // convention) - mkdirSync(recursive:true) mirrors that nesting under frames/.
@@ -66,7 +74,7 @@ export async function scanFolder(srcDir: string, workDir: string): Promise<Manif
       if (framePath) frames.push({ t, path: framePath });
     }
 
-    clips.push({ name, durS, interval, frames });
+    clips.push({ name, durS, interval, frames, ...(portrait ? { portrait: true } : {}) });
   }
 
   return { clips, evicted };
@@ -109,6 +117,51 @@ async function probeDuration(path: string): Promise<number> {
     { timeout: FFPROBE_TIMEOUT_MS },
   );
   return Number.parseFloat(stdout.trim());
+}
+
+/**
+ * Whether a video displays as portrait: coded width/height swapped when the rotation metadata
+ * is a quarter turn (90/270, either sign). A missing or non-finite value counts as landscape.
+ */
+export function isPortraitDisplay(width: number, height: number, rotation: number): boolean {
+  if (!Number.isFinite(width) || !Number.isFinite(height)) return false;
+  const quarterTurn = Number.isFinite(rotation) && Math.abs(Math.round(rotation / 90)) % 2 === 1;
+  const displayW = quarterTurn ? height : width;
+  const displayH = quarterTurn ? width : height;
+  return displayH > displayW;
+}
+
+/** Probes the first video stream's coded size + rotation side data. Returns false if the probe fails. */
+async function probePortrait(path: string): Promise<boolean> {
+  try {
+    const { stdout } = await execFileAsync(
+      "ffprobe",
+      [
+        "-v",
+        "error",
+        "-select_streams",
+        "v:0",
+        "-show_entries",
+        "stream=width,height:stream_side_data=rotation",
+        "-of",
+        "json",
+        path,
+      ],
+      { timeout: FFPROBE_TIMEOUT_MS },
+    );
+    const stream = (JSON.parse(stdout) as { streams?: ProbedStream[] }).streams?.[0];
+    if (!stream) return false;
+    const rotation = stream.side_data_list?.find((d) => d.rotation !== undefined)?.rotation ?? 0;
+    return isPortraitDisplay(Number(stream.width), Number(stream.height), Number(rotation));
+  } catch {
+    return false;
+  }
+}
+
+interface ProbedStream {
+  width?: number;
+  height?: number;
+  side_data_list?: { rotation?: number }[];
 }
 
 /** List of timestamps at `interval` spacing starting from t=0, with the last one adjusted to 1 second before the clip ends. */

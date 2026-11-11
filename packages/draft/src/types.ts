@@ -37,6 +37,14 @@ export const clipMomentsSchema = z.object({
   clipSummary: z.string(),
   moments: z.array(momentSchema),
   monotonousRanges: z.array(monotonousRangeSchema),
+  /**
+   * Landscape-first decision for a portrait clip (manifest `portrait: true`). 90 or 270 = the
+   * clockwise rotation that makes the content fill the landscape frame the right way round
+   * (typical for a top-down shot with no real "up"). null = the clip is genuinely upright
+   * (stairs, a held cup, a person standing): keep it vertical. Omitted = undecided; assemble
+   * then applies its default rotation to a portrait clip.
+   */
+  rotate: z.union([z.literal(90), z.literal(270)]).nullable().optional(),
 });
 
 export const momentsFileSchema = z.array(clipMomentsSchema);
